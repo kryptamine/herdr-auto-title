@@ -21,6 +21,12 @@ func TestMeaningful(t *testing.T) {
 
 		{"shell name", "zsh", "", false},
 		{"shell name in another case", "ZSH", "", false},
+		// One list of shells, so what paneKind skips as a process is what
+		// Meaningful refuses as a title. These four used to get through.
+		{"a shell only the process table knew", "dash", "", false},
+		{"korn shell", "ksh", "", false},
+		{"c shell", "csh", "", false},
+		{"the login shell", "login", "", false},
 		{"multi-word program name", "Claude Code", "", false},
 		{"runtime name", "node", "", false},
 		{"surrounded by whitespace", "  bash  ", "", false},

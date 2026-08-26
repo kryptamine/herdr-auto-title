@@ -57,7 +57,7 @@ func paneKind(pane *state.PaneState) string {
 		return ""
 	}
 
-	if _, generic := genericValues[strings.ToLower(kind)]; generic {
+	if isGeneric(strings.ToLower(kind)) {
 		// A runtime names the language, not the work.
 		return ""
 	}

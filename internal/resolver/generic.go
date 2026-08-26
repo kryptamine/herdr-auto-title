@@ -5,17 +5,12 @@ import (
 	"strings"
 )
 
-// genericValues name a program, a shell or a place rather than what the user is
-// doing there, so a source that finds one declines. Keys are lower-cased;
-// lookups normalize before matching.
+// genericValues name a program or a place rather than what the user is doing
+// there, so a source that finds one declines. Shells are not repeated here:
+// shellNames holds them, and two lists would disagree. Keys are lower-cased.
 var genericValues = map[string]struct{}{
-	// Shells.
-	"bash":  {},
-	"zsh":   {},
-	"sh":    {},
-	"fish":  {},
-	"shell": {},
 	// Terminals and runtimes.
+	"shell":    {},
 	"terminal": {},
 	"node":     {},
 	// Agents naming themselves instead of their work.
@@ -23,6 +18,18 @@ var genericValues = map[string]struct{}{
 	"claude code":  {},
 	"agent":        {},
 	"coding agent": {},
+}
+
+// isGeneric reports whether a lower-cased value names something rather than
+// says what is being done with it.
+func isGeneric(lowered string) bool {
+	if _, generic := genericValues[lowered]; generic {
+		return true
+	}
+
+	_, shell := shellNames[lowered]
+
+	return shell
 }
 
 // uriPattern matches a scheme-qualified location such as oil:///home/dev.
@@ -46,7 +53,7 @@ func Meaningful(value string) (string, bool) {
 		return "", false
 	}
 
-	if _, generic := genericValues[strings.ToLower(cleaned)]; generic {
+	if isGeneric(strings.ToLower(cleaned)) {
 		return "", false
 	}
 
