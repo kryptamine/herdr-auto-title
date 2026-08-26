@@ -14,10 +14,13 @@ import (
 // what git itself abbreviates to.
 const shortCommitLength = 7
 
-// commitLengths are the lengths a whole hash has: sha1, and sha256 for a
-// repository built with it. Checking the length is what keeps a HEAD holding
-// something else from being read as a commit.
-var commitLengths = map[int]struct{}{40: {}, 64: {}}
+// The lengths a whole hash has: sha1, and sha256 for a repository built with
+// it. Checking the length is what keeps a HEAD holding something else from
+// being read as a commit.
+const (
+	sha1Length   = 40
+	sha256Length = 64
+)
 
 // maxRefFileSize bounds what is read from a ref file. These hold one short
 // line; anything larger is not one, and the paths reaching here come from a
@@ -207,7 +210,8 @@ func readRef(path string) (string, bool) {
 // holding anything else yields nothing, so a file that is not a ref cannot
 // become a tab label.
 func abbreviate(head string) string {
-	if _, whole := commitLengths[len(head)]; !whole || !isHex(head) {
+	whole := len(head) == sha1Length || len(head) == sha256Length
+	if !whole || !isHex(head) {
 		return ""
 	}
 
