@@ -17,16 +17,23 @@ const positionMark = " · "
 // switches to that tab. It wraps a resolver rather than being part of one: the
 // position says nothing about what a tab holds, so no source can supply it.
 type Numbered struct {
-	inner *Deterministic
+	inner TitleResolver
+	// maxLength is the bound inner was built with, not a second one: the
+	// position is counted against it rather than added on top, so a numbered
+	// title is never wider than an unnumbered one.
+	maxLength int
 }
 
 var _ TitleResolver = (*Numbered)(nil)
 
-// NewNumbered wraps inner. It takes no width of its own: the position is
-// counted against inner's bound rather than added on top of it, and two
-// numbers to keep in step would only be one to get wrong.
-func NewNumbered(inner *Deterministic) *Numbered {
-	return &Numbered{inner: inner}
+// NewNumbered wraps inner, which must have been given the same maxLength.
+// Zero or less takes the default, as New does.
+func NewNumbered(inner TitleResolver, maxLength int) *Numbered {
+	if maxLength <= 0 {
+		maxLength = DefaultMaxLength
+	}
+
+	return &Numbered{inner: inner, maxLength: maxLength}
 }
 
 // Resolve names the tab and puts its position in front, unless the tab bar is
@@ -37,7 +44,7 @@ func (n *Numbered) Resolve(tab state.TabState) Decision {
 	// The prefix goes in front because truncation cuts the tail: a position at
 	// the end is the first thing a title too wide for the tab bar would lose.
 	prefix := strconv.Itoa(tab.Position) + positionMark
-	room := n.inner.maxLength - uniseg.StringWidth(prefix)
+	room := n.maxLength - uniseg.StringWidth(prefix)
 	// Sanitize takes a width of zero as "no bound at all", and a title reduced
 	// to nothing has lost more than the position is worth.
 	if room <= 0 {

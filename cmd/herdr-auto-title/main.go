@@ -52,7 +52,7 @@ func run() error {
 
 	var titles resolver.TitleResolver = chain
 	if cfg.ShowPosition {
-		titles = resolver.NewNumbered(chain)
+		titles = resolver.NewNumbered(chain, cfg.MaxLength)
 	}
 
 	app.New(cfg, log, titles).Run(ctx, client)
