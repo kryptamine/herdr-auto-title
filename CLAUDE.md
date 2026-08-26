@@ -96,9 +96,9 @@ it keeps are exercised concurrently in tests, and a future reset action will
 touch that history from outside the loop.
 
 The linter lives in `tools/go.mod`, a module of its own, so its dependency tree
-stays out of the plugin's: the main module keeps one dependency and still builds
-on Go 1.24, which is what Herdr needs at install time. `errcheck` is off — the
-places that swallow an error say why they do.
+stays out of the plugin's: the main module keeps two dependencies and still
+builds on Go 1.24, which is what Herdr needs at install time. `errcheck` is off
+— the places that swallow an error say why they do.
 
 ## Herdr socket API — verified facts
 
@@ -109,8 +109,8 @@ listed here** (`make probe-*`, `scripts/probe.py`).
 - NDJSON over the socket at `HERDR_SOCKET_PATH`. Requests are
   `{"id","method","params"}` — `params` is required even when empty.
 - **One request per connection.** Herdr closes the connection after answering,
-  so every `Call` dials its own. Auto Title uses two methods and no others:
-  `session.snapshot` and `tab.rename`.
+  so every `Call` dials its own. Auto Title uses three methods and no others:
+  `session.snapshot`, `pane.process_info` and `tab.rename`.
 - **The event stream is not used, on purpose.** `events.subscribe` replays a
   backlog before anything live — about the last 95 revisions of *every* pane at
   ten a second, so ~10 s of history per active pane, closed panes included — and
@@ -188,9 +188,9 @@ which carries the same facts in full.
 
 ## Working here
 
-- Tickets live in `docs/issues/`, ordered by dependency; take any whose blockers
-  are done. If a ticket turns out to rest on something false, fix the ticket text
-  rather than silently working around it.
+- Work from the issue the change belongs to; [CONTRIBUTING.md](CONTRIBUTING.md)
+  says when one is needed. If an issue turns out to rest on something false
+  about Herdr, correct it there rather than silently working around it.
 - Development runs against the user's real Herdr session, so **their tab names
   change while you work**. Run the plugin in the foreground, never in the
   background, and check `make ps` when something behaves oddly.

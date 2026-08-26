@@ -91,9 +91,10 @@ request per connection**, `PaneInfo` carries no process name, and — the one th
 reshaped the design — subscribing to events replays about ten seconds of history
 per active pane before anything live.
 
-The current list of verified facts lives in the README under *Notes on the Herdr
-socket API*, and the measurements behind the polling decision are in CLAUDE.md.
-When a probe teaches you something new, add it there.
+The current list of verified facts lives in
+[architecture/herdr-socket-api.md](architecture/herdr-socket-api.md), with a
+summary of it — and the measurements behind the polling decision — in CLAUDE.md.
+When a probe teaches you something new, add it to both.
 
 ## Registering it with Herdr
 
@@ -129,24 +130,24 @@ nothing — `herdr status server` reports the uptime that gives it away.
 That is why `make run` exists: it is the only way to see your working tree do
 something without taking the session down.
 
-## Working through a ticket
+## Working through a change
 
 Before changing how a title is decided, read
 [architecture/title-resolution.md](architecture/title-resolution.md) — most of
 what looks arbitrary in the resolver is a measurement that overturned something
 the specification assumed.
 
-Tickets live in `docs/issues/` and are ordered by dependency; take any whose
-blockers are done.
+Anything non-trivial starts as an issue, where the scope is settled before an
+evening goes into it — see [../CONTRIBUTING.md](../CONTRIBUTING.md).
 
-1. Read the ticket. Probe anything it asserts about the API that is not already
-   in the README's verified list.
-2. Write the failing test for the behaviour the ticket describes.
+1. Read the issue. Probe anything it asserts about the API that is not already
+   in [the verified list](architecture/herdr-socket-api.md).
+2. Write the failing test for the behaviour the issue describes.
 3. Implement until `make check` is green.
 4. Do one live run and actually look at the logs — the fast loop cannot see
    real churn, real title values, or what Herdr does under load.
-5. Tick the ticket's acceptance criteria. If a criterion turned out to be based
-   on something false, fix the ticket text rather than quietly skipping it.
+5. Check the issue's acceptance criteria off. If one turned out to rest on
+   something false, correct the issue rather than quietly skipping it.
 
 ## Reading the logs
 
