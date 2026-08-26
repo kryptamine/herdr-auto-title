@@ -166,34 +166,25 @@ func SelectContextPane(tab TabState) *PaneState {
 	}
 
 	// A split with an agent running is about that agent, whatever moved last.
-	if agent := mostRecent(filter(panes, (*PaneState).AgentIsActive)); agent != nil {
+	if agent := mostRecent(panes, (*PaneState).AgentIsActive); agent != nil {
 		return agent
 	}
 
-	return mostRecent(panes)
+	return mostRecent(panes, nil)
 }
 
-func filter(panes []*PaneState, keep func(*PaneState) bool) []*PaneState {
-	kept := make([]*PaneState, 0, len(panes))
+// mostRecent returns the last-changed pane of an ID-ordered slice that keep
+// accepts, or nil when it accepts none. A nil keep takes every pane; the
+// strict comparison keeps the lowest ID when timestamps tie.
+func mostRecent(panes []*PaneState, keep func(*PaneState) bool) *PaneState {
+	var best *PaneState
+
 	for _, p := range panes {
-		if keep(p) {
-			kept = append(kept, p)
+		if keep != nil && !keep(p) {
+			continue
 		}
-	}
 
-	return kept
-}
-
-// mostRecent returns the last-changed pane of an ID-ordered slice; the strict
-// comparison keeps the lowest ID when timestamps tie.
-func mostRecent(panes []*PaneState) *PaneState {
-	if len(panes) == 0 {
-		return nil
-	}
-
-	best := panes[0]
-	for _, p := range panes[1:] {
-		if p.ChangedAt.After(best.ChangedAt) {
+		if best == nil || p.ChangedAt.After(best.ChangedAt) {
 			best = p
 		}
 	}
