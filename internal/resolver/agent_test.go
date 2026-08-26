@@ -125,13 +125,13 @@ func TestContextAndActivityComeFromTheSamePane(t *testing.T) {
 	// leak into the name and describe neither of them.
 	tab := state.TabState{
 		ID: "wE:t1",
-		Panes: map[string]*state.PaneState{
-			"wE:p1": {
+		Panes: []*state.PaneState{
+			{
 				ID:            "wE:p1",
 				Dir:           "/Users/dev/work/api",
 				TerminalTitle: "Run migrations",
 			},
-			"wE:p2": {
+			{
 				ID:          "wE:p2",
 				Dir:         "/Users/dev/work/dashboard",
 				Agent:       "claude",

@@ -14,7 +14,7 @@ func tabWithPane(pane *state.PaneState) state.TabState {
 	pane.Focused = true
 	return state.TabState{
 		ID:    "wE:t1",
-		Panes: map[string]*state.PaneState{pane.ID: pane},
+		Panes: []*state.PaneState{pane},
 	}
 }
 

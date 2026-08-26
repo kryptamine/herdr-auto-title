@@ -2,9 +2,11 @@ package resolver
 
 import (
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
+	"github.com/kryptamine/herdr-auto-title/internal/herdr"
 	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
 
@@ -12,8 +14,8 @@ import (
 func tabWithCWD(dir string) state.TabState {
 	return state.TabState{
 		ID: "wE:t1",
-		Panes: map[string]*state.PaneState{
-			"wE:p1": {ID: "wE:p1", Dir: dir, Focused: true},
+		Panes: []*state.PaneState{
+			{ID: "wE:p1", Dir: dir, Focused: true},
 		},
 	}
 }
@@ -55,8 +57,8 @@ func TestResolveNamesATabAfterItsDirectory(t *testing.T) {
 	r := New(DefaultMaxLength, NewCWD())
 	tab := state.TabState{
 		ID: "wE:t1",
-		Panes: map[string]*state.PaneState{
-			"wE:p1": {ID: "wE:p1", Dir: "/Users/dev/work/api", Focused: true},
+		Panes: []*state.PaneState{
+			{ID: "wE:p1", Dir: "/Users/dev/work/api", Focused: true},
 		},
 	}
 
@@ -86,20 +88,20 @@ func TestResolveTruncatesToMaxLength(t *testing.T) {
 
 func TestResolveIsDeterministic(t *testing.T) {
 	r := New(DefaultMaxLength, NewCWD())
-	tab := state.TabState{
-		ID: "wE:t1",
-		Panes: map[string]*state.PaneState{
-			"wE:p1": {ID: "wE:p1", Dir: "/Users/dev/work/dashboard"},
-			"wE:p2": {ID: "wE:p2", Dir: "/Users/dev/work/api"},
-			"wE:p3": {ID: "wE:p3", Dir: "/Users/dev/work/infra"},
-		},
+	panes := []*state.PaneState{
+		{ID: "wE:p1", Dir: "/Users/dev/work/dashboard"},
+		{ID: "wE:p2", Dir: "/Users/dev/work/api"},
+		{ID: "wE:p3", Dir: "/Users/dev/work/infra"},
 	}
 
-	first := r.Resolve(tab)
-	// Map iteration order varies between runs; the decision must not.
-	for i := range 50 {
-		if got := r.Resolve(tab); got != first {
-			t.Fatalf("resolution %d = %+v, want %+v", i, got, first)
+	// The same panes in whichever order a snapshot listed them must name the
+	// tab the same way, which is what TabFrom's ordering is for.
+	want := r.Resolve(state.TabFrom(herdr.TabInfo{TabID: "wE:t1"}, "", 1, panes))
+	for i := range len(panes) {
+		rotated := append(slices.Clone(panes[i:]), panes[:i]...)
+		got := r.Resolve(state.TabFrom(herdr.TabInfo{TabID: "wE:t1"}, "", 1, rotated))
+		if got != want {
+			t.Fatalf("panes from %d: resolution = %+v, want %+v", i, got, want)
 		}
 	}
 }

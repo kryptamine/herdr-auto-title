@@ -11,10 +11,10 @@ func TestSelectContextPanePrefersFocused(t *testing.T) {
 	now := time.Now()
 	tab := TabState{
 		ID: "wE:t1",
-		Panes: map[string]*PaneState{
-			"wE:p1": {ID: "wE:p1", ChangedAt: now},
-			"wE:p2": {ID: "wE:p2", ChangedAt: now.Add(time.Minute), Focused: true},
-			"wE:p3": {ID: "wE:p3", ChangedAt: now.Add(time.Hour)},
+		Panes: []*PaneState{
+			{ID: "wE:p1", ChangedAt: now},
+			{ID: "wE:p2", ChangedAt: now.Add(time.Minute), Focused: true},
+			{ID: "wE:p3", ChangedAt: now.Add(time.Hour)},
 		},
 	}
 
@@ -27,10 +27,10 @@ func TestSelectContextPaneFallsBackToMostRecent(t *testing.T) {
 	now := time.Now()
 	tab := TabState{
 		ID: "wE:t1",
-		Panes: map[string]*PaneState{
-			"wE:p1": {ID: "wE:p1", ChangedAt: now},
-			"wE:p2": {ID: "wE:p2", ChangedAt: now.Add(time.Hour)},
-			"wE:p3": {ID: "wE:p3", ChangedAt: now.Add(time.Minute)},
+		Panes: []*PaneState{
+			{ID: "wE:p1", ChangedAt: now},
+			{ID: "wE:p2", ChangedAt: now.Add(time.Hour)},
+			{ID: "wE:p3", ChangedAt: now.Add(time.Minute)},
 		},
 	}
 
@@ -56,8 +56,8 @@ func TestTabFromKeepsItsLabel(t *testing.T) {
 	if tab.Position != 1 {
 		t.Errorf("position = %d, want the tab's place in its workspace 1", tab.Position)
 	}
-	if pane := tab.Panes["wE:p1"]; pane == nil || pane.Dir != "/work/dashboard" {
-		t.Errorf("pane wE:p1 = %+v, want dir /work/dashboard", pane)
+	if len(tab.Panes) != 1 || tab.Panes[0].Dir != "/work/dashboard" {
+		t.Errorf("panes = %+v, want one pane in /work/dashboard", tab.Panes)
 	}
 }
 
@@ -99,21 +99,16 @@ func TestPaneWithoutAnAgent(t *testing.T) {
 
 func TestSelectContextPaneBreaksTiesOnID(t *testing.T) {
 	stamp := time.Now()
-	tab := TabState{
-		ID: "wE:t1",
-		Panes: map[string]*PaneState{
-			"wE:p3": {ID: "wE:p3", ChangedAt: stamp},
-			"wE:p1": {ID: "wE:p1", ChangedAt: stamp},
-			"wE:p2": {ID: "wE:p2", ChangedAt: stamp},
-		},
-	}
+	// Built through TabFrom, because that is where the order is imposed: the
+	// snapshot lists panes in whatever order it pleases.
+	tab := TabFrom(herdr.TabInfo{TabID: "wE:t1"}, "", 1, []*PaneState{
+		{ID: "wE:p3", ChangedAt: stamp},
+		{ID: "wE:p1", ChangedAt: stamp},
+		{ID: "wE:p2", ChangedAt: stamp},
+	})
 
-	// Map iteration order varies; the choice must not.
-	for i := range 50 {
-		got := SelectContextPane(tab)
-		if got == nil || got.ID != "wE:p1" {
-			t.Fatalf("iteration %d selected %v, want wE:p1", i, got)
-		}
+	if got := SelectContextPane(tab); got == nil || got.ID != "wE:p1" {
+		t.Fatalf("selected %v, want the lowest id wE:p1", got)
 	}
 }
 
@@ -127,11 +122,11 @@ func TestSelectContextPanePrefersAnActiveAgent(t *testing.T) {
 	now := time.Now()
 	tab := TabState{
 		ID: "wE:t1",
-		Panes: map[string]*PaneState{
+		Panes: []*PaneState{
 			// The agent runs in a split the user is not typing in, so a build
 			// scrolling past in the pane below keeps winning on recency.
-			"wE:p1": {ID: "wE:p1", ChangedAt: now, Agent: "claude", AgentStatus: herdr.AgentStatusWorking},
-			"wE:p2": {ID: "wE:p2", ChangedAt: now.Add(time.Hour)},
+			{ID: "wE:p1", ChangedAt: now, Agent: "claude", AgentStatus: herdr.AgentStatusWorking},
+			{ID: "wE:p2", ChangedAt: now.Add(time.Hour)},
 		},
 	}
 
@@ -146,9 +141,9 @@ func TestSelectContextPaneIgnoresAnIdleAgent(t *testing.T) {
 		t.Run(status, func(t *testing.T) {
 			tab := TabState{
 				ID: "wE:t1",
-				Panes: map[string]*PaneState{
-					"wE:p1": {ID: "wE:p1", ChangedAt: now, Agent: "claude", AgentStatus: status},
-					"wE:p2": {ID: "wE:p2", ChangedAt: now.Add(time.Hour)},
+				Panes: []*PaneState{
+					{ID: "wE:p1", ChangedAt: now, Agent: "claude", AgentStatus: status},
+					{ID: "wE:p2", ChangedAt: now.Add(time.Hour)},
 				},
 			}
 
@@ -163,9 +158,9 @@ func TestSelectContextPanePrefersTheFocusedPaneOverAnAgent(t *testing.T) {
 	now := time.Now()
 	tab := TabState{
 		ID: "wE:t1",
-		Panes: map[string]*PaneState{
-			"wE:p1": {ID: "wE:p1", ChangedAt: now, Agent: "claude", AgentStatus: herdr.AgentStatusWorking},
-			"wE:p2": {ID: "wE:p2", ChangedAt: now, Focused: true},
+		Panes: []*PaneState{
+			{ID: "wE:p1", ChangedAt: now, Agent: "claude", AgentStatus: herdr.AgentStatusWorking},
+			{ID: "wE:p2", ChangedAt: now, Focused: true},
 		},
 	}
 
@@ -178,10 +173,10 @@ func TestSelectContextPaneAmongSeveralAgents(t *testing.T) {
 	now := time.Now()
 	tab := TabState{
 		ID: "wE:t1",
-		Panes: map[string]*PaneState{
-			"wE:p1": {ID: "wE:p1", ChangedAt: now, Agent: "claude", AgentStatus: herdr.AgentStatusWorking},
-			"wE:p2": {ID: "wE:p2", ChangedAt: now.Add(time.Hour), Agent: "claude", AgentStatus: herdr.AgentStatusBlocked},
-			"wE:p3": {ID: "wE:p3", ChangedAt: now.Add(2 * time.Hour)},
+		Panes: []*PaneState{
+			{ID: "wE:p1", ChangedAt: now, Agent: "claude", AgentStatus: herdr.AgentStatusWorking},
+			{ID: "wE:p2", ChangedAt: now.Add(time.Hour), Agent: "claude", AgentStatus: herdr.AgentStatusBlocked},
+			{ID: "wE:p3", ChangedAt: now.Add(2 * time.Hour)},
 		},
 	}
 

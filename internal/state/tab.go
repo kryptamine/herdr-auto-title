@@ -127,41 +127,30 @@ type TabState struct {
 	// is unnamed. Not TabInfo.number, which is a counter that never repeats —
 	// see docs/architecture/herdr-socket-api.md.
 	Position int
-	Panes    map[string]*PaneState
+	// Panes are ordered by ID, which is what makes every traversal of them
+	// yield the same answer from the same session.
+	Panes []*PaneState
 }
 
 // TabFrom builds tab state from what a read returned. Position is the tab's
 // place in its workspace, counted from one.
 func TabFrom(info herdr.TabInfo, workspaceName string, position int, panes []*PaneState) TabState {
-	tab := TabState{
+	ordered := slices.Clone(panes)
+	slices.SortFunc(ordered, func(a, b *PaneState) int { return strings.Compare(a.ID, b.ID) })
+	return TabState{
 		ID:            info.TabID,
 		CurrentName:   info.Label,
 		WorkspaceName: workspaceName,
 		Position:      position,
-		Panes:         make(map[string]*PaneState, len(panes)),
+		Panes:         ordered,
 	}
-	for _, pane := range panes {
-		tab.Panes[pane.ID] = pane
-	}
-	return tab
-}
-
-// SortedPanes returns the tab's panes ordered by ID, giving every traversal a
-// stable order regardless of map iteration.
-func (t TabState) SortedPanes() []*PaneState {
-	panes := make([]*PaneState, 0, len(t.Panes))
-	for _, p := range t.Panes {
-		panes = append(panes, p)
-	}
-	slices.SortFunc(panes, func(a, b *PaneState) int { return strings.Compare(a.ID, b.ID) })
-	return panes
 }
 
 // SelectContextPane picks the one pane a title is built from: the focused one,
 // then one running an active agent, then whichever changed last. Ties break on
 // pane ID, so identical state always yields the same choice.
 func SelectContextPane(tab TabState) *PaneState {
-	panes := tab.SortedPanes()
+	panes := tab.Panes
 	if len(panes) == 0 {
 		return nil
 	}
