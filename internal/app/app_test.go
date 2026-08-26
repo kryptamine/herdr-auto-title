@@ -534,6 +534,50 @@ func TestARenameByTheUserTurnsAutomaticNamingOff(t *testing.T) {
 	}
 }
 
+func TestClearingTheNameHandsTheTabBack(t *testing.T) {
+	// The way out of a lock, and the one a user reaches for: clear the name and
+	// the tab is nobody's again. Herdr stores that as an empty label.
+	h := start(
+		t,
+		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
+		[]herdr.PaneInfo{
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard", Focused: true},
+		},
+	)
+	h.awaitRenames(1)
+
+	h.client.SetTab(herdr.TabInfo{TabID: "wE:t1", Label: "Important work"})
+	h.awaitPolls(h.client.Polls() + 3)
+
+	h.client.SetTab(herdr.TabInfo{TabID: "wE:t1", Label: ""})
+
+	if got := h.awaitRenames(2)[1].Label; got != "dashboard" {
+		t.Errorf("rename = %q, want the tab named again", got)
+	}
+}
+
+func TestATabPutBackOnItsPositionIsHandedBack(t *testing.T) {
+	// The same way out, spelled the other way Herdr says a tab is unnamed: the
+	// position it carries while nobody has named it.
+	h := start(
+		t,
+		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
+		[]herdr.PaneInfo{
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard", Focused: true},
+		},
+	)
+	h.awaitRenames(1)
+
+	h.client.SetTab(herdr.TabInfo{TabID: "wE:t1", Label: "Important work"})
+	h.awaitPolls(h.client.Polls() + 3)
+
+	h.client.SetTab(herdr.TabInfo{TabID: "wE:t1", Label: "1"})
+
+	if got := h.awaitRenames(2)[1].Label; got != "dashboard" {
+		t.Errorf("rename = %q, want the tab named again", got)
+	}
+}
+
 func TestThePluginsOwnRenamesDoNotLockTheTab(t *testing.T) {
 	// Every rename changes a label the plugin then sees again. Reading its own
 	// work as the user's would stop it naming anything after the first time.

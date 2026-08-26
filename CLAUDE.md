@@ -168,6 +168,10 @@ listed here** (`make probe-*`, `scripts/probe.py`).
   *position* in the workspace, counted from one, and that label shifts down when
   a tab to its left closes. The snapshot lists tabs in display order, so the
   position is their count within the workspace.
+- **An unnamed tab reports one of two labels.** A tab nobody has named carries
+  its position, but `tab.rename` with an empty label stores the empty string and
+  the snapshot reports it. Both render as the position in the tab bar, so code
+  reading the label to mean "unnamed" must accept either.
 - **A plugin the server starts inherits the server's environment**, not the
   shell of whoever installed it, which is why `HERDR_AUTO_TITLE_*` settings
   arrive through `config.env` (see

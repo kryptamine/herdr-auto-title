@@ -157,3 +157,9 @@ reads, so this section describes Herdr rather than those types.
 
   Reading `number` as the default label locked every tab created after startup;
   the story is in [manual rename protection](./manual-rename-protection.md).
+- **A tab has two unnamed shapes, and only one of them is the position.** A tab
+  nobody has named reports its position (`herdr tab create` in a four-tab
+  workspace answered `label: "5"`), but clearing a name stores exactly what it
+  was given: `herdr tab rename wG:tS ""` answered `label: ""`, and the snapshot
+  reported the same. The tab bar shows the position for both. Anything reading
+  the label to mean "unnamed" has to accept the empty string as well.

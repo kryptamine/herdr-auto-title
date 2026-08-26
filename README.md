@@ -88,9 +88,9 @@ These rules explain most surprises:
 - **A branch shows when it distinguishes.** Your repository's default branch
   says nothing, so it is left out; anything else is shown, shortened to what
   identifies it (`bugfix-asa-cpanel-uapi-mc-13675` → `MC-13675`).
-- **A tab you renamed is yours** and Auto Title never touches it again. Renaming
-  it back does not hand it over: stop the plugin, delete the tab's entry from
-  `manual-names.json`, and start the plugin again.
+- **A tab you renamed is yours** and Auto Title never touches it again. Clear
+  its name and it is handed back, on the next poll; renaming it to something
+  else keeps it yours under the new name.
 - Paths, shell prompts, bare program names and your workspace name are left out,
   because they only repeat what the screen already shows.
 - A tab with several panes takes its name from one of them: the focused pane, a

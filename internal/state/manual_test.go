@@ -101,6 +101,23 @@ func TestATabFallingBackToItsDefaultLabelIsNotTheUsers(t *testing.T) {
 	}
 }
 
+func TestATabWhoseNameWasClearedIsNotTheUsers(t *testing.T) {
+	// Clearing a tab's name empties its label rather than putting the position
+	// back, so an empty label is Herdr's other way of saying nobody named it —
+	// see docs/architecture/herdr-socket-api.md.
+	m := newManual(t)
+	m.Observe(sighting("1"))
+	m.Applied("wE:t1", "dashboard")
+
+	if m.Observe(sighting("")) {
+		t.Fatal("a tab whose name was cleared was read as the user's")
+	}
+
+	if m.Locked("wE:t1") {
+		t.Error("the tab is locked")
+	}
+}
+
 func TestARenameByTheUserLocksTheTab(t *testing.T) {
 	m := newManual(t)
 	m.Observe(sighting("1"))

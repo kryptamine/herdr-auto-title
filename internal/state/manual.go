@@ -108,9 +108,10 @@ func (m *Manual) Observe(s Sighting) bool {
 	switch {
 	case s.Current == s.Desired:
 		return false
-	case s.Current == s.Default:
-		// Nobody has named it. A known tab can wear this too: the label comes
-		// back, and closing a tab shifts every label after it.
+	case s.Current == "", s.Current == s.Default:
+		// Nobody has named it. A known tab can wear either: clearing a name
+		// empties the label rather than putting the position back, and the
+		// position itself slides down when a tab to the left closes.
 		return false
 	case known:
 		if s.Current == previous {

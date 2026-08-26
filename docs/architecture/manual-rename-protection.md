@@ -75,6 +75,14 @@ others for every tab. The cost is a user who renames a tab to exactly the digits
 of its position and is not protected, which is the same trade the *Desired*
 check already makes.
 
+There is a second shape of it. A tab nobody has named reports its position, but
+**clearing a name stores the empty string** — `tab.rename` keeps exactly what it
+is given, and the tab bar renders the position for both. Until that was probed,
+clearing a tab's name read as a rename to a label Auto Title had never seen, so
+the gesture a user reaches for to hand a tab back was the one that locked it for
+good. An empty label is therefore nobody's too, on the same line as the
+position.
+
 ## Locks outlive the process, guarded by the label
 
 Herdr can restart a plugin mid-session, and losing every manual name to that is
@@ -91,16 +99,23 @@ not running is not remembered.** It cannot be told apart from an id reused by a
 different session, and wrongly locking a stranger's tab is worse than forgetting
 a rename made in the seconds the plugin was down.
 
-## What this design cannot do
+## Handing a tab back
 
-**Once a tab is locked, it cannot return to automatic naming while the plugin is
-running.** Renaming it again does not release it: `Retain` drops the old lock
-because the label moved, and the same poll takes a new one on the new label.
+**Clear the tab's name and Auto Title takes it again**, on the next poll, with
+the plugin running. Nothing implements that: `Retain` releases the lock because
+the label moved off the one it was taken with, and `Observe` declines to take a
+new one because an unnamed tab is nobody's. Renaming the tab to its position
+does the same thing for the same reason.
 
-The way back is to stop the plugin, remove the tab's entry from
-`manual-names.json` (or delete the file), and start it again — editing the file
-under a running plugin achieves nothing, because the locks live in memory and
-the file is rewritten from them.
+Renaming it to anything else does **not** hand it back. The lock is released and
+retaken within the poll, now on the new label — which is what keeps a tab the
+user renames twice theirs.
+
+What remains impossible while the plugin runs is releasing a lock without
+touching the tab. The way to that is still to stop the plugin, remove the tab's
+entry from `manual-names.json` (or delete the file), and start it again —
+editing the file under a running plugin achieves nothing, because the locks live
+in memory and the file is rewritten from them.
 
 A `reset` subcommand talking to the running process over a control channel of
 its own is specified and not built.
