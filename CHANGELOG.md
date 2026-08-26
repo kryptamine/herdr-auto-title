@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.2.0...v0.3.0) (2026-08-26)
+
+
+### Features
+
+* **app:** read settings from a configuration file ([#19](https://github.com/kryptamine/herdr-auto-title/issues/19)) ([53e2d17](https://github.com/kryptamine/herdr-auto-title/commit/53e2d17ddcdf15887322bc2a53624f3e28768411))
+* cap a generated title at 50 columns ([#17](https://github.com/kryptamine/herdr-auto-title/issues/17)) ([1bf9ede](https://github.com/kryptamine/herdr-auto-title/commit/1bf9ede014c5884af280cc5978dc8663bce7d3e2))
+
 ## [0.2.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.1.1...v0.2.0) (2026-08-26)
 
 
