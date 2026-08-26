@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.3.1](https://github.com/kryptamine/herdr-auto-title/compare/v0.3.0...v0.3.1) (2026-08-26)
+
+
+### Bug Fixes
+
+* **state:** hand a tab back when its name is cleared ([e1aec6f](https://github.com/kryptamine/herdr-auto-title/commit/e1aec6fbf34dbd17da59162dc60df66a034528cf))
+
+
+### Performance
+
+* **app:** read only the pane that names a tab ([3b9319e](https://github.com/kryptamine/herdr-auto-title/commit/3b9319ed1386a7dec334a1c6dd8741c3c79adfa9))
+
+
+### Refactoring
+
+* **app:** split the poll loop from its reads ([bd339be](https://github.com/kryptamine/herdr-auto-title/commit/bd339be928b2d9ae953c001e692ae48553b01b75))
+
 ## [0.3.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.2.0...v0.3.0) (2026-08-26)
 
 
