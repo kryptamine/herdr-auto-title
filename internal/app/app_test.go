@@ -697,8 +697,9 @@ func TestAPaneThatCannotBeReadIsAskedAgain(t *testing.T) {
 }
 
 // repoAt builds a repository on disk, since the branch is the one thing a poll
-// reads from the filesystem rather than from the session.
-func repoAt(t *testing.T, branch, defaultBranch string) string {
+// reads from the filesystem rather than from the session. Its trunk is always
+// `main`, so passing that as the branch is how a tab on the trunk is written.
+func repoAt(t *testing.T, branch string) string {
 	t.Helper()
 	root := t.TempDir()
 	gitDir := filepath.Join(root, ".git")
@@ -714,13 +715,13 @@ func repoAt(t *testing.T, branch, defaultBranch string) string {
 		}
 	}
 	write(filepath.Join(gitDir, "HEAD"), "ref: refs/heads/"+branch+"\n")
-	write(filepath.Join(remote, "HEAD"), "ref: refs/remotes/origin/"+defaultBranch+"\n")
+	write(filepath.Join(remote, "HEAD"), "ref: refs/remotes/origin/main\n")
 
 	return root
 }
 
 func TestAPollNamesATabAfterItsBranch(t *testing.T) {
-	repo := repoAt(t, "feat/oauth", "main")
+	repo := repoAt(t, "feat/oauth")
 
 	h := start(t,
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
@@ -736,7 +737,7 @@ func TestAPollNamesATabAfterItsBranch(t *testing.T) {
 func TestCheckingOutABranchRetitlesTheTab(t *testing.T) {
 	// Nothing in the session announces a checkout, and the pane's revision does
 	// not have to move for one — the next poll simply reads HEAD again.
-	repo := repoAt(t, "main", "main")
+	repo := repoAt(t, "main")
 
 	h := start(t,
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
@@ -758,13 +759,14 @@ func TestCheckingOutABranchRetitlesTheTab(t *testing.T) {
 func TestBranchesSwitchedOffAreNotRead(t *testing.T) {
 	// Zero is how a user turns branches off, and a read whose answer is
 	// discarded still costs a walk up the tree on every pane, every poll.
-	repo := repoAt(t, "feat/oauth", "main")
+	repo := repoAt(t, "feat/oauth")
 
 	cfg := testConfig()
 	cfg.BranchMax = 0
 	app := New(cfg, discardLogger(), testResolver(t))
 
 	if checkout := app.checkoutIn(
+		context.Background(),
 		herdr.PaneInfo{PaneID: "wE:p1", CWD: repo},
 	); checkout != (git.Checkout{}) {
 		t.Errorf("checkout = %+v, want nothing read", checkout)
@@ -842,5 +844,34 @@ func TestTranscriptsAreLeftUnreadWhenTurnedOff(t *testing.T) {
 	renames := h.awaitRenames(1)
 	if want := "dashboard › claude"; renames[0].Label != want {
 		t.Errorf("rename = %q, want %q", renames[0].Label, want)
+	}
+}
+
+func TestAPollPastItsDeadlineStopsReadingTheFilesystem(t *testing.T) {
+	// git.Read and the transcript reader take no context: they are file reads,
+	// and a pane sitting on a hung mount blocks the whole loop for as long as
+	// the mount does. A poll the tab loop will throw away makes none of them.
+	repo := repoAt(t, "feat/oauth")
+	app := New(testConfig(), discardLogger(), testResolver(t))
+	client := herdr.NewStub(nil, nil)
+
+	snapshot := herdr.Snapshot{
+		Tabs:  []herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
+		Panes: []herdr.PaneInfo{{PaneID: "wE:p1", TabID: "wE:t1", CWD: repo}},
+	}
+
+	// The live read first, so a checkout that never resolves cannot make the
+	// spent one below look like the guard working.
+	live := app.tabsIn(context.Background(), client, snapshot)
+	if got := live[0].Panes[0].Git.Branch; got != "feat/oauth" {
+		t.Fatalf("branch = %q with time left, so this test proves nothing", got)
+	}
+
+	spent, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	tabs := app.tabsIn(spent, client, snapshot)
+	if got := tabs[0].Panes[0].Git; got != (git.Checkout{}) {
+		t.Errorf("checkout = %+v, want a poll past its deadline to read nothing", got)
 	}
 }

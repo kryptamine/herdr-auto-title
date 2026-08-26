@@ -226,10 +226,14 @@ func (a *App) processesIn(
 // checkoutIn reports what the repository holding the pane has checked out.
 // Unlike a process read it is not cached, and why not is in
 // docs/architecture/title-resolution.md.
-func (a *App) checkoutIn(pane herdr.PaneInfo) git.Checkout {
+func (a *App) checkoutIn(ctx context.Context, pane herdr.PaneInfo) git.Checkout {
 	// A branch width of zero is how branches are turned off, and a read whose
 	// answer is thrown away is still a read on every pane twice a second.
 	if a.cfg.BranchMax <= 0 {
+		return git.Checkout{}
+	}
+
+	if spentPoll(ctx) {
 		return git.Checkout{}
 	}
 
@@ -241,8 +245,8 @@ func (a *App) checkoutIn(pane herdr.PaneInfo) git.Checkout {
 // topicIn reports what the session the pane's agent is holding says it is
 // about. Only Claude Code's transcripts are understood, and only Herdr's
 // integration hook says which session a pane holds.
-func (a *App) topicIn(pane herdr.PaneInfo) string {
-	if !a.cfg.ReadTranscripts {
+func (a *App) topicIn(ctx context.Context, pane herdr.PaneInfo) string {
+	if !a.cfg.ReadTranscripts || spentPoll(ctx) {
 		return ""
 	}
 
@@ -252,6 +256,13 @@ func (a *App) topicIn(pane herdr.PaneInfo) string {
 	}
 
 	return a.topics.Topic(sessionID, pane.Dir()).Text()
+}
+
+// spentPoll reports that this poll is past its deadline, in which case the tab
+// loop will discard it. The reads it guards go to the filesystem, which takes
+// no context, so the only way to bound them is not to start them.
+func spentPoll(ctx context.Context) bool {
+	return ctx.Err() != nil
 }
 
 // sessionsIn lists the agent sessions the snapshot holds, which is what the
@@ -286,8 +297,8 @@ func (a *App) tabsIn(
 	for _, pane := range snapshot.Panes {
 		byTab[pane.TabID] = append(byTab[pane.TabID], state.PaneFrom(pane, state.Reads{
 			Processes: a.processesIn(ctx, client, pane.PaneID),
-			Git:       a.checkoutIn(pane),
-			Topic:     a.topicIn(pane),
+			Git:       a.checkoutIn(ctx, pane),
+			Topic:     a.topicIn(ctx, pane),
 			ChangedAt: a.changes.ChangedAt(pane.PaneID),
 		}))
 	}
