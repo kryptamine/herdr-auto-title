@@ -1,0 +1,47 @@
+name: Feature request
+description: A title Auto Title should produce, or a setting it should offer
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Scope gets settled on the issue before anyone spends an evening on it,
+        so say what the tab bar should end up looking like rather than which
+        function should change.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What the tab is named today, and why that is not enough.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What it should do instead
+      description: >-
+        Give the tab label you want, as it would render — one line, 50 columns
+        by default.
+      placeholder: |
+        3 · dashboard › build
+    validations:
+      required: true
+
+  - type: textarea
+    id: source
+    attributes:
+      label: Where the plugin would read it from
+      description: >-
+        If you know which part of the session carries it — the pane's process,
+        its terminal title, the agent's session, the repository — say so.
+        Leave it empty if you do not.
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you tried
+      description: >-
+        Settings you already changed, or a rename by hand that you would rather
+        not repeat.

@@ -1,0 +1,86 @@
+name: Bug report
+description: A tab is named wrongly, or the plugin does not behave as documented
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Two things account for most reports: installing does not start the
+        plugin until the Herdr server has restarted (`herdr server stop`), and
+        a tab you renamed by hand is left alone from then on.
+        `herdr plugin list` shows whether the plugin is registered and running.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: The title a tab carried, or what the plugin did instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce it
+      description: >-
+        What the pane held when it went wrong — the command, the agent, the
+        working directory, the branch, how many panes the tab had.
+      placeholder: |
+        1. Open a tab in ~/work/project on branch feature/x
+        2. The tab is named …
+    validations:
+      required: true
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Auto Title version
+      description: From `herdr plugin list`.
+      placeholder: "0.3.1"
+    validations:
+      required: true
+
+  - type: input
+    id: herdr-version
+    attributes:
+      label: Herdr version
+      description: From `herdr --version`.
+      placeholder: "herdr 0.8.2"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Linux
+    validations:
+      required: true
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Configuration
+      description: >-
+        Any `HERDR_AUTO_TITLE_*` settings you changed, from your `config.env`.
+        Leave it empty if you run the defaults.
+      render: shell
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: DEBUG logs
+      description: >-
+        Set `HERDR_AUTO_TITLE_DEBUG=1` in your `config.env`, restart the server
+        and paste the lines around the bad rename. Logs carry tab titles,
+        commands and paths — remove anything you would rather not publish.
+      render: text

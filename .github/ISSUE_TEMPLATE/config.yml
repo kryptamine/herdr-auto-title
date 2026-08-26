@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: How the plugin works
+    url: https://github.com/kryptamine/herdr-auto-title/tree/main/docs/architecture
+    about: The poll loop, title resolution, sanitizing, manual rename protection — the design and why it is that way.
+  - name: Contributing
+    url: https://github.com/kryptamine/herdr-auto-title/blob/main/CONTRIBUTING.md
+    about: What needs an issue first, how changes are made here, and how to get set up.
+  - name: Herdr itself
+    url: https://herdr.dev
+    about: A bug in the terminal rather than in this plugin belongs with Herdr.
