@@ -12,6 +12,7 @@ func tabWithPane(pane *state.PaneState) state.TabState {
 	pane.ID = "wE:p1"
 	_ = pane
 	pane.Focused = true
+
 	return state.TabState{
 		ID:    "wE:t1",
 		Panes: []*state.PaneState{pane},
@@ -27,9 +28,11 @@ func TestTerminalTitleBeatsTheWorkingDirectory(t *testing.T) {
 	if got.Name != "dashboard › Fix OAuth redirect" {
 		t.Errorf("name = %q, want %q", got.Name, "dashboard › Fix OAuth redirect")
 	}
+
 	if got.Reason != "terminal_title" {
 		t.Errorf("reason = %q, want terminal_title", got.Reason)
 	}
+
 	if got.Confidence != ConfidenceTerminalTitle {
 		t.Errorf("confidence = %d, want %d", got.Confidence, ConfidenceTerminalTitle)
 	}
@@ -39,7 +42,10 @@ func TestGenericTerminalTitleFallsThrough(t *testing.T) {
 	// Every one of these was observed on a live Herdr session.
 	for _, title := range []string{"zsh", "Claude Code", "node", "~", "~/W/dashboard", ""} {
 		t.Run(title, func(t *testing.T) {
-			got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(&state.PaneState{
+			got := Default(
+				DefaultMaxLength,
+				DefaultBranchMaxLength,
+			).Resolve(tabWithPane(&state.PaneState{
 				Dir:           "/Users/dev/work/dashboard",
 				TerminalTitle: title,
 			}))
@@ -47,6 +53,7 @@ func TestGenericTerminalTitleFallsThrough(t *testing.T) {
 			if got.Name != "dashboard" {
 				t.Errorf("name = %q, want %q", got.Name, "dashboard")
 			}
+
 			if got.Reason != "cwd" {
 				t.Errorf("reason = %q, want cwd", got.Reason)
 			}
@@ -98,6 +105,7 @@ func TestLongTerminalTitleIsTruncatedAsAWhole(t *testing.T) {
 	if runes := len([]rune(got.Name)); runes > DefaultMaxLength {
 		t.Errorf("name is %d runes, want at most %d: %q", runes, DefaultMaxLength, got.Name)
 	}
+
 	if !strings.HasPrefix(got.Name, "dashboard › long") {
 		t.Errorf("name = %q, want it to start with the context", got.Name)
 	}

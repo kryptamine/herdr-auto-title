@@ -45,6 +45,7 @@ func TestTheDefaultBranchIsTheRepositorysOwn(t *testing.T) {
 	if got := resolveRepoPane(repoPane("develop", "develop")); got != "dashboard" {
 		t.Errorf("develop as trunk → %q, want just the directory", got)
 	}
+
 	if got := resolveRepoPane(repoPane("main", "develop")); got != "dashboard › main" {
 		t.Errorf("main off a develop trunk → %q, want the branch", got)
 	}
@@ -159,6 +160,7 @@ func TestTheBranchIsCreditedLikeAContext(t *testing.T) {
 	resolver := Default(DefaultMaxLength, DefaultBranchMaxLength)
 
 	pane := repoPane("feat/oauth", "main")
+
 	pane.TerminalTitle = "auth.ts - Nvim"
 	if got := resolver.Resolve(tabWithPane(pane)).Reason; got != "terminal_title" {
 		t.Errorf("reason %q, want the source of the activity", got)

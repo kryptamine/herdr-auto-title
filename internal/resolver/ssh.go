@@ -52,6 +52,7 @@ func (SSH) Resolve(pane *state.PaneState) (Parts, bool) {
 	if host == "" {
 		return Parts{Context: sshKind}, true
 	}
+
 	return Parts{Context: qualify(host, sshKind)}, true
 }
 
@@ -62,6 +63,7 @@ func sshArgs(pane *state.PaneState) ([]string, bool) {
 			return process.Args, true
 		}
 	}
+
 	return nil, false
 }
 
@@ -81,6 +83,7 @@ func sshHost(args []string) string {
 			if i+1 < len(args) {
 				return hostOf(args[i+1])
 			}
+
 			return ""
 		case len(arg) > 1 && arg[0] == '-':
 			// A flag whose value is a separate argument consumes the next one,
@@ -95,6 +98,7 @@ func sshHost(args []string) string {
 			return hostOf(arg)
 		}
 	}
+
 	return ""
 }
 
@@ -102,6 +106,7 @@ func sshHost(args []string) string {
 // user and the port from `ssh://deploy@prod-01:2222`.
 func hostOf(destination string) string {
 	host := strings.TrimSpace(destination)
+
 	host = strings.TrimPrefix(host, "ssh://")
 	if at := strings.LastIndex(host, "@"); at >= 0 {
 		host = host[at+1:]
@@ -116,6 +121,7 @@ func hostOf(destination string) string {
 		if end := strings.Index(host, "]"); end >= 0 {
 			return host[1:end]
 		}
+
 		return ""
 	}
 	// A bare colon is a port; a host with several is an unbracketed IPv6
@@ -123,5 +129,6 @@ func hostOf(destination string) string {
 	if strings.Count(host, ":") == 1 {
 		host, _, _ = strings.Cut(host, ":")
 	}
+
 	return host
 }

@@ -20,7 +20,12 @@ func TestSanitize(t *testing.T) {
 		{"leading and trailing separators are trimmed", "› dashboard ›", 64, "dashboard"},
 		{"surrounding whitespace is trimmed", "   dashboard   ", 64, "dashboard"},
 		{"control characters are removed", "dash\x00board\x07", 64, "dashboard"},
-		{"a non-breaking space collapses like any other", "dash\u00a0\u00a0board", 64, "dash board"},
+		{
+			"a non-breaking space collapses like any other",
+			"dash\u00a0\u00a0board",
+			64,
+			"dash board",
+		},
 		{"an ideographic space collapses too", "dash\u3000board", 64, "dash board"},
 		{"empty input yields empty output", "", 64, ""},
 		{"whitespace only yields empty output", "   \n\t ", 64, ""},
@@ -56,7 +61,11 @@ func TestSanitizeRemovesFormatCharacters(t *testing.T) {
 	}{
 		{"a right-to-left override cannot reverse the label", "safe\u202egnp.txt", "safegnp.txt"},
 		{"a zero-width space cannot forge a second dashboard", "dash\u200bboard", "dashboard"},
-		{"a bidi isolate cannot reorder what surrounds it", "\u2066prod\u2069 deploy", "prod deploy"},
+		{
+			"a bidi isolate cannot reorder what surrounds it",
+			"\u2066prod\u2069 deploy",
+			"prod deploy",
+		},
 		{"a soft hyphen cannot split a word invisibly", "dash\u00adboard", "dashboard"},
 		{"a word joiner is not a word", "dash\u2060board", "dashboard"},
 		{"a byte order mark is not part of the title", "\ufeffdashboard", "dashboard"},
@@ -83,6 +92,7 @@ func TestSanitizeKeepsTheZeroWidthJoiner(t *testing.T) {
 
 func TestSanitizeIsIdempotent(t *testing.T) {
 	in := "\x1b[31mdashboard\x1b[0m ›  › tests\n"
+
 	once := Sanitize(in, 64)
 	if twice := Sanitize(once, 64); twice != once {
 		t.Errorf("Sanitize is not idempotent: %q then %q", once, twice)
@@ -95,11 +105,19 @@ func TestFormat(t *testing.T) {
 		parts Parts
 		want  string
 	}{
-		{"context and activity are joined", Parts{Context: "dashboard", Activity: "Tests"}, "dashboard › Tests"},
+		{
+			"context and activity are joined",
+			Parts{Context: "dashboard", Activity: "Tests"},
+			"dashboard › Tests",
+		},
 		{"context alone carries no separator", Parts{Context: "dashboard"}, "dashboard"},
 		{"activity alone carries no separator", Parts{Activity: "Tests"}, "Tests"},
 		{"nothing yields nothing", Parts{}, ""},
-		{"untrusted parts are sanitized", Parts{Context: "\x1b[31mdash\nboard", Activity: "Tests "}, "dash board › Tests"},
+		{
+			"untrusted parts are sanitized",
+			Parts{Context: "\x1b[31mdash\nboard", Activity: "Tests "},
+			"dash board › Tests",
+		},
 	}
 
 	for _, tc := range tests {
@@ -121,8 +139,18 @@ func TestTruncationNeverCutsAGraphemeClusterOpen(t *testing.T) {
 		maxWidth int
 		want     string
 	}{
-		{"a cluster that fits is kept whole", "work \U0001F468\u200D\U0001F469\u200D\U0001F467\u200D\U0001F466", 7, "work \U0001F468\u200D\U0001F469\u200D\U0001F467\u200D\U0001F466"},
-		{"a cluster that does not fit is dropped whole", "work \U0001F468\u200D\U0001F469\u200D\U0001F467\u200D\U0001F466", 6, "work"},
+		{
+			"a cluster that fits is kept whole",
+			"work \U0001F468\u200D\U0001F469\u200D\U0001F467\u200D\U0001F466",
+			7,
+			"work \U0001F468\u200D\U0001F469\u200D\U0001F467\u200D\U0001F466",
+		},
+		{
+			"a cluster that does not fit is dropped whole",
+			"work \U0001F468\u200D\U0001F469\u200D\U0001F467\u200D\U0001F466",
+			6,
+			"work",
+		},
 		{"a skin tone stays with its emoji", "review \U0001F44D\U0001F3FD ok", 8, "review"},
 	}
 

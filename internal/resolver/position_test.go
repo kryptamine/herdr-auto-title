@@ -18,6 +18,7 @@ func numberedCWD(maxLength int) *Numbered {
 func atPosition(position int, dir string) state.TabState {
 	tab := tabWithCWD(dir)
 	tab.Position = position
+
 	return tab
 }
 
@@ -49,6 +50,7 @@ func TestPositionKeepsTheDecisionItWraps(t *testing.T) {
 	if got.Reason != "cwd" {
 		t.Errorf("reason = %q, want cwd", got.Reason)
 	}
+
 	if got.Confidence != ConfidenceCWD {
 		t.Errorf("confidence = %d, want %d", got.Confidence, ConfidenceCWD)
 	}
@@ -56,12 +58,14 @@ func TestPositionKeepsTheDecisionItWraps(t *testing.T) {
 
 func TestAPositionIsCountedAgainstTheWidth(t *testing.T) {
 	const maxLength = 16
+
 	long := "/Users/dev/work/" + strings.Repeat("a", 40)
 
 	got := numberedCWD(maxLength).Resolve(atPosition(7, long))
 	if width := uniseg.StringWidth(got.Name); width > maxLength {
 		t.Errorf("name %q is %d columns wide, want at most %d", got.Name, width, maxLength)
 	}
+
 	if !strings.HasPrefix(got.Name, "7 · ") {
 		t.Errorf("name = %q, want it to lead with its position", got.Name)
 	}

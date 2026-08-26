@@ -81,10 +81,12 @@ func New(maxLength int, sources ...Source) *Deterministic {
 	if maxLength <= 0 {
 		maxLength = DefaultMaxLength
 	}
+
 	ordered := slices.Clone(sources)
 	slices.SortStableFunc(ordered, func(a, b Source) int {
 		return cmp.Compare(b.Confidence(), a.Confidence())
 	})
+
 	return &Deterministic{sources: ordered, maxLength: maxLength}
 }
 
@@ -110,8 +112,13 @@ func (d *Deterministic) Resolve(tab state.TabState) Decision {
 
 	name := Format(found.parts, d.maxLength)
 	if name == "" {
-		return Decision{Name: GenericFallback, Confidence: ConfidenceFallback, Reason: "generic_fallback"}
+		return Decision{
+			Name:       GenericFallback,
+			Confidence: ConfidenceFallback,
+			Reason:     "generic_fallback",
+		}
 	}
+
 	return Decision{Name: name, Confidence: found.confidence, Reason: found.reason}
 }
 
@@ -128,16 +135,20 @@ type collected struct {
 // can complete a title a higher one only half answered.
 func (d *Deterministic) collect(pane *state.PaneState) collected {
 	var found collected
+
 	for _, source := range d.sources {
 		parts, ok := source.Resolve(pane)
 		if !ok {
 			continue
 		}
+
 		found.take(source, parts)
+
 		if found.complete() {
 			break
 		}
 	}
+
 	return found
 }
 
@@ -150,12 +161,14 @@ func (c *collected) take(source Source, parts Parts) {
 		c.parts.Activity = parts.Activity
 		c.credit(source)
 	}
+
 	if c.parts.Branch == "" && parts.Branch != "" {
 		c.parts.Branch = parts.Branch
 		if c.reason == "" {
 			c.credit(source)
 		}
 	}
+
 	if c.parts.Context == "" && parts.Context != "" {
 		c.parts.Context = parts.Context
 		if c.reason == "" {

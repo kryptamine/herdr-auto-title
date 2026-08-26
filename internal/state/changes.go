@@ -47,6 +47,7 @@ func (c *Changes) Observe(panes []herdr.PaneInfo) {
 	defer c.mu.Unlock()
 
 	now := c.now()
+
 	seen := make(map[string]paneChange, len(panes))
 	for _, pane := range panes {
 		previous, known := c.panes[pane.PaneID]
@@ -59,6 +60,7 @@ func (c *Changes) Observe(panes []herdr.PaneInfo) {
 			seen[pane.PaneID] = previous
 		}
 	}
+
 	c.panes = seen
 }
 
@@ -67,6 +69,7 @@ func (c *Changes) Observe(panes []herdr.PaneInfo) {
 func (c *Changes) ChangedAt(paneID string) time.Time {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
 	return c.panes[paneID].at
 }
 
@@ -76,10 +79,12 @@ func (c *Changes) ChangedAt(paneID string) time.Time {
 func (c *Changes) Processes(paneID string) ([]herdr.PaneProcessInfoProcess, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
 	change := c.panes[paneID]
 	if change.readAt.IsZero() || c.now().Sub(change.readAt) >= processRefresh {
 		return nil, false
 	}
+
 	return change.processes, true
 }
 
@@ -88,10 +93,12 @@ func (c *Changes) Processes(paneID string) ([]herdr.PaneProcessInfoProcess, bool
 func (c *Changes) Ran(paneID string, processes []herdr.PaneProcessInfoProcess) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
 	change, known := c.panes[paneID]
 	if !known {
 		return
 	}
+
 	change.processes, change.readAt = processes, c.now()
 	c.panes[paneID] = change
 }

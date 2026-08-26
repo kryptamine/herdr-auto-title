@@ -54,6 +54,7 @@ func (g Git) Resolve(pane *state.PaneState) (Parts, bool) {
 	if branch == "" {
 		return Parts{}, false
 	}
+
 	return Parts{Branch: branch}, true
 }
 
@@ -70,6 +71,7 @@ func (g Git) label(checkout git.Checkout) string {
 	if checkout.Branch == checkout.Default {
 		return ""
 	}
+
 	return shortenBranch(Sanitize(checkout.Branch, 0), g.maxLength)
 }
 
@@ -95,6 +97,7 @@ func shortenBranch(branch string, maxLength int) string {
 	if cut := strings.LastIndex(branch, "/"); cut >= 0 && cut+1 < len(branch) {
 		branch = branch[cut+1:]
 	}
+
 	return cutAtSeparator(branch, maxLength)
 }
 
@@ -114,5 +117,6 @@ func cutAtSeparator(value string, maxWidth int) string {
 			head = head[:cut]
 		}
 	}
+
 	return strings.Trim(head, branchSeparators)
 }

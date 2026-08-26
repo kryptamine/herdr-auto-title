@@ -10,9 +10,12 @@ help: ## List every target
 .PHONY: check
 check: fmt vet lint test ## Everything that must be green before a commit
 
+# What --fix could not fix is not this target's business to report: the issue
+# list goes to stdout, real failures to stderr, and `lint` follows it anyway.
 .PHONY: fmt
-fmt: ## Format the code
-	@gofmt -l -w .
+fmt: ## Format the code and apply every fix the linters can make themselves
+	@go tool -modfile=tools/go.mod golangci-lint fmt ./...
+	@go tool -modfile=tools/go.mod golangci-lint run --fix ./... >/dev/null || true
 
 .PHONY: vet
 vet: ## Static checks

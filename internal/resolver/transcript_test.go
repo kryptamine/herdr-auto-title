@@ -21,9 +21,11 @@ func TestATopicNamesATabTheTerminalTitleCannot(t *testing.T) {
 	if want := "dashboard › claude › grill-me"; got.Name != want {
 		t.Errorf("name = %q, want %q", got.Name, want)
 	}
+
 	if got.Reason != "transcript" {
 		t.Errorf("reason = %q, want transcript", got.Reason)
 	}
+
 	if got.Confidence != ConfidenceTranscript {
 		t.Errorf("confidence = %d, want %d", got.Confidence, ConfidenceTranscript)
 	}
@@ -42,6 +44,7 @@ func TestATerminalTitleOutranksTheTranscript(t *testing.T) {
 	if want := "dashboard › claude › Fix OAuth redirect"; got.Name != want {
 		t.Errorf("name = %q, want %q", got.Name, want)
 	}
+
 	if got.Reason != "terminal_title" {
 		t.Errorf("reason = %q, want terminal_title", got.Reason)
 	}

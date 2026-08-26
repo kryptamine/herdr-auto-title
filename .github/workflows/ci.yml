@@ -27,15 +27,6 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go-version }}
-      - name: Formatting
-        # `make fmt` rewrites; CI has to fail instead.
-        run: |
-          unformatted=$(gofmt -l .)
-          if [ -n "$unformatted" ]; then
-            echo "not gofmt'd:"
-            echo "$unformatted"
-            exit 1
-          fi
       - run: go vet ./...
       - run: go build ./...
       - run: go test -race ./...
@@ -53,6 +44,10 @@ jobs:
           cache-dependency-path: |
             go.sum
             tools/go.sum
+      - name: Formatting
+        # `make fmt` rewrites; CI has to fail instead. It lives beside the
+        # linter because the formatters are configured in .golangci.yml too.
+        run: go tool -modfile=tools/go.mod golangci-lint fmt --diff ./...
       - run: make lint
 
   macos:

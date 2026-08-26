@@ -20,8 +20,20 @@ linters:
     - thelper     # test helpers that forget t.Helper()
     - unconvert   # conversions that convert nothing
     - unparam     # parameters and results that are always the same
+    - wsl_v5      # statements that belong together cuddled, the rest spaced
   disable:
     # Silence is a decision here, not an oversight: writing the manual-name
     # file and closing a socket both fail quietly on purpose, and each place
     # says so. See internal/state/manual.go and internal/herdr/client.go.
     - errcheck
+
+formatters:
+  enable:
+    - gofmt
+    # An over-long call is broken one argument to a line rather than wrapped
+    # to fill the width, which keeps a diff to the argument that changed.
+    - golines
+  settings:
+    golines:
+      max-len: 100
+      tab-len: 4

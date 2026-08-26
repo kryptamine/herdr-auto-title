@@ -65,9 +65,9 @@ in [docs/architecture](docs/architecture/).
 
 ## Pull requests
 
-- `make check` green locally. CI then runs `gofmt`, `go vet`, `go build` and
-  `go test -race` on Go 1.24 and stable, `golangci-lint` once, and a build and
-  test run on macOS.
+- `make check` green locally. CI then runs `go vet`, `go build` and
+  `go test -race` on Go 1.24 and stable, the formatters and `golangci-lint`
+  once, and a build and test run on macOS.
 - **PRs are merged by rebase.** Merge commits are disabled on the repository:
   GitHub puts the PR title into the merge commit, and since the titles here are
   conventional, release-please counted every change twice. Squashing would

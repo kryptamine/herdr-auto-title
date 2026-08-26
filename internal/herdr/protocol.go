@@ -50,6 +50,7 @@ func ErrorCode(err error) string {
 	if errors.As(err, &apiErr) {
 		return apiErr.Code
 	}
+
 	return ""
 }
 

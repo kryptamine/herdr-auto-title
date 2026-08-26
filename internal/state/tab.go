@@ -89,10 +89,12 @@ func processesFrom(processes []herdr.PaneProcessInfoProcess) []Process {
 	if len(processes) == 0 {
 		return nil
 	}
+
 	out := make([]Process, 0, len(processes))
 	for _, p := range processes {
 		out = append(out, Process{Name: p.Name, Args: p.Argv})
 	}
+
 	return out
 }
 
@@ -107,6 +109,7 @@ func (p *PaneState) AgentIsActive() bool {
 	if !p.HasAgent() {
 		return false
 	}
+
 	switch p.AgentStatus {
 	case herdr.AgentStatusWorking, herdr.AgentStatusBlocked:
 		return true
@@ -137,6 +140,7 @@ type TabState struct {
 func TabFrom(info herdr.TabInfo, workspaceName string, position int, panes []*PaneState) TabState {
 	ordered := slices.Clone(panes)
 	slices.SortFunc(ordered, func(a, b *PaneState) int { return strings.Compare(a.ID, b.ID) })
+
 	return TabState{
 		ID:            info.TabID,
 		CurrentName:   info.Label,
@@ -165,6 +169,7 @@ func SelectContextPane(tab TabState) *PaneState {
 	if agent := mostRecent(filter(panes, (*PaneState).AgentIsActive)); agent != nil {
 		return agent
 	}
+
 	return mostRecent(panes)
 }
 
@@ -175,6 +180,7 @@ func filter(panes []*PaneState, keep func(*PaneState) bool) []*PaneState {
 			kept = append(kept, p)
 		}
 	}
+
 	return kept
 }
 
@@ -184,11 +190,13 @@ func mostRecent(panes []*PaneState) *PaneState {
 	if len(panes) == 0 {
 		return nil
 	}
+
 	best := panes[0]
 	for _, p := range panes[1:] {
 		if p.ChangedAt.After(best.ChangedAt) {
 			best = p
 		}
 	}
+
 	return best
 }

@@ -20,6 +20,7 @@ func paneKind(pane *state.PaneState) string {
 	if pane == nil {
 		return ""
 	}
+
 	if pane.HasAgent() {
 		// An agent's name is in the generic table, because an agent naming
 		// itself is not a report of its work. As a kind it is exactly right:
@@ -28,18 +29,22 @@ func paneKind(pane *state.PaneState) string {
 	}
 
 	var kind string
+
 	for _, process := range pane.Processes {
 		name := strings.TrimSpace(process.Name)
 		if name == "" {
 			continue
 		}
+
 		if _, isShell := shellNames[strings.ToLower(name)]; isShell {
 			continue
 		}
+
 		if kind != "" {
 			// More than one candidate; nothing here names the pane.
 			return ""
 		}
+
 		kind = name
 	}
 
@@ -51,10 +56,12 @@ func paneKind(pane *state.PaneState) string {
 		// outranked. Saying it again here would only repeat it.
 		return ""
 	}
+
 	if _, generic := genericValues[strings.ToLower(kind)]; generic {
 		// A runtime names the language, not the work.
 		return ""
 	}
+
 	return Sanitize(kind, 0)
 }
 
@@ -65,10 +72,12 @@ func qualify(activity, kind string) string {
 	if kind == "" {
 		return activity
 	}
+
 	detail := stripKind(activity, kind)
 	if detail == "" {
 		return kind
 	}
+
 	return kind + Separator + detail
 }
 
@@ -91,6 +100,7 @@ func stripKind(detail, kind string) string {
 	case len(trimmed) > len(kind) && strings.EqualFold(trimmed[:len(kind)], kind):
 		trimmed = trimmed[len(kind):]
 	}
+
 	return strings.Trim(trimmed, " -–—|:"+separatorRune)
 }
 
@@ -111,9 +121,11 @@ func (Process) Resolve(pane *state.PaneState) (Parts, bool) {
 	if pane == nil {
 		return Parts{}, false
 	}
+
 	kind := paneKind(pane)
 	if kind == "" {
 		return Parts{}, false
 	}
+
 	return Parts{Activity: kind}, true
 }

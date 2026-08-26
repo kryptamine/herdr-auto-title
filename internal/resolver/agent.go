@@ -23,6 +23,7 @@ func (Agent) Resolve(pane *state.PaneState) (Parts, bool) {
 	if pane == nil {
 		return Parts{}, false
 	}
+
 	if !pane.HasAgent() {
 		return Parts{}, false
 	}
@@ -39,5 +40,6 @@ func (Agent) Resolve(pane *state.PaneState) (Parts, bool) {
 	if strings.EqualFold(activity, pane.Agent) || strings.EqualFold(activity, pane.DisplayAgent) {
 		return Parts{}, false
 	}
+
 	return Parts{Activity: qualify(activity, paneKind(pane))}, true
 }

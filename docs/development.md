@@ -71,8 +71,9 @@ make dev         # rebuild and restart on every source change
 ```
 
 Same rules apply: foreground, one tab, Ctrl+C to stop both watcher and plugin.
-Note that `make check` rewrites files with `gofmt -w`, so a watcher left running
-in another tab will rebuild and restart on it.
+Note that `make check` rewrites files — `make fmt` runs the formatters and
+every fix the linters can make themselves — so a watcher left running in
+another tab will rebuild and restart on it.
 
 ### 3. Protocol probe — when you are about to assume something
 

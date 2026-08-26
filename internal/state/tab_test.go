@@ -50,12 +50,15 @@ func TestTabFromKeepsItsLabel(t *testing.T) {
 	if tab.CurrentName != "dashboard" {
 		t.Errorf("current name = %q, want dashboard", tab.CurrentName)
 	}
+
 	if tab.WorkspaceName != "dashboard" {
 		t.Errorf("workspace name = %q, want dashboard", tab.WorkspaceName)
 	}
+
 	if tab.Position != 1 {
 		t.Errorf("position = %d, want the tab's place in its workspace 1", tab.Position)
 	}
+
 	if len(tab.Panes) != 1 || tab.Panes[0].Dir != "/work/dashboard" {
 		t.Errorf("panes = %+v, want one pane in /work/dashboard", tab.Panes)
 	}
@@ -91,7 +94,10 @@ func TestPaneFromReadsAgentContext(t *testing.T) {
 }
 
 func TestPaneWithoutAnAgent(t *testing.T) {
-	pane := PaneFrom(herdr.PaneInfo{PaneID: "wE:p1", AgentStatus: herdr.AgentStatusUnknown}, Reads{})
+	pane := PaneFrom(
+		herdr.PaneInfo{PaneID: "wE:p1", AgentStatus: herdr.AgentStatusUnknown},
+		Reads{},
+	)
 	if pane.HasAgent() || pane.AgentIsActive() {
 		t.Errorf("pane %+v reported an agent", pane)
 	}
@@ -137,6 +143,7 @@ func TestSelectContextPanePrefersAnActiveAgent(t *testing.T) {
 
 func TestSelectContextPaneIgnoresAnIdleAgent(t *testing.T) {
 	now := time.Now()
+
 	for _, status := range []string{herdr.AgentStatusIdle, herdr.AgentStatusDone, herdr.AgentStatusUnknown} {
 		t.Run(status, func(t *testing.T) {
 			tab := TabState{
@@ -175,7 +182,12 @@ func TestSelectContextPaneAmongSeveralAgents(t *testing.T) {
 		ID: "wE:t1",
 		Panes: []*PaneState{
 			{ID: "wE:p1", ChangedAt: now, Agent: "claude", AgentStatus: herdr.AgentStatusWorking},
-			{ID: "wE:p2", ChangedAt: now.Add(time.Hour), Agent: "claude", AgentStatus: herdr.AgentStatusBlocked},
+			{
+				ID:          "wE:p2",
+				ChangedAt:   now.Add(time.Hour),
+				Agent:       "claude",
+				AgentStatus: herdr.AgentStatusBlocked,
+			},
 			{ID: "wE:p3", ChangedAt: now.Add(2 * time.Hour)},
 		},
 	}

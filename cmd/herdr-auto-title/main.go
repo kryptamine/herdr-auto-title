@@ -29,12 +29,14 @@ func run() error {
 	if cfg.Debug {
 		level = slog.LevelDebug
 	}
+
 	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level}))
 	slog.SetDefault(log)
 
 	for _, warning := range warnings {
 		log.Warn(warning)
 	}
+
 	log.Info("starting auto title", "poll", cfg.Poll, "max_length", cfg.MaxLength)
 
 	// Terminate on the signals Herdr uses to stop a plugin.
@@ -47,11 +49,13 @@ func run() error {
 	}
 
 	chain := resolver.Default(cfg.MaxLength, cfg.BranchMax)
+
 	var titles resolver.TitleResolver = chain
 	if cfg.ShowPosition {
 		titles = resolver.NewNumbered(chain)
 	}
 
 	app.New(cfg, log, titles).Run(ctx, client)
+
 	return nil
 }

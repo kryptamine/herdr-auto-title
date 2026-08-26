@@ -48,6 +48,7 @@ func (t Topic) Text() string {
 	if t.Title != "" {
 		return t.Title
 	}
+
 	return t.Opening
 }
 
@@ -82,10 +83,12 @@ func root() string {
 	if dir := os.Getenv("CLAUDE_CONFIG_DIR"); dir != "" {
 		return dir
 	}
+
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return ""
 	}
+
 	return filepath.Join(home, ".claude")
 }
 
@@ -105,11 +108,13 @@ func (r *Reader) Topic(sessionID, dir string) Topic {
 		session = &transcript{}
 		r.sessions[sessionID] = session
 	}
+
 	if session.path == "" && !r.find(session, sessionID, dir) {
 		return Topic{}
 	}
 
 	r.readInto(session)
+
 	return session.topic
 }
 
@@ -121,13 +126,16 @@ func (r *Reader) find(session *transcript, sessionID, dir string) bool {
 	if !session.searchedAt.IsZero() && now.Sub(session.searchedAt) < locateRetry {
 		return false
 	}
+
 	session.searchedAt = now
 
 	path, found := r.locate(sessionID, dir)
 	if !found {
 		return false
 	}
+
 	session.path = path
+
 	return true
 }
 
@@ -143,6 +151,7 @@ func (r *Reader) Retain(sessionIDs []string) {
 			kept[id] = session
 		}
 	}
+
 	r.sessions = kept
 }
 
@@ -174,6 +183,7 @@ func (r *Reader) locate(sessionID, dir string) (string, bool) {
 	if err != nil || len(matches) == 0 {
 		return "", false
 	}
+
 	return matches[0], true
 }
 
@@ -182,6 +192,7 @@ func (r *Reader) locate(sessionID, dir string) (string, bool) {
 func slugOf(dir string) string {
 	var slug strings.Builder
 	slug.Grow(len(dir))
+
 	for _, r := range dir {
 		switch {
 		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
@@ -190,6 +201,7 @@ func slugOf(dir string) string {
 			slug.WriteByte('-')
 		}
 	}
+
 	return slug.String()
 }
 
@@ -222,6 +234,7 @@ func (r *Reader) readInto(session *transcript) {
 	if fromTail {
 		from = size - maxScan
 	}
+
 	if _, err := file.Seek(from, io.SeekStart); err != nil {
 		return
 	}
@@ -237,6 +250,7 @@ func (r *Reader) readInto(session *transcript) {
 	if end < 0 {
 		return
 	}
+
 	session.offset = from + int64(end) + 1
 
 	complete := string(content[:end])
@@ -244,6 +258,7 @@ func (r *Reader) readInto(session *transcript) {
 		// A tail read starts mid-line, and that fragment is not JSON.
 		_, complete, _ = strings.Cut(complete, "\n")
 	}
+
 	session.absorb(complete)
 }
 
@@ -319,6 +334,7 @@ func opening(content json.RawMessage) string {
 	}
 
 	line, _, _ := strings.Cut(text, "\n")
+
 	return truncate(strings.TrimSpace(line), maxOpening)
 }
 
@@ -334,6 +350,7 @@ func withArgs(command, text string) string {
 	if line = strings.TrimSpace(line); line == "" {
 		return command
 	}
+
 	return command + " " + line
 }
 
@@ -354,14 +371,17 @@ func textOf(content json.RawMessage) (string, bool) {
 	}
 
 	var joined []string
+
 	for _, block := range blocks {
 		if block.Type == "text" && block.Text != "" {
 			joined = append(joined, block.Text)
 		}
 	}
+
 	if len(joined) == 0 {
 		return "", false
 	}
+
 	return strings.Join(joined, " "), true
 }
 
@@ -370,5 +390,6 @@ func truncate(value string, limit int) string {
 	if len(runes) <= limit {
 		return value
 	}
+
 	return string(runes[:limit])
 }

@@ -19,6 +19,7 @@ func TestAFirstSightingCountsAsAChange(t *testing.T) {
 	if c.ChangedAt("wE:p1").IsZero() {
 		t.Error("a pane seen for the first time has no change time")
 	}
+
 	if !c.ChangedAt("wE:p9").IsZero() {
 		t.Error("a pane never seen reports a change time")
 	}
@@ -33,11 +34,13 @@ func TestOnlyAnAdvancedRevisionIsAChange(t *testing.T) {
 	// would always be the most recently changed one.
 	c.now = func() time.Time { return first.Add(time.Hour) }
 	c.Observe([]herdr.PaneInfo{pane("wE:p1", 7)})
+
 	if got := c.ChangedAt("wE:p1"); !got.Equal(first) {
 		t.Errorf("an unchanged pane moved to %v, want %v", got, first)
 	}
 
 	c.Observe([]herdr.PaneInfo{pane("wE:p1", 8)})
+
 	if got := c.ChangedAt("wE:p1"); !got.After(first) {
 		t.Error("an advanced revision was not recorded as a change")
 	}
@@ -51,6 +54,7 @@ func TestPanesTheSessionDroppedAreForgotten(t *testing.T) {
 	if !c.ChangedAt("wE:p2").IsZero() {
 		t.Error("a pane the session no longer holds is still remembered")
 	}
+
 	if c.ChangedAt("wE:p1").IsZero() {
 		t.Error("a surviving pane lost its history")
 	}
@@ -62,6 +66,7 @@ func TestAReadSurvivesAPollThatChangedNothing(t *testing.T) {
 	c.Ran("wE:p1", []herdr.PaneProcessInfoProcess{{Name: "nvim"}})
 
 	c.Observe([]herdr.PaneInfo{pane("wE:p1", 7)})
+
 	got, read := c.Processes("wE:p1")
 	if !read || len(got) != 1 || got[0].Name != "nvim" {
 		t.Errorf("processes = %v, %v, want nvim remembered", got, read)
@@ -74,6 +79,7 @@ func TestAMovedRevisionForgetsWhatWasRunning(t *testing.T) {
 	c.Ran("wE:p1", []herdr.PaneProcessInfoProcess{{Name: "nvim"}})
 
 	c.Observe([]herdr.PaneInfo{pane("wE:p1", 8)})
+
 	if _, read := c.Processes("wE:p1"); read {
 		t.Error("a pane that moved still answers with what it used to run")
 	}
@@ -87,6 +93,7 @@ func TestARevisionThatWentBackwardsIsANewPane(t *testing.T) {
 	c.Ran("wE:p1", []herdr.PaneProcessInfoProcess{{Name: "nvim"}})
 
 	c.Observe([]herdr.PaneInfo{pane("wE:p1", 2)})
+
 	if _, read := c.Processes("wE:p1"); read {
 		t.Error("a reused pane id kept the processes of the pane before it")
 	}
@@ -122,12 +129,14 @@ func TestAPaneTheSessionDroppedCannotBeRecorded(t *testing.T) {
 
 func TestChangesAreSafeUnderConcurrentUse(t *testing.T) {
 	c := NewChanges()
+
 	var wg sync.WaitGroup
 
 	for range 8 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+
 			for n := range 200 {
 				c.Observe([]herdr.PaneInfo{pane("wE:p1", uint64(n))})
 				c.ChangedAt("wE:p1")
@@ -136,5 +145,6 @@ func TestChangesAreSafeUnderConcurrentUse(t *testing.T) {
 			}
 		}()
 	}
+
 	wg.Wait()
 }

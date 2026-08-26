@@ -18,14 +18,17 @@ func newRepo(t *testing.T) repo {
 	root := t.TempDir()
 	r := repo{root: root, gitDir: filepath.Join(root, ".git")}
 	r.write(t, filepath.Join(r.gitDir, "HEAD"), "ref: refs/heads/main\n")
+
 	return r
 }
 
 func (r repo) write(t *testing.T, path, content string) {
 	t.Helper()
+
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -34,6 +37,7 @@ func (r repo) write(t *testing.T, path, content string) {
 func (r repo) head(t *testing.T, content string) repo {
 	t.Helper()
 	r.write(t, filepath.Join(r.gitDir, "HEAD"), content)
+
 	return r
 }
 
@@ -41,24 +45,29 @@ func (r repo) originHead(t *testing.T, branch string) repo {
 	t.Helper()
 	r.write(t, filepath.Join(r.gitDir, "refs", "remotes", "origin", "HEAD"),
 		"ref: refs/remotes/origin/"+branch+"\n")
+
 	return r
 }
 
 func (r repo) subdir(t *testing.T, path string) string {
 	t.Helper()
+
 	dir := filepath.Join(r.root, path)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
+
 	return dir
 }
 
 func mustRead(t *testing.T, dir string) Checkout {
 	t.Helper()
+
 	checkout, ok := Read(dir)
 	if !ok {
 		t.Fatalf("Read(%q) found no repository", dir)
 	}
+
 	return checkout
 }
 
@@ -113,6 +122,7 @@ func TestADetachedHeadIsAbbreviated(t *testing.T) {
 	if checkout.Commit != "aaf1fd8" {
 		t.Errorf("commit %q, want %q", checkout.Commit, "aaf1fd8")
 	}
+
 	if checkout.Branch != "" {
 		t.Errorf("branch %q, want none", checkout.Branch)
 	}
@@ -149,6 +159,7 @@ func TestARebaseNamesTheBranchItSetAside(t *testing.T) {
 		if checkout.Branch != "topic" {
 			t.Errorf("%s: branch %q, want %q", state, checkout.Branch, "topic")
 		}
+
 		if checkout.Commit != "" {
 			t.Errorf("%s: commit %q, want none", state, checkout.Commit)
 		}
@@ -209,10 +220,12 @@ func TestOnlyTheFirstLineOfARefIsRead(t *testing.T) {
 
 func TestAHugeHeadIsNotReadWhole(t *testing.T) {
 	r := newRepo(t)
+
 	huge := make([]byte, 2*maxRefFileSize)
 	for i := range huge {
 		huge[i] = 'a'
 	}
+
 	r.write(t, filepath.Join(r.gitDir, "HEAD"), string(huge))
 
 	// The bounded read leaves a truncated hash, which is not a checkout.

@@ -75,12 +75,15 @@ func (a *App) poll(ctx context.Context, client herdr.Client) {
 	if ctx.Err() != nil {
 		return
 	}
+
 	if err != nil {
 		if run := a.failures.failed(); run > 0 {
 			a.log.Warn("poll failed", "error", err, "in a row", run)
 		}
+
 		return
 	}
+
 	if run := a.failures.recovered(); run > 0 {
 		a.log.Info("the session is answering again", "polls missed", run)
 	}
@@ -101,7 +104,9 @@ func (f *failureLog) failed() int {
 	if f.run < f.next {
 		return 0
 	}
+
 	f.next = f.run * 2
+
 	return f.run
 }
 
@@ -110,6 +115,7 @@ func (f *failureLog) failed() int {
 func (f *failureLog) recovered() int {
 	run := f.run
 	f.run, f.next = 0, 0
+
 	return run
 }
 
@@ -123,6 +129,7 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 	if err != nil {
 		return err
 	}
+
 	a.changes.Observe(snapshot.Panes)
 	a.topics.Retain(sessionsIn(snapshot.Panes))
 
@@ -133,6 +140,7 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
+
 		if a.manual.Locked(tab.ID) {
 			continue
 		}
@@ -147,6 +155,7 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 			a.log.Info("leaving a tab the user renamed", "tab_id", tab.ID, "name", tab.CurrentName)
 			continue
 		}
+
 		if decision.Name == "" || decision.Name == tab.CurrentName {
 			continue
 		}
@@ -158,7 +167,9 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 				a.log.Debug("tab closed before it could be renamed", "tab_id", tab.ID)
 				continue
 			}
+
 			a.log.Warn("rename failed", "tab_id", tab.ID, "name", decision.Name, "error", err)
+
 			continue
 		}
 
@@ -177,6 +188,7 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 	// Reached only when every tab was seen. Deferring this would settle after a
 	// poll cut short, and the tabs it missed would look new and already named.
 	a.manual.Settled()
+
 	return nil
 }
 
@@ -187,13 +199,18 @@ func labelsOf(tabs []state.TabState) map[string]string {
 	for _, tab := range tabs {
 		labels[tab.ID] = tab.CurrentName
 	}
+
 	return labels
 }
 
 // processesIn reports what a pane is running, reusing the last read while the
 // pane's revision holds and that read is recent. Neither test is exact, which
 // is why there are two — see docs/architecture/poll-loop.md.
-func (a *App) processesIn(ctx context.Context, client herdr.Client, paneID string) []herdr.PaneProcessInfoProcess {
+func (a *App) processesIn(
+	ctx context.Context,
+	client herdr.Client,
+	paneID string,
+) []herdr.PaneProcessInfoProcess {
 	if processes, read := a.changes.Processes(paneID); read {
 		return processes
 	}
@@ -203,9 +220,12 @@ func (a *App) processesIn(ctx context.Context, client herdr.Client, paneID strin
 		if herdr.ErrorCode(err) != herdr.CodePaneNotFound && ctx.Err() == nil {
 			a.log.Debug("could not read what a pane is running", "pane_id", paneID, "error", err)
 		}
+
 		return nil
 	}
+
 	a.changes.Ran(paneID, processes)
+
 	return processes
 }
 
@@ -220,6 +240,7 @@ func (a *App) checkoutIn(pane herdr.PaneInfo) git.Checkout {
 	}
 
 	checkout, _ := git.Read(pane.Dir())
+
 	return checkout
 }
 
@@ -235,6 +256,7 @@ func (a *App) topicIn(pane herdr.PaneInfo) string {
 	if !ok {
 		return ""
 	}
+
 	return a.topics.Topic(sessionID, pane.Dir()).Text()
 }
 
@@ -247,19 +269,26 @@ func sessionsIn(panes []herdr.PaneInfo) []string {
 			sessions = append(sessions, pane.AgentSession.Value)
 		}
 	}
+
 	return sessions
 }
 
 // tabsIn assembles the snapshot's tabs with their panes. What is running in a
 // pane needs a request of its own, which processesIn makes only when the last
 // answer will no longer do.
-func (a *App) tabsIn(ctx context.Context, client herdr.Client, snapshot herdr.Snapshot) []state.TabState {
+func (a *App) tabsIn(
+	ctx context.Context,
+	client herdr.Client,
+	snapshot herdr.Snapshot,
+) []state.TabState {
 	workspaces := make(map[string]string, len(snapshot.Workspaces))
+
 	for _, workspace := range snapshot.Workspaces {
 		workspaces[workspace.WorkspaceID] = workspace.Label
 	}
 
 	byTab := make(map[string][]*state.PaneState, len(snapshot.Tabs))
+
 	for _, pane := range snapshot.Panes {
 		byTab[pane.TabID] = append(byTab[pane.TabID], state.PaneFrom(pane, state.Reads{
 			Processes: a.processesIn(ctx, client, pane.PaneID),
@@ -272,12 +301,21 @@ func (a *App) tabsIn(ctx context.Context, client herdr.Client, snapshot herdr.Sn
 	// An unnamed tab carries its place in the workspace, and the snapshot lists
 	// tabs in display order, so counting them gives that label.
 	positions := make(map[string]int, len(snapshot.Workspaces))
-
 	tabs := make([]state.TabState, 0, len(snapshot.Tabs))
+
 	for _, info := range snapshot.Tabs {
 		positions[info.WorkspaceID]++
-		tabs = append(tabs, state.TabFrom(
-			info, workspaces[info.WorkspaceID], positions[info.WorkspaceID], byTab[info.TabID]))
+
+		tabs = append(
+			tabs,
+			state.TabFrom(
+				info,
+				workspaces[info.WorkspaceID],
+				positions[info.WorkspaceID],
+				byTab[info.TabID],
+			),
+		)
 	}
+
 	return tabs
 }

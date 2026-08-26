@@ -42,6 +42,7 @@ func newTestServer(t *testing.T, reply func(incoming) string) *testServer {
 	if err != nil {
 		t.Fatalf("temp dir: %v", err)
 	}
+
 	path := filepath.Join(dir, "h.sock")
 
 	ln, err := net.Listen("unix", path)
@@ -51,10 +52,12 @@ func newTestServer(t *testing.T, reply func(incoming) string) *testServer {
 
 	s := &testServer{t: t, ln: ln, path: path, reply: reply}
 	go s.accept()
+
 	t.Cleanup(func() {
 		ln.Close()
 		os.RemoveAll(dir)
 	})
+
 	return s
 }
 
@@ -64,6 +67,7 @@ func (s *testServer) accept() {
 		if err != nil {
 			return
 		}
+
 		go s.serve(conn)
 	}
 }
@@ -104,12 +108,14 @@ func (s *testServer) client() *SocketClient {
 func (s *testServer) connectionCount() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	return s.connections
 }
 
 func (s *testServer) seen() []incoming {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	return append([]incoming(nil), s.requests...)
 }
 
@@ -126,9 +132,11 @@ func TestCallDecodesResult(t *testing.T) {
 	var got struct {
 		Version string `json:"version"`
 	}
-	if err := srv.client().Call(context.Background(), MethodSessionSnapshot, nil, &got); err != nil {
+	if err := srv.client().
+		Call(context.Background(), MethodSessionSnapshot, nil, &got); err != nil {
 		t.Fatalf("Call: %v", err)
 	}
+
 	if got.Version != "0.8.2" {
 		t.Errorf("version = %q, want 0.8.2", got.Version)
 	}
@@ -154,6 +162,7 @@ func TestEachCallUsesItsOwnConnection(t *testing.T) {
 			t.Fatalf("call %d: %v", i, err)
 		}
 	}
+
 	if got := srv.connectionCount(); got != 3 {
 		t.Errorf("server accepted %d connections, want 3", got)
 	}
@@ -168,10 +177,12 @@ func TestCallReturnsAPIError(t *testing.T) {
 	if err == nil {
 		t.Fatal("Call succeeded, want an error")
 	}
+
 	var apiErr *APIError
 	if !errors.As(err, &apiErr) {
 		t.Fatalf("error %v is not an *APIError", err)
 	}
+
 	if apiErr.Code != "not_found" {
 		t.Errorf("code = %q, want not_found", apiErr.Code)
 	}
@@ -205,6 +216,7 @@ func TestSessionSnapshotDecodesTheWrapper(t *testing.T) {
 	if len(snapshot.Tabs) != 1 || snapshot.Tabs[0].Label != "1" {
 		t.Errorf("tabs = %+v, want one tab labelled 1", snapshot.Tabs)
 	}
+
 	if len(snapshot.Panes) != 1 || snapshot.Panes[0].CWD != "/work/api" {
 		t.Errorf("panes = %+v, want one pane in /work/api", snapshot.Panes)
 	}
@@ -213,7 +225,12 @@ func TestSessionSnapshotDecodesTheWrapper(t *testing.T) {
 func TestRenameTabSendsTabAndLabel(t *testing.T) {
 	srv := newTestServer(t, respondOK)
 
-	if err := RenameTab(context.Background(), srv.client(), "wE:t1", "dashboard › Tests"); err != nil {
+	if err := RenameTab(
+		context.Background(),
+		srv.client(),
+		"wE:t1",
+		"dashboard › Tests",
+	); err != nil {
 		t.Fatalf("RenameTab: %v", err)
 	}
 
@@ -221,10 +238,12 @@ func TestRenameTabSendsTabAndLabel(t *testing.T) {
 	if len(seen) != 1 || seen[0].Method != MethodTabRename {
 		t.Fatalf("server saw %+v, want one tab.rename", seen)
 	}
+
 	var params TabRenameParams
 	if err := json.Unmarshal(seen[0].Params, &params); err != nil {
 		t.Fatalf("decode params: %v", err)
 	}
+
 	if params.TabID != "wE:t1" || params.Label != "dashboard › Tests" {
 		t.Errorf("params = %+v, want {wE:t1 dashboard › Tests}", params)
 	}
@@ -234,6 +253,7 @@ func TestNullFieldsDecodeAsEmpty(t *testing.T) {
 	// Herdr sends null for every optional field of a pane running a plain
 	// shell, and a snapshot is full of them.
 	var got snapshotResult
+
 	raw := `{"snapshot":{"tabs":[{"tab_id":"wE:t1","label":null}],"panes":[
 		{"pane_id":"wE:p1","tab_id":"wE:t1","revision":3,"cwd":null,
 		 "foreground_cwd":null,"terminal_title":null,"terminal_title_stripped":null,
@@ -246,6 +266,7 @@ func TestNullFieldsDecodeAsEmpty(t *testing.T) {
 	if pane.CWD != "" || pane.TerminalTitle != "" || pane.Agent != "" || pane.Title != "" {
 		t.Errorf("null pane fields decoded as %+v, want empty strings", pane)
 	}
+
 	if label := got.Snapshot.Tabs[0].Label; label != "" {
 		t.Errorf("null label decoded as %q, want empty", label)
 	}
@@ -253,15 +274,18 @@ func TestNullFieldsDecodeAsEmpty(t *testing.T) {
 
 func TestSocketPathRequiresTheEnvironment(t *testing.T) {
 	t.Setenv(SocketPathEnv, "")
+
 	if _, err := SocketPath(); err == nil {
 		t.Error("SocketPath succeeded without the environment variable")
 	}
 
 	t.Setenv(SocketPathEnv, "/tmp/herdr.sock")
+
 	got, err := SocketPath()
 	if err != nil {
 		t.Fatalf("SocketPath: %v", err)
 	}
+
 	if got != "/tmp/herdr.sock" {
 		t.Errorf("path = %q, want /tmp/herdr.sock", got)
 	}
@@ -276,6 +300,7 @@ func TestErrorCode(t *testing.T) {
 	if got := ErrorCode(err); got != CodeTabNotFound {
 		t.Errorf("ErrorCode = %q, want %q", got, CodeTabNotFound)
 	}
+
 	if got := ErrorCode(errors.New("plain")); got != "" {
 		t.Errorf("ErrorCode of a plain error = %q, want empty", got)
 	}

@@ -68,9 +68,11 @@ func TestTheTabIsNamedAfterTheMarkedHost(t *testing.T) {
 	if want := "ssh › prod-01"; got.Name != want {
 		t.Errorf("name = %q, want %q", got.Name, want)
 	}
+
 	if got.Reason != "ssh" {
 		t.Errorf("reason = %q, want ssh", got.Reason)
 	}
+
 	if got.Confidence != ConfidenceSSH {
 		t.Errorf("confidence = %d, want %d", got.Confidence, ConfidenceSSH)
 	}
@@ -80,7 +82,10 @@ func TestTheHostOutranksTheWorkingDirectory(t *testing.T) {
 	// The local directory of a pane running ssh describes the wrong machine.
 	pane := sshPane("ssh", "prod-01")
 
-	if got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(pane)); got.Name != "ssh › prod-01" {
+	if got := Default(
+		DefaultMaxLength,
+		DefaultBranchMaxLength,
+	).Resolve(tabWithPane(pane)); got.Name != "ssh › prod-01" {
 		t.Errorf("name = %q, want %q", got.Name, "ssh › prod-01")
 	}
 }
@@ -139,7 +144,10 @@ func TestSSHIsFoundAmongOtherProcesses(t *testing.T) {
 		},
 	}
 
-	if got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(pane)); got.Name != "ssh › prod-01" {
+	if got := Default(
+		DefaultMaxLength,
+		DefaultBranchMaxLength,
+	).Resolve(tabWithPane(pane)); got.Name != "ssh › prod-01" {
 		t.Errorf("name = %q, want %q", got.Name, "ssh › prod-01")
 	}
 }
@@ -171,6 +179,7 @@ func TestHostsFromArgvAreSanitized(t *testing.T) {
 	if strings.ContainsRune(got.Name, '\x1b') {
 		t.Errorf("name = %q, still carries an escape", got.Name)
 	}
+
 	if want := "ssh › prod-01"; got.Name != want {
 		t.Errorf("name = %q, want %q", got.Name, want)
 	}

@@ -73,6 +73,7 @@ func (s *AgentSessionInfo) IDFor(agent string) (string, bool) {
 	if s == nil || s.Agent != agent || s.Kind != SessionRefID {
 		return "", false
 	}
+
 	return s.Value, true
 }
 
@@ -82,6 +83,7 @@ func (p PaneInfo) Dir() string {
 	if p.CWD != "" {
 		return p.CWD
 	}
+
 	return p.ForegroundCWD
 }
 

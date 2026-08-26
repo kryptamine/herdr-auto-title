@@ -43,11 +43,13 @@ func (n *Numbered) Resolve(tab state.TabState) Decision {
 	if room <= 0 {
 		return decision
 	}
+
 	name := Sanitize(decision.Name, room)
 	if name == "" {
 		return decision
 	}
 
 	decision.Name = prefix + name
+
 	return decision
 }

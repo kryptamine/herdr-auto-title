@@ -32,7 +32,12 @@ func TestResolveFromCWD(t *testing.T) {
 		wantReason string
 	}{
 		{"project directory becomes the title", "/Users/dev/work/dashboard", "dashboard", "cwd"},
-		{"nested directory uses its own basename", "/Users/dev/work/dashboard/src/api", "api", "cwd"},
+		{
+			"nested directory uses its own basename",
+			"/Users/dev/work/dashboard/src/api",
+			"api",
+			"cwd",
+		},
 		{"trailing slash is ignored", "/Users/dev/work/dashboard/", "dashboard", "cwd"},
 		{"home directory falls back", home, GenericFallback, "generic_fallback"},
 		{"filesystem root falls back", "/", GenericFallback, "generic_fallback"},
@@ -46,6 +51,7 @@ func TestResolveFromCWD(t *testing.T) {
 			if got.Name != tc.want {
 				t.Errorf("name = %q, want %q", got.Name, tc.want)
 			}
+
 			if got.Reason != tc.wantReason {
 				t.Errorf("reason = %q, want %q", got.Reason, tc.wantReason)
 			}
@@ -99,6 +105,7 @@ func TestResolveIsDeterministic(t *testing.T) {
 	want := r.Resolve(state.TabFrom(herdr.TabInfo{TabID: "wE:t1"}, "", 1, panes))
 	for i := range len(panes) {
 		rotated := append(slices.Clone(panes[i:]), panes[:i]...)
+
 		got := r.Resolve(state.TabFrom(herdr.TabInfo{TabID: "wE:t1"}, "", 1, rotated))
 		if got != want {
 			t.Fatalf("panes from %d: resolution = %+v, want %+v", i, got, want)
@@ -129,14 +136,25 @@ func TestHigherPrioritySourceSuppliesActivity(t *testing.T) {
 	if got.Name != "dashboard › Tests" {
 		t.Errorf("name = %q, want %q", got.Name, "dashboard › Tests")
 	}
+
 	if got.Reason != "test_source" || got.Confidence != ConfidenceProcess {
-		t.Errorf("reason/confidence = %q/%d, want test_source/%d", got.Reason, got.Confidence, ConfidenceProcess)
+		t.Errorf(
+			"reason/confidence = %q/%d, want test_source/%d",
+			got.Reason,
+			got.Confidence,
+			ConfidenceProcess,
+		)
 	}
 }
 
 func TestHigherPrioritySourceOverridesContext(t *testing.T) {
-	r := New(DefaultMaxLength,
-		higherSource{confidence: ConfidenceSSH, parts: Parts{Context: "prod-01", Activity: "SSH"}, ok: true},
+	r := New(
+		DefaultMaxLength,
+		higherSource{
+			confidence: ConfidenceSSH,
+			parts:      Parts{Context: "prod-01", Activity: "SSH"},
+			ok:         true,
+		},
 		NewCWD(),
 	)
 
@@ -221,6 +239,7 @@ func TestTheShippedChainIsAWellFormedLadder(t *testing.T) {
 
 	seen := make(map[int]string, len(chain.sources))
 	previous := 0
+
 	for i, source := range chain.sources {
 		confidence := source.Confidence()
 
@@ -228,15 +247,22 @@ func TestTheShippedChainIsAWellFormedLadder(t *testing.T) {
 			t.Errorf("%s and %s both sit at %d; the ladder has no room for ties",
 				source.Name(), other, confidence)
 		}
+
 		seen[confidence] = source.Name()
 
 		if confidence <= ConfidenceFallback {
-			t.Errorf("%s at %d ranks no higher than the generic fallback", source.Name(), confidence)
+			t.Errorf(
+				"%s at %d ranks no higher than the generic fallback",
+				source.Name(),
+				confidence,
+			)
 		}
+
 		if i > 0 && confidence >= previous {
 			t.Errorf("%s at %d is not below the source before it at %d",
 				source.Name(), confidence, previous)
 		}
+
 		previous = confidence
 	}
 }
@@ -255,6 +281,7 @@ func TestSourcesAreOrderedByConfidenceNotByArgument(t *testing.T) {
 		if got.Name != "high" {
 			t.Errorf("name = %q, want high", got.Name)
 		}
+
 		if got.Confidence != ConfidenceAgent {
 			t.Errorf("confidence = %d, want %d", got.Confidence, ConfidenceAgent)
 		}

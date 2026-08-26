@@ -20,6 +20,7 @@ func isolate(t *testing.T) {
 	// Where os.UserConfigDir looks first on Linux, so HOME alone does not
 	// isolate anything until it is out of the way.
 	t.Setenv("XDG_CONFIG_HOME", "")
+
 	for _, name := range []string{EnvDebug, EnvPoll, EnvMaxLength, EnvBranchMax, EnvPosition, EnvManual, EnvTranscript} {
 		// Setenv first for its cleanup, which then also undoes what the
 		// configuration file sets; an empty variable is not an absent one.
@@ -31,13 +32,16 @@ func isolate(t *testing.T) {
 // writeConfig puts contents where LoadConfig looks for the configuration file.
 func writeConfig(t *testing.T, contents string) {
 	t.Helper()
+
 	path := configPath()
 	if path == "" {
 		t.Fatal("no configuration directory")
 	}
+
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := os.WriteFile(path, []byte(contents), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -50,18 +54,23 @@ func TestLoadConfigDefaults(t *testing.T) {
 	if len(warnings) != 0 {
 		t.Errorf("warnings = %v, want none", warnings)
 	}
+
 	if cfg.Debug {
 		t.Error("debug is on by default")
 	}
+
 	if cfg.Poll != DefaultPoll {
 		t.Errorf("poll = %s, want %s", cfg.Poll, DefaultPoll)
 	}
+
 	if cfg.MaxLength != resolver.DefaultMaxLength {
 		t.Errorf("max length = %d, want %d", cfg.MaxLength, resolver.DefaultMaxLength)
 	}
+
 	if cfg.BranchMax != resolver.DefaultBranchMaxLength {
 		t.Errorf("branch max = %d, want %d", cfg.BranchMax, resolver.DefaultBranchMaxLength)
 	}
+
 	if !cfg.ShowPosition {
 		t.Error("positions are off by default")
 	}
@@ -75,6 +84,7 @@ func TestLoadConfigTurnsPositionsOff(t *testing.T) {
 	if len(warnings) != 0 {
 		t.Errorf("warnings = %v, want none", warnings)
 	}
+
 	if cfg.ShowPosition {
 		t.Error("positions are on despite being disabled")
 	}
@@ -91,15 +101,19 @@ func TestLoadConfigFromEnvironment(t *testing.T) {
 	if len(warnings) != 0 {
 		t.Errorf("warnings = %v, want none", warnings)
 	}
+
 	if !cfg.Debug {
 		t.Error("debug is off despite being enabled")
 	}
+
 	if cfg.Poll != 250*time.Millisecond {
 		t.Errorf("poll = %s, want 250ms", cfg.Poll)
 	}
+
 	if cfg.MaxLength != 32 {
 		t.Errorf("max length = %d, want 32", cfg.MaxLength)
 	}
+
 	if cfg.BranchMax != 20 {
 		t.Errorf("branch max = %d, want 20", cfg.BranchMax)
 	}
@@ -115,6 +129,7 @@ func TestABranchWidthOfZeroIsAValue(t *testing.T) {
 	if len(warnings) != 0 {
 		t.Errorf("warnings = %v, want none", warnings)
 	}
+
 	if cfg.BranchMax != 0 {
 		t.Errorf("branch max = %d, want 0", cfg.BranchMax)
 	}
@@ -128,9 +143,11 @@ func TestANegativeBranchWidthIsRejected(t *testing.T) {
 	if cfg.BranchMax != resolver.DefaultBranchMaxLength {
 		t.Errorf("branch max = %d, want the default", cfg.BranchMax)
 	}
+
 	if len(warnings) != 1 {
 		t.Fatalf("warnings = %v, want one", warnings)
 	}
+
 	if !strings.Contains(warnings[0], "cannot be negative") {
 		t.Errorf("warning %q does not say what is wrong", warnings[0])
 	}
@@ -146,12 +163,15 @@ func TestLoadConfigKeepsDefaultsOnBadValues(t *testing.T) {
 	if len(warnings) != 3 {
 		t.Errorf("warnings = %v, want one per bad value", warnings)
 	}
+
 	if cfg.Debug {
 		t.Error("debug was enabled by an unparseable value")
 	}
+
 	if cfg.Poll != DefaultPoll {
 		t.Errorf("poll = %s, want the default %s", cfg.Poll, DefaultPoll)
 	}
+
 	if cfg.MaxLength != resolver.DefaultMaxLength {
 		t.Errorf("max length = %d, want the default %d", cfg.MaxLength, resolver.DefaultMaxLength)
 	}
@@ -165,6 +185,7 @@ func TestAnUnusableValueIsReportedInFull(t *testing.T) {
 	if cfg.MaxLength != resolver.DefaultMaxLength {
 		t.Errorf("max length = %d, want the default %d", cfg.MaxLength, resolver.DefaultMaxLength)
 	}
+
 	if len(warnings) != 1 {
 		t.Fatalf("warnings = %v, want one", warnings)
 	}
@@ -193,24 +214,31 @@ HERDR_AUTO_TITLE_MANUAL_FILE=/tmp/names.json
 	if len(warnings) != 0 {
 		t.Errorf("warnings = %v, want none", warnings)
 	}
+
 	if !cfg.Debug {
 		t.Error("debug is off despite the file enabling it")
 	}
+
 	if cfg.Poll != 800*time.Millisecond {
 		t.Errorf("poll = %s, want 800ms", cfg.Poll)
 	}
+
 	if cfg.MaxLength != 32 {
 		t.Errorf("max length = %d, want 32", cfg.MaxLength)
 	}
+
 	if cfg.BranchMax != 0 {
 		t.Errorf("branch max = %d, want 0", cfg.BranchMax)
 	}
+
 	if cfg.ShowPosition {
 		t.Error("positions are on despite the file turning them off")
 	}
+
 	if cfg.ReadTranscripts {
 		t.Error("transcripts are read despite the file turning them off")
 	}
+
 	if cfg.ManualPath != "/tmp/names.json" {
 		t.Errorf("manual path = %q, want the one the file names", cfg.ManualPath)
 	}
@@ -227,6 +255,7 @@ func TestTheEnvironmentBeatsTheFile(t *testing.T) {
 	if len(warnings) != 0 {
 		t.Errorf("warnings = %v, want none", warnings)
 	}
+
 	if cfg.Poll != 250*time.Millisecond {
 		t.Errorf("poll = %s, want the 250ms the environment asked for", cfg.Poll)
 	}
@@ -239,6 +268,7 @@ func TestAMissingConfigFileIsSilent(t *testing.T) {
 	if len(warnings) != 0 {
 		t.Errorf("warnings = %v, want none", warnings)
 	}
+
 	if cfg.Poll != DefaultPoll {
 		t.Errorf("poll = %s, want the default %s", cfg.Poll, DefaultPoll)
 	}
@@ -254,12 +284,15 @@ func TestABrokenConfigFileCostsTheWholeFile(t *testing.T) {
 	if len(warnings) != 1 {
 		t.Fatalf("warnings = %v, want one", warnings)
 	}
+
 	if !strings.Contains(warnings[0], ConfigFile) {
 		t.Errorf("warning %q does not name the file", warnings[0])
 	}
+
 	if cfg.Poll != DefaultPoll {
 		t.Errorf("poll = %s, want the default %s", cfg.Poll, DefaultPoll)
 	}
+
 	if cfg.MaxLength != resolver.DefaultMaxLength {
 		t.Errorf("max length = %d, want the default %d", cfg.MaxLength, resolver.DefaultMaxLength)
 	}
@@ -275,6 +308,7 @@ func TestAKeyOfSomeoneElsesIsIgnored(t *testing.T) {
 	if len(warnings) != 0 {
 		t.Errorf("warnings = %v, want none", warnings)
 	}
+
 	if cfg.Poll != DefaultPoll {
 		t.Errorf("poll = %s, want the default %s", cfg.Poll, DefaultPoll)
 	}

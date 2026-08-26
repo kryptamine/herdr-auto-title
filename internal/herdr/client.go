@@ -37,6 +37,7 @@ func SocketPath() (string, error) {
 	if path == "" {
 		return "", fmt.Errorf("%s is not set: Auto Title must be started by Herdr", SocketPathEnv)
 	}
+
 	return path, nil
 }
 
@@ -47,6 +48,7 @@ func New() (*SocketClient, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return NewWithPath(path), nil
 }
 
@@ -63,6 +65,7 @@ func (c *SocketClient) Call(ctx context.Context, method string, params any, resu
 	}
 
 	var d net.Dialer
+
 	conn, err := d.DialContext(ctx, "unix", c.path)
 	if err != nil {
 		return fmt.Errorf("connect to herdr socket %s: %w", c.path, err)
@@ -91,14 +94,17 @@ func (c *SocketClient) Call(ctx context.Context, method string, params any, resu
 	if err := json.Unmarshal(line, &f); err != nil {
 		return fmt.Errorf("decode %s response: %w", method, err)
 	}
+
 	if f.Error != nil {
 		return fmt.Errorf("%s: %w", method, f.Error)
 	}
+
 	if result != nil && len(f.Result) > 0 {
 		if err := json.Unmarshal(f.Result, result); err != nil {
 			return fmt.Errorf("decode %s result: %w", method, err)
 		}
 	}
+
 	return nil
 }
 
@@ -108,6 +114,7 @@ func withContextErr(ctx context.Context, err error) error {
 	if ctxErr := ctx.Err(); ctxErr != nil {
 		return ctxErr
 	}
+
 	return err
 }
 
@@ -119,6 +126,7 @@ func SessionSnapshot(ctx context.Context, c Client) (Snapshot, error) {
 	if err := c.Call(ctx, MethodSessionSnapshot, emptyParams{}, &res); err != nil {
 		return Snapshot{}, err
 	}
+
 	return res.Snapshot, nil
 }
 
@@ -129,6 +137,7 @@ func PaneProcesses(ctx context.Context, c Client, paneID string) ([]PaneProcessI
 	if err := c.Call(ctx, MethodPaneProcessInfo, PaneTarget{PaneID: paneID}, &res); err != nil {
 		return nil, err
 	}
+
 	return res.ProcessInfo.ForegroundProcesses, nil
 }
 

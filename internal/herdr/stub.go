@@ -42,9 +42,11 @@ func NewStub(tabs []TabInfo, panes []PaneInfo) *StubClient {
 	for _, tab := range tabs {
 		s.tabs[tab.TabID] = tab
 	}
+
 	for _, pane := range panes {
 		s.panes[pane.PaneID] = pane
 	}
+
 	return s
 }
 
@@ -52,6 +54,7 @@ func NewStub(tabs []TabInfo, panes []PaneInfo) *StubClient {
 func (s *StubClient) SetWorkspaces(workspaces ...WorkspaceInfo) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	s.workspaces = workspaces
 }
 
@@ -59,6 +62,7 @@ func (s *StubClient) SetWorkspaces(workspaces ...WorkspaceInfo) {
 func (s *StubClient) SetTab(tab TabInfo) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	s.tabs[tab.TabID] = tab
 }
 
@@ -66,6 +70,7 @@ func (s *StubClient) SetTab(tab TabInfo) {
 func (s *StubClient) SetProcesses(paneID string, processes ...PaneProcessInfoProcess) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	s.processes[paneID] = processes
 }
 
@@ -73,6 +78,7 @@ func (s *StubClient) SetProcesses(paneID string, processes ...PaneProcessInfoPro
 func (s *StubClient) SetPane(pane PaneInfo) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	s.panes[pane.PaneID] = pane
 }
 
@@ -80,12 +86,14 @@ func (s *StubClient) SetPane(pane PaneInfo) {
 func (s *StubClient) CloseTab(tabID string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	delete(s.tabs, tabID)
 }
 
 func (s *StubClient) ClosePane(paneID string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	delete(s.panes, paneID)
 }
 
@@ -93,6 +101,7 @@ func (s *StubClient) ClosePane(paneID string) {
 func (s *StubClient) SetRenameError(err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	s.renameErr = err
 }
 
@@ -100,6 +109,7 @@ func (s *StubClient) SetRenameError(err error) {
 func (s *StubClient) SetProcessError(err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	s.processErr = err
 }
 
@@ -107,6 +117,7 @@ func (s *StubClient) SetProcessError(err error) {
 func (s *StubClient) SetCallError(err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	s.callErr = err
 }
 
@@ -114,6 +125,7 @@ func (s *StubClient) SetCallError(err error) {
 func (s *StubClient) Renames() []RenameCall {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	return slices.Clone(s.renames)
 }
 
@@ -122,6 +134,7 @@ func (s *StubClient) Renames() []RenameCall {
 func (s *StubClient) ProcessReads() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	return s.reads
 }
 
@@ -129,6 +142,7 @@ func (s *StubClient) ProcessReads() int {
 func (s *StubClient) Polls() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	return s.polls
 }
 
@@ -139,6 +153,7 @@ func (s *StubClient) Call(ctx context.Context, method string, params any, result
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	if s.callErr != nil {
 		return s.callErr
 	}
@@ -149,41 +164,53 @@ func (s *StubClient) Call(ctx context.Context, method string, params any, result
 		if !ok {
 			return fmt.Errorf("stub client: unexpected result type for %s", method)
 		}
+
 		s.polls++
 		target.Snapshot = Snapshot{
 			Workspaces: slices.Clone(s.workspaces),
 			Tabs:       sorted(s.tabs, func(t TabInfo) string { return t.TabID }),
 			Panes:      sorted(s.panes, func(p PaneInfo) string { return p.PaneID }),
 		}
+
 		return nil
 
 	case MethodPaneProcessInfo:
 		if s.processErr != nil {
 			return s.processErr
 		}
+
 		target, ok := params.(PaneTarget)
 		if !ok {
 			return fmt.Errorf("stub client: unexpected params for %s", method)
 		}
+
 		if _, ok := s.panes[target.PaneID]; !ok {
-			return &APIError{Code: CodePaneNotFound, Message: "pane " + target.PaneID + " not found"}
+			return &APIError{
+				Code:    CodePaneNotFound,
+				Message: "pane " + target.PaneID + " not found",
+			}
 		}
+
 		res, ok := result.(*processInfoResult)
 		if !ok {
 			return fmt.Errorf("stub client: unexpected result type for %s", method)
 		}
+
 		s.reads++
 		res.ProcessInfo.ForegroundProcesses = s.processes[target.PaneID]
+
 		return nil
 
 	case MethodTabRename:
 		if s.renameErr != nil {
 			return s.renameErr
 		}
+
 		rename, ok := params.(TabRenameParams)
 		if !ok {
 			return fmt.Errorf("stub client: unexpected params for %s", method)
 		}
+
 		tab, ok := s.tabs[rename.TabID]
 		if !ok {
 			return &APIError{Code: CodeTabNotFound, Message: "tab " + rename.TabID + " not found"}
@@ -192,6 +219,7 @@ func (s *StubClient) Call(ctx context.Context, method string, params any, result
 		tab.Label = rename.Label
 		s.tabs[rename.TabID] = tab
 		s.renames = append(s.renames, RenameCall(rename))
+
 		return nil
 
 	default:
@@ -206,6 +234,8 @@ func sorted[T any](items map[string]T, id func(T) string) []T {
 	for _, item := range items {
 		out = append(out, item)
 	}
+
 	slices.SortFunc(out, func(a, b T) int { return strings.Compare(id(a), id(b)) })
+
 	return out
 }

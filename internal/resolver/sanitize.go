@@ -47,6 +47,7 @@ func Sanitize(s string, maxLen int) string {
 		if unicode.IsSpace(r) {
 			return ' '
 		}
+
 		if unicode.IsControl(r) {
 			return -1
 		}
@@ -56,6 +57,7 @@ func Sanitize(s string, maxLen int) string {
 		if unicode.Is(unicode.Cf, r) && r != zeroWidthJoiner {
 			return -1
 		}
+
 		return r
 	}, s)
 
@@ -73,11 +75,14 @@ func truncate(s string, maxWidth int) string {
 	if maxWidth <= 0 {
 		return s
 	}
+
 	head, rest := splitAtWidth(s, maxWidth)
 	if rest == "" {
 		return s
 	}
+
 	cut := strings.TrimRight(head, trimmable)
+
 	return strings.TrimSpace(cut)
 }
 
@@ -86,14 +91,17 @@ func truncate(s string, maxWidth int) string {
 // see docs/architecture/sanitization.md.
 func splitAtWidth(s string, maxWidth int) (head, rest string) {
 	rest = s
+
 	state := -1
 	for width := 0; rest != ""; {
 		_, next, clusterWidth, nextState := uniseg.FirstGraphemeClusterInString(rest, state)
 		if width+clusterWidth > maxWidth {
 			break
 		}
+
 		width, rest, state = width+clusterWidth, next, nextState
 	}
+
 	return s[:len(s)-len(rest)], rest
 }
 
@@ -101,14 +109,18 @@ func splitAtWidth(s string, maxWidth int) (head, rest string) {
 // The order is the one a title reads in: from the general to the particular.
 func Format(parts Parts, maxLen int) string {
 	var b strings.Builder
+
 	for _, part := range []string{parts.Context, parts.Branch, parts.Activity} {
 		if part == "" {
 			continue
 		}
+
 		if b.Len() > 0 {
 			b.WriteString(Separator)
 		}
+
 		b.WriteString(part)
 	}
+
 	return Sanitize(b.String(), maxLen)
 }

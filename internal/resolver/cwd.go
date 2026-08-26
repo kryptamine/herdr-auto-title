@@ -22,6 +22,7 @@ func NewCWD() CWD {
 	if err != nil {
 		home = ""
 	}
+
 	return CWD{home: filepath.Clean(home)}
 }
 
@@ -37,6 +38,7 @@ func (c CWD) Resolve(pane *state.PaneState) (Parts, bool) {
 	if name == "" {
 		return Parts{}, false
 	}
+
 	return Parts{Context: name}, true
 }
 
@@ -46,13 +48,16 @@ func (c CWD) base(dir string) string {
 	if dir == "" {
 		return ""
 	}
+
 	clean := filepath.Clean(dir)
 	if !filepath.IsAbs(clean) {
 		return ""
 	}
+
 	if clean == string(filepath.Separator) {
 		return ""
 	}
+
 	if c.home != "" && clean == c.home {
 		return ""
 	}
@@ -62,5 +67,6 @@ func (c CWD) base(dir string) string {
 	case ".", "..", string(filepath.Separator):
 		return ""
 	}
+
 	return base
 }

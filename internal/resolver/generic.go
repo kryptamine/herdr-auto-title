@@ -45,12 +45,15 @@ func Meaningful(value string) (string, bool) {
 	if cleaned == "" {
 		return "", false
 	}
+
 	if _, generic := genericValues[strings.ToLower(cleaned)]; generic {
 		return "", false
 	}
+
 	if promptPattern.MatchString(cleaned) {
 		return "", false
 	}
+
 	return cleaned, true
 }
 
@@ -59,13 +62,16 @@ func Meaningful(value string) (string, bool) {
 // survive: `Fix bug in src/auth.ts` describes work rather than a place.
 func stripLocations(value string) string {
 	words := strings.Fields(value)
+
 	kept := make([]string, 0, len(words))
 	for _, word := range words {
 		if isLocation(strings.Trim(word, punctuation)) {
 			continue
 		}
+
 		kept = append(kept, word)
 	}
+
 	return tidy(kept)
 }
 
@@ -94,11 +100,14 @@ func tidy(words []string) string {
 		if len(kept) == 0 || isPunctuationOnly(kept[len(kept)-1]) {
 			continue
 		}
+
 		kept = append(kept, word)
 	}
+
 	for len(kept) > 0 && isPunctuationOnly(kept[len(kept)-1]) {
 		kept = kept[:len(kept)-1]
 	}
+
 	return strings.Join(kept, " ")
 }
 
