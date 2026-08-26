@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -56,8 +57,14 @@ func start(t *testing.T, tabs []herdr.TabInfo, panes []herdr.PaneInfo) *harness 
 // how a test arranges for the very first poll to fail.
 func startWith(t *testing.T, client *herdr.StubClient) *harness {
 	t.Helper()
+	return startConfigured(t, client, testConfig())
+}
 
-	app := New(testConfig(), discardLogger(), testResolver(t))
+// startConfigured runs an App whose configuration the test has changed.
+func startConfigured(t *testing.T, client *herdr.StubClient, cfg Config) *harness {
+	t.Helper()
+
+	app := New(cfg, discardLogger(), testResolver(t))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	h := &harness{t: t, client: client, done: make(chan struct{}), cancel: cancel}
@@ -670,5 +677,77 @@ func TestBranchesSwitchedOffAreNotRead(t *testing.T) {
 
 	if checkout := app.checkoutIn(herdr.PaneInfo{PaneID: "wE:p1", CWD: repo}); checkout != (git.Checkout{}) {
 		t.Errorf("checkout = %+v, want nothing read", checkout)
+	}
+}
+
+// The session an agent pane is holding in the tests below.
+const (
+	testSession = "8852bfe0-8b24-4a23-a35e-7521d04da061"
+	testDir     = "/Users/dev/work/dashboard"
+)
+
+// transcript lays down a Claude Code session transcript and points the plugin
+// at the state directory holding it. Which project directory it lands in is
+// the transcript reader's business, and its own tests cover that.
+func transcript(t *testing.T, lines ...string) {
+	t.Helper()
+	root := t.TempDir()
+	t.Setenv("CLAUDE_CONFIG_DIR", root)
+
+	path := filepath.Join(root, "projects", "any-project", testSession+".jsonl")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(strings.Join(lines, "\n")+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// agentPane is a pane holding a Claude Code session that never titled its
+// terminal, which is the only pane shape these tests care about.
+func agentPane() herdr.PaneInfo {
+	return herdr.PaneInfo{
+		PaneID: "wE:p1", TabID: "wE:t1", Focused: true, CWD: testDir,
+		TerminalTitleStripped: "Claude Code",
+		Agent:                 "claude",
+		AgentStatus:           herdr.AgentStatusIdle,
+		AgentSession: &herdr.AgentSessionInfo{
+			Agent: "claude", Kind: herdr.SessionRefID, Value: testSession,
+		},
+	}
+}
+
+func TestATabIsNamedFromTheAgentsOwnSession(t *testing.T) {
+	// The agent never titled its terminal, so the transcript Herdr pointed at
+	// is the only thing that says what the session is about.
+	transcript(t,
+		`{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"rework the poll loop"}}`,
+		`{"type":"ai-title","aiTitle":"Poll loop rework","sessionId":"`+testSession+`"}`,
+	)
+
+	cfg := testConfig()
+	cfg.ReadTranscripts = true
+	h := startConfigured(t, herdr.NewStub(
+		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
+		[]herdr.PaneInfo{agentPane()},
+	), cfg)
+
+	renames := h.awaitRenames(1)
+	if want := "dashboard › claude › Poll loop rework"; renames[0].Label != want {
+		t.Errorf("rename = %q, want %q", renames[0].Label, want)
+	}
+}
+
+func TestTranscriptsAreLeftUnreadWhenTurnedOff(t *testing.T) {
+	transcript(t, `{"type":"ai-title","aiTitle":"Poll loop rework","sessionId":"`+testSession+`"}`)
+
+	h := start(t,
+		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
+		[]herdr.PaneInfo{agentPane()},
+	)
+
+	renames := h.awaitRenames(1)
+	if want := "dashboard › claude"; renames[0].Label != want {
+		t.Errorf("rename = %q, want %q", renames[0].Label, want)
 	}
 }

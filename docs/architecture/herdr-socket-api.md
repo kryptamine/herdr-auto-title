@@ -106,6 +106,22 @@ reads, so this section describes Herdr rather than those types.
   through `terminal_title_stripped` instead. This is why most agent context
   reaches a title one rung below the agent source — see
   [title resolution](./title-resolution.md).
+- **`PaneInfo.agent_session` says which conversation the pane's agent holds**,
+  and it is null until an agent's integration reports one.
+  `herdr integration install <agent>` installs the hook that does — Herdr ships
+  one for seventeen agents, Claude Code among them, and `herdr integration
+  status` lists them with the path each is written to. The Claude hook runs on
+  `SessionStart` and calls `pane.report_agent_session` with the session id and
+  the transcript path; Herdr keeps only the id, answering `kind: "id"` even when
+  both were reported, so a reader that wants the file finds it by id. Auto Title
+  reads it from the snapshot — no extra request — and what it does with it is in
+  [title resolution](./title-resolution.md).
+- **`pane.report_metadata` is how anything outside Herdr sets `PaneInfo.title`.**
+  Probed directly: `herdr pane report-metadata <pane> --source X --title T` put
+  `T` in the snapshot's `title` and a tab bearing it appeared within one poll;
+  `--clear-title` undid it. Nothing installs a source for it today, which is why
+  `title` is null in practice. It also carries `--display-agent`,
+  `--state-label`, `--token` and a `--ttl-ms`.
 - **`agent_status` is `idle | working | blocked | done | unknown`.** Every pane
   carries one, and a pane with no agent reports `unknown`. `TabInfo` carries one
   as well, aggregated over the tab's panes: with a single Claude Code pane

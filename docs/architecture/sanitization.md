@@ -10,7 +10,8 @@ generated: { by: claude-code/opus-5, at: 2026-08-25T12:46:22+03:00 }
 # Sanitizing Untrusted Values
 
 Every candidate for a title — a directory name, a terminal title, an agent
-title, an ssh destination — originates in terminal output or in a path someone
+title, an ssh destination, a topic read out of an agent's own transcript —
+originates in terminal output, in a file an agent wrote, or in a path someone
 chose. All of it is treated as untrusted input.
 
 The one rule that is never bent: **nothing derived from terminal output is

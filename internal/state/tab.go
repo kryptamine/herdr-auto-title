@@ -30,6 +30,10 @@ type PaneState struct {
 	DisplayAgent string
 	AgentTitle   string
 	AgentStatus  string
+	// AgentTopic is what the agent's own session says it is about, read from
+	// the transcript Herdr pointed at. Empty unless the agent's integration
+	// hook is installed — see docs/architecture/title-resolution.md.
+	AgentTopic string
 
 	// Processes are the pane's foreground process and its descendants.
 	Processes []Process
@@ -51,10 +55,19 @@ type Process struct {
 	Args []string
 }
 
-// PaneFrom builds pane context from what a read returned.
-func PaneFrom(info herdr.PaneInfo, processes []herdr.PaneProcessInfoProcess,
-	checkout git.Checkout, changedAt time.Time,
-) *PaneState {
+// Reads is what a poll learned about a pane that its snapshot entry does not
+// carry: each field costs a request or a file of its own.
+type Reads struct {
+	Processes []herdr.PaneProcessInfoProcess
+	Git       git.Checkout
+	// Topic is what the agent's own session says it is about.
+	Topic string
+	// ChangedAt is when a poll last saw the pane's revision move.
+	ChangedAt time.Time
+}
+
+// PaneFrom builds pane context from a snapshot entry and what was read around it.
+func PaneFrom(info herdr.PaneInfo, reads Reads) *PaneState {
 	return &PaneState{
 		ID:               info.PaneID,
 		Dir:              info.Dir(),
@@ -64,10 +77,11 @@ func PaneFrom(info herdr.PaneInfo, processes []herdr.PaneProcessInfoProcess,
 		DisplayAgent:     info.DisplayAgent,
 		AgentTitle:       info.Title,
 		AgentStatus:      info.AgentStatus,
-		Processes:        processesFrom(processes),
-		Git:              checkout,
+		AgentTopic:       reads.Topic,
+		Processes:        processesFrom(reads.Processes),
+		Git:              reads.Git,
 		Focused:          info.Focused,
-		ChangedAt:        changedAt,
+		ChangedAt:        reads.ChangedAt,
 	}
 }
 

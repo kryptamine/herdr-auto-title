@@ -55,7 +55,7 @@ name is derived from the state read for that poll, which is what makes the
 resolver's determinism worth anything: identical session state always yields an
 identical title.
 
-Three things are carried between polls, and each exists because a snapshot
+Four things are carried between polls, and each exists because a snapshot
 cannot express it:
 
 - **When each pane last changed** (`internal/state/changes.go`). A snapshot says
@@ -80,6 +80,20 @@ cannot express it:
   provokes. So the reuse is bounded twice: by the revision, which catches the
   common case in the very next poll, and by `processRefresh` (2 s), which is
   what actually bounds how wrong the answer can be.
+- **How far each agent transcript has been read** (`internal/claude/transcript.go`).
+  A transcript is append-only, so a poll reads the bytes appended since the last
+  one rather than the file: a session that has run all day is megabytes, and
+  re-reading it twice a second to learn the one line that changed would cost
+  more than every other read in the loop together. What is kept per session is a
+  path, a byte offset and the topic read so far. Sessions the snapshot no longer
+  holds are dropped the same way panes are.
+
+  A session whose transcript is *not* found is remembered too. Herdr can name a
+  session before the agent has written a line of it, so the search has to be
+  repeated — but finding the file means scanning every project directory the
+  user has, and doing that twice a second for the life of a pane costs more than
+  every other read in the loop. A failed search is therefore left alone for
+  `locateRetry` (10 s).
 - **What Auto Title last named each tab** (`internal/state/manual.go`), which is
   how a rename by the user is told from the plugin's own work. That is a design
   of its own: [manual rename protection](./manual-rename-protection.md).

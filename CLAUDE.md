@@ -128,6 +128,16 @@ listed here** (`make probe-*`, `scripts/probe.py`).
   `pane_id`.
 - `PaneInfo.title` is the agent's own title. It was null for every Claude Code
   pane observed; that agent reports its topic through `terminal_title_stripped`.
+  `pane.report_metadata` sets it from outside Herdr (probed: a reported title
+  reached the snapshot and a tab within one poll), but nothing installs a source
+  for it today.
+- `PaneInfo.agent_session` says which conversation a pane's agent holds, and is
+  null until that agent's integration reports one.
+  `herdr integration install <agent>` installs the hook (`herdr integration
+  status` lists all seventeen). Claude Code's runs on `SessionStart` and calls
+  `pane.report_agent_session`; Herdr keeps only the id, answering `kind: "id"`
+  even when a transcript path was reported too. It arrives in the snapshot, so
+  reading it costs no request.
 - `agent_status` is `idle | working | blocked | done | unknown`; a pane with no
   agent reports `unknown`. `TabInfo` carries one too, aggregated over the tab's
   panes: with a single Claude Code pane working, its tab reported `working`
@@ -175,10 +185,12 @@ which carries the same facts in full.
   background, and check `make ps` when something behaves oddly.
 - **Decide from freshly read state.** Every poll reads the session and throws
   the result away again. What is carried between polls is only what a snapshot
-  cannot say: when each pane last changed, and what it was running when it was
-  last asked — the latter reused only until that pane's revision moves, and for
-  no longer than `processRefresh` either way, because a revision does not track
-  what runs in a pane.
+  cannot say: when each pane last changed, what it was running when it was last
+  asked — reused only until that pane's revision moves, and for no longer than
+  `processRefresh` either way, because a revision does not track what runs in a
+  pane — and how far each agent transcript has been read, because a transcript
+  only grows and re-reading megabytes twice a second to find one new line would
+  cost more than the rest of the loop together.
 - Never pass terminal-derived values to a shell. Renames go over the socket API.
 - How the plugin works and why — the poll loop, title resolution, sanitizing
   untrusted values, manual rename protection — is in

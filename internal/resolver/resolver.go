@@ -1,6 +1,6 @@
 // Package resolver turns a tab's read state into a tab title. Resolution is
 // deterministic: identical state always yields an identical decision. No
-// network call, no LLM, no transcript reading.
+// network call and no LLM: every source names a tab from state already read.
 package resolver
 
 import (
@@ -26,6 +26,7 @@ const (
 	ConfidenceGit           = 40
 	ConfidenceSSH           = 60
 	ConfidenceProcess       = 70
+	ConfidenceTranscript    = 75
 	ConfidenceTerminalTitle = 80
 	ConfidenceAgent         = 90
 )
@@ -93,6 +94,7 @@ func Default(maxLength, branchMax int) *Deterministic {
 	return New(maxLength,
 		NewAgent(),
 		NewTerminalTitle(),
+		NewTranscript(),
 		NewProcess(),
 		NewSSH(),
 		NewGit(branchMax),

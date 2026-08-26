@@ -13,12 +13,13 @@ import (
 
 // Environment variables Auto Title reads. V1 has no configuration file.
 const (
-	EnvDebug     = "HERDR_AUTO_TITLE_DEBUG"
-	EnvPoll      = "HERDR_AUTO_TITLE_POLL_MS"
-	EnvMaxLength = "HERDR_AUTO_TITLE_MAX_LENGTH"
-	EnvBranchMax = "HERDR_AUTO_TITLE_BRANCH_MAX"
-	EnvPosition  = "HERDR_AUTO_TITLE_POSITION"
-	EnvManual    = "HERDR_AUTO_TITLE_MANUAL_FILE"
+	EnvDebug      = "HERDR_AUTO_TITLE_DEBUG"
+	EnvPoll       = "HERDR_AUTO_TITLE_POLL_MS"
+	EnvMaxLength  = "HERDR_AUTO_TITLE_MAX_LENGTH"
+	EnvBranchMax  = "HERDR_AUTO_TITLE_BRANCH_MAX"
+	EnvPosition   = "HERDR_AUTO_TITLE_POSITION"
+	EnvManual     = "HERDR_AUTO_TITLE_MANUAL_FILE"
+	EnvTranscript = "HERDR_AUTO_TITLE_TRANSCRIPT"
 )
 
 // DefaultPoll is how often the session is read. A six-pane snapshot measured
@@ -42,6 +43,10 @@ type Config struct {
 	// ManualPath is where tabs the user renamed by hand are remembered across
 	// restarts. Empty keeps them in memory only.
 	ManualPath string
+	// ReadTranscripts lets a title come from an agent's own session transcript
+	// when the agent has not titled its terminal. It reads what the user has
+	// been saying to that agent, so it can be turned off.
+	ReadTranscripts bool
 }
 
 // LoadConfig reads configuration from the environment. Unusable values are
@@ -49,11 +54,12 @@ type Config struct {
 // plugin from running.
 func LoadConfig() (Config, []string) {
 	cfg := Config{
-		Poll:         DefaultPoll,
-		MaxLength:    resolver.DefaultMaxLength,
-		BranchMax:    resolver.DefaultBranchMaxLength,
-		ShowPosition: true,
-		ManualPath:   state.DefaultManualPath(),
+		Poll:            DefaultPoll,
+		MaxLength:       resolver.DefaultMaxLength,
+		BranchMax:       resolver.DefaultBranchMaxLength,
+		ShowPosition:    true,
+		ManualPath:      state.DefaultManualPath(),
+		ReadTranscripts: true,
 	}
 	var warnings []string
 
@@ -63,6 +69,7 @@ func LoadConfig() (Config, []string) {
 	// Zero is meaningful here, and only here: it leaves branches out of titles.
 	cfg.BranchMax = fromEnv(&warnings, EnvBranchMax, cfg.BranchMax, countOrNone)
 	cfg.ShowPosition = fromEnv(&warnings, EnvPosition, cfg.ShowPosition, boolean)
+	cfg.ReadTranscripts = fromEnv(&warnings, EnvTranscript, cfg.ReadTranscripts, boolean)
 	// A path needs neither parsing nor checking, so it does not go through
 	// fromEnv: any string the user set is the path they meant.
 	if raw := os.Getenv(EnvManual); raw != "" {

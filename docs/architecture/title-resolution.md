@@ -52,6 +52,7 @@ rather than by the order the sources happen to be listed in
 |---:|---|---|---|
 | 90 | Agent title | `agent.go` | Activity |
 | 80 | Terminal title | `terminal.go` | Activity |
+| 75 | Session transcript | `transcript.go` | Activity |
 | 70 | Foreground process | `process.go` | Activity |
 | 60 | SSH session | `ssh.go` | Context |
 | 40 | Git branch | `git.go` | Branch |
@@ -91,6 +92,49 @@ the pane rather than against a list — and reappears as a *kind*, so a tab read
 The richest source in practice, and the one that carries most agent context. Its
 value is cleaned hard before it is trusted — see
 [sanitization](./sanitization.md).
+
+### The session transcript
+
+An agent that has titled its terminal has already said what it is doing, sooner
+and for free. This source answers when it has not, which is a real and repeatable
+case rather than an edge: Claude Code derives its terminal title from the user's
+own prompts, so **a session opened with a slash command and answered by the
+agent alone never gets one**. Its tab read `3 · claude` however long it ran.
+
+Herdr's own integration hook is what makes the transcript reachable.
+`herdr integration install claude` writes a `SessionStart` hook that reports the
+session id through `pane.report_agent_session`, and it arrives in the snapshot
+as `PaneInfo.agent_session` — no extra request. Without the hook the field is
+null, this source declines, and every other rung works as it always did.
+
+The transcript is then read from disk (`internal/claude/transcript.go`), and two
+lines in it can name a session:
+
+- `ai-title`, the title Claude Code generates and puts in its terminal title.
+  The last one wins — a session is renamed as it goes.
+- failing that, the **first prompt the user actually typed**, which is what
+  Claude Code's own session list shows for an untitled session. A prompt that is
+  a slash command yields the command and what it was called with
+  (`/code-review spec.md` → `code-review spec.md`): the argument is usually what
+  tells one run of a command from the next.
+
+Telling the user's prompt from the rest is not cosmetic. A slash command expands
+into the conversation as further user messages, and a resumed session opens with
+a caveat block written by the tool; either would name a tab after the plumbing.
+The transcript marks what the user typed with `origin.kind: "human"`, and only
+those lines are read.
+
+Three costs are worth stating plainly:
+
+- **It reads what the user said to their agent.** That is why it can be turned
+  off with `HERDR_AUTO_TITLE_TRANSCRIPT=false`, and why nothing else in the
+  plugin reads a file it was not pointed at.
+- **The format is undocumented.** `ai-title` and `origin.kind` are Claude Code's
+  internals and can change in any release. A transcript that no longer carries
+  them yields nothing and the source declines — the failure mode is the tab
+  named as it was before this existed, not a wrong name.
+- **The session id becomes part of a path.** It arrives over the socket, so it
+  is refused unless it is shaped like a UUID rather than cleaned.
 
 ### Foreground process
 

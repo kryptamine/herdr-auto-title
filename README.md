@@ -43,6 +43,47 @@ Herdr clones the repository, builds the binary and registers it. Until the
 server has restarted, nothing is renamed. `herdr plugin list` shows the plugin,
 `herdr plugin disable` turns it off.
 
+### Better names for agent tabs
+
+A coding agent usually says what it is working on through its terminal title,
+and that is where Auto Title reads it. Claude Code has one blind spot: a session
+you opened with a slash command and never typed a prompt into is never given a
+title, so its tab stays `claude`. One command closes it:
+
+```sh
+herdr integration install claude
+```
+
+That is Herdr's own hook, not this plugin's. It tells Herdr which session each
+pane is holding, which lets Auto Title read the topic from the session itself.
+Reading transcripts can be turned off with `HERDR_AUTO_TITLE_TRANSCRIPT=false`.
+
+**Only Claude Code is read so far.** Herdr installs the same hook for seventeen
+agents (`herdr integration status`), and Auto Title accepts the session it
+reports from any of them — but every agent keeps its own transcript in its own
+format, so each needs a reader of its own:
+
+- [x] `claude` — Claude Code
+- [ ] `antigravity-cli`
+- [ ] `codex`
+- [ ] `copilot`
+- [ ] `cursor`
+- [ ] `devin`
+- [ ] `droid`
+- [ ] `grok`
+- [ ] `hermes`
+- [ ] `kilo`
+- [ ] `kimi`
+- [ ] `mastracode`
+- [ ] `omp`
+- [ ] `opencode`
+- [ ] `pi`
+- [ ] `qodercli`
+- [ ] `qwen`
+
+An agent that is not ticked loses nothing: its tab is named from its terminal
+title, exactly as before.
+
 Working on the plugin rather than using it? [Development](docs/development.md)
 covers linking a local checkout, which Herdr makes you unlink before `install`
 will run.
@@ -81,6 +122,8 @@ These rules explain most surprises:
 - A tab with several panes takes its name from one of them: the focused pane, a
   pane running a busy agent, or the pane that changed last.
 - **A tab you renamed is yours.** Auto Title never touches it again.
+- An agent tab can also be named from the agent's own session — see
+  [better names for agent tabs](#better-names-for-agent-tabs).
 
 > [!WARNING]
 > Renaming it again does not hand it back. To get automatic naming for that tab,

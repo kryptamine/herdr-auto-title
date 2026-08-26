@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kryptamine/herdr-auto-title/internal/git"
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
 )
 
@@ -73,7 +72,7 @@ func TestPaneFromReadsAgentContext(t *testing.T) {
 		Agent:                 "claude",
 		DisplayAgent:          "Claude Code",
 		AgentStatus:           herdr.AgentStatusWorking,
-	}, nil, git.Checkout{}, stamp)
+	}, Reads{Topic: "Rework the poll loop", ChangedAt: stamp})
 
 	switch {
 	case pane.TerminalTitle != "Claude Code":
@@ -82,6 +81,8 @@ func TestPaneFromReadsAgentContext(t *testing.T) {
 		t.Errorf("raw terminal title = %q", pane.TerminalTitleRaw)
 	case pane.AgentTitle != "Implement OAuth scopes":
 		t.Errorf("agent title = %q", pane.AgentTitle)
+	case pane.AgentTopic != "Rework the poll loop":
+		t.Errorf("agent topic = %q", pane.AgentTopic)
 	case !pane.AgentIsActive():
 		t.Error("a working agent is not active")
 	case !pane.ChangedAt.Equal(stamp):
@@ -90,7 +91,7 @@ func TestPaneFromReadsAgentContext(t *testing.T) {
 }
 
 func TestPaneWithoutAnAgent(t *testing.T) {
-	pane := PaneFrom(herdr.PaneInfo{PaneID: "wE:p1", AgentStatus: herdr.AgentStatusUnknown}, nil, git.Checkout{}, time.Now())
+	pane := PaneFrom(herdr.PaneInfo{PaneID: "wE:p1", AgentStatus: herdr.AgentStatusUnknown}, Reads{})
 	if pane.HasAgent() || pane.AgentIsActive() {
 		t.Errorf("pane %+v reported an agent", pane)
 	}
@@ -201,14 +202,14 @@ func TestPaneFromPrefersTheShellsDirectory(t *testing.T) {
 	// when the shell's own directory is missing.
 	both := PaneFrom(herdr.PaneInfo{
 		PaneID: "wE:p1", CWD: "/work/dashboard", ForegroundCWD: "/tmp",
-	}, nil, git.Checkout{}, time.Now())
+	}, Reads{})
 	if both.Dir != "/work/dashboard" {
 		t.Errorf("dir = %q, want the shell's own", both.Dir)
 	}
 
 	foreground := PaneFrom(herdr.PaneInfo{
 		PaneID: "wE:p1", ForegroundCWD: "/work/api",
-	}, nil, git.Checkout{}, time.Now())
+	}, Reads{})
 	if foreground.Dir != "/work/api" {
 		t.Errorf("dir = %q, want the foreground process's", foreground.Dir)
 	}

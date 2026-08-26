@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/kryptamine/herdr-auto-title/internal/claude"
 	"github.com/kryptamine/herdr-auto-title/internal/git"
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
 	"github.com/kryptamine/herdr-auto-title/internal/resolver"
@@ -24,6 +25,9 @@ type App struct {
 	titles  resolver.TitleResolver
 	changes *state.Changes
 	manual  *state.Manual
+	// topics reads what an agent's own session is about. It keeps its place in
+	// each transcript, so a poll reads only what was appended since the last.
+	topics *claude.Reader
 	// failures is the run of polls that have failed in a row, which decides
 	// how loudly the next one is reported.
 	failures failureLog
@@ -38,6 +42,7 @@ func New(cfg Config, log *slog.Logger, titles resolver.TitleResolver) *App {
 		titles:  titles,
 		changes: state.NewChanges(),
 		manual:  state.LoadManual(cfg.ManualPath),
+		topics:  claude.NewReader(),
 	}
 }
 
@@ -119,6 +124,7 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 		return err
 	}
 	a.changes.Observe(snapshot.Panes)
+	a.topics.Retain(sessionsIn(snapshot.Panes))
 
 	tabs := a.tabsIn(ctx, client, snapshot)
 	a.manual.Retain(labelsOf(tabs))
@@ -217,6 +223,33 @@ func (a *App) checkoutIn(pane herdr.PaneInfo) git.Checkout {
 	return checkout
 }
 
+// topicIn reports what the session the pane's agent is holding says it is
+// about. Only Claude Code's transcripts are understood, and only Herdr's
+// integration hook says which session a pane holds.
+func (a *App) topicIn(pane herdr.PaneInfo) string {
+	if !a.cfg.ReadTranscripts {
+		return ""
+	}
+
+	sessionID, ok := pane.AgentSession.IDFor(claude.Agent)
+	if !ok {
+		return ""
+	}
+	return a.topics.Topic(sessionID, pane.Dir()).Text()
+}
+
+// sessionsIn lists the agent sessions the snapshot holds, which is what the
+// transcript reader keeps its places for.
+func sessionsIn(panes []herdr.PaneInfo) []string {
+	sessions := make([]string, 0, len(panes))
+	for _, pane := range panes {
+		if pane.AgentSession != nil {
+			sessions = append(sessions, pane.AgentSession.Value)
+		}
+	}
+	return sessions
+}
+
 // tabsIn assembles the snapshot's tabs with their panes. What is running in a
 // pane needs a request of its own, which processesIn makes only when the last
 // answer will no longer do.
@@ -228,9 +261,12 @@ func (a *App) tabsIn(ctx context.Context, client herdr.Client, snapshot herdr.Sn
 
 	byTab := make(map[string][]*state.PaneState, len(snapshot.Tabs))
 	for _, pane := range snapshot.Panes {
-		byTab[pane.TabID] = append(byTab[pane.TabID],
-			state.PaneFrom(pane, a.processesIn(ctx, client, pane.PaneID),
-				a.checkoutIn(pane), a.changes.ChangedAt(pane.PaneID)))
+		byTab[pane.TabID] = append(byTab[pane.TabID], state.PaneFrom(pane, state.Reads{
+			Processes: a.processesIn(ctx, client, pane.PaneID),
+			Git:       a.checkoutIn(pane),
+			Topic:     a.topicIn(pane),
+			ChangedAt: a.changes.ChangedAt(pane.PaneID),
+		}))
 	}
 
 	// An unnamed tab carries its place in the workspace, and the snapshot lists
