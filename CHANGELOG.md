@@ -7,10 +7,8 @@
 
 * **app:** make the branch width configurable ([76914d1](https://github.com/kryptamine/herdr-auto-title/commit/76914d1374e120a99e2e92420a74c8951d56bedb))
 * **git:** read what a repository has checked out ([4d8e0ce](https://github.com/kryptamine/herdr-auto-title/commit/4d8e0ce7069a1c333b7d17d15f2ae7fd99f232d4))
-* name a tab after the branch it is on ([dde7af3](https://github.com/kryptamine/herdr-auto-title/commit/dde7af33eaa9e1db6a2309659f543d8eb29846ef))
 * name a tab after the branch it is on ([96a2c83](https://github.com/kryptamine/herdr-auto-title/commit/96a2c836daa219f28669bd5f902a2965abcb2c63))
 * name an agent tab from the session its agent holds ([#16](https://github.com/kryptamine/herdr-auto-title/issues/16)) ([4246532](https://github.com/kryptamine/herdr-auto-title/commit/42465329bf44fef2af5f1f2bd06c9dec6e74a4ba))
-* put each tab's position in front of its title ([e517ee1](https://github.com/kryptamine/herdr-auto-title/commit/e517ee1ff92d62cef2ca52ae41ba6837a87a1db4))
 * **resolver:** put each tab's position in front of its title ([81112ce](https://github.com/kryptamine/herdr-auto-title/commit/81112ce1efc6583e348bc0da8791b49e8a324b07))
 
 
