@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/kryptamine/herdr-auto-title/internal/claude"
-	"github.com/kryptamine/herdr-auto-title/internal/git"
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
 	"github.com/kryptamine/herdr-auto-title/internal/resolver"
 	"github.com/kryptamine/herdr-auto-title/internal/state"
@@ -88,36 +87,6 @@ func (a *App) poll(ctx context.Context, client herdr.Client) {
 	}
 }
 
-// failureLog decides how often a run of failing polls is worth mentioning. At
-// two polls a second, logging every one turns an hour of Herdr being down into
-// thousands of identical lines; logging as the run doubles costs a dozen.
-type failureLog struct {
-	run  int
-	next int
-}
-
-// failed records a failed poll and returns the length of the run when it is
-// worth logging, or zero when it is not.
-func (f *failureLog) failed() int {
-	f.run++
-	if f.run < f.next {
-		return 0
-	}
-
-	f.next = f.run * 2
-
-	return f.run
-}
-
-// recovered records a successful poll and returns how many polls the run of
-// failures it ended cost, or zero when nothing was wrong.
-func (f *failureLog) recovered() int {
-	run := f.run
-	f.run, f.next = 0, 0
-
-	return run
-}
-
 // readAndRename reads the session and renames every tab whose title no longer
 // fits.
 func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
@@ -154,29 +123,7 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 			continue
 		}
 
-		if err := herdr.RenameTab(ctx, client, tab.ID, decision.Name); err != nil {
-			if herdr.ErrorCode(err) == herdr.CodeTabNotFound {
-				// The tab closed between the snapshot and the rename. The next
-				// poll will not see it at all.
-				a.log.Debug("tab closed before it could be renamed", "tab_id", tab.ID)
-				continue
-			}
-
-			a.log.Warn("rename failed", "tab_id", tab.ID, "name", decision.Name, "error", err)
-
-			continue
-		}
-
-		// Recorded before the log line so the next poll cannot read this
-		// rename as the user's.
-		a.manual.Applied(tab.ID, decision.Name)
-		a.log.Info("tab renamed",
-			"tab_id", tab.ID,
-			"old", tab.CurrentName,
-			"new", decision.Name,
-			"reason", decision.Reason,
-			"confidence", decision.Confidence,
-		)
+		a.rename(ctx, client, tab, decision)
 	}
 
 	// Reached only when every tab was seen. Deferring this would settle after a
@@ -184,6 +131,40 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 	a.manual.Settled()
 
 	return nil
+}
+
+// rename gives the tab the name the resolver chose. Nothing that goes wrong
+// here is worth cutting the poll short: the next one decides again from state
+// it has read again.
+func (a *App) rename(
+	ctx context.Context,
+	client herdr.Client,
+	tab state.TabState,
+	decision resolver.Decision,
+) {
+	if err := herdr.RenameTab(ctx, client, tab.ID, decision.Name); err != nil {
+		if herdr.ErrorCode(err) == herdr.CodeTabNotFound {
+			// The tab closed between the snapshot and the rename. The next
+			// poll will not see it at all.
+			a.log.Debug("tab closed before it could be renamed", "tab_id", tab.ID)
+			return
+		}
+
+		a.log.Warn("rename failed", "tab_id", tab.ID, "name", decision.Name, "error", err)
+
+		return
+	}
+
+	// Recorded before the log line so the next poll cannot read this rename as
+	// the user's.
+	a.manual.Applied(tab.ID, decision.Name)
+	a.log.Info("tab renamed",
+		"tab_id", tab.ID,
+		"old", tab.CurrentName,
+		"new", decision.Name,
+		"reason", decision.Reason,
+		"confidence", decision.Confidence,
+	)
 }
 
 // labelsOf indexes tabs by id for the manual-name bookkeeping, which needs both
@@ -195,132 +176,4 @@ func labelsOf(tabs []state.TabState) map[string]string {
 	}
 
 	return labels
-}
-
-// processesIn reports what a pane is running, reusing the last read while the
-// pane's revision holds and that read is recent. Neither test is exact, which
-// is why there are two — see docs/architecture/poll-loop.md.
-func (a *App) processesIn(
-	ctx context.Context,
-	client herdr.Client,
-	paneID string,
-) []herdr.PaneProcessInfoProcess {
-	if processes, read := a.changes.Processes(paneID); read {
-		return processes
-	}
-
-	processes, err := herdr.PaneProcesses(ctx, client, paneID)
-	if err != nil {
-		if herdr.ErrorCode(err) != herdr.CodePaneNotFound && ctx.Err() == nil {
-			a.log.Debug("could not read what a pane is running", "pane_id", paneID, "error", err)
-		}
-
-		return nil
-	}
-
-	a.changes.Ran(paneID, processes)
-
-	return processes
-}
-
-// checkoutIn reports what the repository holding the pane has checked out.
-// Unlike a process read it is not cached, and why not is in
-// docs/architecture/title-resolution.md.
-func (a *App) checkoutIn(ctx context.Context, pane herdr.PaneInfo) git.Checkout {
-	// A branch width of zero is how branches are turned off, and a read whose
-	// answer is thrown away is still a read on every pane twice a second.
-	if a.cfg.BranchMax <= 0 {
-		return git.Checkout{}
-	}
-
-	if spentPoll(ctx) {
-		return git.Checkout{}
-	}
-
-	checkout, _ := git.Read(pane.Dir())
-
-	return checkout
-}
-
-// topicIn reports what the session the pane's agent is holding says it is
-// about. Only Claude Code's transcripts are understood, and only Herdr's
-// integration hook says which session a pane holds.
-func (a *App) topicIn(ctx context.Context, pane herdr.PaneInfo) string {
-	if !a.cfg.ReadTranscripts || spentPoll(ctx) {
-		return ""
-	}
-
-	sessionID, ok := pane.AgentSession.IDFor(claude.Agent)
-	if !ok {
-		return ""
-	}
-
-	return a.topics.Topic(sessionID, pane.Dir()).Text()
-}
-
-// spentPoll reports that this poll is past its deadline, in which case the tab
-// loop will discard it. The reads it guards go to the filesystem, which takes
-// no context, so the only way to bound them is not to start them.
-func spentPoll(ctx context.Context) bool {
-	return ctx.Err() != nil
-}
-
-// sessionsIn lists the agent sessions the snapshot holds, which is what the
-// transcript reader keeps its places for.
-func sessionsIn(panes []herdr.PaneInfo) []string {
-	sessions := make([]string, 0, len(panes))
-	for _, pane := range panes {
-		if pane.AgentSession != nil {
-			sessions = append(sessions, pane.AgentSession.Value)
-		}
-	}
-
-	return sessions
-}
-
-// tabsIn assembles the snapshot's tabs with their panes. What is running in a
-// pane needs a request of its own, which processesIn makes only when the last
-// answer will no longer do.
-func (a *App) tabsIn(
-	ctx context.Context,
-	client herdr.Client,
-	snapshot herdr.Snapshot,
-) []state.TabState {
-	workspaces := make(map[string]string, len(snapshot.Workspaces))
-
-	for _, workspace := range snapshot.Workspaces {
-		workspaces[workspace.WorkspaceID] = workspace.Label
-	}
-
-	byTab := make(map[string][]*state.PaneState, len(snapshot.Tabs))
-
-	for _, pane := range snapshot.Panes {
-		byTab[pane.TabID] = append(byTab[pane.TabID], state.PaneFrom(pane, state.Reads{
-			Processes: a.processesIn(ctx, client, pane.PaneID),
-			Git:       a.checkoutIn(ctx, pane),
-			Topic:     a.topicIn(ctx, pane),
-			ChangedAt: a.changes.ChangedAt(pane.PaneID),
-		}))
-	}
-
-	// An unnamed tab carries its place in the workspace, and the snapshot lists
-	// tabs in display order, so counting them gives that label.
-	positions := make(map[string]int, len(snapshot.Workspaces))
-	tabs := make([]state.TabState, 0, len(snapshot.Tabs))
-
-	for _, info := range snapshot.Tabs {
-		positions[info.WorkspaceID]++
-
-		tabs = append(
-			tabs,
-			state.TabFrom(
-				info,
-				workspaces[info.WorkspaceID],
-				positions[info.WorkspaceID],
-				byTab[info.TabID],
-			),
-		)
-	}
-
-	return tabs
 }
