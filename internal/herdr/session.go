@@ -47,6 +47,33 @@ type PaneInfo struct {
 	Agent        string `json:"agent"`
 	DisplayAgent string `json:"display_agent"`
 	AgentStatus  string `json:"agent_status"`
+
+	// AgentSession identifies the conversation the pane's agent is holding.
+	// It is null until the agent's Herdr integration reports one.
+	AgentSession *AgentSessionInfo `json:"agent_session"`
+}
+
+// SessionRefID is the only reference kind Herdr has been seen to answer with.
+// It accepts a path from an integration and reports the id anyway.
+const SessionRefID = "id"
+
+// AgentSessionInfo identifies an agent's own session, as its integration hook
+// reported it. Which agent reported it decides how the reference is read, so
+// the label is part of the reference.
+type AgentSessionInfo struct {
+	Agent string `json:"agent"`
+	Kind  string `json:"kind"`
+	Value string `json:"value"`
+}
+
+// IDFor reports the session id this reference holds, and false unless it names
+// a session of the given agent by id. A nil reference is a pane whose agent has
+// reported nothing, which is every pane until an integration is installed.
+func (s *AgentSessionInfo) IDFor(agent string) (string, bool) {
+	if s == nil || s.Agent != agent || s.Kind != SessionRefID {
+		return "", false
+	}
+	return s.Value, true
 }
 
 // Dir is the directory a pane speaks for. The shell's own is preferred over
