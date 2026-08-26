@@ -110,7 +110,9 @@ func (r *Reader) Topic(sessionID, dir string) Topic {
 	}
 
 	if session.path == "" && !r.find(session, sessionID, dir) {
-		return Topic{}
+		// What was read before a transcript went missing still names the
+		// session better than nothing does.
+		return session.topic
 	}
 
 	r.readInto(session)
@@ -211,6 +213,11 @@ func slugOf(dir string) string {
 func (r *Reader) readInto(session *transcript) {
 	info, err := os.Stat(session.path)
 	if err != nil {
+		// Rotated, deleted, or refiled under another project. Letting the path
+		// go puts the session back behind locateRetry, and the offset goes
+		// with the file it counted into.
+		session.path, session.offset = "", 0
+
 		return
 	}
 

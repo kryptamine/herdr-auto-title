@@ -348,3 +348,39 @@ func TestSlugMatchesHowClaudeCodeNamesAProject(t *testing.T) {
 		t.Errorf("slug = %q", got)
 	}
 }
+
+func TestATranscriptThatWentMissingIsLookedForAgain(t *testing.T) {
+	// The path was found once and then kept for the pane's whole life, so a
+	// transcript that was rotated away froze the topic on whatever it last
+	// said. locateRetry exists for exactly this and could never apply.
+	p := newProject(t)
+	reader := NewReader()
+	clock := time.Now()
+	reader.now = func() time.Time { return clock }
+
+	p.write(aiTitle("OAuth redirect fix"))
+
+	if got := reader.Topic(session, started); got.Text() != "OAuth redirect fix" {
+		t.Fatalf("topic = %+v, want the transcript read", got)
+	}
+
+	if err := os.Remove(p.path()); err != nil {
+		t.Fatal(err)
+	}
+
+	// The first read finds it gone and lets the path go; the second finds the
+	// search still on cooldown. Both keep the name the session had.
+	for i := range 2 {
+		if got := reader.Topic(session, started); got.Text() != "OAuth redirect fix" {
+			t.Errorf("read %d: topic = %+v, want the last known one kept", i, got)
+		}
+	}
+
+	p.write(aiTitle("Rework the poll loop"))
+
+	clock = clock.Add(locateRetry)
+
+	if got := reader.Topic(session, started); got.Text() != "Rework the poll loop" {
+		t.Errorf("topic = %+v, want the replacement transcript found and read", got)
+	}
+}
