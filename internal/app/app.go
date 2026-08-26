@@ -5,7 +5,6 @@ package app
 import (
 	"context"
 	"log/slog"
-	"strconv"
 	"time"
 
 	"github.com/kryptamine/herdr-auto-title/internal/claude"
@@ -146,12 +145,7 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 		}
 
 		decision := a.titles.Resolve(tab)
-		if a.manual.Observe(state.Sighting{
-			TabID:   tab.ID,
-			Current: tab.CurrentName,
-			Desired: decision.Name,
-			Default: strconv.Itoa(tab.Position),
-		}) {
+		if a.manual.Observe(state.SightingFrom(tab, decision.Name)) {
 			a.log.Info("leaving a tab the user renamed", "tab_id", tab.ID, "name", tab.CurrentName)
 			continue
 		}

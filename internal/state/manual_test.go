@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/kryptamine/herdr-auto-title/internal/herdr"
 )
 
 func newManual(t *testing.T) *Manual {
@@ -19,6 +21,24 @@ func newManual(t *testing.T) *Manual {
 // resolver would name `dashboard`.
 func sighting(current string) Sighting {
 	return Sighting{TabID: "wE:t1", Current: current, Desired: "dashboard", Default: "1"}
+}
+
+func TestSightingFromDerivesTheDefaultLabel(t *testing.T) {
+	// A tab nobody has named wears its position, so the third tab of a
+	// workspace is `3` however high the ids around it have climbed.
+	tab := TabFrom(herdr.TabInfo{TabID: "wE:t9", Label: "Important work"}, "work", 3, nil)
+
+	got := SightingFrom(tab, "dashboard")
+	want := Sighting{
+		TabID:   "wE:t9",
+		Current: "Important work",
+		Desired: "dashboard",
+		Default: "3",
+	}
+
+	if got != want {
+		t.Errorf("sighting = %+v, want %+v", got, want)
+	}
 }
 
 func TestTheFirstPollNeverLocks(t *testing.T) {

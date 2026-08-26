@@ -5,6 +5,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 )
 
@@ -81,6 +82,18 @@ type Sighting struct {
 	Current string
 	Desired string
 	Default string
+}
+
+// SightingFrom is what a poll saw of a tab, given the name the resolver chose
+// for it. What Herdr calls an unclaimed tab is derived here rather than by the
+// caller: it is the tab's own position, which is this package's to know.
+func SightingFrom(tab TabState, desired string) Sighting {
+	return Sighting{
+		TabID:   tab.ID,
+		Current: tab.CurrentName,
+		Desired: desired,
+		Default: strconv.Itoa(tab.Position),
+	}
 }
 
 // Observe records what a poll saw and reports whether the user put that label
