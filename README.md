@@ -125,17 +125,6 @@ restarts**, with the same `herdr server stop` the install needs.
 | `HERDR_AUTO_TITLE_MANUAL_FILE` | `manual-names.json`, next to `config.env` | Where tabs you renamed by hand are remembered; empty keeps them in memory  |
 | `HERDR_AUTO_TITLE_TRANSCRIPT`  | `true`                                    | Read an agent's own session transcript when it has not titled its terminal |
 
-The same names work as environment variables, and **an environment variable
-overrides the file** — which is how you try a setting for one run without
-editing anything.
-
-Each line is `KEY=value`, and `#` starts a comment. A key that is not in the
-table is ignored without a warning. `${VAR}` is expanded from this file only and
-never from the environment, so `HERDR_AUTO_TITLE_MANUAL_FILE=${HOME}/names.json`
-gives you `/names.json`: write paths out in full. And one bad line loses the
-whole file, so every setting falls back to its default and the plugin warns at
-startup, naming the file and what the parser objected to.
-
 ## Documentation
 
 - [Architecture](docs/architecture/) — how it works and why: the poll loop, how
