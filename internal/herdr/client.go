@@ -10,9 +10,9 @@ import (
 	"sync/atomic"
 )
 
-// SocketPathEnv names the environment variable holding the path to the Herdr
+// socketPathEnv names the environment variable holding the path to the Herdr
 // socket. The path is never hard-coded.
-const SocketPathEnv = "HERDR_SOCKET_PATH"
+const socketPathEnv = "HERDR_SOCKET_PATH"
 
 // Client is the subset of the Herdr socket API that Auto Title uses.
 type Client interface {
@@ -31,11 +31,11 @@ type SocketClient struct {
 
 var _ Client = (*SocketClient)(nil)
 
-// SocketPath returns the configured Herdr socket path.
-func SocketPath() (string, error) {
-	path := os.Getenv(SocketPathEnv)
+// socketPath returns the configured Herdr socket path.
+func socketPath() (string, error) {
+	path := os.Getenv(socketPathEnv)
 	if path == "" {
-		return "", fmt.Errorf("%s is not set: Auto Title must be started by Herdr", SocketPathEnv)
+		return "", fmt.Errorf("%s is not set: Auto Title must be started by Herdr", socketPathEnv)
 	}
 
 	return path, nil
@@ -44,16 +44,16 @@ func SocketPath() (string, error) {
 // New builds a client for the socket named by HERDR_SOCKET_PATH. It performs no
 // I/O; the first connection is made by the first call.
 func New() (*SocketClient, error) {
-	path, err := SocketPath()
+	path, err := socketPath()
 	if err != nil {
 		return nil, err
 	}
 
-	return NewWithPath(path), nil
+	return newWithPath(path), nil
 }
 
-// NewWithPath builds a client for an explicit socket path.
-func NewWithPath(path string) *SocketClient {
+// newWithPath builds a client for an explicit socket path.
+func newWithPath(path string) *SocketClient {
 	return &SocketClient{path: path}
 }
 

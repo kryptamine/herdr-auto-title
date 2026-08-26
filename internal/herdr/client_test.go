@@ -102,7 +102,7 @@ func (s *testServer) serve(conn net.Conn) {
 }
 
 func (s *testServer) client() *SocketClient {
-	return NewWithPath(s.path)
+	return newWithPath(s.path)
 }
 
 func (s *testServer) connectionCount() int {
@@ -273,15 +273,15 @@ func TestNullFieldsDecodeAsEmpty(t *testing.T) {
 }
 
 func TestSocketPathRequiresTheEnvironment(t *testing.T) {
-	t.Setenv(SocketPathEnv, "")
+	t.Setenv(socketPathEnv, "")
 
-	if _, err := SocketPath(); err == nil {
+	if _, err := socketPath(); err == nil {
 		t.Error("SocketPath succeeded without the environment variable")
 	}
 
-	t.Setenv(SocketPathEnv, "/tmp/herdr.sock")
+	t.Setenv(socketPathEnv, "/tmp/herdr.sock")
 
-	got, err := SocketPath()
+	got, err := socketPath()
 	if err != nil {
 		t.Fatalf("SocketPath: %v", err)
 	}
