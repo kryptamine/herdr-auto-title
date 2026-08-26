@@ -16,7 +16,7 @@ it leaves that tab alone from then on.
 
 ## Demo
 
-https://github.com/user-attachments/assets/94d9f4f3-b986-4664-a9bc-d078ece4f05e
+https://github.com/user-attachments/assets/606fde6a-dfd3-4010-b4f3-80c79d74ea63
 
 ## Quick start
 
