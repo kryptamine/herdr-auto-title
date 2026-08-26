@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/kryptamine/herdr-auto-title/internal/resolver"
+	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
 
 // isolate takes a test off the developer's machine: HOME decides where the
@@ -311,5 +312,30 @@ func TestAKeyOfSomeoneElsesIsIgnored(t *testing.T) {
 
 	if cfg.Poll != DefaultPoll {
 		t.Errorf("poll = %s, want the default %s", cfg.Poll, DefaultPoll)
+	}
+}
+
+func TestAnEmptyManualFileKeepsLocksInMemory(t *testing.T) {
+	// The setting is a path and takes no sentinel, so asking for no file is
+	// asking for no path. Only LookupEnv can tell that from not asking at all.
+	isolate(t)
+	t.Setenv(EnvManual, "")
+
+	cfg, warnings := LoadConfig()
+	if len(warnings) != 0 {
+		t.Errorf("warnings = %v, want none", warnings)
+	}
+
+	if cfg.ManualPath != "" {
+		t.Errorf("manual path = %q, want none so the locks stay in memory", cfg.ManualPath)
+	}
+}
+
+func TestAnUnsetManualFileKeepsTheDefault(t *testing.T) {
+	isolate(t)
+
+	cfg, _ := LoadConfig()
+	if cfg.ManualPath != state.DefaultManualPath() {
+		t.Errorf("manual path = %q, want the default", cfg.ManualPath)
 	}
 }

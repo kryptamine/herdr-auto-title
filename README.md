@@ -122,7 +122,7 @@ restarts**, with the same `herdr server stop` the install needs.
 | `HERDR_AUTO_TITLE_MAX_LENGTH`  | `50`                                      | Longest title, in columns of the tab bar                                   |
 | `HERDR_AUTO_TITLE_BRANCH_MAX`  | `12`                                      | Longest branch a title may carry, in columns; `0` leaves branches out      |
 | `HERDR_AUTO_TITLE_POSITION`    | `true`                                    | Put each tab's position in front of its title                              |
-| `HERDR_AUTO_TITLE_MANUAL_FILE` | `manual-names.json`, next to `config.env` | Where tabs you renamed by hand are remembered                              |
+| `HERDR_AUTO_TITLE_MANUAL_FILE` | `manual-names.json`, next to `config.env` | Where tabs you renamed by hand are remembered; empty keeps them in memory  |
 | `HERDR_AUTO_TITLE_TRANSCRIPT`  | `true`                                    | Read an agent's own session transcript when it has not titled its terminal |
 
 The same names work as environment variables, and **an environment variable

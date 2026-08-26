@@ -84,8 +84,9 @@ func LoadConfig() (Config, []string) {
 	cfg.ShowPosition = fromEnv(&warnings, EnvPosition, cfg.ShowPosition, boolean)
 	cfg.ReadTranscripts = fromEnv(&warnings, EnvTranscript, cfg.ReadTranscripts, boolean)
 	// A path needs neither parsing nor checking, so it does not go through
-	// fromEnv: any string the user set is the path they meant.
-	if raw := os.Getenv(EnvManual); raw != "" {
+	// fromEnv: any string the user set is the path they meant, and setting it
+	// to none of it asks for locks that do not outlive the process.
+	if raw, set := os.LookupEnv(EnvManual); set {
 		cfg.ManualPath = raw
 	}
 
