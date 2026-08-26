@@ -32,6 +32,25 @@ See [the poll loop](./poll-loop.md).
 A malformed request is answered with an uncorrelated error frame, and the
 connection is then closed.
 
+## What Herdr gives a plugin process
+
+A plugin the server starts inherits **the server's** environment, not the shell
+of whoever installed it — which is why settings reach Auto Title through a file;
+see [configuration](./configuration.md).
+
+Alongside `HERDR_SOCKET_PATH` and `HERDR_BIN_PATH`, the 0.8.2 binary names
+`HERDR_PLUGIN_ROOT`, `HERDR_PLUGIN_CONFIG_DIR` and `HERDR_PLUGIN_STATE_DIR` for
+a plugin process (and `HERDR_PLUGIN_ID`, `HERDR_PLUGIN_ENTRYPOINT_ID`,
+`HERDR_PLUGIN_CONTEXT_JSON` with it). `herdr plugin config-dir <plugin id>`
+prints the config directory, `herdr plugin list` repeats it, and Herdr creates
+it empty at install time: `~/.config/herdr/plugins/config/herdr.auto-title/`
+exists here.
+
+> **Not observed live.** The variable names come from strings in the `herdr`
+> 0.8.2 binary, not from the environment of a running plugin — seeing that needs
+> `herdr server stop`, which closes the session. The directory and the two CLI
+> commands were confirmed directly. Auto Title depends on none of it.
+
 ## The methods Auto Title uses
 
 Three, and no others (`internal/herdr/session.go`):

@@ -168,6 +168,17 @@ listed here** (`make probe-*`, `scripts/probe.py`).
   *position* in the workspace, counted from one, and that label shifts down when
   a tab to its left closes. The snapshot lists tabs in display order, so the
   position is their count within the workspace.
+- **A plugin the server starts inherits the server's environment**, not the
+  shell of whoever installed it, which is why `HERDR_AUTO_TITLE_*` settings
+  arrive through `config.env` (see
+  [docs/architecture/configuration.md](docs/architecture/configuration.md)).
+  Herdr creates `~/.config/herdr/plugins/config/<plugin id>/` and prints it from
+  `herdr plugin config-dir <id>` and `herdr plugin list` (confirmed directly),
+  and the 0.8.2 binary names `HERDR_PLUGIN_ROOT`, `HERDR_PLUGIN_CONFIG_DIR` and
+  `HERDR_PLUGIN_STATE_DIR` for a plugin process — that half is read out of the
+  binary's strings, **not observed on a live plugin**, because seeing it needs a
+  `herdr server stop`. Auto Title uses its own directory and depends on none of
+  them.
 - `tab.get` and `pane.get` read one object each; `pane.list` filters by
   workspace only, not by tab. Neither is needed while the snapshot is one call.
 

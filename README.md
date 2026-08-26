@@ -126,8 +126,66 @@ These rules explain most surprises:
 > stop the plugin, delete its entry from `manual-names.json` (or delete the
 > whole file), and start the plugin again.
 
+## Configuration
+
+Everything is optional; the defaults are what the section above describes.
+Settings live in a file Auto Title reads once, at startup:
+
+| Platform | File |
+|----------|------|
+| macOS | `~/Library/Application Support/herdr-auto-title/config.env` |
+| Linux | `~/.config/herdr-auto-title/config.env` |
+
+Nothing creates it for you. [`config.env.example`](config.env.example) lists
+every setting commented out, so a copy of it changes nothing until you uncomment
+a line.
+
+**Editing the file changes nothing until the plugin restarts**, and the plugin
+is restarted by the server:
+
+```sh
+herdr server stop   # closes the session; `herdr` brings it back
+```
+
+Reopening your terminal will not do it, for the same reason it does not start a
+freshly installed plugin: a new client attaches and the server, with your
+plugin, carries on as it was.
+
+> [!NOTE]
+> `herdr plugin list` prints a config directory of Herdr's own,
+> `~/.config/herdr/plugins/config/herdr.auto-title`. Auto Title does not read
+> it — a plugin you start by hand would never see it. Use the path above.
+
+| Setting | Default | What it does |
+|---------|---------|--------------|
+| `HERDR_AUTO_TITLE_DEBUG` | `false` | Log at DEBUG rather than INFO |
+| `HERDR_AUTO_TITLE_POLL_MS` | `500` | How often the session is read, in milliseconds |
+| `HERDR_AUTO_TITLE_MAX_LENGTH` | `50` | Longest title, in columns of the tab bar |
+| `HERDR_AUTO_TITLE_BRANCH_MAX` | `12` | Longest branch a title may carry, in columns; `0` leaves branches out |
+| `HERDR_AUTO_TITLE_POSITION` | `true` | Put each tab's position in front of its title |
+| `HERDR_AUTO_TITLE_MANUAL_FILE` | `manual-names.json`, next to `config.env` | Where tabs you renamed by hand are remembered |
+| `HERDR_AUTO_TITLE_TRANSCRIPT` | `true` | Read an agent's own session transcript when it has not titled its terminal |
+
+The same names work as environment variables, and **an environment variable
+overrides the file** — which is how you try a setting for one run without
+editing anything.
+
+Each line is `KEY=value`, and `#` starts a comment. Two things in that format
+catch people out:
+
+- **`${VAR}` is expanded from this file only, never from the environment**, so
+  `HERDR_AUTO_TITLE_MANUAL_FILE=${HOME}/names.json` gives you `/names.json`.
+  Write paths out in full.
+- **One bad line loses the whole file.** Every setting falls back to its
+  default, and the plugin warns at startup, naming the file and what the parser
+  objected to.
+
+A key that is not in the table is ignored and nothing warns you, so check the
+spelling against the table when a setting seems to do nothing.
+
 ## Documentation
 
 - [Architecture](docs/architecture/) — how it works and why: the poll loop, how
-  a tab becomes a name, and the measured facts about the Herdr socket API.
+  a tab becomes a name, where configuration comes from, and the measured facts
+  about the Herdr socket API.
 - [Development](docs/development.md) — working on it.

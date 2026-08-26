@@ -174,6 +174,12 @@ lands, a name you set by hand is overwritten on the next context change.
 second by default, however fast its pane is churning. If a tab renames more
 often than you can read it, raise `HERDR_AUTO_TITLE_POLL_MS`.
 
+**`config.env` is read once, and `make dev` does not watch it.** The watcher
+rebuilds on `*.go` in the checkout, so a setting you change in the configuration
+directory reaches the plugin only when the process starts again: Ctrl+C and
+`make run`. Note that `make run` sets `HERDR_AUTO_TITLE_DEBUG=1` in the
+environment, which beats whatever the file says about it.
+
 **Short-lived tabs produce `tab_not_found`.** Herdr creates and closes tabs for
 its own purposes between a snapshot and the rename it leads to. That is handled
 and logged at DEBUG; if you see it as a warning, something regressed.

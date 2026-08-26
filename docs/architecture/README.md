@@ -21,6 +21,7 @@ that settled it.
 | [Title resolution](./title-resolution.md) | Which pane speaks for a tab, the confidence ladder, what each source contributes, why the workspace name is not repeated, and why the tab position leads the title |
 | [Sanitizing untrusted values](./sanitization.md) | What is stripped from terminal-derived values, what is rejected as saying nothing, and why the length limit is counted in columns |
 | [Manual rename protection](./manual-rename-protection.md) | Telling your rename from the plugin's own using nothing but successive polls, and what that costs |
+| [Configuration](./configuration.md) | Why a configuration file exists at all, where it lives, why the environment overrides it, and what the file format does and does not do |
 | [Herdr socket API](./herdr-socket-api.md) | The wire protocol and the measured facts about Herdr 0.8.2 that everything else rests on |
 
 Two things are worth knowing before reading any of them:

@@ -1,6 +1,8 @@
 package app
 
 import (
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -9,12 +11,35 @@ import (
 	"github.com/kryptamine/herdr-auto-title/internal/resolver"
 )
 
-// isolate clears every variable Auto Title reads, so a test sees only what it
-// sets and the environment the tests run in cannot change the outcome.
+// isolate takes a test off the developer's machine: HOME decides where the
+// configuration file is looked for, and every variable Auto Title reads is
+// removed so the test sees only what it sets.
 func isolate(t *testing.T) {
 	t.Helper()
-	for _, name := range []string{EnvDebug, EnvPoll, EnvMaxLength, EnvBranchMax, EnvPosition, EnvManual} {
+	t.Setenv("HOME", t.TempDir())
+	// Where os.UserConfigDir looks first on Linux, so HOME alone does not
+	// isolate anything until it is out of the way.
+	t.Setenv("XDG_CONFIG_HOME", "")
+	for _, name := range []string{EnvDebug, EnvPoll, EnvMaxLength, EnvBranchMax, EnvPosition, EnvManual, EnvTranscript} {
+		// Setenv first for its cleanup, which then also undoes what the
+		// configuration file sets; an empty variable is not an absent one.
 		t.Setenv(name, "")
+		os.Unsetenv(name)
+	}
+}
+
+// writeConfig puts contents where LoadConfig looks for the configuration file.
+func writeConfig(t *testing.T, contents string) {
+	t.Helper()
+	path := configPath()
+	if path == "" {
+		t.Fatal("no configuration directory")
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(contents), 0o644); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -149,5 +174,108 @@ func TestAnUnusableValueIsReportedInFull(t *testing.T) {
 		if !strings.Contains(warnings[0], want) {
 			t.Errorf("warning %q does not mention %q", warnings[0], want)
 		}
+	}
+}
+
+func TestLoadConfigReadsTheFile(t *testing.T) {
+	isolate(t)
+	writeConfig(t, `# every setting the file can carry
+HERDR_AUTO_TITLE_DEBUG=true
+HERDR_AUTO_TITLE_POLL_MS=800
+HERDR_AUTO_TITLE_MAX_LENGTH=32
+HERDR_AUTO_TITLE_BRANCH_MAX=0
+HERDR_AUTO_TITLE_POSITION=false
+HERDR_AUTO_TITLE_TRANSCRIPT=false
+HERDR_AUTO_TITLE_MANUAL_FILE=/tmp/names.json
+`)
+
+	cfg, warnings := LoadConfig()
+	if len(warnings) != 0 {
+		t.Errorf("warnings = %v, want none", warnings)
+	}
+	if !cfg.Debug {
+		t.Error("debug is off despite the file enabling it")
+	}
+	if cfg.Poll != 800*time.Millisecond {
+		t.Errorf("poll = %s, want 800ms", cfg.Poll)
+	}
+	if cfg.MaxLength != 32 {
+		t.Errorf("max length = %d, want 32", cfg.MaxLength)
+	}
+	if cfg.BranchMax != 0 {
+		t.Errorf("branch max = %d, want 0", cfg.BranchMax)
+	}
+	if cfg.ShowPosition {
+		t.Error("positions are on despite the file turning them off")
+	}
+	if cfg.ReadTranscripts {
+		t.Error("transcripts are read despite the file turning them off")
+	}
+	if cfg.ManualPath != "/tmp/names.json" {
+		t.Errorf("manual path = %q, want the one the file names", cfg.ManualPath)
+	}
+}
+
+func TestTheEnvironmentBeatsTheFile(t *testing.T) {
+	// The file is where a setting lives permanently; the environment is how it
+	// is overridden for one run, which is what `make run` does with debug.
+	isolate(t)
+	writeConfig(t, "HERDR_AUTO_TITLE_POLL_MS=800\n")
+	t.Setenv(EnvPoll, "250")
+
+	cfg, warnings := LoadConfig()
+	if len(warnings) != 0 {
+		t.Errorf("warnings = %v, want none", warnings)
+	}
+	if cfg.Poll != 250*time.Millisecond {
+		t.Errorf("poll = %s, want the 250ms the environment asked for", cfg.Poll)
+	}
+}
+
+func TestAMissingConfigFileIsSilent(t *testing.T) {
+	isolate(t)
+
+	cfg, warnings := LoadConfig()
+	if len(warnings) != 0 {
+		t.Errorf("warnings = %v, want none", warnings)
+	}
+	if cfg.Poll != DefaultPoll {
+		t.Errorf("poll = %s, want the default %s", cfg.Poll, DefaultPoll)
+	}
+}
+
+func TestABrokenConfigFileCostsTheWholeFile(t *testing.T) {
+	// godotenv parses the file or nothing, so a good line next to a bad one is
+	// lost with it. The warning is all the user gets.
+	isolate(t)
+	writeConfig(t, "HERDR_AUTO_TITLE_POLL_MS=800\nHERDR_AUTO_TITLE_MAX_LENGTH=\"32\n")
+
+	cfg, warnings := LoadConfig()
+	if len(warnings) != 1 {
+		t.Fatalf("warnings = %v, want one", warnings)
+	}
+	if !strings.Contains(warnings[0], ConfigFile) {
+		t.Errorf("warning %q does not name the file", warnings[0])
+	}
+	if cfg.Poll != DefaultPoll {
+		t.Errorf("poll = %s, want the default %s", cfg.Poll, DefaultPoll)
+	}
+	if cfg.MaxLength != resolver.DefaultMaxLength {
+		t.Errorf("max length = %d, want the default %d", cfg.MaxLength, resolver.DefaultMaxLength)
+	}
+}
+
+func TestAKeyOfSomeoneElsesIsIgnored(t *testing.T) {
+	// godotenv puts every key in the file into the environment; only the ones
+	// Auto Title reads mean anything to it.
+	isolate(t)
+	writeConfig(t, "HERDR_AUTO_TITLE_POL_MS=800\nSOMETHING_ELSE=1\n")
+
+	cfg, warnings := LoadConfig()
+	if len(warnings) != 0 {
+		t.Errorf("warnings = %v, want none", warnings)
+	}
+	if cfg.Poll != DefaultPoll {
+		t.Errorf("poll = %s, want the default %s", cfg.Poll, DefaultPoll)
 	}
 }

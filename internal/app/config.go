@@ -3,15 +3,20 @@ package app
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
+
+	"github.com/joho/godotenv"
 
 	"github.com/kryptamine/herdr-auto-title/internal/resolver"
 	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
 
-// Environment variables Auto Title reads. V1 has no configuration file.
+// Environment variables Auto Title reads. The configuration file holds the
+// same names; see docs/architecture/configuration.md.
 const (
 	EnvDebug      = "HERDR_AUTO_TITLE_DEBUG"
 	EnvPoll       = "HERDR_AUTO_TITLE_POLL_MS"
@@ -21,6 +26,10 @@ const (
 	EnvManual     = "HERDR_AUTO_TITLE_MANUAL_FILE"
 	EnvTranscript = "HERDR_AUTO_TITLE_TRANSCRIPT"
 )
+
+// ConfigFile is the configuration file, read from the same directory the
+// manual-rename locks are kept in.
+const ConfigFile = "config.env"
 
 // DefaultPoll is how often the session is read. A six-pane snapshot measured
 // 0.47 ms and 6 KB, so twice a second costs about a thousandth of a core, and
@@ -49,10 +58,15 @@ type Config struct {
 	ReadTranscripts bool
 }
 
-// LoadConfig reads configuration from the environment. Unusable values are
-// reported as warnings and the default is kept, so a typo never stops the
-// plugin from running.
+// LoadConfig reads configuration from the configuration file and the
+// environment. Unusable values are reported as warnings and the default is
+// kept, so a typo never stops the plugin from running.
 func LoadConfig() (Config, []string) {
+	var warnings []string
+	if warning := readConfigFile(); warning != "" {
+		warnings = append(warnings, warning)
+	}
+
 	cfg := Config{
 		Poll:            DefaultPoll,
 		MaxLength:       resolver.DefaultMaxLength,
@@ -61,7 +75,6 @@ func LoadConfig() (Config, []string) {
 		ManualPath:      state.DefaultManualPath(),
 		ReadTranscripts: true,
 	}
-	var warnings []string
 
 	cfg.Debug = fromEnv(&warnings, EnvDebug, cfg.Debug, boolean)
 	cfg.Poll = fromEnv(&warnings, EnvPoll, cfg.Poll, milliseconds)
@@ -77,6 +90,34 @@ func LoadConfig() (Config, []string) {
 	}
 
 	return cfg, warnings
+}
+
+// readConfigFile puts the file's settings into the environment, which is how a
+// setting reaches a plugin the Herdr server starts: that process inherits the
+// server's environment, never the user's shell.
+func readConfigFile() string {
+	path := configPath()
+	if path == "" {
+		return ""
+	}
+	// Load leaves a variable already in the environment alone, which is what
+	// makes the environment win over the file.
+	err := godotenv.Load(path)
+	if err == nil || errors.Is(err, fs.ErrNotExist) {
+		return ""
+	}
+	// One bad line costs the whole file: godotenv parses it or nothing.
+	return fmt.Sprintf("%s %s, so nothing in it is used", path, err)
+}
+
+// configPath is where the configuration file lives, or empty when the user has
+// no configuration directory at all.
+func configPath() string {
+	dir, err := os.UserConfigDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(dir, "herdr-auto-title", ConfigFile)
 }
 
 // fromEnv returns what the environment says name is, or fallback when it says
