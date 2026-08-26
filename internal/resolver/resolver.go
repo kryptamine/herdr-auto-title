@@ -12,7 +12,7 @@ import (
 )
 
 // DefaultMaxLength bounds a generated title, in columns of the tab bar.
-const DefaultMaxLength = 64
+const DefaultMaxLength = 50
 
 // GenericFallback names a tab whose context tells us nothing.
 const GenericFallback = "Shell"

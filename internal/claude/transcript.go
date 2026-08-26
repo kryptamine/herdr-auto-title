@@ -23,7 +23,7 @@ const Agent = "claude"
 // catch-up on a session first seen mid-flight, not the steady state.
 const maxScan = 2 << 20
 
-// maxOpening bounds what an opening prompt contributes. A title is 64 columns;
+// maxOpening bounds what an opening prompt contributes. A title is 50 columns;
 // the rest is only carried so the truncation can happen against the tab bar.
 const maxOpening = 200
 

@@ -156,9 +156,12 @@ func TestEditorTitleKeepsTheFileAndDropsThePath(t *testing.T) {
 		},
 	}
 
+	// The cap is not what this tests, and the longest of the three outgrows it.
+	const wide = 80
+
 	for _, tc := range tests {
 		t.Run(tc.title, func(t *testing.T) {
-			got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(&state.PaneState{
+			got := Default(wide, DefaultBranchMaxLength).Resolve(tabWithPane(&state.PaneState{
 				Dir:           "/Users/dev/Work/herdr-auto-title",
 				TerminalTitle: tc.title,
 			}))

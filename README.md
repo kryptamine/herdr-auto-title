@@ -95,7 +95,7 @@ ssh into prod-01                       →  5 · ssh › prod-01
 $HOME                                  →  6 · Shell
 ```
 
-Titles read `<position> · <context> › <activity>`, capped at 64 columns of the
+Titles read `<position> · <context> › <activity>`, capped at 50 columns of the
 tab bar. The activity is the first of these that has something to say: what an
 agent reports it is working on, then the terminal title, then a lone program in
 the pane. The context is the directory you are in, or the machine you reached

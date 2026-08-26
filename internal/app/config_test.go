@@ -1,6 +1,7 @@
 package app
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -144,7 +145,7 @@ func TestAnUnusableValueIsReportedInFull(t *testing.T) {
 	}
 	// The warning has to say which variable, what was in it, and what is being
 	// used instead — it is all the user gets.
-	for _, want := range []string{EnvMaxLength, `"0"`, "must be positive", "64"} {
+	for _, want := range []string{EnvMaxLength, `"0"`, "must be positive", strconv.Itoa(resolver.DefaultMaxLength)} {
 		if !strings.Contains(warnings[0], want) {
 			t.Errorf("warning %q does not mention %q", warnings[0], want)
 		}
