@@ -84,10 +84,6 @@ format, so each needs a reader of its own:
 An agent that is not ticked loses nothing: its tab is named from its terminal
 title, exactly as before.
 
-Working on the plugin rather than using it? [Development](docs/development.md)
-covers linking a local checkout, which Herdr makes you unlink before `install`
-will run.
-
 ## What your tabs will be called
 
 ```
