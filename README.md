@@ -45,44 +45,23 @@ server has restarted, nothing is renamed. `herdr plugin list` shows the plugin,
 
 ### Better names for agent tabs
 
-A coding agent usually says what it is working on through its terminal title,
-and that is where Auto Title reads it. Claude Code has one blind spot: a session
-you opened with a slash command and never typed a prompt into is never given a
+An agent usually says what it is working on through its terminal title, and that
+is where Auto Title reads it. Claude Code has one blind spot: a session you
+opened with a slash command and never typed a prompt into is never given a
 title, so its tab stays `claude`. One command closes it:
 
 ```sh
 herdr integration install claude
 ```
 
-That is Herdr's own hook, not this plugin's. It tells Herdr which session each
-pane is holding, which lets Auto Title read the topic from the session itself.
-Reading transcripts can be turned off with `HERDR_AUTO_TITLE_TRANSCRIPT=false`.
+That is Herdr's own hook, not this plugin's: it tells Herdr which session each
+pane holds, and Auto Title reads the topic from the session itself.
 
-**Only Claude Code is read so far.** Herdr installs the same hook for seventeen
-agents (`herdr integration status`), and Auto Title accepts the session it
-reports from any of them — but every agent keeps its own transcript in its own
-format, so each needs a reader of its own:
-
-- [x] `claude` — Claude Code
-- [ ] `antigravity-cli`
-- [ ] `codex`
-- [ ] `copilot`
-- [ ] `cursor`
-- [ ] `devin`
-- [ ] `droid`
-- [ ] `grok`
-- [ ] `hermes`
-- [ ] `kilo`
-- [ ] `kimi`
-- [ ] `mastracode`
-- [ ] `omp`
-- [ ] `opencode`
-- [ ] `pi`
-- [ ] `qodercli`
-- [ ] `qwen`
-
-An agent that is not ticked loses nothing: its tab is named from its terminal
-title, exactly as before.
+Herdr ships the same hook for seventeen agents (`herdr integration status`) and
+Auto Title accepts a session from any of them, but every agent keeps its
+transcript in its own format, so **only Claude Code is read so far**. Any other
+agent's tab is named from its terminal title, exactly as before, and
+`HERDR_AUTO_TITLE_TRANSCRIPT=false` stops Auto Title reading transcripts at all.
 
 ## What your tabs will be called
 
@@ -103,85 +82,59 @@ over `ssh`, and the branch you have checked out qualifies it.
 
 These rules explain most surprises:
 
-- **The number in front is the tab's place in the workspace**, which is the key
-  that switches to it. It leads the title because the tab bar cuts the tail of
-  a title too wide for it, and it moves with the tab when one to its left
-  closes. `HERDR_AUTO_TITLE_POSITION=false` leaves it out.
-- Auto Title never repeats your workspace name, because Herdr already shows it
-  above the tabs.
-- **A branch shows when it distinguishes.** Your repository's own default
-  branch says nothing, so it is left out; anything else is shown, shortened to
-  what identifies it (`bugfix-asa-cpanel-uapi-mc-13675` → `MC-13675`) when it is
-  too long for the tab bar.
-- It drops paths, shell prompts and bare program names, which only say again
-  where you are.
+- **The number in front is the tab's position in the workspace**, which is the
+  key that switches to it. It leads the title because the tab bar cuts the tail
+  of one too wide for it. `HERDR_AUTO_TITLE_POSITION=false` leaves it out.
+- **A branch shows when it distinguishes.** Your repository's default branch
+  says nothing, so it is left out; anything else is shown, shortened to what
+  identifies it (`bugfix-asa-cpanel-uapi-mc-13675` → `MC-13675`).
+- **A tab you renamed is yours** and Auto Title never touches it again. Renaming
+  it back does not hand it over: stop the plugin, delete the tab's entry from
+  `manual-names.json`, and start the plugin again.
+- Paths, shell prompts, bare program names and your workspace name are left out,
+  because they only repeat what the screen already shows.
 - A tab with several panes takes its name from one of them: the focused pane, a
   pane running a busy agent, or the pane that changed last.
-- **A tab you renamed is yours.** Auto Title never touches it again.
-- An agent tab can also be named from the agent's own session — see
-  [better names for agent tabs](#better-names-for-agent-tabs).
-
-> [!WARNING]
-> Renaming it again does not hand it back. To get automatic naming for that tab,
-> stop the plugin, delete its entry from `manual-names.json` (or delete the
-> whole file), and start the plugin again.
 
 ## Configuration
 
 Everything is optional; the defaults are what the section above describes.
 Settings live in a file Auto Title reads once, at startup:
 
-| Platform | File |
-|----------|------|
-| macOS | `~/Library/Application Support/herdr-auto-title/config.env` |
-| Linux | `~/.config/herdr-auto-title/config.env` |
+| Platform | File                                                        |
+| -------- | ----------------------------------------------------------- |
+| macOS    | `~/Library/Application Support/herdr-auto-title/config.env` |
+| Linux    | `~/.config/herdr-auto-title/config.env`                     |
 
-Nothing creates it for you. [`config.env.example`](config.env.example) lists
-every setting commented out, so a copy of it changes nothing until you uncomment
-a line.
-
-**Editing the file changes nothing until the plugin restarts**, and the plugin
-is restarted by the server:
-
-```sh
-herdr server stop   # closes the session; `herdr` brings it back
-```
-
-Reopening your terminal will not do it, for the same reason it does not start a
-freshly installed plugin: a new client attaches and the server, with your
-plugin, carries on as it was.
+Nothing creates it for you; [`config.env.example`](config.env.example) lists
+every setting commented out. **A change reaches the plugin only when it
+restarts**, with the same `herdr server stop` the install needs.
 
 > [!NOTE]
-> `herdr plugin list` prints a config directory of Herdr's own,
-> `~/.config/herdr/plugins/config/herdr.auto-title`. Auto Title does not read
-> it — a plugin you start by hand would never see it. Use the path above.
+> The config directory `herdr plugin list` prints is Herdr's own. Auto Title
+> does not read it — a plugin you start by hand would never see it. Use the
+> path above.
 
-| Setting | Default | What it does |
-|---------|---------|--------------|
-| `HERDR_AUTO_TITLE_DEBUG` | `false` | Log at DEBUG rather than INFO |
-| `HERDR_AUTO_TITLE_POLL_MS` | `500` | How often the session is read, in milliseconds |
-| `HERDR_AUTO_TITLE_MAX_LENGTH` | `50` | Longest title, in columns of the tab bar |
-| `HERDR_AUTO_TITLE_BRANCH_MAX` | `12` | Longest branch a title may carry, in columns; `0` leaves branches out |
-| `HERDR_AUTO_TITLE_POSITION` | `true` | Put each tab's position in front of its title |
-| `HERDR_AUTO_TITLE_MANUAL_FILE` | `manual-names.json`, next to `config.env` | Where tabs you renamed by hand are remembered |
-| `HERDR_AUTO_TITLE_TRANSCRIPT` | `true` | Read an agent's own session transcript when it has not titled its terminal |
+| Setting                        | Default                                   | What it does                                                               |
+| ------------------------------ | ----------------------------------------- | -------------------------------------------------------------------------- |
+| `HERDR_AUTO_TITLE_DEBUG`       | `false`                                   | Log at DEBUG rather than INFO                                              |
+| `HERDR_AUTO_TITLE_POLL_MS`     | `500`                                     | How often the session is read, in milliseconds                             |
+| `HERDR_AUTO_TITLE_MAX_LENGTH`  | `50`                                      | Longest title, in columns of the tab bar                                   |
+| `HERDR_AUTO_TITLE_BRANCH_MAX`  | `12`                                      | Longest branch a title may carry, in columns; `0` leaves branches out      |
+| `HERDR_AUTO_TITLE_POSITION`    | `true`                                    | Put each tab's position in front of its title                              |
+| `HERDR_AUTO_TITLE_MANUAL_FILE` | `manual-names.json`, next to `config.env` | Where tabs you renamed by hand are remembered                              |
+| `HERDR_AUTO_TITLE_TRANSCRIPT`  | `true`                                    | Read an agent's own session transcript when it has not titled its terminal |
 
 The same names work as environment variables, and **an environment variable
 overrides the file** — which is how you try a setting for one run without
 editing anything.
 
-Each line is `KEY=value`, and `#` starts a comment. Two things in that format
-catch people out:
-
-- **`${VAR}` is expanded from this file only, never from the environment**, so
-  `HERDR_AUTO_TITLE_MANUAL_FILE=${HOME}/names.json` gives you `/names.json`.
-  Write paths out in full.
-- **One bad line loses the whole file.** Every setting falls back to its
-  default, and the plugin warns at startup, naming the file and what the parser
-  objected to.
-
-A key that is not in the table is ignored and nothing warns you, so check the
-spelling against the table when a setting seems to do nothing.
+Each line is `KEY=value`, and `#` starts a comment. A key that is not in the
+table is ignored without a warning. `${VAR}` is expanded from this file only and
+never from the environment, so `HERDR_AUTO_TITLE_MANUAL_FILE=${HOME}/names.json`
+gives you `/names.json`: write paths out in full. And one bad line loses the
+whole file, so every setting falls back to its default and the plugin warns at
+startup, naming the file and what the parser objected to.
 
 ## Documentation
 
