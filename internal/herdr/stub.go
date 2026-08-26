@@ -138,7 +138,8 @@ func (s *StubClient) ProcessReads() int {
 	return s.reads
 }
 
-// Polls counts the snapshots taken so far.
+// Polls counts the snapshots asked for so far, whether or not they were
+// answered.
 func (s *StubClient) Polls() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -154,6 +155,12 @@ func (s *StubClient) Call(ctx context.Context, method string, params any, result
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	// Counted before the error, so a test can wait out a stretch of polls that
+	// are failing as readily as one of polls that work.
+	if method == MethodSessionSnapshot {
+		s.polls++
+	}
+
 	if s.callErr != nil {
 		return s.callErr
 	}
@@ -165,7 +172,6 @@ func (s *StubClient) Call(ctx context.Context, method string, params any, result
 			return fmt.Errorf("stub client: unexpected result type for %s", method)
 		}
 
-		s.polls++
 		target.Snapshot = Snapshot{
 			Workspaces: slices.Clone(s.workspaces),
 			Tabs:       sorted(s.tabs, func(t TabInfo) string { return t.TabID }),

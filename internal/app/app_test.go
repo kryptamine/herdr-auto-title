@@ -291,7 +291,9 @@ func TestAFailedPollDoesNotStopTheLoop(t *testing.T) {
 	h.awaitRenames(1)
 
 	h.client.SetCallError(errors.New("socket hiccup"))
-	time.Sleep(10 * testPoll)
+	// Waited out rather than slept through: several ticks have to have found
+	// the socket shut before clearing the error proves anything.
+	h.awaitPolls(h.client.Polls() + 5)
 	h.client.SetCallError(nil)
 
 	h.client.SetPane(herdr.PaneInfo{
@@ -317,8 +319,8 @@ func TestAFailingFirstPollDoesNotStopTheRun(t *testing.T) {
 	client.SetCallError(errors.New("no such socket"))
 	h := startWith(t, client)
 
-	// Long enough for several ticks to have found the socket still shut.
-	time.Sleep(10 * testPoll)
+	// Several ticks have to have found the socket still shut.
+	h.awaitPolls(5)
 	client.SetCallError(nil)
 
 	if got := h.awaitRenames(1)[0].Label; got != "dashboard" {
