@@ -34,6 +34,10 @@ type PaneState struct {
 	// the transcript Herdr pointed at. Empty unless the agent's integration
 	// hook is installed — see docs/architecture/title-resolution.md.
 	AgentTopic string
+	// AgentSession names the conversation that agent holds, which is how the
+	// transcript behind AgentTopic is found. Nil until the agent's integration
+	// reports one.
+	AgentSession *herdr.AgentSessionInfo
 
 	// Processes are the pane's foreground process and its descendants.
 	Processes []Process
@@ -56,18 +60,19 @@ type Process struct {
 }
 
 // Reads is what a poll learned about a pane that its snapshot entry does not
-// carry: each field costs a request or a file of its own.
+// carry: each field costs a request or a file of its own, which is why only
+// the pane that names its tab is read.
 type Reads struct {
 	Processes []herdr.PaneProcessInfoProcess
 	Git       git.Checkout
 	// Topic is what the agent's own session says it is about.
 	Topic string
-	// ChangedAt is when a poll last saw the pane's revision move.
-	ChangedAt time.Time
 }
 
-// PaneFrom builds pane context from a snapshot entry and what was read around it.
-func PaneFrom(info herdr.PaneInfo, reads Reads) *PaneState {
+// PaneFrom builds pane context from a snapshot entry and when a poll last saw
+// the pane's revision move. What the snapshot cannot say is filled in by Read,
+// and for most panes never is.
+func PaneFrom(info herdr.PaneInfo, changedAt time.Time) *PaneState {
 	return &PaneState{
 		ID:               info.PaneID,
 		Dir:              info.Dir(),
@@ -77,12 +82,19 @@ func PaneFrom(info herdr.PaneInfo, reads Reads) *PaneState {
 		DisplayAgent:     info.DisplayAgent,
 		AgentTitle:       info.Title,
 		AgentStatus:      info.AgentStatus,
-		AgentTopic:       reads.Topic,
-		Processes:        processesFrom(reads.Processes),
-		Git:              reads.Git,
+		AgentSession:     info.AgentSession,
 		Focused:          info.Focused,
-		ChangedAt:        reads.ChangedAt,
+		ChangedAt:        changedAt,
 	}
+}
+
+// Read fills in what a snapshot does not carry. It is a step of its own so a
+// poll can leave it out: a tab is named from one pane, and every read behind
+// this costs a request or a file — see docs/architecture/poll-loop.md.
+func (p *PaneState) Read(reads Reads) {
+	p.Processes = processesFrom(reads.Processes)
+	p.Git = reads.Git
+	p.AgentTopic = reads.Topic
 }
 
 func processesFrom(processes []herdr.PaneProcessInfoProcess) []Process {

@@ -75,7 +75,8 @@ func TestPaneFromReadsAgentContext(t *testing.T) {
 		Agent:                 "claude",
 		DisplayAgent:          "Claude Code",
 		AgentStatus:           herdr.AgentStatusWorking,
-	}, Reads{Topic: "Rework the poll loop", ChangedAt: stamp})
+	}, stamp)
+	pane.Read(Reads{Topic: "Rework the poll loop"})
 
 	switch {
 	case pane.TerminalTitle != "Claude Code":
@@ -96,7 +97,7 @@ func TestPaneFromReadsAgentContext(t *testing.T) {
 func TestPaneWithoutAnAgent(t *testing.T) {
 	pane := PaneFrom(
 		herdr.PaneInfo{PaneID: "wE:p1", AgentStatus: herdr.AgentStatusUnknown},
-		Reads{},
+		time.Time{},
 	)
 	if pane.HasAgent() || pane.AgentIsActive() {
 		t.Errorf("pane %+v reported an agent", pane)
@@ -209,14 +210,14 @@ func TestPaneFromPrefersTheShellsDirectory(t *testing.T) {
 	// when the shell's own directory is missing.
 	both := PaneFrom(herdr.PaneInfo{
 		PaneID: "wE:p1", CWD: "/work/dashboard", ForegroundCWD: "/tmp",
-	}, Reads{})
+	}, time.Time{})
 	if both.Dir != "/work/dashboard" {
 		t.Errorf("dir = %q, want the shell's own", both.Dir)
 	}
 
 	foreground := PaneFrom(herdr.PaneInfo{
 		PaneID: "wE:p1", ForegroundCWD: "/work/api",
-	}, Reads{})
+	}, time.Time{})
 	if foreground.Dir != "/work/api" {
 		t.Errorf("dir = %q, want the foreground process's", foreground.Dir)
 	}

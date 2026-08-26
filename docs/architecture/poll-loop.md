@@ -80,6 +80,10 @@ cannot express it:
   provokes. So the reuse is bounded twice: by the revision, which catches the
   common case in the very next poll, and by `processRefresh` (2 s), which is
   what actually bounds how wrong the answer can be.
+
+  Only the pane a tab is named from is asked about, so the request is per tab
+  rather than per pane. The reuse still earns its keep: focus moves between the
+  panes of a tab, and what was read for one is still there when it comes back.
 - **How far each agent transcript has been read** (`internal/claude/transcript.go`).
   A transcript is append-only, so a poll reads the bytes appended since the last
   one rather than the file: a session that has run all day is megabytes, and
@@ -106,17 +110,31 @@ changes name at most once per poll however fast its pane is churning, so
 
 1. `session.snapshot` — the whole session in one request.
 2. `Changes.Observe` — note which panes' revisions advanced.
-3. `tabsIn` — assemble tabs with their panes, asking `pane.process_info` about
-   the panes that moved since they were last read and reusing the last answer
-   for the rest. A pane whose processes cannot be read simply has none, and a
-   failed read is not remembered as an answer. Each pane's directory is read for
-   the branch it has checked out, every poll and without a cache: two small file
-   reads at 0.038 ms are cheaper than the bookkeeping that would keep a stale
-   answer — see [title resolution](./title-resolution.md#the-git-branch).
-4. `Manual.Retain` — drop bookkeeping for tabs the session no longer holds.
-5. Per tab: skip it if locked, otherwise resolve a title, check whether the
-   label moved under us, and rename when the result differs from the label the
-   tab already carries.
+3. `Manual.Retain` — drop bookkeeping for tabs the session no longer holds,
+   and release a lock whose tab has moved on. This runs off the snapshot's own
+   labels, because it is what decides which tabs the next step can skip.
+4. `tabsIn` — assemble tabs with their panes from the snapshot alone. Nothing
+   is read here: assembly is what says which pane will be asked about.
+5. Per tab: skip it if locked, otherwise read the one pane the tab is named
+   from (`readInto`), resolve a title, check whether the label moved under us,
+   and rename when the result differs from the label the tab already carries.
+
+**Only the pane that names its tab is read**, and only while its tab is
+nobody's. `pane.process_info` is asked about the panes that moved since they
+were last read, reusing the last answer for the rest; a pane whose processes
+cannot be read simply has none, and a failed read is not remembered as an
+answer. That pane's directory is read for the branch it has checked out, every
+poll and without a cache: two small file reads at 0.038 ms are cheaper than the
+bookkeeping that would keep a stale answer — see
+[title resolution](./title-resolution.md#the-git-branch).
+
+The reads are left out rather than made and discarded because a tab is named
+from one pane (`SelectContextPane`) and a locked tab is not named at all. A
+four-pane tab therefore costs one process request rather than four, and a
+session the user has named by hand costs the snapshot and nothing else. The
+choice of pane is made from state the snapshot already carries — focus, agent
+status, and which pane last drew — so it can be made before anything is read,
+and the resolver arrives at the same pane on its own.
 
 **Deduplication is what keeps the loop quiet.** The snapshot reports each tab's
 current label, and a rename is skipped when the resolved title already equals

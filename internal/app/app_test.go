@@ -416,7 +416,7 @@ func TestAgentContextNamesTheTab(t *testing.T) {
 
 func TestARemoteSessionIsNamedAfterItsHost(t *testing.T) {
 	// What is running in a pane is not in the snapshot, so this exercises the
-	// extra read the poll makes for every pane.
+	// extra read the poll makes for the pane that names the tab.
 	h := start(
 		t,
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
@@ -696,6 +696,57 @@ func TestAPaneThatCannotBeReadIsAskedAgain(t *testing.T) {
 	}
 }
 
+func TestAPaneThatDoesNotNameItsTabIsNotRead(t *testing.T) {
+	// A tab is named from one pane, so asking what the others are running is a
+	// request each whose answer nothing would look at.
+	h := start(
+		t,
+		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
+		[]herdr.PaneInfo{
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard", Focused: true},
+			{PaneID: "wE:p2", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard"},
+			{PaneID: "wE:p3", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard"},
+		},
+	)
+	h.awaitRenames(1)
+	h.awaitPolls(10)
+
+	if reads := h.client.ProcessReads(); reads != 1 {
+		t.Errorf("read %d panes, want only the one the tab is named from", reads)
+	}
+}
+
+func TestALockedTabIsNotReadEither(t *testing.T) {
+	// A tab the user has claimed is never renamed, so everything a rename
+	// would have been decided from is a read nobody asked for.
+	h := start(
+		t,
+		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
+		[]herdr.PaneInfo{
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard", Focused: true},
+		},
+	)
+	h.awaitRenames(1)
+
+	h.client.SetTab(herdr.TabInfo{TabID: "wE:t1", Label: "Important work"})
+	h.awaitPolls(h.client.Polls() + 3)
+
+	before := h.client.ProcessReads()
+
+	// The pane keeps drawing, which is what makes a poll ask again.
+	for i := range 4 {
+		h.client.SetPane(herdr.PaneInfo{
+			PaneID: "wE:p1", TabID: "wE:t1", Focused: true, Revision: uint64(i + 2),
+			CWD: "/Users/dev/work/dashboard",
+		})
+		h.awaitPolls(h.client.Polls() + 2)
+	}
+
+	if reads := h.client.ProcessReads() - before; reads != 0 {
+		t.Errorf("asked what a locked tab's pane runs %d times, want never", reads)
+	}
+}
+
 // repoAt builds a repository on disk, since the branch is the one thing a poll
 // reads from the filesystem rather than from the session. Its trunk is always
 // `main`, so passing that as the branch is how a tab on the trunk is written.
@@ -765,10 +816,7 @@ func TestBranchesSwitchedOffAreNotRead(t *testing.T) {
 	cfg.BranchMax = 0
 	app := New(cfg, discardLogger(), testResolver(t))
 
-	if checkout := app.checkoutIn(
-		context.Background(),
-		herdr.PaneInfo{PaneID: "wE:p1", CWD: repo},
-	); checkout != (git.Checkout{}) {
+	if checkout := app.checkoutIn(context.Background(), repo); checkout != (git.Checkout{}) {
 		t.Errorf("checkout = %+v, want nothing read", checkout)
 	}
 }
@@ -862,7 +910,9 @@ func TestAPollPastItsDeadlineStopsReadingTheFilesystem(t *testing.T) {
 
 	// The live read first, so a checkout that never resolves cannot make the
 	// spent one below look like the guard working.
-	live := app.tabsIn(context.Background(), client, snapshot)
+	live := app.tabsIn(snapshot)
+	app.readInto(context.Background(), client, live[0].Panes[0])
+
 	if got := live[0].Panes[0].Git.Branch; got != "feat/oauth" {
 		t.Fatalf("branch = %q with time left, so this test proves nothing", got)
 	}
@@ -870,7 +920,9 @@ func TestAPollPastItsDeadlineStopsReadingTheFilesystem(t *testing.T) {
 	spent, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	tabs := app.tabsIn(spent, client, snapshot)
+	tabs := app.tabsIn(snapshot)
+	app.readInto(spent, client, tabs[0].Panes[0])
+
 	if got := tabs[0].Panes[0].Git; got != (git.Checkout{}) {
 		t.Errorf("checkout = %+v, want a poll past its deadline to read nothing", got)
 	}

@@ -9,14 +9,10 @@ import (
 	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
 
-// tabsIn assembles the snapshot's tabs with their panes. What is running in a
-// pane needs a request of its own, which processesIn makes only when the last
-// answer will no longer do.
-func (a *App) tabsIn(
-	ctx context.Context,
-	client herdr.Client,
-	snapshot herdr.Snapshot,
-) []state.TabState {
+// tabsIn assembles the snapshot's tabs with their panes, and reads nothing:
+// what a pane is running, has checked out and is talking about each costs a
+// request or a file, and readInto spends that on the panes that earn it.
+func (a *App) tabsIn(snapshot herdr.Snapshot) []state.TabState {
 	workspaces := make(map[string]string, len(snapshot.Workspaces))
 
 	for _, workspace := range snapshot.Workspaces {
@@ -26,12 +22,10 @@ func (a *App) tabsIn(
 	byTab := make(map[string][]*state.PaneState, len(snapshot.Tabs))
 
 	for _, pane := range snapshot.Panes {
-		byTab[pane.TabID] = append(byTab[pane.TabID], state.PaneFrom(pane, state.Reads{
-			Processes: a.processesIn(ctx, client, pane.PaneID),
-			Git:       a.checkoutIn(ctx, pane),
-			Topic:     a.topicIn(ctx, pane),
-			ChangedAt: a.changes.ChangedAt(pane.PaneID),
-		}))
+		byTab[pane.TabID] = append(
+			byTab[pane.TabID],
+			state.PaneFrom(pane, a.changes.ChangedAt(pane.PaneID)),
+		)
 	}
 
 	// An unnamed tab carries its place in the workspace, and the snapshot lists
@@ -54,6 +48,21 @@ func (a *App) tabsIn(
 	}
 
 	return tabs
+}
+
+// readInto fills in what the snapshot could not say about the one pane a tab
+// is named from. The other panes of that tab keep what the snapshot said,
+// because nothing reads any more of them.
+func (a *App) readInto(ctx context.Context, client herdr.Client, pane *state.PaneState) {
+	if pane == nil {
+		return
+	}
+
+	pane.Read(state.Reads{
+		Processes: a.processesIn(ctx, client, pane.ID),
+		Git:       a.checkoutIn(ctx, pane.Dir),
+		Topic:     a.topicIn(ctx, pane),
+	})
 }
 
 // processesIn reports what a pane is running, reusing the last read while the
@@ -85,7 +94,7 @@ func (a *App) processesIn(
 // checkoutIn reports what the repository holding the pane has checked out.
 // Unlike a process read it is not cached, and why not is in
 // docs/architecture/title-resolution.md.
-func (a *App) checkoutIn(ctx context.Context, pane herdr.PaneInfo) git.Checkout {
+func (a *App) checkoutIn(ctx context.Context, dir string) git.Checkout {
 	// A branch width of zero is how branches are turned off, and a read whose
 	// answer is thrown away is still a read on every pane twice a second.
 	if a.cfg.BranchMax <= 0 {
@@ -96,7 +105,7 @@ func (a *App) checkoutIn(ctx context.Context, pane herdr.PaneInfo) git.Checkout 
 		return git.Checkout{}
 	}
 
-	checkout, _ := git.Read(pane.Dir())
+	checkout, _ := git.Read(dir)
 
 	return checkout
 }
@@ -104,7 +113,7 @@ func (a *App) checkoutIn(ctx context.Context, pane herdr.PaneInfo) git.Checkout 
 // topicIn reports what the session the pane's agent is holding says it is
 // about. Only Claude Code's transcripts are understood, and only Herdr's
 // integration hook says which session a pane holds.
-func (a *App) topicIn(ctx context.Context, pane herdr.PaneInfo) string {
+func (a *App) topicIn(ctx context.Context, pane *state.PaneState) string {
 	if !a.cfg.ReadTranscripts || spentPoll(ctx) {
 		return ""
 	}
@@ -114,7 +123,7 @@ func (a *App) topicIn(ctx context.Context, pane herdr.PaneInfo) string {
 		return ""
 	}
 
-	return a.topics.Topic(sessionID, pane.Dir()).Text()
+	return a.topics.Topic(sessionID, pane.Dir).Text()
 }
 
 // spentPoll reports that this poll is past its deadline, in which case the tab

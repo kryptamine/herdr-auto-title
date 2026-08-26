@@ -186,7 +186,8 @@ The branch checked out in the pane's directory, read from the files under
 0.019 ms for reading `HEAD`, on a poll whose whole snapshot costs 0.47 ms. The
 reading is not cached — at 0.038 ms including the walk up to the repository, a
 fresh answer costs less than remembering a stale one, and a checkout shows up in
-the tab within one poll.
+the tab within one poll. It is read for the pane the tab is named from and no
+other, so the cost is one walk per tab rather than one per pane.
 
 A branch says which slice of a project a tab is on, so it qualifies the
 **context**: `dashboard › feat/oauth › nvim › auth.ts`. Three rules keep it from

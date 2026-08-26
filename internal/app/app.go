@@ -100,9 +100,11 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 
 	a.changes.Observe(snapshot.Panes)
 	a.topics.Retain(sessionsIn(snapshot.Panes))
+	// Taken from the snapshot rather than from the tabs below, because this is
+	// what decides which of them are locked, and a locked tab is never read.
+	a.manual.Retain(labelsIn(snapshot.Tabs))
 
-	tabs := a.tabsIn(ctx, client, snapshot)
-	a.manual.Retain(labelsOf(tabs))
+	tabs := a.tabsIn(snapshot)
 
 	for _, tab := range tabs {
 		if ctx.Err() != nil {
@@ -112,6 +114,12 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 		if a.manual.Locked(tab.ID) {
 			continue
 		}
+
+		// The reads happen here rather than during assembly: they are what a
+		// poll spends, and this is where it is known they will be used. The
+		// resolver picks the same pane again, which the choice being made from
+		// state alone is what guarantees.
+		a.readInto(ctx, client, state.SelectContextPane(tab))
 
 		decision := a.titles.Resolve(tab)
 		if a.manual.Observe(state.SightingFrom(tab, decision.Name)) {
@@ -167,12 +175,12 @@ func (a *App) rename(
 	)
 }
 
-// labelsOf indexes tabs by id for the manual-name bookkeeping, which needs both
-// an id that is gone and a label that has moved on.
-func labelsOf(tabs []state.TabState) map[string]string {
+// labelsIn indexes the session's tabs by id for the manual-name bookkeeping,
+// which needs both an id that is gone and a label that has moved on.
+func labelsIn(tabs []herdr.TabInfo) map[string]string {
 	labels := make(map[string]string, len(tabs))
 	for _, tab := range tabs {
-		labels[tab.ID] = tab.CurrentName
+		labels[tab.TabID] = tab.Label
 	}
 
 	return labels
