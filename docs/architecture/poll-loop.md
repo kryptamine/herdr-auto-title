@@ -124,8 +124,10 @@ nobody's. `pane.process_info` is asked about the panes that moved since they
 were last read, reusing the last answer for the rest; a pane whose processes
 cannot be read simply has none, and a failed read is not remembered as an
 answer. That pane's directory is read for the branch it has checked out, every
-poll and without a cache: two small file reads at 0.038 ms are cheaper than the
-bookkeeping that would keep a stale answer — see
+poll and with nothing kept between polls: two small file reads at 0.038 ms are
+cheaper than the bookkeeping that would keep a stale answer. Inside the poll the
+read is memoized by directory, which is what stops the tabs of one project
+walking the same tree once each — see
 [title resolution](./title-resolution.md#the-git-branch).
 
 The reads are left out rather than made and discarded because a tab is named

@@ -852,6 +852,49 @@ func TestCheckingOutABranchRetitlesTheTab(t *testing.T) {
 	}
 }
 
+func TestARepositoryIsWalkedOncePerPoll(t *testing.T) {
+	// Every tab of a project reads the same directory, and the walk up to it is
+	// the read. Rewriting HEAD between the two calls is how the test sees that
+	// the second one never reached the disk.
+	repo := repoAt(t, "feat/oauth")
+	app := New(testConfig(), discardLogger(), testResolver(t))
+	ctx := context.Background()
+
+	poll := make(checkoutMemo)
+	if got := app.checkoutIn(ctx, repo, poll).Branch; got != "feat/oauth" {
+		t.Fatalf("branch = %q, want feat/oauth", got)
+	}
+
+	head := filepath.Join(repo, ".git", "HEAD")
+	if err := os.WriteFile(head, []byte("ref: refs/heads/fix/token\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := app.checkoutIn(ctx, repo, poll).Branch; got != "feat/oauth" {
+		t.Errorf("branch = %q, want the answer this poll already had", got)
+	}
+
+	if got := app.checkoutIn(ctx, repo, make(checkoutMemo)).Branch; got != "fix/token" {
+		t.Errorf("branch = %q, want the next poll to read HEAD again", got)
+	}
+}
+
+func TestADirectoryHoldingNoRepositoryIsRememberedToo(t *testing.T) {
+	// Finding out that there is no repository costs the same walk to the root
+	// as finding one, so a pane outside a checkout must not repeat it per tab.
+	dir := t.TempDir()
+	app := New(testConfig(), discardLogger(), testResolver(t))
+
+	poll := make(checkoutMemo)
+	if got := app.checkoutIn(context.Background(), dir, poll); got != (git.Checkout{}) {
+		t.Fatalf("checkout = %+v, want nothing found", got)
+	}
+
+	if _, remembered := poll[dir]; !remembered {
+		t.Error("a directory holding no repository was not remembered")
+	}
+}
+
 func TestBranchesSwitchedOffAreNotRead(t *testing.T) {
 	// Zero is how a user turns branches off, and a read whose answer is
 	// discarded still costs a walk up the tree on every pane, every poll.
@@ -861,7 +904,11 @@ func TestBranchesSwitchedOffAreNotRead(t *testing.T) {
 	cfg.BranchMax = 0
 	app := New(cfg, discardLogger(), testResolver(t))
 
-	if checkout := app.checkoutIn(context.Background(), repo); checkout != (git.Checkout{}) {
+	if checkout := app.checkoutIn(
+		context.Background(),
+		repo,
+		make(checkoutMemo),
+	); checkout != (git.Checkout{}) {
 		t.Errorf("checkout = %+v, want nothing read", checkout)
 	}
 }
@@ -956,7 +1003,7 @@ func TestAPollPastItsDeadlineStopsReadingTheFilesystem(t *testing.T) {
 	// The live read first, so a checkout that never resolves cannot make the
 	// spent one below look like the guard working.
 	live := app.tabsIn(snapshot)
-	app.readInto(context.Background(), client, live[0].Panes[0])
+	app.readInto(context.Background(), client, live[0].Panes[0], make(checkoutMemo))
 
 	if got := live[0].Panes[0].Git.Branch; got != "feat/oauth" {
 		t.Fatalf("branch = %q with time left, so this test proves nothing", got)
@@ -966,7 +1013,7 @@ func TestAPollPastItsDeadlineStopsReadingTheFilesystem(t *testing.T) {
 	cancel()
 
 	tabs := app.tabsIn(snapshot)
-	app.readInto(spent, client, tabs[0].Panes[0])
+	app.readInto(spent, client, tabs[0].Panes[0], make(checkoutMemo))
 
 	if got := tabs[0].Panes[0].Git; got != (git.Checkout{}) {
 		t.Errorf("checkout = %+v, want a poll past its deadline to read nothing", got)

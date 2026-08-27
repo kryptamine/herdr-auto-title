@@ -184,10 +184,17 @@ outranked it and a remote tab read exactly like a local one.
 The branch checked out in the pane's directory, read from the files under
 `.git` and never by running git: `git rev-parse` measured 12.37 ms against
 0.019 ms for reading `HEAD`, on a poll whose whole snapshot costs 0.47 ms. The
-reading is not cached — at 0.038 ms including the walk up to the repository, a
-fresh answer costs less than remembering a stale one, and a checkout shows up in
-the tab within one poll. It is read for the pane the tab is named from and no
-other, so the cost is one walk per tab rather than one per pane.
+reading is not cached between polls — at 0.038 ms including the walk up to the
+repository, a fresh answer costs less than remembering a stale one, and a
+checkout shows up in the tab within one poll. It is read for the pane the tab is
+named from and no other, so the cost is one walk per tab rather than one per
+pane.
+
+*Within* one poll the answer is memoized by directory (`checkoutMemo`,
+`internal/app/reads.go`), because the tabs of a project usually share one: six
+tabs of the same checkout walked the same tree six times, and a memo that is
+thrown away with the poll that filled it cannot hand back a stale answer, which
+is the only thing the paragraph above is refusing.
 
 A branch says which slice of a project a tab is on, so it qualifies the
 **context**: `dashboard › feat/oauth › nvim › auth.ts`. Three rules keep it from

@@ -53,14 +53,19 @@ func (a *App) tabsIn(snapshot herdr.Snapshot) []state.TabState {
 // readInto fills in what the snapshot could not say about the one pane a tab
 // is named from. The other panes of that tab keep what the snapshot said,
 // because nothing reads any more of them.
-func (a *App) readInto(ctx context.Context, client herdr.Client, pane *state.PaneState) {
+func (a *App) readInto(
+	ctx context.Context,
+	client herdr.Client,
+	pane *state.PaneState,
+	checkouts checkoutMemo,
+) {
 	if pane == nil {
 		return
 	}
 
 	pane.Read(state.Reads{
 		Processes: a.processesIn(ctx, client, pane.ID),
-		Git:       a.checkoutIn(ctx, pane.Dir),
+		Git:       a.checkoutIn(ctx, pane.Dir, checkouts),
 		Topic:     a.topicIn(ctx, pane),
 	})
 }
@@ -92,9 +97,9 @@ func (a *App) processesIn(
 }
 
 // checkoutIn reports what the repository holding the pane has checked out.
-// Unlike a process read it is not cached, and why not is in
+// Nothing is remembered past the poll, and why not is in
 // docs/architecture/title-resolution.md.
-func (a *App) checkoutIn(ctx context.Context, dir string) git.Checkout {
+func (a *App) checkoutIn(ctx context.Context, dir string, checkouts checkoutMemo) git.Checkout {
 	// A branch width of zero is how branches are turned off, and a read whose
 	// answer is thrown away is still a read on every pane twice a second.
 	if a.cfg.BranchMax <= 0 {
@@ -105,7 +110,24 @@ func (a *App) checkoutIn(ctx context.Context, dir string) git.Checkout {
 		return git.Checkout{}
 	}
 
+	return checkouts.read(dir)
+}
+
+// checkoutMemo holds the checkouts one poll has read. The tabs of a project
+// share a directory, and the memo dies with the poll, so collapsing their
+// reads costs no staleness — see docs/architecture/title-resolution.md.
+type checkoutMemo map[string]git.Checkout
+
+// read reports what the repository holding dir has checked out, going to the
+// filesystem at most once. A directory that holds no repository is remembered
+// too: finding that out costs the same walk as finding one.
+func (m checkoutMemo) read(dir string) git.Checkout {
+	if checkout, known := m[dir]; known {
+		return checkout
+	}
+
 	checkout, _ := git.Read(dir)
+	m[dir] = checkout
 
 	return checkout
 }

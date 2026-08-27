@@ -105,6 +105,8 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 	a.manual.Retain(labelsIn(snapshot.Tabs))
 
 	tabs := a.tabsIn(snapshot)
+	// One memo for this poll, because the tabs of a project share a directory.
+	checkouts := make(checkoutMemo, len(tabs))
 
 	for _, tab := range tabs {
 		if ctx.Err() != nil {
@@ -119,7 +121,7 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 		// poll spends, and this is where it is known they will be used. The
 		// resolver picks the same pane again, which the choice being made from
 		// state alone is what guarantees.
-		a.readInto(ctx, client, state.SelectContextPane(tab))
+		a.readInto(ctx, client, state.SelectContextPane(tab), checkouts)
 
 		decision := a.titles.Resolve(tab)
 		if a.manual.Observe(state.SightingFrom(tab, decision.Name)) {
