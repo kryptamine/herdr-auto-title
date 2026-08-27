@@ -126,7 +126,7 @@ func (m checkoutMemo) read(dir string) git.Checkout {
 		return checkout
 	}
 
-	checkout, _ := git.Read(dir)
+	checkout := git.Read(dir)
 	m[dir] = checkout
 
 	return checkout

@@ -44,18 +44,18 @@ type Checkout struct {
 	Default string
 }
 
-// Read reports what the repository holding dir has checked out. It reports
-// false for a directory outside a repository, and for one whose .git cannot be
-// read: neither is an error worth a log line twice a second.
-func Read(dir string) (Checkout, bool) {
+// Read reports what the repository holding dir has checked out, and the zero
+// Checkout when there is nothing to report: a directory outside a repository,
+// or one whose .git cannot be read, neither worth a log line twice a second.
+func Read(dir string) Checkout {
 	gitDir, commonDir, found := discover(dir)
 	if !found {
-		return Checkout{}, false
+		return Checkout{}
 	}
 
 	head, ok := readRef(filepath.Join(gitDir, "HEAD"))
 	if !ok {
-		return Checkout{}, false
+		return Checkout{}
 	}
 
 	checkout := Checkout{Default: defaultBranch(commonDir)}
@@ -74,11 +74,13 @@ func Read(dir string) (Checkout, bool) {
 		checkout.Commit = abbreviate(head)
 	}
 
+	// The zero value rather than what was built: a Default nobody is standing on
+	// would otherwise read as a checkout.
 	if checkout.Branch == "" && checkout.Commit == "" {
-		return Checkout{}, false
+		return Checkout{}
 	}
 
-	return checkout, true
+	return checkout
 }
 
 // discover walks up from dir to the repository holding it, returning the

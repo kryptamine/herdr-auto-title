@@ -63,8 +63,8 @@ func (r repo) subdir(t *testing.T, path string) string {
 func mustRead(t *testing.T, dir string) Checkout {
 	t.Helper()
 
-	checkout, ok := Read(dir)
-	if !ok {
+	checkout := Read(dir)
+	if checkout == (Checkout{}) {
 		t.Fatalf("Read(%q) found no repository", dir)
 	}
 
@@ -88,7 +88,7 @@ func TestTheRepositoryIsFoundFromASubdirectory(t *testing.T) {
 }
 
 func TestADirectoryOutsideARepositoryIsNotOne(t *testing.T) {
-	if _, ok := Read(t.TempDir()); ok {
+	if Read(t.TempDir()) != (Checkout{}) {
 		t.Error("a directory with no .git reported a checkout")
 	}
 }
@@ -96,7 +96,7 @@ func TestADirectoryOutsideARepositoryIsNotOne(t *testing.T) {
 func TestOnlyAnAbsolutePathIsRead(t *testing.T) {
 	// A relative path would be resolved against the plugin's own directory,
 	// naming a tab after a repository nobody is looking at.
-	if _, ok := Read("relative/path"); ok {
+	if Read("relative/path") != (Checkout{}) {
 		t.Error("a relative path reported a checkout")
 	}
 }
@@ -142,7 +142,7 @@ func TestAHeadHoldingSomethingElseIsNoCheckout(t *testing.T) {
 	for _, content := range []string{"", "\n", "ref: refs/tags/v1.0.0\n", "not a hash\n",
 		"aaf1fd85f68047764760489dbfc3ecb5ab9d0c\n"} {
 		r := newRepo(t).head(t, content)
-		if _, ok := Read(r.root); ok {
+		if Read(r.root) != (Checkout{}) {
 			t.Errorf("HEAD %q reported a checkout", content)
 		}
 	}
@@ -204,8 +204,19 @@ func TestAnUnreadableGitFileIsNoRepository(t *testing.T) {
 	r := repo{root: root, gitDir: filepath.Join(root, ".git")}
 	r.write(t, filepath.Join(root, ".git"), "not a gitdir line\n")
 
-	if _, ok := Read(root); ok {
+	if Read(root) != (Checkout{}) {
 		t.Error("a .git file with no gitdir reported a checkout")
+	}
+}
+
+func TestATrunkNobodyIsOnIsNoCheckout(t *testing.T) {
+	// The zero Checkout is how Read says it found nothing, so a repository that
+	// records a default branch but holds no readable HEAD must answer with one:
+	// a Default on its own would read as a checkout.
+	r := newRepo(t).originHead(t, "main").head(t, "not a hash\n")
+
+	if got := Read(r.root); got != (Checkout{}) {
+		t.Errorf("checkout = %+v, want nothing found", got)
 	}
 }
 
@@ -229,7 +240,7 @@ func TestAHugeHeadIsNotReadWhole(t *testing.T) {
 	r.write(t, filepath.Join(r.gitDir, "HEAD"), string(huge))
 
 	// The bounded read leaves a truncated hash, which is not a checkout.
-	if _, ok := Read(r.root); ok {
+	if Read(r.root) != (Checkout{}) {
 		t.Error("an oversized HEAD reported a checkout")
 	}
 }
