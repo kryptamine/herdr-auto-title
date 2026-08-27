@@ -23,11 +23,5 @@ func (TerminalTitle) Resolve(pane *state.PaneState) (Parts, bool) {
 		title = pane.TerminalTitleRaw
 	}
 
-	// Truncation belongs to the assembled name, so no limit is applied here.
-	activity, ok := Meaningful(Sanitize(title, 0))
-	if !ok {
-		return Parts{}, false
-	}
-
-	return Parts{Activity: qualify(activity, paneKind(pane))}, true
+	return activityFrom(pane, title)
 }

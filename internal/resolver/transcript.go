@@ -20,11 +20,5 @@ func (Transcript) Resolve(pane *state.PaneState) (Parts, bool) {
 		return Parts{}, false
 	}
 
-	// Truncation belongs to the assembled name, so no limit is applied here.
-	activity, ok := Meaningful(Sanitize(pane.AgentTopic, 0))
-	if !ok {
-		return Parts{}, false
-	}
-
-	return Parts{Activity: qualify(activity, paneKind(pane))}, true
+	return activityFrom(pane, pane.AgentTopic)
 }

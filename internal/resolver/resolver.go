@@ -41,6 +41,18 @@ type Parts struct {
 	Activity string
 }
 
+// activityFrom turns an untrusted value into the activity of a title, bound to
+// the kind of program the pane is running. No limit is applied: truncation
+// belongs to the assembled name.
+func activityFrom(pane *state.PaneState, value string) (Parts, bool) {
+	activity, ok := Meaningful(Sanitize(value, 0))
+	if !ok {
+		return Parts{}, false
+	}
+
+	return Parts{Activity: qualify(activity, paneKind(pane))}, true
+}
+
 // Source contributes title parts from a pane's context.
 type Source interface {
 	// Name identifies the source in the rename reason.
