@@ -96,6 +96,32 @@ func TestAgentEchoingItsOwnNameIsNotAgentContext(t *testing.T) {
 	}
 }
 
+func TestAnEchoedAgentNameIsDeclinedWhateverReportsIt(t *testing.T) {
+	// A terminal title and a transcript topic carry the echo as readily as the
+	// agent title does, and it says no more about the work there.
+	pane := &state.PaneState{
+		Dir:           "/Users/dev/work/dashboard",
+		Agent:         "acme-bot",
+		DisplayAgent:  "Acme Bot",
+		AgentStatus:   herdr.AgentStatusWorking,
+		TerminalTitle: "Acme Bot",
+		AgentTopic:    "acme-bot",
+	}
+
+	if _, ok := NewTerminalTitle().Resolve(pane); ok {
+		t.Error("the terminal title source claimed an agent naming itself")
+	}
+
+	if _, ok := NewTranscript().Resolve(pane); ok {
+		t.Error("the transcript source claimed an agent naming itself")
+	}
+
+	got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(pane))
+	if want := "dashboard › acme-bot"; got.Name != want {
+		t.Errorf("name = %q, want %q", got.Name, want)
+	}
+}
+
 func TestAgentTitleWithoutAnAgentIsIgnored(t *testing.T) {
 	// Herdr leaves the title on a pane whose agent it no longer recognizes;
 	// without an agent it is not agent context.

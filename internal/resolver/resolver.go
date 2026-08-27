@@ -50,7 +50,19 @@ func activityFrom(pane *state.PaneState, value string) (Parts, bool) {
 		return Parts{}, false
 	}
 
+	if echoesAgentName(pane, activity) {
+		return Parts{}, false
+	}
+
 	return Parts{Activity: qualify(activity, paneKind(pane))}, true
+}
+
+// echoesAgentName reports an activity that is no more than the agent's own
+// name. That is as generic as anything in genericValues, but the name differs
+// per agent, so it is compared against the pane instead of being listed.
+func echoesAgentName(pane *state.PaneState, activity string) bool {
+	return strings.EqualFold(activity, pane.Agent) ||
+		strings.EqualFold(activity, pane.DisplayAgent)
 }
 
 // Source contributes title parts from a pane's context.
