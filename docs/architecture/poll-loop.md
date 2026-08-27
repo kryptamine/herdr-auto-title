@@ -161,9 +161,9 @@ recovery is the first dial that succeeds.
   socket costs microseconds, and the rate is what makes recovery immediate.
 - **The logging backs off instead.** At two polls a second, an hour of Herdr
   being down is seven thousand identical warnings. `failureLog`
-  (`internal/app/app.go`) reports the first failure and then only as the run of
-  them doubles, which turns that hour into thirteen lines, and a line on the way
-  out says how many polls were missed.
+  (`internal/app/failures.go`) reports the first failure and then only as the
+  run of them doubles, which turns that hour into thirteen lines, and a line on
+  the way out says how many polls were missed.
 
 The only failure that stops the process is a missing `HERDR_SOCKET_PATH`, caught
 in `herdr.New` before the loop is ever entered.
