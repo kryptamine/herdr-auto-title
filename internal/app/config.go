@@ -165,28 +165,25 @@ func boolean(raw string) (bool, error) {
 // count reads a number that must be positive. Zero would stop the plugin doing
 // anything: a poll interval of zero spins, and a title of no length is no title.
 func count(raw string) (int, error) {
-	value, err := strconv.Atoi(raw)
-	if err != nil {
-		return 0, errNotNumber
-	}
-
-	if value <= 0 {
-		return 0, errNotPositive
-	}
-
-	return value, nil
+	return atLeast(raw, 1, errNotPositive)
 }
 
 // countOrNone reads a number that may be zero, for a setting where zero means
 // "none of this" rather than a value that would stop the plugin working.
 func countOrNone(raw string) (int, error) {
+	return atLeast(raw, 0, errNegative)
+}
+
+// atLeast reads a number that may not fall below lowest, which is the whole of
+// what separates one count from the other.
+func atLeast(raw string, lowest int, tooSmall error) (int, error) {
 	value, err := strconv.Atoi(raw)
 	if err != nil {
 		return 0, errNotNumber
 	}
 
-	if value < 0 {
-		return 0, errNegative
+	if value < lowest {
+		return 0, tooSmall
 	}
 
 	return value, nil
