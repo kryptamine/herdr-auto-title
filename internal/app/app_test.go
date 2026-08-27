@@ -944,7 +944,7 @@ func agentPane() herdr.PaneInfo {
 		PaneID: "wE:p1", TabID: "wE:t1", Focused: true, CWD: testDir,
 		TerminalTitleStripped: "Claude Code",
 		Agent:                 "claude",
-		AgentStatus:           herdr.AgentStatusIdle,
+		AgentStatus:           "idle",
 		AgentSession: &herdr.AgentSessionInfo{
 			Agent: "claude", Kind: herdr.SessionRefID, Value: testSession,
 		},

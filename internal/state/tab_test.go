@@ -96,7 +96,7 @@ func TestPaneFromReadsAgentContext(t *testing.T) {
 
 func TestPaneWithoutAnAgent(t *testing.T) {
 	pane := PaneFrom(
-		herdr.PaneInfo{PaneID: "wE:p1", AgentStatus: herdr.AgentStatusUnknown},
+		herdr.PaneInfo{PaneID: "wE:p1", AgentStatus: "unknown"},
 		time.Time{},
 	)
 	if pane.HasAgent() || pane.AgentIsActive() {
@@ -145,7 +145,7 @@ func TestSelectContextPanePrefersAnActiveAgent(t *testing.T) {
 func TestSelectContextPaneIgnoresAnIdleAgent(t *testing.T) {
 	now := time.Now()
 
-	for _, status := range []string{herdr.AgentStatusIdle, herdr.AgentStatusDone, herdr.AgentStatusUnknown} {
+	for _, status := range []string{"idle", "done", "unknown"} {
 		t.Run(status, func(t *testing.T) {
 			tab := TabState{
 				ID: "wE:t1",

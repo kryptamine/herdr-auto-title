@@ -14,7 +14,7 @@ func TestATopicNamesATabTheTerminalTitleCannot(t *testing.T) {
 		Dir:           "/Users/dev/work/dashboard",
 		TerminalTitle: "Claude Code",
 		Agent:         "claude",
-		AgentStatus:   herdr.AgentStatusIdle,
+		AgentStatus:   "idle",
 		AgentTopic:    "grill-me",
 	}))
 
@@ -65,7 +65,7 @@ func TestATopicThatNamesTheAgentFallsThrough(t *testing.T) {
 	got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(&state.PaneState{
 		Dir:         "/Users/dev/work/dashboard",
 		Agent:       "claude",
-		AgentStatus: herdr.AgentStatusIdle,
+		AgentStatus: "idle",
 		AgentTopic:  "Claude Code",
 	}))
 

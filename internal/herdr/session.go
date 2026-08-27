@@ -1,13 +1,11 @@
 package herdr
 
-// Agent statuses Herdr reports. Every pane carries one: a pane with no agent
-// reports AgentStatusUnknown.
+// Agent statuses a tab is named differently for. Herdr reports three more —
+// idle, done and unknown — and none of them changes what a tab says, so
+// nothing here names them.
 const (
-	AgentStatusIdle    = "idle"
 	AgentStatusWorking = "working"
 	AgentStatusBlocked = "blocked"
-	AgentStatusDone    = "done"
-	AgentStatusUnknown = "unknown"
 )
 
 // Wire types carry only the fields Auto Title reads: a field nothing uses makes
