@@ -17,10 +17,6 @@ var shellNames = map[string]struct{}{
 // agent comes first because a process list never names one, and only a lone
 // process names a pane: a build tool is `esbuild` and five `node`s.
 func paneKind(pane *state.PaneState) string {
-	if pane == nil {
-		return ""
-	}
-
 	if pane.HasAgent() {
 		// An agent's name is in the generic table, because an agent naming
 		// itself is not a report of its work. As a kind it is exactly right:
@@ -118,10 +114,6 @@ func (Process) Name() string    { return "process" }
 func (Process) Confidence() int { return ConfidenceProcess }
 
 func (Process) Resolve(pane *state.PaneState) (Parts, bool) {
-	if pane == nil {
-		return Parts{}, false
-	}
-
 	kind := paneKind(pane)
 	if kind == "" {
 		return Parts{}, false

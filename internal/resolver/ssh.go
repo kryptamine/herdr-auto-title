@@ -36,10 +36,6 @@ func (SSH) Name() string    { return "ssh" }
 func (SSH) Confidence() int { return ConfidenceSSH }
 
 func (SSH) Resolve(pane *state.PaneState) (Parts, bool) {
-	if pane == nil {
-		return Parts{}, false
-	}
-
 	args, running := sshArgs(pane)
 	if !running {
 		return Parts{}, false

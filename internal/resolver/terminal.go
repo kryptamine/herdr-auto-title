@@ -16,10 +16,6 @@ func (TerminalTitle) Name() string    { return "terminal_title" }
 func (TerminalTitle) Confidence() int { return ConfidenceTerminalTitle }
 
 func (TerminalTitle) Resolve(pane *state.PaneState) (Parts, bool) {
-	if pane == nil {
-		return Parts{}, false
-	}
-
 	// Herdr strips escapes and decorative prefixes for us; the raw field is
 	// only a fallback for when it has not.
 	title := pane.TerminalTitle

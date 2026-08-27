@@ -16,7 +16,7 @@ func (Transcript) Name() string    { return "transcript" }
 func (Transcript) Confidence() int { return ConfidenceTranscript }
 
 func (Transcript) Resolve(pane *state.PaneState) (Parts, bool) {
-	if pane == nil || !pane.HasAgent() {
+	if !pane.HasAgent() {
 		return Parts{}, false
 	}
 

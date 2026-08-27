@@ -109,12 +109,6 @@ func TestAgentTitleWithoutAnAgentIsIgnored(t *testing.T) {
 	}
 }
 
-func TestAgentSourceOnANilPane(t *testing.T) {
-	if _, ok := NewAgent().Resolve(nil); ok {
-		t.Fatal("resolved a nil pane")
-	}
-}
-
 func TestAgentTitleWithNoDirectoryStandsAlone(t *testing.T) {
 	got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(&state.PaneState{
 		Agent:       "claude",

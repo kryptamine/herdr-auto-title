@@ -50,8 +50,8 @@ type Source interface {
 	// what it reads, not for what it happened to find this time.
 	Confidence() int
 	// Resolve reports the parts this source derives, or false when the pane
-	// carries nothing this source recognizes. A nil pane is a tab with no
-	// panes at all, and every source declines it rather than panicking.
+	// carries nothing this source recognizes. The pane is never nil: a tab
+	// with no panes is declined by collect, before any source is asked.
 	Resolve(pane *state.PaneState) (Parts, bool)
 }
 
@@ -135,6 +135,12 @@ type collected struct {
 // can complete a title a higher one only half answered.
 func (d *Deterministic) collect(pane *state.PaneState) collected {
 	var found collected
+
+	// A tab with no panes has nothing for any source to read, which is what
+	// lets every one of them take a pane it can dereference.
+	if pane == nil {
+		return found
+	}
 
 	for _, source := range d.sources {
 		parts, ok := source.Resolve(pane)

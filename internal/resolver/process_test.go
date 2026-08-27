@@ -139,12 +139,6 @@ func TestAProjectNeverTakesAColon(t *testing.T) {
 	}
 }
 
-func TestProcessSourceOnANilPane(t *testing.T) {
-	if _, ok := NewProcess().Resolve(nil); ok {
-		t.Fatal("resolved a nil pane")
-	}
-}
-
 func TestAnAgentIsItsOwnKind(t *testing.T) {
 	// Herdr recognizes the agent directly. Its process list does not: a coding
 	// agent shows up as a caffeinate, several nodes and an MCP helper, with its

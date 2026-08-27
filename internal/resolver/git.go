@@ -40,7 +40,7 @@ func (Git) Name() string    { return "git" }
 func (Git) Confidence() int { return ConfidenceGit }
 
 func (g Git) Resolve(pane *state.PaneState) (Parts, bool) {
-	if pane == nil || g.maxLength <= 0 {
+	if g.maxLength <= 0 {
 		return Parts{}, false
 	}
 

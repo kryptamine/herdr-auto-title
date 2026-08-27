@@ -165,12 +165,6 @@ func TestTheMarkSurvivesARemoteTitle(t *testing.T) {
 	}
 }
 
-func TestSSHSourceOnANilPane(t *testing.T) {
-	if _, ok := NewSSH().Resolve(nil); ok {
-		t.Fatal("resolved a nil pane")
-	}
-}
-
 func TestHostsFromArgvAreSanitized(t *testing.T) {
 	// argv is terminal-derived input like any other.
 	pane := sshPane("ssh", "root@prod\x1b[31m-01")

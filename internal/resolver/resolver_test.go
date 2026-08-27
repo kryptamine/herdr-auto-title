@@ -288,12 +288,6 @@ func TestSourcesAreOrderedByConfidenceNotByArgument(t *testing.T) {
 	}
 }
 
-func TestCWDSourceOnANilPane(t *testing.T) {
-	if _, ok := NewCWD().Resolve(nil); ok {
-		t.Fatal("resolved a nil pane")
-	}
-}
-
 func TestTheShippedChainResolvesATabWithNoPanes(t *testing.T) {
 	got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(state.TabState{ID: "wE:t1"})
 	if got.Name != GenericFallback {

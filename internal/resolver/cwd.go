@@ -30,10 +30,6 @@ func (CWD) Name() string    { return "cwd" }
 func (CWD) Confidence() int { return ConfidenceCWD }
 
 func (c CWD) Resolve(pane *state.PaneState) (Parts, bool) {
-	if pane == nil {
-		return Parts{}, false
-	}
-
 	name := c.base(pane.Dir)
 	if name == "" {
 		return Parts{}, false

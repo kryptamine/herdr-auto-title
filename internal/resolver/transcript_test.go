@@ -73,9 +73,3 @@ func TestATopicThatNamesTheAgentFallsThrough(t *testing.T) {
 		t.Errorf("name = %q, want %q", got.Name, want)
 	}
 }
-
-func TestTranscriptSourceOnANilPane(t *testing.T) {
-	if _, ok := NewTranscript().Resolve(nil); ok {
-		t.Fatal("resolved a nil pane")
-	}
-}

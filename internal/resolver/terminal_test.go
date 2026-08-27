@@ -180,9 +180,3 @@ func TestEditorTitleKeepsTheFileAndDropsThePath(t *testing.T) {
 		})
 	}
 }
-
-func TestTerminalTitleSourceOnANilPane(t *testing.T) {
-	if _, ok := NewTerminalTitle().Resolve(nil); ok {
-		t.Fatal("resolved a nil pane")
-	}
-}
