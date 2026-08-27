@@ -12,6 +12,7 @@ import (
 
 	"github.com/kryptamine/herdr-auto-title/internal/git"
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
+	"github.com/kryptamine/herdr-auto-title/internal/herdr/herdrtest"
 	"github.com/kryptamine/herdr-auto-title/internal/resolver"
 )
 
@@ -42,7 +43,7 @@ func testResolver(t *testing.T) resolver.TitleResolver {
 // harness runs an App against a stubbed Herdr session.
 type harness struct {
 	t      *testing.T
-	client *herdr.StubClient
+	client *herdrtest.Client
 	done   chan struct{}
 	cancel context.CancelFunc
 
@@ -51,18 +52,18 @@ type harness struct {
 
 func start(t *testing.T, tabs []herdr.TabInfo, panes []herdr.PaneInfo) *harness {
 	t.Helper()
-	return startWith(t, herdr.NewStub(tabs, panes))
+	return startWith(t, herdrtest.New(tabs, panes))
 }
 
 // startWith runs an App against a stub the test has already prepared, which is
 // how a test arranges for the very first poll to fail.
-func startWith(t *testing.T, client *herdr.StubClient) *harness {
+func startWith(t *testing.T, client *herdrtest.Client) *harness {
 	t.Helper()
 	return startConfigured(t, client, testConfig())
 }
 
 // startConfigured runs an App whose configuration the test has changed.
-func startConfigured(t *testing.T, client *herdr.StubClient, cfg Config) *harness {
+func startConfigured(t *testing.T, client *herdrtest.Client, cfg Config) *harness {
 	t.Helper()
 
 	app := New(cfg, discardLogger(), testResolver(t))
@@ -96,7 +97,7 @@ func (h *harness) stop() {
 }
 
 // awaitRenames blocks until at least n renames have been issued.
-func (h *harness) awaitRenames(n int) []herdr.RenameCall {
+func (h *harness) awaitRenames(n int) []herdrtest.RenameCall {
 	h.t.Helper()
 
 	deadline := time.Now().Add(2 * time.Second)
@@ -140,7 +141,7 @@ func TestTabsAreNamedFromTheFirstPoll(t *testing.T) {
 	)
 
 	renames := h.awaitRenames(1)
-	if renames[0] != (herdr.RenameCall{TabID: "wE:t1", Label: "dashboard"}) {
+	if renames[0] != (herdrtest.RenameCall{TabID: "wE:t1", Label: "dashboard"}) {
 		t.Errorf("rename = %+v, want {wE:t1 dashboard}", renames[0])
 	}
 }
@@ -258,7 +259,7 @@ func TestATabClosingMidPollIsNotFatal(t *testing.T) {
 func TestFailedRenameIsRetriedOnTheNextPoll(t *testing.T) {
 	// Armed before the run starts: the loop names what it finds without waiting
 	// for a tick, so a stub armed afterwards races the very first poll.
-	client := herdr.NewStub(
+	client := herdrtest.New(
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{
 			{PaneID: "wE:p1", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard", Focused: true},
@@ -310,7 +311,7 @@ func TestAFailingFirstPollDoesNotStopTheRun(t *testing.T) {
 	// Herdr's socket can be a moment behind the plugin it launched, and a
 	// plugin that gives up stays dead: the startup hook is a one-shot launch,
 	// not a supervised daemon. So the first poll is treated like every other.
-	client := herdr.NewStub(
+	client := herdrtest.New(
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{
 			{PaneID: "wE:p1", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard", Focused: true},
@@ -450,7 +451,7 @@ func TestARemoteSessionIsNamedAfterItsHost(t *testing.T) {
 func TestAPaneWhoseProcessesCannotBeReadIsStillNamed(t *testing.T) {
 	// The pane closed between the snapshot listing it and the read of what it
 	// is running; the snapshot's own context still names the tab.
-	client := herdr.NewStub(
+	client := herdrtest.New(
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{
 			{PaneID: "wE:p1", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard", Focused: true},
@@ -492,7 +493,7 @@ func TestAWorkspaceNameIsNotRepeatedInItsTabs(t *testing.T) {
 	// The workspace has to be in the stub before the loop starts: Run polls
 	// once immediately, and a first poll that has not seen the workspace yet
 	// has nothing to drop, so it renames the tab `dashboard › …`.
-	client := herdr.NewStub(
+	client := herdrtest.New(
 		[]herdr.TabInfo{{TabID: "wE:t1", WorkspaceID: "wE", Label: "1"}},
 		[]herdr.PaneInfo{{
 			PaneID: "wE:p1", TabID: "wE:t1", Focused: true,
@@ -717,7 +718,7 @@ func TestAPaneThatMovedIsAskedAboutAgain(t *testing.T) {
 
 func TestAPaneThatCannotBeReadIsAskedAgain(t *testing.T) {
 	// A failed read is not an answer, so it must not be remembered as one.
-	client := herdr.NewStub(
+	client := herdrtest.New(
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{
 			{PaneID: "wE:p1", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard", Focused: true},
@@ -914,7 +915,7 @@ func TestATabIsNamedFromTheAgentsOwnSession(t *testing.T) {
 
 	cfg := testConfig()
 	cfg.ReadTranscripts = true
-	h := startConfigured(t, herdr.NewStub(
+	h := startConfigured(t, herdrtest.New(
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{agentPane()},
 	), cfg)
@@ -945,7 +946,7 @@ func TestAPollPastItsDeadlineStopsReadingTheFilesystem(t *testing.T) {
 	// the mount does. A poll the tab loop will throw away makes none of them.
 	repo := repoAt(t, "feat/oauth")
 	app := New(testConfig(), discardLogger(), testResolver(t))
-	client := herdr.NewStub(nil, nil)
+	client := herdrtest.New(nil, nil)
 
 	snapshot := herdr.Snapshot{
 		Tabs:  []herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},

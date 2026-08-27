@@ -30,10 +30,16 @@ which a laptop on the newest toolchain does not cover. Windows was tried once
 and dropped: the fixtures assume Unix paths, so `filepath.IsAbs` rejects every
 directory in them and every tab falls back to `Shell`.
 
-The suite drives the whole loop through `herdr.StubClient`: the first poll, a
+The suite drives the whole loop through `herdrtest.Client`: the first poll, a
 tab appearing later, deduplication, rename failures, a poll that fails outright.
 If a change can be expressed as "given this session, expect this title", it
 belongs here and nowhere else.
+
+That stub lives in `internal/herdr/herdrtest` rather than in `internal/herdr`,
+so the package the plugin ships exports nothing only a test reads. It answers by
+encoding a reply and decoding it into the caller's result exactly as the socket
+client does, which is what puts the wire tags under test at all — nothing else
+in the suite speaks JSON.
 
 **Write the test first when you are fixing something a live run revealed.** Every
 defect found so far came from a live run and none from the happy path: a busy
