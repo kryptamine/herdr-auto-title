@@ -191,7 +191,7 @@ func readRef(path string) (string, bool) {
 	if err != nil {
 		return "", false
 	}
-	defer file.Close() //nolint:errcheck // a read-only file has nothing to report on close
+	defer file.Close() // a read-only file has nothing to report on close
 
 	content, err := io.ReadAll(io.LimitReader(file, maxRefFileSize))
 	if err != nil {

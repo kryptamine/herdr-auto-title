@@ -58,7 +58,7 @@ func (p project) appendLines(lines ...string) {
 	if err != nil {
 		p.t.Fatal(err)
 	}
-	defer file.Close() //nolint:errcheck // the write is checked below
+	defer file.Close() // the write is checked below
 
 	if _, err := file.WriteString(joined(lines)); err != nil {
 		p.t.Fatal(err)

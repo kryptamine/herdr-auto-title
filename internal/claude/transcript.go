@@ -233,7 +233,7 @@ func (r *Reader) readInto(session *transcript) {
 	if err != nil {
 		return
 	}
-	defer file.Close() //nolint:errcheck // a read-only file has nothing to report on close
+	defer file.Close() // a read-only file has nothing to report on close
 
 	// A session first seen long after it started is caught up on from its tail,
 	// which is where a title it has already been given is repeated.
