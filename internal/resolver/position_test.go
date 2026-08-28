@@ -117,3 +117,14 @@ func TestAnyResolverCanBeNumbered(t *testing.T) {
 		t.Errorf("decision = %+v, want %+v", got, want)
 	}
 }
+
+// Making room for the position is the one thing Numbered does to a name, and a
+// cut that lands on a separator says a part was lost without saying which.
+func TestANumberedTitleLeavesNoDanglingSeparator(t *testing.T) {
+	inner := fixedResolver{decision: Decision{Name: "dashboard › nvim"}}
+
+	got := NewNumbered(inner, 16).Resolve(atPosition(1, "/Users/dev/work/dashboard"))
+	if got.Name != "1 · dashboard" {
+		t.Errorf("name = %q, want %q", got.Name, "1 · dashboard")
+	}
+}

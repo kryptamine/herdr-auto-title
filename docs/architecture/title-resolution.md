@@ -279,9 +279,10 @@ Three things follow from what the tab bar does with a title:
   position were one more thing the title says about the tab.
 - **It is counted against `MaxLength`, not added to it.** The decorator reads
   that bound off the resolver it wraps rather than being handed one of its own,
-  so there are not two numbers to keep in step. The body is re-sanitized to
-  what the prefix leaves, and truncating an already-truncated title again is
-  the same cut, one column further in. Where nothing would be left — a tab bar
-  narrower than the number itself — the number goes and the name stays.
+  so there are not two numbers to keep in step. The body is only cut to what
+  the prefix leaves — it arrives sanitized, and truncating an already-truncated
+  title again is the same cut, one column further in. Where nothing would be
+  left — a tab bar narrower than the number itself — the number goes and the
+  name stays.
 
 `HERDR_AUTO_TITLE_POSITION=false` drops the decorator.

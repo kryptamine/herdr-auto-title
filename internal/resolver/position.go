@@ -45,13 +45,14 @@ func (n *Numbered) Resolve(tab state.TabState) Decision {
 	// the end is the first thing a title too wide for the tab bar would lose.
 	prefix := strconv.Itoa(tab.Position) + positionMark
 	room := n.maxLength - uniseg.StringWidth(prefix)
-	// Sanitize takes a width of zero as "no bound at all", and a title reduced
+	// truncate takes a width of zero as "no bound at all", and a title reduced
 	// to nothing has lost more than the position is worth.
 	if room <= 0 {
 		return decision
 	}
 
-	name := Sanitize(decision.Name, room)
+	// The name arrives sanitized, so only the fitting is left.
+	name := truncate(decision.Name, room)
 	if name == "" {
 		return decision
 	}
