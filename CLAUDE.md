@@ -68,6 +68,9 @@ Comment what is **surprising**, never what is visible:
   already names, or records where a value came from (which schema, which
   ticket, which measurement session). Provenance is what `git log` and
   `docs/architecture` are for.
+- **Delete it** if it justifies code somewhere else. A comment belongs to the
+  thing it is attached to, so a contract is stated where it is relied on, never
+  where a caller might one day lean on it.
 - **Keep it** if a reader would otherwise "fix" the code and break it: a
   measured constant, a constraint the API imposes, an ordering that matters, a
   case that looks unhandled and is not.
