@@ -23,6 +23,10 @@ const zeroWidthJoiner = '\u200d'
 // left dangling by truncation says a part was lost without saying which.
 const trimmable = " " + separatorRune
 
+// escape opens every sequence ansiRe matches, which is what makes finding none
+// of it enough to skip that pass.
+const escape = '\x1b'
+
 var (
 	// ansiRe matches CSI sequences, OSC strings and single-character escapes.
 	ansiRe = regexp.MustCompile(
@@ -39,7 +43,12 @@ var (
 // escapes and invisible characters go, whitespace and separators are
 // normalized, and the result is cut to maxLen columns. Empty means unusable.
 func Sanitize(s string, maxLen int) string {
-	s = ansiRe.ReplaceAllString(s, "")
+	// Every pass below is skipped when nothing in the value can match it. None
+	// of them usually does, and unguarded their backtracking measured over half
+	// of what naming a tab costs — see docs/architecture/sanitization.md.
+	if strings.ContainsRune(s, escape) {
+		s = ansiRe.ReplaceAllString(s, "")
+	}
 
 	s = strings.Map(func(r rune) rune {
 		// Every kind of space, the non-breaking and the ideographic included,
@@ -61,9 +70,17 @@ func Sanitize(s string, maxLen int) string {
 		return r
 	}, s)
 
-	s = spaceRe.ReplaceAllString(s, " ")
-	s = sepRunRe.ReplaceAllString(s, separatorRune)
-	s = sepSpacingRe.ReplaceAllString(s, Separator)
+	// The map above turned every other kind of space into this one, so a run
+	// left to collapse is two of it.
+	if strings.Contains(s, "  ") {
+		s = spaceRe.ReplaceAllString(s, " ")
+	}
+
+	if strings.Contains(s, separatorRune) {
+		s = sepRunRe.ReplaceAllString(s, separatorRune)
+		s = sepSpacingRe.ReplaceAllString(s, Separator)
+	}
+
 	s = strings.Trim(s, trimmable)
 	s = strings.TrimSpace(s)
 

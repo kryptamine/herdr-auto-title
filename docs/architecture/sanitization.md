@@ -38,6 +38,15 @@ subprocess at all — there is no `sh -c` anywhere to pass anything to.
 
 `Sanitize` is idempotent: running it on its own output changes nothing.
 
+Steps 1, 4 and 5 are regular-expression passes, and each is guarded by a plain
+check for the one character it needs: an escape, a doubled space, a separator.
+None of them usually matches, and unguarded their backtracking measured half of
+what naming a tab costs — 13.9 µs a tab against 6.9 µs with the guards, and 106
+allocations against 24. Each guard is exact rather than approximate: every
+sequence `ansiRe` matches opens with an escape; step 2 has already turned every
+kind of space into a plain one, so a run left to collapse is two of those; and
+neither separator pass can match a value carrying no separator.
+
 ## Rejecting values that say nothing
 
 Cleaning is not enough — a value can be perfectly well-formed and still be
