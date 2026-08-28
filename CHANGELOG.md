@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.3.2](https://github.com/kryptamine/herdr-auto-title/compare/v0.3.1...v0.3.2) (2026-08-28)
+
+
+### Bug Fixes
+
+* **resolver:** decline an echoed agent name whatever reports it ([f7629b3](https://github.com/kryptamine/herdr-auto-title/commit/f7629b31480ef745e9ff98f0e52ee0e6bdb94aa3))
+
+
+### Performance
+
+* **app:** read a checkout once per directory per poll ([ce55d9b](https://github.com/kryptamine/herdr-auto-title/commit/ce55d9b8d69683c3b4aba704ab18a3ddb5990813))
+* **resolver:** fit a numbered title instead of sanitizing it again ([1fd0d8e](https://github.com/kryptamine/herdr-auto-title/commit/1fd0d8e3e26c40872b7fefbee6e23f9d9a6b185d))
+* **resolver:** guard the regexp passes in Sanitize ([9652edc](https://github.com/kryptamine/herdr-auto-title/commit/9652edc667d65270802cea83bde8db30af60f68a))
+
+
+### Refactoring
+
+* **app:** read both counts through one bound ([f3d73d0](https://github.com/kryptamine/herdr-auto-title/commit/f3d73d0ba13c98f097aa478aea2b35805b375aa1))
+* **git:** drop the result nobody outside the tests read ([565d6c9](https://github.com/kryptamine/herdr-auto-title/commit/565d6c9a543d39cc1348c8abdf44aa05f3c356a0))
+* **herdr:** drop the agent statuses nothing reads ([c931b58](https://github.com/kryptamine/herdr-auto-title/commit/c931b58914ae0a68c1725d2914da62e34e163966))
+* **herdr:** move the test client out of the shipped package ([84da050](https://github.com/kryptamine/herdr-auto-title/commit/84da05074082401ffac68d5d348fb43fdb7b2f2e))
+* **resolver:** decline a tab with no panes once, not in every source ([e70c24c](https://github.com/kryptamine/herdr-auto-title/commit/e70c24c0523936df43f0cb66c513be00c7a03c54))
+* **resolver:** fold the shared activity shape into one helper ([1bc06b2](https://github.com/kryptamine/herdr-auto-title/commit/1bc06b27f2383514cddc9f94944347db9d8f62ab))
+
 ## [0.3.1](https://github.com/kryptamine/herdr-auto-title/compare/v0.3.0...v0.3.1) (2026-08-26)
 
 
