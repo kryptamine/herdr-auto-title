@@ -7,7 +7,6 @@ import (
 	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
 
-// tabWithPane builds a one-pane tab from a pane the test set up.
 func tabWithPane(pane *state.PaneState) state.TabState {
 	pane.ID = "wE:p1"
 	_ = pane

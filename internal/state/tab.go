@@ -147,8 +147,6 @@ type TabState struct {
 	Panes []*PaneState
 }
 
-// TabFrom builds tab state from what a read returned. Position is the tab's
-// place in its workspace, counted from one.
 func TabFrom(info herdr.TabInfo, workspaceName string, position int, panes []*PaneState) TabState {
 	ordered := slices.Clone(panes)
 	slices.SortFunc(ordered, func(a, b *PaneState) int { return strings.Compare(a.ID, b.ID) })

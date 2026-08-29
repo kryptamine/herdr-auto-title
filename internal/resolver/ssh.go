@@ -29,7 +29,6 @@ type SSH struct{}
 
 var _ Source = SSH{}
 
-// NewSSH builds the source.
 func NewSSH() SSH { return SSH{} }
 
 func (SSH) Name() string    { return "ssh" }

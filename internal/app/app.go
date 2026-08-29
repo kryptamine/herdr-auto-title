@@ -87,8 +87,6 @@ func (a *App) poll(ctx context.Context, client herdr.Client) {
 	}
 }
 
-// readAndRename reads the session and renames every tab whose title no longer
-// fits.
 func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 	ctx, cancel := context.WithTimeout(ctx, pollTimeout)
 	defer cancel()

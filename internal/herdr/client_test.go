@@ -119,7 +119,6 @@ func (s *testServer) seen() []incoming {
 	return append([]incoming(nil), s.requests...)
 }
 
-// respondOK answers every method with an empty result.
 func respondOK(req incoming) string {
 	return `{"id":"` + req.ID + `","result":{}}`
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
 
-// tabWithCWD builds a one-pane tab whose pane sits in dir.
 func tabWithCWD(dir string) state.TabState {
 	return state.TabState{
 		ID: "wE:t1",

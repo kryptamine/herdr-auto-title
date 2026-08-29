@@ -107,7 +107,6 @@ type Process struct{}
 
 var _ Source = Process{}
 
-// NewProcess builds the source.
 func NewProcess() Process { return Process{} }
 
 func (Process) Name() string    { return "process" }

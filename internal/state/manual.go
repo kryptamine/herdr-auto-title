@@ -115,7 +115,6 @@ func (m *Manual) Observe(s Sighting) bool {
 		return false
 	case known:
 		if s.Current == previous {
-			// Nothing happened to this tab.
 			return false
 		}
 	case !m.settled:

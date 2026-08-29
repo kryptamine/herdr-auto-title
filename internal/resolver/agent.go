@@ -9,7 +9,6 @@ type Agent struct{}
 
 var _ Source = Agent{}
 
-// NewAgent builds the source.
 func NewAgent() Agent { return Agent{} }
 
 func (Agent) Name() string    { return "agent" }

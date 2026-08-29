@@ -23,7 +23,6 @@ type project struct {
 	dir  string
 }
 
-// newProject points the reader at a temporary state directory.
 func newProject(t *testing.T) project {
 	t.Helper()
 	root := t.TempDir()

@@ -96,7 +96,6 @@ func (h *harness) stop() {
 	}
 }
 
-// awaitRenames blocks until at least n renames have been issued.
 func (h *harness) awaitRenames(n int) []herdrtest.RenameCall {
 	h.t.Helper()
 

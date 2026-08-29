@@ -9,7 +9,6 @@ type Transcript struct{}
 
 var _ Source = Transcript{}
 
-// NewTranscript builds the source.
 func NewTranscript() Transcript { return Transcript{} }
 
 func (Transcript) Name() string    { return "transcript" }

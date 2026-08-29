@@ -27,7 +27,6 @@ type (
 	}
 )
 
-// RenameCall records one tab.rename issued through a Client.
 type RenameCall struct {
 	TabID string
 	Label string
@@ -51,7 +50,6 @@ type Client struct {
 
 var _ herdr.Client = (*Client)(nil)
 
-// New returns a client describing the given session.
 func New(tabs []herdr.TabInfo, panes []herdr.PaneInfo) *Client {
 	s := &Client{
 		tabs:      make(map[string]herdr.TabInfo, len(tabs)),
@@ -69,7 +67,6 @@ func New(tabs []herdr.TabInfo, panes []herdr.PaneInfo) *Client {
 	return s
 }
 
-// SetWorkspaces sets the workspaces the session reports.
 func (s *Client) SetWorkspaces(workspaces ...herdr.WorkspaceInfo) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -77,7 +74,6 @@ func (s *Client) SetWorkspaces(workspaces ...herdr.WorkspaceInfo) {
 	s.workspaces = workspaces
 }
 
-// SetTab adds or replaces a tab.
 func (s *Client) SetTab(tab herdr.TabInfo) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -85,7 +81,6 @@ func (s *Client) SetTab(tab herdr.TabInfo) {
 	s.tabs[tab.TabID] = tab
 }
 
-// SetProcesses sets what a read of this pane's processes will answer.
 func (s *Client) SetProcesses(paneID string, processes ...herdr.PaneProcessInfoProcess) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -93,7 +88,6 @@ func (s *Client) SetProcesses(paneID string, processes ...herdr.PaneProcessInfoP
 	s.processes[paneID] = processes
 }
 
-// SetPane adds or replaces a pane.
 func (s *Client) SetPane(pane herdr.PaneInfo) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -101,7 +95,6 @@ func (s *Client) SetPane(pane herdr.PaneInfo) {
 	s.panes[pane.PaneID] = pane
 }
 
-// CloseTab and ClosePane remove an object from the session.
 func (s *Client) CloseTab(tabID string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -116,7 +109,6 @@ func (s *Client) ClosePane(paneID string) {
 	delete(s.panes, paneID)
 }
 
-// SetRenameError makes subsequent tab.rename calls fail.
 func (s *Client) SetRenameError(err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -124,7 +116,6 @@ func (s *Client) SetRenameError(err error) {
 	s.renameErr = err
 }
 
-// SetProcessError makes subsequent pane.process_info calls fail.
 func (s *Client) SetProcessError(err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -140,7 +131,6 @@ func (s *Client) SetCallError(err error) {
 	s.callErr = err
 }
 
-// Renames returns the renames received so far.
 func (s *Client) Renames() []RenameCall {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -203,7 +193,6 @@ func (s *Client) Call(ctx context.Context, method string, params any, result any
 	}
 }
 
-// processInfo answers pane.process_info for a pane the session still holds.
 func (s *Client) processInfo(params any, result any) error {
 	if s.processErr != nil {
 		return s.processErr
@@ -228,7 +217,6 @@ func (s *Client) processInfo(params any, result any) error {
 	})
 }
 
-// rename applies a tab.rename to the stub session.
 func (s *Client) rename(params any) error {
 	if s.renameErr != nil {
 		return s.renameErr

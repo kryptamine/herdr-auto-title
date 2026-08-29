@@ -79,14 +79,12 @@ type Source interface {
 	Resolve(pane *state.PaneState) (Parts, bool)
 }
 
-// Decision is the outcome of resolving a tab.
 type Decision struct {
 	Name       string
 	Confidence int
 	Reason     string
 }
 
-// TitleResolver produces a title for a tab.
 type TitleResolver interface {
 	Resolve(tab state.TabState) Decision
 }

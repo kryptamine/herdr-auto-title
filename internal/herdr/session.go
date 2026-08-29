@@ -108,12 +108,10 @@ type Snapshot struct {
 	Panes []PaneInfo `json:"panes"`
 }
 
-// snapshotResult wraps the snapshot in the method's result object.
 type snapshotResult struct {
 	Snapshot Snapshot `json:"snapshot"`
 }
 
-// processInfoResult wraps what pane.process_info answers.
 type processInfoResult struct {
 	ProcessInfo PaneProcessInfo `json:"process_info"`
 }

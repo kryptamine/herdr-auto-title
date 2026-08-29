@@ -155,8 +155,6 @@ func spentPoll(ctx context.Context) bool {
 	return ctx.Err() != nil
 }
 
-// sessionsIn lists the agent sessions the snapshot holds, which is what the
-// transcript reader keeps its places for.
 func sessionsIn(panes []herdr.PaneInfo) []string {
 	sessions := make([]string, 0, len(panes))
 	for _, pane := range panes {

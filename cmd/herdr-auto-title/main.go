@@ -39,7 +39,6 @@ func run() error {
 
 	log.Info("starting auto title", "poll", cfg.Poll, "max_length", cfg.MaxLength)
 
-	// Terminate on the signals Herdr uses to stop a plugin.
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 

@@ -31,7 +31,6 @@ type SocketClient struct {
 
 var _ Client = (*SocketClient)(nil)
 
-// socketPath returns the configured Herdr socket path.
 func socketPath() (string, error) {
 	path := os.Getenv(socketPathEnv)
 	if path == "" {
@@ -52,7 +51,6 @@ func New() (*SocketClient, error) {
 	return newWithPath(path), nil
 }
 
-// newWithPath builds a client for an explicit socket path.
 func newWithPath(path string) *SocketClient {
 	return &SocketClient{path: path}
 }
@@ -141,7 +139,6 @@ func PaneProcesses(ctx context.Context, c Client, paneID string) ([]PaneProcessI
 	return res.ProcessInfo.ForegroundProcesses, nil
 }
 
-// RenameTab sets a tab's label.
 func RenameTab(ctx context.Context, c Client, tabID, label string) error {
 	return c.Call(ctx, MethodTabRename, TabRenameParams{TabID: tabID, Label: label}, nil)
 }

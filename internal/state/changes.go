@@ -31,7 +31,6 @@ type paneChange struct {
 	readAt    time.Time
 }
 
-// NewChanges returns an empty history.
 func NewChanges() *Changes {
 	return &Changes{
 		panes: make(map[string]paneChange),

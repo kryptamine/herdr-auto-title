@@ -14,7 +14,6 @@ func numberedCWD(maxLength int) *Numbered {
 	return NewNumbered(New(maxLength, NewCWD()), maxLength)
 }
 
-// atPosition builds a one-pane tab sitting at a position in its workspace.
 func atPosition(position int, dir string) state.TabState {
 	tab := tabWithCWD(dir)
 	tab.Position = position

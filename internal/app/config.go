@@ -140,8 +140,6 @@ func fromEnv[T any](warnings *[]string, name string, fallback T, convert convert
 	return value
 }
 
-// converter turns the raw text of a variable into a value, or says what is
-// wrong with it.
 type converter[T any] func(raw string) (T, error)
 
 // The reasons a variable is rejected. Each reads as the middle of the warning

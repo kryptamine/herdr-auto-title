@@ -23,7 +23,6 @@ type frame struct {
 	Error  *APIError       `json:"error"`
 }
 
-// APIError is an error returned by Herdr for a request.
 type APIError struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
@@ -61,16 +60,13 @@ const (
 	MethodTabRename       = "tab.rename"
 )
 
-// PaneTarget names the pane a request applies to.
 type PaneTarget struct {
 	PaneID string `json:"pane_id"`
 }
 
-// TabRenameParams are the parameters of tab.rename.
 type TabRenameParams struct {
 	TabID string `json:"tab_id"`
 	Label string `json:"label"`
 }
 
-// emptyParams is the parameter object for methods that take none.
 type emptyParams struct{}
