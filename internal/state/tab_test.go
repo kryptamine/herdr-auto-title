@@ -205,20 +205,20 @@ func TestAgentIsActiveOnANilPane(t *testing.T) {
 	}
 }
 
-func TestPaneFromPrefersTheShellsDirectory(t *testing.T) {
-	// foreground_cwd follows whatever is running right now, so it only speaks
-	// when the shell's own directory is missing.
+func TestPaneFromPrefersTheForegroundDirectory(t *testing.T) {
+	// A subshell — `chezmoi cd`, `nix develop` — moves the foreground process
+	// and leaves the pane's own shell where it was started.
 	both := PaneFrom(herdr.PaneInfo{
-		PaneID: "wE:p1", CWD: "/work/dashboard", ForegroundCWD: "/tmp",
+		PaneID: "wE:p1", CWD: "/work/dashboard", ForegroundCWD: "/work/chezmoi",
 	}, time.Time{})
-	if both.Dir != "/work/dashboard" {
-		t.Errorf("dir = %q, want the shell's own", both.Dir)
+	if both.Dir != "/work/chezmoi" {
+		t.Errorf("dir = %q, want the foreground process's", both.Dir)
 	}
 
-	foreground := PaneFrom(herdr.PaneInfo{
-		PaneID: "wE:p1", ForegroundCWD: "/work/api",
+	shell := PaneFrom(herdr.PaneInfo{
+		PaneID: "wE:p1", CWD: "/work/api",
 	}, time.Time{})
-	if foreground.Dir != "/work/api" {
-		t.Errorf("dir = %q, want the foreground process's", foreground.Dir)
+	if shell.Dir != "/work/api" {
+		t.Errorf("dir = %q, want the shell's own", shell.Dir)
 	}
 }

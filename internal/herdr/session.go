@@ -75,14 +75,15 @@ func (s *AgentSessionInfo) IDFor(agent string) (string, bool) {
 	return s.Value, true
 }
 
-// Dir is the directory a pane speaks for. The shell's own is preferred over
-// the foreground process's, which follows whatever is running right now.
+// Dir is the directory a pane speaks for. The foreground process's is
+// preferred: cwd is the pane's own shell, and a subshell leaves it behind in
+// the directory that shell was started from — see docs/architecture.
 func (p PaneInfo) Dir() string {
-	if p.CWD != "" {
-		return p.CWD
+	if p.ForegroundCWD != "" {
+		return p.ForegroundCWD
 	}
 
-	return p.ForegroundCWD
+	return p.CWD
 }
 
 // PaneProcessInfoProcess is one process running in a pane. Herdr reports more

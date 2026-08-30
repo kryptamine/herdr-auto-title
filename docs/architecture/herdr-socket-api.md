@@ -118,6 +118,14 @@ reads, so this section describes Herdr rather than those types.
 - **Pane revisions are monotonic per pane.** That is how one poll tells which
   panes moved since the last, and it is the whole basis of
   `internal/state/changes.go`.
+- **`PaneInfo.cwd` is the pane's own shell, not what the user is typing into.**
+  A subshell moves `foreground_cwd` and leaves `cwd` behind: probed with
+  `chezmoi cd`, which runs `$SHELL` in the source directory, the pane reported
+  `cwd: ~/Work/global-sso` and `foreground_cwd: ~/.local/share/chezmoi` for as
+  long as that subshell lived, while `pane.process_info` listed the subshell
+  alone. Both fields are null when Herdr cannot read one, so a pane's directory
+  is `foreground_cwd` with `cwd` behind it — see
+  [title resolution](./title-resolution.md).
 - **`PaneInfo` carries no foreground process name.** Only `pane.process_info`
   answers that, and nothing announces that a command started.
 - **`PaneInfo.title` is the agent's own title**, not the terminal's. Herdr left

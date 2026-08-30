@@ -234,11 +234,19 @@ printed beside `prod-01` reads as that machine's.
 
 ### Working directory and the fallback
 
-The basename of the pane's directory, which is normally the project name. The
-shell's own `cwd` is preferred over `foreground_cwd`, which follows whatever is
-running right now. Directories that say nothing — the home directory, the
-filesystem root, a relative path — yield nothing, and a tab left with no name at
-all becomes `Shell`.
+The basename of the pane's directory, which is normally the project name.
+`foreground_cwd` is preferred over the shell's own `cwd`, with `cwd` behind it
+for the panes Herdr reports no foreground directory for. `cwd` is the pane's
+shell, and a subshell leaves it behind in the directory that shell was started
+from: `chezmoi cd` runs `$SHELL` in the source directory, and the pane keeps
+reporting the old `cwd` for as long as the subshell lives — the tab would go on
+naming a project the user has left. The foreground process follows what is
+running right now, which is the point: what is running right now is what the
+pane is showing.
+
+Directories that say nothing — the home directory, the filesystem root, a
+relative path — yield nothing, and a tab left with no name at all becomes
+`Shell`.
 
 ## The workspace is not repeated
 

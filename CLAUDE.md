@@ -151,6 +151,12 @@ listed here** (`make probe-*`, `scripts/probe.py`).
 - **A tab label is one line.** `tab.rename` accepts a newline and stores it
   verbatim — no error, no stripping — but the tab bar renders a single line, so
   a two-line label is not available. Herdr exposes no tab-bar height setting.
+- **`PaneInfo.cwd` is the pane's own shell, not what the user is typing into.**
+  A subshell moves `foreground_cwd` and leaves `cwd` behind: probed with
+  `chezmoi cd`, which runs `$SHELL` in the source directory, the pane reported
+  `cwd: ~/Work/global-sso` and `foreground_cwd: ~/.local/share/chezmoi` for as
+  long as that subshell lived. A pane's directory is `foreground_cwd` with
+  `cwd` behind it.
 - `PaneInfo` carries no foreground process name; that needs `pane.process_info`,
   one request per pane at 0.11 ms — cheaper than the snapshot, but one per pane:
   on an eight-pane session the reads measured 0.17 ms each against a 1.35 ms
