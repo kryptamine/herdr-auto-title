@@ -24,7 +24,7 @@ func TestTheKindQualifiesTheTitle(t *testing.T) {
 		Processes:     running("nvim"),
 	}
 
-	got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(pane))
+	got := Default(DefaultMaxLength, DefaultBranchMaxLength, DefaultAgentFormat).Resolve(tabWithPane(pane))
 	if want := "dashboard › nvim › auth.provider.ts"; got.Name != want {
 		t.Errorf("name = %q, want %q", got.Name, want)
 	}
@@ -38,7 +38,7 @@ func TestAKindWithNothingToAddStandsAlone(t *testing.T) {
 		Processes:     running("nvim"),
 	}
 
-	got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(pane))
+	got := Default(DefaultMaxLength, DefaultBranchMaxLength, DefaultAgentFormat).Resolve(tabWithPane(pane))
 	if want := "dashboard › nvim"; got.Name != want {
 		t.Errorf("name = %q, want %q", got.Name, want)
 	}
@@ -47,7 +47,7 @@ func TestAKindWithNothingToAddStandsAlone(t *testing.T) {
 func TestAKindWithNoTitleAtAllStillNamesThePane(t *testing.T) {
 	pane := &state.PaneState{Dir: "/Users/dev/work/dashboard", Processes: running("htop")}
 
-	got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(pane))
+	got := Default(DefaultMaxLength, DefaultBranchMaxLength, DefaultAgentFormat).Resolve(tabWithPane(pane))
 	if want := "dashboard › htop"; got.Name != want {
 		t.Errorf("name = %q, want %q", got.Name, want)
 	}
@@ -102,6 +102,7 @@ func TestARemoteSessionIsNotNamedTwice(t *testing.T) {
 	if got := Default(
 		DefaultMaxLength,
 		DefaultBranchMaxLength,
+		DefaultAgentFormat,
 	).Resolve(tabWithPane(pane)); got.Name != "ssh › prod-01" {
 		t.Errorf("name = %q, want ssh › prod-01", got.Name)
 	}
@@ -133,7 +134,7 @@ func TestAProjectNeverTakesAColon(t *testing.T) {
 		Processes:     running("esbuild", "node", "node"),
 	}
 
-	got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(pane))
+	got := Default(DefaultMaxLength, DefaultBranchMaxLength, DefaultAgentFormat).Resolve(tabWithPane(pane))
 	if want := "self-care-portal › yarn dev"; got.Name != want {
 		t.Errorf("name = %q, want %q", got.Name, want)
 	}
@@ -154,7 +155,7 @@ func TestAnAgentIsItsOwnKind(t *testing.T) {
 		t.Errorf("paneKind = %q, want claude", got)
 	}
 
-	got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(pane))
+	got := Default(DefaultMaxLength, DefaultBranchMaxLength, DefaultAgentFormat).Resolve(tabWithPane(pane))
 	if want := "dashboard › claude › Git email configuration"; got.Name != want {
 		t.Errorf("name = %q, want %q", got.Name, want)
 	}
@@ -169,7 +170,7 @@ func TestAStartingAgentIsNamedByItsKindAlone(t *testing.T) {
 		Agent:         "claude",
 	}
 
-	got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(pane))
+	got := Default(DefaultMaxLength, DefaultBranchMaxLength, DefaultAgentFormat).Resolve(tabWithPane(pane))
 	if want := "dashboard › claude"; got.Name != want {
 		t.Errorf("name = %q, want %q", got.Name, want)
 	}
@@ -181,6 +182,7 @@ func TestAPaneWithoutAnAgentIsNotNamedAfterOne(t *testing.T) {
 	if got := Default(
 		DefaultMaxLength,
 		DefaultBranchMaxLength,
+		DefaultAgentFormat,
 	).Resolve(tabWithPane(pane)); got.Name != "dashboard" {
 		t.Errorf("name = %q, want dashboard", got.Name)
 	}

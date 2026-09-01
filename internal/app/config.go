@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -18,13 +19,14 @@ import (
 // Environment variables Auto Title reads. The configuration file holds the
 // same names; see docs/architecture/configuration.md.
 const (
-	EnvDebug      = "HERDR_AUTO_TITLE_DEBUG"
-	EnvPoll       = "HERDR_AUTO_TITLE_POLL_MS"
-	EnvMaxLength  = "HERDR_AUTO_TITLE_MAX_LENGTH"
-	EnvBranchMax  = "HERDR_AUTO_TITLE_BRANCH_MAX"
-	EnvPosition   = "HERDR_AUTO_TITLE_POSITION"
-	EnvManual     = "HERDR_AUTO_TITLE_MANUAL_FILE"
-	EnvTranscript = "HERDR_AUTO_TITLE_TRANSCRIPT"
+	EnvDebug       = "HERDR_AUTO_TITLE_DEBUG"
+	EnvPoll        = "HERDR_AUTO_TITLE_POLL_MS"
+	EnvMaxLength   = "HERDR_AUTO_TITLE_MAX_LENGTH"
+	EnvBranchMax   = "HERDR_AUTO_TITLE_BRANCH_MAX"
+	EnvPosition    = "HERDR_AUTO_TITLE_POSITION"
+	EnvManual      = "HERDR_AUTO_TITLE_MANUAL_FILE"
+	EnvTranscript  = "HERDR_AUTO_TITLE_TRANSCRIPT"
+	EnvAgentFormat = "HERDR_AUTO_TITLE_AGENT_FORMAT"
 )
 
 // ConfigFile is the configuration file, read from the same directory the
@@ -56,6 +58,12 @@ type Config struct {
 	// when the agent has not titled its terminal. It reads what the user has
 	// been saying to that agent, so it can be turned off.
 	ReadTranscripts bool
+	// AgentFormat shapes how an agent pane's title joins the agent's name to
+	// its activity. `{agent}` is the agent's name, `{activity}` is the work, so
+	// the default `{agent} › {activity}` reads `claude › <activity>`. Dropping
+	// `{agent}` (say `{activity}`) leaves the activity on its own, which suits
+	// a terminal whose own tab HUD already names the agent.
+	AgentFormat string
 }
 
 // LoadConfig reads configuration from the configuration file and the
@@ -74,6 +82,7 @@ func LoadConfig() (Config, []string) {
 		ShowPosition:    true,
 		ManualPath:      state.DefaultManualPath(),
 		ReadTranscripts: true,
+		AgentFormat:     resolver.DefaultAgentFormat,
 	}
 
 	cfg.Debug = fromEnv(&warnings, EnvDebug, cfg.Debug, boolean)
@@ -83,6 +92,7 @@ func LoadConfig() (Config, []string) {
 	cfg.BranchMax = fromEnv(&warnings, EnvBranchMax, cfg.BranchMax, countOrNone)
 	cfg.ShowPosition = fromEnv(&warnings, EnvPosition, cfg.ShowPosition, boolean)
 	cfg.ReadTranscripts = fromEnv(&warnings, EnvTranscript, cfg.ReadTranscripts, boolean)
+	cfg.AgentFormat = fromEnv(&warnings, EnvAgentFormat, cfg.AgentFormat, agentFormat)
 	// A path needs neither parsing nor checking, so it does not go through
 	// fromEnv: any string the user set is the path they meant, and setting it
 	// to none of it asks for locks that do not outlive the process.
@@ -149,6 +159,7 @@ var (
 	errNotNumber   = errors.New("is not a number")
 	errNotPositive = errors.New("must be positive")
 	errNegative    = errors.New("cannot be negative")
+	errNoActivity  = errors.New("must contain {activity}")
 )
 
 func boolean(raw string) (bool, error) {
@@ -158,6 +169,17 @@ func boolean(raw string) (bool, error) {
 	}
 
 	return value, nil
+}
+
+// agentFormat keeps the title template a user can shape, but only once it still
+// carries the agent's work: a format without {activity} would drop what the
+// title is for, so it is rejected and the default kept.
+func agentFormat(raw string) (string, error) {
+	if !strings.Contains(raw, "{activity}") {
+		return "", errNoActivity
+	}
+
+	return raw, nil
 }
 
 // count reads a number that must be positive. Zero would stop the plugin doing

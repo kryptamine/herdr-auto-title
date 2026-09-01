@@ -100,22 +100,60 @@ func stripKind(detail, kind string) string {
 	return strings.Trim(trimmed, " -–—|:"+separatorRune)
 }
 
+// formatAgent joins an agent pane's name to its activity through the user's
+// format: {agent} is the name, {activity} is the work. The default
+// `{agent} › {activity}` reproduces what a title has always shown.
+//
+// The substituted values are already sanitized at their source, so this only
+// fills the format; Format sanitizes the assembled title as a whole, which is
+// what collapses and trims a separator that a substituted-empty field left
+// dangling — `{agent} › {activity}` with no activity reads `claude`, not
+// `claude ›`.
+func formatAgent(format, agent, activity string) string {
+	detail := stripKind(activity, agent)
+
+	// With neither a name nor an activity there is nothing to name. A Process
+	// names an agent pane that has no activity to report, and keeps it only
+	// when the format still shows the agent; without {agent} it falls through
+	// to a lower source rather than showing the pane empty.
+	if detail == "" && (agent == "" || !strings.Contains(format, "{agent}")) {
+		return ""
+	}
+
+	return strings.NewReplacer(
+		"{agent}", agent,
+		"{activity}", detail,
+	).Replace(format)
+}
+
 // Process names a pane after the program running in it when nothing has said
 // what that program is doing: an editor with no file open still reads
 // `dashboard › nvim`.
-type Process struct{}
+type Process struct{ agentFormat string }
 
 var _ Source = Process{}
 
-func NewProcess() Process { return Process{} }
+func NewProcess(agentFormat string) Process { return Process{agentFormat: agentFormat} }
 
 func (Process) Name() string    { return "process" }
 func (Process) Confidence() int { return ConfidenceProcess }
 
-func (Process) Resolve(pane *state.PaneState) (Parts, bool) {
+func (p Process) Resolve(pane *state.PaneState) (Parts, bool) {
 	kind := paneKind(pane)
 	if kind == "" {
 		return Parts{}, false
+	}
+
+	// An agent pane named here has no activity to report, so the format decides
+	// whether the agent's name alone still names the tab. A format without
+	// {agent} leaves nothing, and the pane falls through to a lower source.
+	if pane.HasAgent() {
+		name := formatAgent(p.agentFormat, kind, "")
+		if name == "" {
+			return Parts{}, false
+		}
+
+		return Parts{Activity: name}, true
 	}
 
 	return Parts{Activity: kind}, true

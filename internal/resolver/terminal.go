@@ -5,16 +5,18 @@ import "github.com/kryptamine/herdr-auto-title/internal/state"
 // TerminalTitle derives the activity from the pane's terminal title: a title a
 // program went out of its way to set usually says what is happening. A lone
 // program in the pane qualifies it, `nvim › auth.provider.ts`.
-type TerminalTitle struct{}
+type TerminalTitle struct{ agentFormat string }
 
 var _ Source = TerminalTitle{}
 
-func NewTerminalTitle() TerminalTitle { return TerminalTitle{} }
+func NewTerminalTitle(agentFormat string) TerminalTitle {
+	return TerminalTitle{agentFormat: agentFormat}
+}
 
 func (TerminalTitle) Name() string    { return "terminal_title" }
 func (TerminalTitle) Confidence() int { return ConfidenceTerminalTitle }
 
-func (TerminalTitle) Resolve(pane *state.PaneState) (Parts, bool) {
+func (t TerminalTitle) Resolve(pane *state.PaneState) (Parts, bool) {
 	// Herdr strips escapes and decorative prefixes for us; the raw field is
 	// only a fallback for when it has not.
 	title := pane.TerminalTitle
@@ -22,5 +24,5 @@ func (TerminalTitle) Resolve(pane *state.PaneState) (Parts, bool) {
 		title = pane.TerminalTitleRaw
 	}
 
-	return activityFrom(pane, title)
+	return activityFrom(pane, title, t.agentFormat)
 }

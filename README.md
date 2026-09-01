@@ -124,6 +124,7 @@ restarts**, with the same `herdr server stop` the install needs.
 | `HERDR_AUTO_TITLE_POSITION`    | `true`                                    | Put each tab's position in front of its title                              |
 | `HERDR_AUTO_TITLE_MANUAL_FILE` | `manual-names.json`, next to `config.env` | Where tabs you renamed by hand are remembered; empty keeps them in memory  |
 | `HERDR_AUTO_TITLE_TRANSCRIPT`  | `true`                                    | Read an agent's own session transcript when it has not titled its terminal |
+| `HERDR_AUTO_TITLE_AGENT_FORMAT` | `{agent} › {activity}`                   | How an agent pane's title reads. `{agent}` is the agent, `{activity}` the work. Drop `{agent}` (say `{activity}`) for a terminal whose own tab HUD already names the agent. Must keep `{activity}` |
 
 ## Documentation
 

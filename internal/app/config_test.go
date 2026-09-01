@@ -22,7 +22,7 @@ func isolate(t *testing.T) {
 	// isolate anything until it is out of the way.
 	t.Setenv("XDG_CONFIG_HOME", "")
 
-	for _, name := range []string{EnvDebug, EnvPoll, EnvMaxLength, EnvBranchMax, EnvPosition, EnvManual, EnvTranscript} {
+	for _, name := range []string{EnvDebug, EnvPoll, EnvMaxLength, EnvBranchMax, EnvPosition, EnvManual, EnvTranscript, EnvAgentFormat} {
 		// Setenv first for its cleanup, which then also undoes what the
 		// configuration file sets; an empty variable is not an absent one.
 		t.Setenv(name, "")
@@ -74,6 +74,41 @@ func TestLoadConfigDefaults(t *testing.T) {
 
 	if !cfg.ShowPosition {
 		t.Error("positions are off by default")
+	}
+
+	if cfg.AgentFormat != resolver.DefaultAgentFormat {
+		t.Errorf("agent format = %q, want the default %q", cfg.AgentFormat, resolver.DefaultAgentFormat)
+	}
+}
+
+func TestLoadConfigTakesTheAgentFormat(t *testing.T) {
+	isolate(t)
+	t.Setenv(EnvAgentFormat, "{activity}")
+
+	cfg, warnings := LoadConfig()
+	if len(warnings) != 0 {
+		t.Errorf("warnings = %v, want none", warnings)
+	}
+
+	if cfg.AgentFormat != "{activity}" {
+		t.Errorf("agent format = %q, want the one set", cfg.AgentFormat)
+	}
+}
+
+func TestAnAgentFormatWithoutActivityIsRejected(t *testing.T) {
+	// The format is the whole of what a title says an agent is doing, so one
+	// that drops {activity} is a mistake worth reporting, not a title worth
+	// showing. The default is kept.
+	isolate(t)
+	t.Setenv(EnvAgentFormat, "{agent}")
+
+	cfg, warnings := LoadConfig()
+	if len(warnings) != 1 {
+		t.Fatalf("warnings = %v, want one", warnings)
+	}
+
+	if cfg.AgentFormat != resolver.DefaultAgentFormat {
+		t.Errorf("agent format = %q, want the default %q", cfg.AgentFormat, resolver.DefaultAgentFormat)
 	}
 }
 

@@ -8,7 +8,7 @@ import (
 )
 
 func TestAgentTitleBeatsEverySourceBelowIt(t *testing.T) {
-	got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(&state.PaneState{
+	got := Default(DefaultMaxLength, DefaultBranchMaxLength, DefaultAgentFormat).Resolve(tabWithPane(&state.PaneState{
 		Dir:           "/Users/dev/work/dashboard",
 		TerminalTitle: "Claude Code",
 		Agent:         "claude",
@@ -30,7 +30,7 @@ func TestAgentTitleBeatsEverySourceBelowIt(t *testing.T) {
 }
 
 func TestAgentTitleOutranksAMeaningfulTerminalTitle(t *testing.T) {
-	got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(&state.PaneState{
+	got := Default(DefaultMaxLength, DefaultBranchMaxLength, DefaultAgentFormat).Resolve(tabWithPane(&state.PaneState{
 		Dir:           "/Users/dev/work/dashboard",
 		TerminalTitle: "Fix OAuth redirect",
 		Agent:         "claude",
@@ -51,6 +51,7 @@ func TestGenericAgentNameFallsThrough(t *testing.T) {
 			got := Default(
 				DefaultMaxLength,
 				DefaultBranchMaxLength,
+				DefaultAgentFormat,
 			).Resolve(tabWithPane(&state.PaneState{
 				Dir:           "/Users/dev/work/dashboard",
 				TerminalTitle: "Fix OAuth redirect",
@@ -82,11 +83,11 @@ func TestAgentEchoingItsOwnNameIsNotAgentContext(t *testing.T) {
 		AgentTitle:   "Acme Bot",
 	}
 
-	if _, ok := NewAgent().Resolve(pane); ok {
+	if _, ok := NewAgent(DefaultAgentFormat).Resolve(pane); ok {
 		t.Error("the agent source claimed an agent naming itself")
 	}
 
-	got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(pane))
+	got := Default(DefaultMaxLength, DefaultBranchMaxLength, DefaultAgentFormat).Resolve(tabWithPane(pane))
 	if want := "dashboard › acme-bot"; got.Name != want {
 		t.Errorf("name = %q, want %q", got.Name, want)
 	}
@@ -108,15 +109,15 @@ func TestAnEchoedAgentNameIsDeclinedWhateverReportsIt(t *testing.T) {
 		AgentTopic:    "acme-bot",
 	}
 
-	if _, ok := NewTerminalTitle().Resolve(pane); ok {
+	if _, ok := NewTerminalTitle(DefaultAgentFormat).Resolve(pane); ok {
 		t.Error("the terminal title source claimed an agent naming itself")
 	}
 
-	if _, ok := NewTranscript().Resolve(pane); ok {
+	if _, ok := NewTranscript(DefaultAgentFormat).Resolve(pane); ok {
 		t.Error("the transcript source claimed an agent naming itself")
 	}
 
-	got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(pane))
+	got := Default(DefaultMaxLength, DefaultBranchMaxLength, DefaultAgentFormat).Resolve(tabWithPane(pane))
 	if want := "dashboard › acme-bot"; got.Name != want {
 		t.Errorf("name = %q, want %q", got.Name, want)
 	}
@@ -125,7 +126,7 @@ func TestAnEchoedAgentNameIsDeclinedWhateverReportsIt(t *testing.T) {
 func TestAgentTitleWithoutAnAgentIsIgnored(t *testing.T) {
 	// Herdr leaves the title on a pane whose agent it no longer recognizes;
 	// without an agent it is not agent context.
-	got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(&state.PaneState{
+	got := Default(DefaultMaxLength, DefaultBranchMaxLength, DefaultAgentFormat).Resolve(tabWithPane(&state.PaneState{
 		Dir:        "/Users/dev/work/dashboard",
 		AgentTitle: "Implement OAuth scopes",
 	}))
@@ -136,7 +137,7 @@ func TestAgentTitleWithoutAnAgentIsIgnored(t *testing.T) {
 }
 
 func TestAgentTitleWithNoDirectoryStandsAlone(t *testing.T) {
-	got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(&state.PaneState{
+	got := Default(DefaultMaxLength, DefaultBranchMaxLength, DefaultAgentFormat).Resolve(tabWithPane(&state.PaneState{
 		Agent:       "claude",
 		AgentStatus: herdr.AgentStatusWorking,
 		AgentTitle:  "Implement OAuth scopes",
@@ -168,7 +169,7 @@ func TestContextAndActivityComeFromTheSamePane(t *testing.T) {
 		},
 	}
 
-	got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tab)
+	got := Default(DefaultMaxLength, DefaultBranchMaxLength, DefaultAgentFormat).Resolve(tab)
 	if want := "dashboard › claude › Implement OAuth scopes"; got.Name != want {
 		t.Errorf("name = %q, want %q", got.Name, want)
 	}
