@@ -37,7 +37,7 @@ func testResolver(t *testing.T) resolver.TitleResolver {
 	t.Helper()
 	t.Setenv("HOME", filepath.Join(t.TempDir(), "home"))
 
-	return resolver.Default(resolver.DefaultMaxLength, resolver.DefaultBranchMaxLength)
+	return resolver.Default(resolver.DefaultMaxLength, resolver.DefaultBranchMaxLength, resolver.DefaultAgentFormat)
 }
 
 // harness runs an App against a stubbed Herdr session.

@@ -18,7 +18,7 @@ func repoPane(branch, defaultBranch string) *state.PaneState {
 }
 
 func resolveRepoPane(pane *state.PaneState) string {
-	return Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(pane)).Name
+	return Default(DefaultMaxLength, DefaultBranchMaxLength, DefaultAgentFormat).Resolve(tabWithPane(pane)).Name
 }
 
 func TestTheBranchQualifiesTheDirectory(t *testing.T) {
@@ -122,14 +122,14 @@ func TestTheBranchSurvivesTheWorkspaceItRepeats(t *testing.T) {
 	tab := tabWithPane(repoPane("feat/oauth", "main"))
 	tab.WorkspaceName = "dashboard"
 
-	got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tab).Name
+	got := Default(DefaultMaxLength, DefaultBranchMaxLength, DefaultAgentFormat).Resolve(tab).Name
 	if got != "feat/oauth" {
 		t.Errorf("title %q, want the branch alone", got)
 	}
 }
 
 func TestABranchWidthOfZeroLeavesBranchesOut(t *testing.T) {
-	got := Default(DefaultMaxLength, 0).Resolve(tabWithPane(repoPane("feat/oauth", "main"))).Name
+	got := Default(DefaultMaxLength, 0, DefaultAgentFormat).Resolve(tabWithPane(repoPane("feat/oauth", "main"))).Name
 	if got != "dashboard" {
 		t.Errorf("title %q, want no branch at all", got)
 	}
@@ -157,7 +157,7 @@ func TestABranchStandsWhereTheDirectorySaysNothing(t *testing.T) {
 func TestTheBranchIsCreditedLikeAContext(t *testing.T) {
 	// The reason a tab carries a name is the source that named the work, and a
 	// branch is not work: it answers for the title only when nothing else does.
-	resolver := Default(DefaultMaxLength, DefaultBranchMaxLength)
+	resolver := Default(DefaultMaxLength, DefaultBranchMaxLength, DefaultAgentFormat)
 
 	pane := repoPane("feat/oauth", "main")
 

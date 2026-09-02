@@ -17,6 +17,12 @@ const DefaultMaxLength = 50
 // GenericFallback names a tab whose context tells us nothing.
 const GenericFallback = "Shell"
 
+// DefaultAgentFormat joins an agent pane's name to its activity, and reproduces
+// what Auto Title has always shown: `claude › <activity>`. `{agent}` is the
+// agent's name, `{activity}` is the work; a format without `{agent}` drops the
+// prefix.
+const DefaultAgentFormat = "{agent}" + Separator + "{activity}"
+
 // Confidence levels form the resolution ladder, and the resolver orders itself
 // by them. A source never overrides a field a higher one already supplied. The
 // gaps are what make room for the next source.
@@ -44,7 +50,7 @@ type Parts struct {
 // activityFrom turns an untrusted value into the activity of a title, bound to
 // the kind of program the pane is running. No limit is applied: truncation
 // belongs to the assembled name.
-func activityFrom(pane *state.PaneState, value string) (Parts, bool) {
+func activityFrom(pane *state.PaneState, value, agentFormat string) (Parts, bool) {
 	activity, ok := Meaningful(Sanitize(value, 0))
 	if !ok {
 		return Parts{}, false
@@ -54,7 +60,12 @@ func activityFrom(pane *state.PaneState, value string) (Parts, bool) {
 		return Parts{}, false
 	}
 
-	return Parts{Activity: qualify(activity, paneKind(pane))}, true
+	kind := paneKind(pane)
+	if pane.HasAgent() {
+		return Parts{Activity: formatAgent(agentFormat, kind, activity)}, true
+	}
+
+	return Parts{Activity: qualify(activity, kind)}, true
 }
 
 // echoesAgentName reports an activity that is no more than the agent's own
@@ -114,12 +125,12 @@ func New(maxLength int, sources ...Source) *Deterministic {
 
 // Default builds the resolver Auto Title ships with, so the binary and the
 // tests cannot drift apart on what the chain contains.
-func Default(maxLength, branchMax int) *Deterministic {
+func Default(maxLength, branchMax int, agentFormat string) *Deterministic {
 	return New(maxLength,
-		NewAgent(),
-		NewTerminalTitle(),
-		NewTranscript(),
-		NewProcess(),
+		NewAgent(agentFormat),
+		NewTerminalTitle(agentFormat),
+		NewTranscript(agentFormat),
+		NewProcess(agentFormat),
 		NewSSH(),
 		NewGit(branchMax),
 		NewCWD(),

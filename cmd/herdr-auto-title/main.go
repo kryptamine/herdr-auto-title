@@ -47,7 +47,7 @@ func run() error {
 		return err
 	}
 
-	chain := resolver.Default(cfg.MaxLength, cfg.BranchMax)
+	chain := resolver.Default(cfg.MaxLength, cfg.BranchMax, cfg.AgentFormat)
 
 	var titles resolver.TitleResolver = chain
 	if cfg.ShowPosition {
