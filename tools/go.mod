@@ -1,5 +1,5 @@
 // Tooling only. This module exists so the linter's dependency tree stays out
-// of the plugin's: the main module keeps one dependency and builds on Go 1.24,
+// of the plugin's: the main module keeps two dependencies and builds on Go 1.24,
 // which is what Herdr needs at install time.
 module github.com/kryptamine/herdr-auto-title/tools
 
