@@ -222,3 +222,44 @@ func TestPaneFromPrefersTheForegroundDirectory(t *testing.T) {
 		t.Errorf("dir = %q, want the shell's own", shell.Dir)
 	}
 }
+
+func TestReadProcessesTakesTheForegroundProcessesOwnDirectory(t *testing.T) {
+	// A snapshot reports the deepest descendant's directory, which for an agent
+	// is a server it spawned. The process list is deepest first.
+	pane := PaneFrom(herdr.PaneInfo{
+		PaneID: "wE:p1", Agent: "claude",
+		CWD: "/work/dashboard", ForegroundCWD: "/opt/gimp-mcp",
+	}, time.Time{})
+
+	pane.ReadProcesses([]herdr.PaneProcessInfoProcess{
+		{Name: "gimp-mcp", CWD: "/opt/gimp-mcp"},
+		{Name: "claude", CWD: "/work/self-care-portal"},
+	})
+
+	if pane.Dir != "/work/self-care-portal" {
+		t.Errorf("dir = %q, want the foreground process's own", pane.Dir)
+	}
+
+	if len(pane.Processes) != 2 || pane.Processes[0].Name != "gimp-mcp" {
+		t.Errorf("processes = %+v, want both, deepest first", pane.Processes)
+	}
+}
+
+func TestReadProcessesKeepsTheSnapshotDirectoryWhenItLearnsNone(t *testing.T) {
+	pane := PaneFrom(
+		herdr.PaneInfo{PaneID: "wE:p1", CWD: "/work/api", ForegroundCWD: "/work/api"},
+		time.Time{},
+	)
+
+	pane.ReadProcesses(nil)
+
+	if pane.Dir != "/work/api" {
+		t.Errorf("dir = %q after an unread pane, want the snapshot's", pane.Dir)
+	}
+
+	pane.ReadProcesses([]herdr.PaneProcessInfoProcess{{Name: "nvim"}})
+
+	if pane.Dir != "/work/api" {
+		t.Errorf("dir = %q after a process with no directory, want the snapshot's", pane.Dir)
+	}
+}

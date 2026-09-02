@@ -244,6 +244,20 @@ naming a project the user has left. The foreground process follows what is
 running right now, which is the point: what is running right now is what the
 pane is showing.
 
+Both of those are the snapshot's guess, and the pane a tab is named from does
+better: `pane.process_info` reports each foreground process with the directory
+it is itself in, deepest first, so the last entry is the pane's own foreground
+process and its directory is the pane's. That is what the poll reads, and the
+snapshot's pair stays behind it for the panes nothing is read for.
+
+The difference is what an agent spawns. `foreground_cwd` is the deepest
+descendant's, and an agent's descendants are its own machinery: an MCP server
+started as `uv run --directory ~/gimp-mcp` is a foreground process of the pane,
+so a tab holding that agent was named after the server's directory. Reading the
+agent's own directory instead names the project it is working in — which is not
+the shell's `cwd` either, because that shell was left behind when the user
+moved on.
+
 Directories that say nothing — the home directory, the filesystem root, a
 relative path — yield nothing, and a tab left with no name at all becomes
 `Shell`.

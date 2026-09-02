@@ -15,8 +15,8 @@ import (
 type PaneState struct {
 	ID string
 
-	// Dir is the directory this pane speaks for, already chosen between the
-	// shell's and the foreground process's.
+	// Dir is the directory this pane speaks for: its foreground process's own
+	// once ReadProcesses has run, and the snapshot's guess until then.
 	Dir string
 	// TerminalTitle is Herdr's cleaned title; TerminalTitleRaw still carries
 	// escapes and decorative prefixes and is only a fallback.
@@ -63,10 +63,20 @@ type Process struct {
 // carry: each field costs a request or a file of its own, which is why only
 // the pane that names its tab is read.
 type Reads struct {
-	Processes []herdr.PaneProcessInfoProcess
-	Git       git.Checkout
+	Git git.Checkout
 	// Topic is what the agent's own session says it is about.
 	Topic string
+}
+
+// paneDir is the directory a snapshot says a pane speaks for. A subshell leaves
+// cwd behind in the directory it was started from, so the foreground one is
+// preferred — but only ReadProcesses can say it exactly.
+func paneDir(info herdr.PaneInfo) string {
+	if info.ForegroundCWD != "" {
+		return info.ForegroundCWD
+	}
+
+	return info.CWD
 }
 
 // PaneFrom builds pane context from a snapshot entry and when a poll last saw
@@ -75,7 +85,7 @@ type Reads struct {
 func PaneFrom(info herdr.PaneInfo, changedAt time.Time) *PaneState {
 	return &PaneState{
 		ID:               info.PaneID,
-		Dir:              info.Dir(),
+		Dir:              paneDir(info),
 		TerminalTitle:    info.TerminalTitleStripped,
 		TerminalTitleRaw: info.TerminalTitle,
 		Agent:            info.Agent,
@@ -92,9 +102,21 @@ func PaneFrom(info herdr.PaneInfo, changedAt time.Time) *PaneState {
 // poll can leave it out: a tab is named from one pane, and every read behind
 // this costs a request or a file — see docs/architecture/poll-loop.md.
 func (p *PaneState) Read(reads Reads) {
-	p.Processes = processesFrom(reads.Processes)
 	p.Git = reads.Git
 	p.AgentTopic = reads.Topic
+}
+
+// ReadProcesses records what a pane is running, which is also what settles the
+// directory it speaks for: a snapshot reports the deepest descendant's, and a
+// server an agent spawned elsewhere would name the tab after itself.
+func (p *PaneState) ReadProcesses(processes []herdr.PaneProcessInfoProcess) {
+	p.Processes = processesFrom(processes)
+
+	// Deepest first, so the pane's own foreground process is last, and the
+	// directory it is in is the one the pane is working in.
+	if last := len(processes) - 1; last >= 0 && processes[last].CWD != "" {
+		p.Dir = processes[last].CWD
+	}
 }
 
 func processesFrom(processes []herdr.PaneProcessInfoProcess) []Process {

@@ -414,6 +414,37 @@ func TestAgentContextNamesTheTab(t *testing.T) {
 	}
 }
 
+func TestAnAgentPaneIsNamedAfterTheAgentsOwnDirectory(t *testing.T) {
+	// Both directories the snapshot carries are a descendant's: the agent moved
+	// on to another project, and its MCP server sits in a third place.
+	client := herdrtest.New(
+		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
+		[]herdr.PaneInfo{{
+			PaneID: "wE:p1", TabID: "wE:t1", Focused: true,
+			CWD:           "/Users/dev/work/dashboard",
+			ForegroundCWD: "/private/tmp",
+			Agent:         "claude",
+			AgentStatus:   herdr.AgentStatusWorking,
+			Title:         "Implement OAuth scopes",
+		}},
+	)
+	client.SetProcesses(
+		"wE:p1",
+		herdr.PaneProcessInfoProcess{Name: "fff-mcp", CWD: "/private/tmp"},
+		herdr.PaneProcessInfoProcess{
+			Name: "claude",
+			CWD:  "/Users/dev/work/self-care-portal",
+		},
+	)
+
+	h := startWith(t, client)
+
+	want := "self-care-portal › claude › Implement OAuth scopes"
+	if got := h.awaitRenames(1)[0].Label; got != want {
+		t.Errorf("rename = %q, want %q", got, want)
+	}
+}
+
 func TestARemoteSessionIsNamedAfterItsHost(t *testing.T) {
 	// What is running in a pane is not in the snapshot, so this exercises the
 	// extra read the poll makes for the pane that names the tab.

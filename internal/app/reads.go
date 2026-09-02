@@ -63,10 +63,13 @@ func (a *App) readInto(
 		return
 	}
 
+	// What a pane is running settles which directory it speaks for, and the
+	// reads below are of that directory, so this one comes first.
+	pane.ReadProcesses(a.processesIn(ctx, client, pane.ID))
+
 	pane.Read(state.Reads{
-		Processes: a.processesIn(ctx, client, pane.ID),
-		Git:       a.checkoutIn(ctx, pane.Dir, checkouts),
-		Topic:     a.topicIn(ctx, pane),
+		Git:   a.checkoutIn(ctx, pane.Dir, checkouts),
+		Topic: a.topicIn(ctx, pane),
 	})
 }
 

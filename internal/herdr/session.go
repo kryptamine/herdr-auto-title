@@ -75,28 +75,18 @@ func (s *AgentSessionInfo) IDFor(agent string) (string, bool) {
 	return s.Value, true
 }
 
-// Dir is the directory a pane speaks for. The foreground process's is
-// preferred: cwd is the pane's own shell, and a subshell leaves it behind in
-// the directory that shell was started from — see docs/architecture.
-func (p PaneInfo) Dir() string {
-	if p.ForegroundCWD != "" {
-		return p.ForegroundCWD
-	}
-
-	return p.CWD
-}
-
-// PaneProcessInfoProcess is one process running in a pane. Herdr reports more
-// about each — its pid, its working directory, the joined command line — but a
-// title is derived from the name and the arguments alone.
+// PaneProcessInfoProcess is one process running in a pane. Herdr reports its
+// pid and the joined command line too; a title is derived from the name, the
+// arguments and the directory the process itself is in.
 type PaneProcessInfoProcess struct {
 	Name string   `json:"name"`
 	Argv []string `json:"argv"`
+	CWD  string   `json:"cwd"`
 }
 
 // PaneProcessInfo is what pane.process_info answers. ForegroundProcesses holds
-// the pane's foreground process and its descendants, so an editor that shelled
-// out lists both.
+// the pane's foreground process and its descendants, deepest first, so an
+// editor that shelled out lists both and the editor is last.
 type PaneProcessInfo struct {
 	ForegroundProcesses []PaneProcessInfoProcess `json:"foreground_processes"`
 }

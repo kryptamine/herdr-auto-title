@@ -123,9 +123,36 @@ reads, so this section describes Herdr rather than those types.
   `chezmoi cd`, which runs `$SHELL` in the source directory, the pane reported
   `cwd: ~/Work/global-sso` and `foreground_cwd: ~/.local/share/chezmoi` for as
   long as that subshell lived, while `pane.process_info` listed the subshell
-  alone. Both fields are null when Herdr cannot read one, so a pane's directory
-  is `foreground_cwd` with `cwd` behind it — see
+  alone. Both fields are null when Herdr cannot read one, and neither is the
+  pane's directory on its own — see the two facts below and
   [title resolution](./title-resolution.md).
+- **`foreground_cwd` is the deepest descendant's, not the foreground process's
+  own.** Probed with a pane in `~/Library/Application Support/herdr-auto-title`
+  running `python3` that had spawned `sleep` in `/tmp`: `cwd` reported the
+  pane's directory, `foreground_cwd` reported `/private/tmp`, and
+  `pane.process_info` listed the child first and its parent second. Anything a
+  program starts elsewhere takes the pane's directory with it.
+- **A pane's directory is the `cwd` of its own foreground process**, which only
+  `pane.process_info` reports. Probed across the four panes of a live session:
+  in every one the last entry of `foreground_processes` was the process whose
+  `pid` equals `foreground_process_group_id`, and its `cwd` was the directory
+  the pane was working in. One pane disagreed with both snapshot fields at once
+  — `cwd: ~/Work/herdr-auto-title` (the shell it was started from) against
+  `foreground_cwd: ~/Work/self-care-portal` (an MCP server), with the agent
+  itself in `~/Work/self-care-portal`. Auto Title reads it for the pane that
+  names the tab and keeps the snapshot's pair behind it — see
+  [title resolution](./title-resolution.md).
+- **`foreground_processes` is the pane's foreground process group.** Every
+  process it listed shared the group id `pane.process_info` reports as
+  `foreground_process_group_id` and the pane's controlling terminal; a
+  descendant started in a group of its own without a terminal — which is how
+  Claude Code runs the commands it is asked to run — was absent from the list
+  while it ran. An agent's MCP servers are in it.
+- **`pane.process_info` reports more per process than a name.** Each entry
+  carries `pid`, `argv0`, `cmdline` and `cwd` beside `name` and `argv`, and the
+  pane's entry carries `shell_pid` and `foreground_process_group_id`. Auto
+  Title reads the name, the arguments and the directory; the rest is listed
+  here so a future change need not probe again.
 - **`PaneInfo` carries no foreground process name.** Only `pane.process_info`
   answers that, and nothing announces that a command started.
 - **`PaneInfo.title` is the agent's own title**, not the terminal's. Herdr left

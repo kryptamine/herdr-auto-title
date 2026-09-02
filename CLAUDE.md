@@ -155,14 +155,32 @@ listed here** (`make probe-*`, `scripts/probe.py`).
   A subshell moves `foreground_cwd` and leaves `cwd` behind: probed with
   `chezmoi cd`, which runs `$SHELL` in the source directory, the pane reported
   `cwd: ~/Work/global-sso` and `foreground_cwd: ~/.local/share/chezmoi` for as
-  long as that subshell lived. A pane's directory is `foreground_cwd` with
-  `cwd` behind it.
+  long as that subshell lived. Neither field is the pane's directory on its own
+  — see the next two.
+- **`foreground_cwd` is the deepest descendant's directory**, not the foreground
+  process's own: a pane running `python3` that had spawned `sleep` in `/tmp`
+  reported `foreground_cwd: /private/tmp` while `cwd` stayed on the pane's
+  directory. Anything a program starts elsewhere takes it with it: an agent
+  whose MCP server sits in `/tmp` reported that as the pane's.
+- **A pane's directory is its foreground process's own `cwd`**, which only
+  `pane.process_info` reports. Measured on a live session: an agent pane held
+  `cwd: ~/Work/herdr-auto-title` (the shell, left behind) and
+  `foreground_cwd: ~/Work/self-care-portal` (an MCP server), while the agent
+  process itself was in `~/Work/self-care-portal` — the project the user was
+  working in. The snapshot's pair is the fallback for a pane nothing was read
+  for.
+- **`foreground_processes` is the pane's foreground process group**, by the
+  group id `pane.process_info` reports and the pane's controlling terminal. An
+  agent's MCP servers are in it; a descendant started in a group of its own
+  without a terminal, as Claude Code starts the commands it runs, is not.
 - `PaneInfo` carries no foreground process name; that needs `pane.process_info`,
   one request per pane at 0.11 ms — cheaper than the snapshot, but one per pane:
   on an eight-pane session the reads measured 0.17 ms each against a 1.35 ms
   snapshot, so making one every poll cost as much again as the snapshot itself.
   Its `foreground_processes` lists the pane's foreground process *and its
-  descendants*, each with `name` and a nullable `argv`.
+  descendants*, deepest first, each with `pid`, `name`, `argv0`, a nullable
+  `argv`, `cmdline` and `cwd`; the pane's entry carries `shell_pid` and
+  `foreground_process_group_id`.
 - Pane revisions are monotonic, which is how a poll tells which panes drew.
 - **A revision does not track what is running in the pane.** Measured over ten
   minutes of a live eight-pane session: the foreground processes changed nine
