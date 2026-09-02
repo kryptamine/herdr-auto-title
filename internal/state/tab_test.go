@@ -76,7 +76,7 @@ func TestPaneFromReadsAgentContext(t *testing.T) {
 		DisplayAgent:          "Claude Code",
 		AgentStatus:           herdr.AgentStatusWorking,
 	}, stamp)
-	pane.Read(Reads{Topic: "Rework the poll loop"})
+	pane.Read(Reads{Dir: pane.Dir, Topic: "Rework the poll loop"})
 
 	switch {
 	case pane.TerminalTitle != "Claude Code":
@@ -223,18 +223,19 @@ func TestPaneFromPrefersTheForegroundDirectory(t *testing.T) {
 	}
 }
 
-func TestReadProcessesTakesTheForegroundProcessesOwnDirectory(t *testing.T) {
+func TestPaneDirTakesTheForegroundProcessesOwnDirectory(t *testing.T) {
 	// A snapshot reports the deepest descendant's directory, which for an agent
 	// is a server it spawned. The process list is deepest first.
+	processes := []herdr.PaneProcessInfoProcess{
+		{Name: "gimp-mcp", CWD: "/opt/gimp-mcp"},
+		{Name: "claude", CWD: "/work/self-care-portal"},
+	}
+
 	pane := PaneFrom(herdr.PaneInfo{
 		PaneID: "wE:p1", Agent: "claude",
 		CWD: "/work/dashboard", ForegroundCWD: "/opt/gimp-mcp",
 	}, time.Time{})
-
-	pane.ReadProcesses([]herdr.PaneProcessInfoProcess{
-		{Name: "gimp-mcp", CWD: "/opt/gimp-mcp"},
-		{Name: "claude", CWD: "/work/self-care-portal"},
-	})
+	pane.Read(Reads{Processes: processes, Dir: PaneDir(processes, pane.Dir)})
 
 	if pane.Dir != "/work/self-care-portal" {
 		t.Errorf("dir = %q, want the foreground process's own", pane.Dir)
@@ -245,21 +246,13 @@ func TestReadProcessesTakesTheForegroundProcessesOwnDirectory(t *testing.T) {
 	}
 }
 
-func TestReadProcessesKeepsTheSnapshotDirectoryWhenItLearnsNone(t *testing.T) {
-	pane := PaneFrom(
-		herdr.PaneInfo{PaneID: "wE:p1", CWD: "/work/api", ForegroundCWD: "/work/api"},
-		time.Time{},
-	)
-
-	pane.ReadProcesses(nil)
-
-	if pane.Dir != "/work/api" {
-		t.Errorf("dir = %q after an unread pane, want the snapshot's", pane.Dir)
+func TestPaneDirKeepsTheSnapshotsGuessWhenItLearnsNone(t *testing.T) {
+	if dir := PaneDir(nil, "/work/api"); dir != "/work/api" {
+		t.Errorf("dir = %q for an unread pane, want the snapshot's", dir)
 	}
 
-	pane.ReadProcesses([]herdr.PaneProcessInfoProcess{{Name: "nvim"}})
-
-	if pane.Dir != "/work/api" {
-		t.Errorf("dir = %q after a process with no directory, want the snapshot's", pane.Dir)
+	nameOnly := []herdr.PaneProcessInfoProcess{{Name: "nvim"}}
+	if dir := PaneDir(nameOnly, "/work/api"); dir != "/work/api" {
+		t.Errorf("dir = %q for a process with no directory, want the snapshot's", dir)
 	}
 }

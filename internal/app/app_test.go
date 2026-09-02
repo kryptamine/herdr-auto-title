@@ -1049,3 +1049,39 @@ func TestAPollPastItsDeadlineStopsReadingTheFilesystem(t *testing.T) {
 		t.Errorf("checkout = %+v, want a poll past its deadline to read nothing", got)
 	}
 }
+
+func TestAPaneIsReadFromItsForegroundProcessesDirectory(t *testing.T) {
+	// Both directories the snapshot carries point at a server the agent spawned
+	// elsewhere, so a checkout read from either finds no repository at all.
+	repo := repoAt(t, "feat/oauth")
+	elsewhere := t.TempDir()
+
+	pane := herdr.PaneInfo{
+		PaneID: "wE:p1", TabID: "wE:t1", Agent: "claude",
+		CWD: elsewhere, ForegroundCWD: elsewhere,
+	}
+
+	app := New(testConfig(), discardLogger(), testResolver(t))
+	client := herdrtest.New([]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}}, []herdr.PaneInfo{pane})
+	client.SetProcesses(
+		"wE:p1",
+		herdr.PaneProcessInfoProcess{Name: "gimp-mcp", CWD: elsewhere},
+		herdr.PaneProcessInfoProcess{Name: "claude", CWD: repo},
+	)
+
+	tabs := app.tabsIn(herdr.Snapshot{
+		Tabs:  []herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
+		Panes: []herdr.PaneInfo{pane},
+	})
+
+	read := tabs[0].Panes[0]
+	app.readInto(context.Background(), client, read, make(checkoutMemo))
+
+	if read.Dir != repo {
+		t.Errorf("dir = %q, want the agent's own %q", read.Dir, repo)
+	}
+
+	if got := read.Git.Branch; got != "feat/oauth" {
+		t.Errorf("branch = %q, want the checkout of the directory the pane is in", got)
+	}
+}

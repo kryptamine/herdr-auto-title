@@ -63,13 +63,14 @@ func (a *App) readInto(
 		return
 	}
 
-	// What a pane is running settles which directory it speaks for, and the
-	// reads below are of that directory, so this one comes first.
-	pane.ReadProcesses(a.processesIn(ctx, client, pane.ID))
+	processes := a.processesIn(ctx, client, pane.ID)
+	dir := state.PaneDir(processes, pane.Dir)
 
 	pane.Read(state.Reads{
-		Git:   a.checkoutIn(ctx, pane.Dir, checkouts),
-		Topic: a.topicIn(ctx, pane),
+		Processes: processes,
+		Dir:       dir,
+		Git:       a.checkoutIn(ctx, dir, checkouts),
+		Topic:     a.topicIn(ctx, pane, dir),
 	})
 }
 
@@ -138,7 +139,7 @@ func (m checkoutMemo) read(dir string) git.Checkout {
 // topicIn reports what the session the pane's agent is holding says it is
 // about. Only Claude Code's transcripts are understood, and only Herdr's
 // integration hook says which session a pane holds.
-func (a *App) topicIn(ctx context.Context, pane *state.PaneState) string {
+func (a *App) topicIn(ctx context.Context, pane *state.PaneState, dir string) string {
 	if !a.cfg.ReadTranscripts || spentPoll(ctx) {
 		return ""
 	}
@@ -148,7 +149,7 @@ func (a *App) topicIn(ctx context.Context, pane *state.PaneState) string {
 		return ""
 	}
 
-	return a.topics.Topic(sessionID, pane.Dir).Text()
+	return a.topics.Topic(sessionID, dir).Text()
 }
 
 // spentPoll reports that this poll is past its deadline, in which case the tab
