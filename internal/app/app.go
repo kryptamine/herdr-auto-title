@@ -31,8 +31,8 @@ type App struct {
 	failures failureLog
 }
 
-// New builds the application. The connection is supplied to Run, so the same
-// App can be driven by a real socket or by a stub in tests.
+// New builds the application. The client belongs to Run rather than to the
+// App, so one App can be driven by any connection.
 func New(cfg Config, log *slog.Logger, titles resolver.TitleResolver) *App {
 	return &App{
 		cfg:     cfg,
@@ -115,10 +115,9 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 			continue
 		}
 
-		// The reads happen here rather than during assembly: they are what a
-		// poll spends, and this is where it is known they will be used. The
-		// resolver picks the same pane again, which the choice being made from
-		// state alone is what guarantees.
+		// Read here rather than during assembly: the reads are what a poll
+		// spends, and only a tab that will be renamed is worth them. The
+		// resolver picks the same pane, because the choice is made from state.
 		a.readInto(ctx, client, state.SelectContextPane(tab), checkouts)
 
 		decision := a.titles.Resolve(tab)

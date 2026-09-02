@@ -10,8 +10,8 @@ import (
 	"sync/atomic"
 )
 
-// socketPathEnv names the environment variable holding the path to the Herdr
-// socket. The path is never hard-coded.
+// socketPathEnv is where Herdr names the socket it made for this session. The
+// path is never hard-coded.
 const socketPathEnv = "HERDR_SOCKET_PATH"
 
 // Client is the subset of the Herdr socket API that Auto Title uses.

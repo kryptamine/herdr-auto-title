@@ -23,8 +23,8 @@ const zeroWidthJoiner = '\u200d'
 // left dangling by truncation says a part was lost without saying which.
 const trimmable = " " + separatorRune
 
-// escape opens every sequence ansiRe matches, which is what makes finding none
-// of it enough to skip that pass.
+// escape opens every sequence ansiRe matches, so a value without it needs no
+// ANSI pass at all.
 const escape = '\x1b'
 
 var (
