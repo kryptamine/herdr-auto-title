@@ -56,27 +56,13 @@ library.
 
 ## Comment rule (mandatory)
 
-**A comment is at most three lines.** That is a hard cap, in every language in
-the repository. It is not a style preference: a comment long enough to need a
-fourth line is explaining something the code cannot hold, and that explanation
-belongs in [docs/architecture](docs/architecture/) where it can be read by
-someone who is not already staring at the function.
+**A comment is at most three lines**, in every language in the repository, and
+it says what is surprising rather than what is visible. A decision that needs a
+paragraph goes in [docs/architecture](docs/architecture/), with one line in the
+code pointing at it.
 
-Comment what is **surprising**, never what is visible:
-
-- **Delete it** if it restates the code, names what a well-named identifier
-  already names, or records where a value came from (which schema, which
-  ticket, which measurement session). Provenance is what `git log` and
-  `docs/architecture` are for.
-- **Delete it** if it justifies code somewhere else. A comment belongs to the
-  thing it is attached to, so a contract is stated where it is relied on, never
-  where a caller might one day lean on it.
-- **Keep it** if a reader would otherwise "fix" the code and break it: a
-  measured constant, a constraint the API imposes, an ordering that matters, a
-  case that looks unhandled and is not.
-
-When a decision genuinely needs a paragraph, write the paragraph in
-`docs/architecture` and leave one line in the code pointing at it.
+The rule in full, in Go terms and with worked examples of what to keep and what
+to delete, is in [.claude/rules/comments.md](.claude/rules/comments.md).
 
 ## Commands
 
