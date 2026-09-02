@@ -18,9 +18,9 @@ var shellNames = map[string]struct{}{
 // process names a pane: a build tool is `esbuild` and five `node`s.
 func paneKind(pane *state.PaneState) string {
 	if pane.HasAgent() {
-		// An agent's name is in the generic table, because an agent naming
-		// itself is not a report of its work. As a kind it is exactly right:
-		// it names the program, which is all a kind ever does.
+		// An agent naming itself is not a report of its work, which is why the
+		// name is generic as an activity. As a kind it names the program,
+		// which is all a kind ever does.
 		return Sanitize(pane.Agent, 0)
 	}
 

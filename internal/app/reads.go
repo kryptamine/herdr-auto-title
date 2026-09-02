@@ -152,9 +152,9 @@ func (a *App) topicIn(ctx context.Context, pane *state.PaneState, dir string) st
 	return a.topics.Topic(sessionID, dir).Text()
 }
 
-// spentPoll reports that this poll is past its deadline, in which case the tab
-// loop will discard it. The reads it guards go to the filesystem, which takes
-// no context, so the only way to bound them is not to start them.
+// spentPoll reports that this poll is past its deadline. The reads it guards
+// go to the filesystem, which takes no context, so the only way to bound them
+// is not to start them.
 func spentPoll(ctx context.Context) bool {
 	return ctx.Err() != nil
 }

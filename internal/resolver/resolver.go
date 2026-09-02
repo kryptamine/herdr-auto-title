@@ -112,8 +112,8 @@ func New(maxLength int, sources ...Source) *Deterministic {
 	return &Deterministic{sources: ordered, maxLength: maxLength}
 }
 
-// Default builds the resolver Auto Title ships with, so the binary and the
-// tests cannot drift apart on what the chain contains.
+// Default builds the chain Auto Title ships with, so nothing else has to list
+// what it contains.
 func Default(maxLength, branchMax int) *Deterministic {
 	return New(maxLength,
 		NewAgent(),

@@ -163,10 +163,9 @@ type TabState struct {
 	CurrentName string
 	// WorkspaceName is the label Herdr shows above this tab.
 	WorkspaceName string
-	// Position is the tab's place in its workspace, counted from one, which is
-	// both the key that switches to it and the label Herdr gives it while it
-	// is unnamed. Not TabInfo.number, which is a counter that never repeats —
-	// see docs/architecture/herdr-socket-api.md.
+	// Position is the tab's place in its workspace, counted from one: the key
+	// that switches to it, and the label Herdr gives it while it is unnamed.
+	// Not TabInfo.number — see docs/architecture/herdr-socket-api.md.
 	Position int
 	// Panes are ordered by ID, which is what makes every traversal of them
 	// yield the same answer from the same session.
@@ -209,9 +208,9 @@ func SelectContextPane(tab TabState) *PaneState {
 	return mostRecent(panes, nil)
 }
 
-// mostRecent returns the last-changed pane of an ID-ordered slice that keep
-// accepts, or nil when it accepts none. A nil keep takes every pane; the
-// strict comparison keeps the lowest ID when timestamps tie.
+// mostRecent returns the last-changed pane keep accepts, or nil when it
+// accepts none. A nil keep takes every pane. Panes arrive ordered by ID, and
+// the strict comparison keeps the lowest of them when timestamps tie.
 func mostRecent(panes []*PaneState, keep func(*PaneState) bool) *PaneState {
 	var best *PaneState
 

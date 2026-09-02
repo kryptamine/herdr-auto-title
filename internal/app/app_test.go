@@ -758,11 +758,9 @@ func TestAPaneThatCannotBeReadIsAskedAgain(t *testing.T) {
 	h := startWith(t, client)
 	h.awaitPolls(3)
 
-	// The tab is already named from the snapshot alone; the second rename is
-	// the one that could only come from a process read that happened again.
-	// The processes go in before the error is cleared: between the two calls a
-	// poll can read an empty pane successfully, and that answer is reused for
-	// processRefresh, which outlasts what this test is willing to wait.
+	// The tab is already named from the snapshot alone; the second rename can
+	// only come from a process read that happened again. The processes go in
+	// before the error clears: an empty read between the two would be reused.
 	client.SetProcesses("wE:p1", herdr.PaneProcessInfoProcess{Name: "nvim"})
 	client.SetProcessError(nil)
 

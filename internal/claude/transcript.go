@@ -23,8 +23,8 @@ const Agent = "claude"
 // catch-up on a session first seen mid-flight, not the steady state.
 const maxScan = 2 << 20
 
-// maxOpening bounds what an opening prompt contributes. A title is 50 columns;
-// the rest is only carried so the truncation can happen against the tab bar.
+// maxOpening bounds what an opening prompt contributes. It is generous because
+// the cut that matters is made later, against the width of the tab bar.
 const maxOpening = 200
 
 // locateRetry is how long a session whose transcript was not found is left
@@ -141,8 +141,8 @@ func (r *Reader) find(session *transcript, sessionID, dir string) bool {
 	return true
 }
 
-// Retain forgets every session but these, which is how the sessions a run has
-// outlived are let go.
+// Retain forgets every session but these, so a pane that closed takes its
+// transcript with it.
 func (r *Reader) Retain(sessionIDs []string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

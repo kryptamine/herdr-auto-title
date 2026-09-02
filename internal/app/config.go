@@ -84,8 +84,8 @@ func LoadConfig() (Config, []string) {
 	cfg.ShowPosition = fromEnv(&warnings, EnvPosition, cfg.ShowPosition, boolean)
 	cfg.ReadTranscripts = fromEnv(&warnings, EnvTranscript, cfg.ReadTranscripts, boolean)
 	// A path needs neither parsing nor checking, so it does not go through
-	// fromEnv: any string the user set is the path they meant, and setting it
-	// to none of it asks for locks that do not outlive the process.
+	// fromEnv: any string the user set is the path they meant, and an empty
+	// one asks for locks that do not outlive the process.
 	if raw, set := os.LookupEnv(EnvManual); set {
 		cfg.ManualPath = raw
 	}
@@ -123,8 +123,8 @@ func configPath() string {
 }
 
 // fromEnv returns what the environment says name is, or fallback when it says
-// nothing usable. Nothing here fails: a typo must not stop the plugin starting,
-// which is why it warns instead, and is the only place a warning is worded.
+// nothing usable. Nothing here fails: a typo must not stop the plugin
+// starting, so it warns instead.
 func fromEnv[T any](warnings *[]string, name string, fallback T, convert converter[T]) T {
 	raw := os.Getenv(name)
 	if raw == "" {
@@ -172,8 +172,6 @@ func countOrNone(raw string) (int, error) {
 	return atLeast(raw, 0, errNegative)
 }
 
-// atLeast reads a number that may not fall below lowest, which is the whole of
-// what separates one count from the other.
 func atLeast(raw string, lowest int, tooSmall error) (int, error) {
 	value, err := strconv.Atoi(raw)
 	if err != nil {

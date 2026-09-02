@@ -8,9 +8,6 @@ const (
 	AgentStatusBlocked = "blocked"
 )
 
-// Wire types carry only the fields Auto Title reads: a field nothing uses makes
-// the type claim a dependency the code does not have.
-
 // WorkspaceInfo describes a workspace. Its label is what Herdr shows above the
 // tabs, and it is usually the project every tab in it belongs to.
 type WorkspaceInfo struct {
