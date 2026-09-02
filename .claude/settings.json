@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(make check)",
+      "Bash(make lint)",
+      "Bash(make test)",
+      "Bash(make test-v)",
+      "Bash(make fmt)",
+      "Bash(make vet)",
+      "Bash(make build)",
+      "Bash(make clean)",
+      "Bash(make ps)",
+      "Bash(make tabs)",
+      "Bash(make probe-snapshot)",
+      "Bash(go build:*)",
+      "Bash(go test:*)",
+      "Bash(go vet:*)",
+      "Bash(go doc:*)",
+      "Bash(go tool -modfile=tools/go.mod golangci-lint:*)",
+      "Bash(gofmt:*)",
+      "Bash(python3 -m py_compile:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(wc:*)",
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+      "Bash(find:*)"
+    ],
+    "ask": [
+      "Bash(make run)",
+      "Bash(make dev)",
+      "Bash(make stop)"
+    ]
+  }
+}

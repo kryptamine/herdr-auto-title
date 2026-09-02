@@ -64,6 +64,17 @@ in [docs/architecture](docs/architecture/).
   [docs/architecture/herdr-socket-api.md](docs/architecture/herdr-socket-api.md),
   which is the record; `CLAUDE.md` keeps only the facts that mislead in silence.
 
+## If you work with Claude Code
+
+`.claude/` is checked in, and it configures the agent the same way for
+everyone: the rules it follows, a `validate-agent-work` skill that runs the
+gate, and an allowlist so the read-only commands here stop asking for
+permission. `make run`, `make dev` and `make stop` always ask first — they act
+on **your live Herdr session**.
+
+None of it is required. Nothing in `.claude/` affects the build, the tests or
+CI, and a contributor who does not use Claude Code can ignore the directory.
+
 ## Pull requests
 
 - `make check` green locally. CI then runs `go vet`, `go build` and
