@@ -8,24 +8,70 @@ run:
 linters:
   default: standard
   enable:
-    - copyloopvar # loop-variable copies made redundant by Go 1.22
-    - errorlint   # errors compared with == and formatted with %v
-    - gocritic    # a grab-bag of correctness and style checks
-    - misspell    # typos, in a repository that is mostly prose
-    - modernize   # idioms superseded by newer Go versions
-    - nakedret    # naked returns far from their signature
-    - nolintlint  # a //nolint must name its linter and say why
-    - recvcheck   # a type mixing pointer and value receivers
-    - sloglint    # log/slog used the way it is meant to be
-    - thelper     # test helpers that forget t.Helper()
-    - unconvert   # conversions that convert nothing
-    - unparam     # parameters and results that are always the same
-    - wsl_v5      # statements that belong together cuddled, the rest spaced
+    - bidichk         # bidirectional runes that make source read as it is not
+    - containedctx    # a context.Context smuggled inside a struct
+    - contextcheck    # a function that drops the context it was handed
+    - copyloopvar     # loop-variable copies made redundant by Go 1.22
+    - depguard        # the dependency floor, below
+    - durationcheck   # a duration multiplied by a duration
+    - errorlint       # errors compared with == and formatted with %v
+    - fatcontext      # a context rebuilt on every turn of a loop
+    - forbidigo       # the calls named below
+    - forcetypeassert # a type assertion that panics instead of reporting
+    - gocritic        # a grab-bag of correctness and style checks
+    - godot           # a comment that stops without a full stop
+    - gosec           # the usual security mistakes
+    - misspell        # typos, in a repository that is mostly prose
+    - modernize       # idioms superseded by newer Go versions
+    - musttag         # a struct reaching encoding/json without tags
+    - nakedret        # naked returns far from their signature
+    - nilerr          # nil returned although the error was not
+    - nilnil          # a nil result and a nil error together
+    - noctx           # a call made without the context it could take
+    - nolintlint      # a //nolint must name its linter and say why
+    - recvcheck       # a type mixing pointer and value receivers
+    - sloglint        # log/slog used the way it is meant to be
+    - thelper         # test helpers that forget t.Helper()
+    - unconvert       # conversions that convert nothing
+    - unparam         # parameters and results that are always the same
+    - usetesting      # what the testing package now does itself
+    - wsl_v5          # statements that belong together cuddled, the rest spaced
   disable:
     # Silence is a decision here, not an oversight: writing the manual-name
     # file and closing a socket both fail quietly on purpose, and each place
     # says so. See internal/state/manual.go and internal/herdr/client.go.
     - errcheck
+
+  settings:
+    depguard:
+      rules:
+        everywhere:
+          # Herdr needs Go 1.24 and builds the plugin at install time, so a
+          # third-party import has to be a decision rather than an accident.
+          list-mode: strict
+          allow:
+            - $gostd
+            - github.com/kryptamine/herdr-auto-title
+            - github.com/rivo/uniseg
+            - github.com/joho/godotenv
+          deny:
+            - pkg: os/exec
+              desc: renames go over the socket API, never through a shell
+    forbidigo:
+      analyze-types: true
+      forbid:
+        - pattern: ^exec\.Command(Context)?$
+          msg: a terminal-derived value must never reach a shell
+
+  exclusions:
+    rules:
+      # A test writes fixtures into its own temporary directory and closes a
+      # listener it owns; neither is the file permission or missing context
+      # these two are looking for.
+      - path: _test\.go
+        linters:
+          - gosec
+          - noctx
 
 formatters:
   enable:
