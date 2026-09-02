@@ -103,119 +103,51 @@ stays out of the plugin's: the main module keeps two dependencies and still
 builds on Go 1.24, which is what Herdr needs at install time. `errcheck` is off
 — the places that swallow an error say why they do.
 
-## Herdr socket API — verified facts
+## Herdr socket API — the traps
 
-The originating specification is wrong on several protocol details. These were
-verified against Herdr 0.8.2, protocol 20. **Probe before assuming anything not
-listed here** (`make probe-*`, `scripts/probe.py`).
+The originating specification is wrong on several protocol details. Everything
+here was verified against Herdr 0.8.2, protocol 20. **Probe before assuming
+anything** (`make probe-*`, `scripts/probe.py`).
 
-- NDJSON over the socket at `HERDR_SOCKET_PATH`. Requests are
-  `{"id","method","params"}` — `params` is required even when empty.
+The facts in full — the measured costs, the field inventories, the event kinds,
+what every object carries — are in
+[docs/architecture/herdr-socket-api.md](docs/architecture/herdr-socket-api.md),
+which is the record. **A probe that teaches something new goes there.** Below
+are only the facts that would otherwise mislead the code in silence.
+
 - **One request per connection.** Herdr closes the connection after answering,
-  so every `Call` dials its own. Auto Title uses three methods and no others:
-  `session.snapshot`, `pane.process_info` and `tab.rename`.
-- **The event stream is not used, on purpose.** `events.subscribe` replays a
-  backlog before anything live — about the last 95 revisions of *every* pane at
-  ten a second, so ~10 s of history per active pane, closed panes included — and
-  live events queue behind it (measured: a change made 2 s after subscribing
-  arrived 13 s later). There is no cursor: `events.subscribe` takes only a
-  subscription list, envelopes carry no timestamp or ordinal, and no method
-  exposes a stream position. A snapshot costs 0.47 ms and 6 KB for six panes and
-  describes the present. **Do not reintroduce a subscription** without measuring
-  again and recording the result here.
-- Subscription types would be dot-separated (`pane.updated`) while the events
-  they deliver arrive snake_case (`pane_updated`), wrapped as
-  `{"event": ..., "data": ...}`. `pane.output_changed` is a real event kind but
-  is not an accepted subscription type; `pane.agent_status_changed`,
-  `pane.scroll_changed` and `pane.output_matched` are per-pane and need a
-  `pane_id`.
-- `PaneInfo.title` is the agent's own title. It was null for every Claude Code
-  pane observed; that agent reports its topic through `terminal_title_stripped`.
-  `pane.report_metadata` sets it from outside Herdr (probed: a reported title
-  reached the snapshot and a tab within one poll), but nothing installs a source
-  for it today.
-- `PaneInfo.agent_session` says which conversation a pane's agent holds, and is
-  null until that agent's integration reports one.
-  `herdr integration install <agent>` installs the hook (`herdr integration
-  status` lists all seventeen). Claude Code's runs on `SessionStart` and calls
-  `pane.report_agent_session`; Herdr keeps only the id, answering `kind: "id"`
-  even when a transcript path was reported too. It arrives in the snapshot, so
-  reading it costs no request.
-- `agent_status` is `idle | working | blocked | done | unknown`; a pane with no
-  agent reports `unknown`. `TabInfo` carries one too, aggregated over the tab's
-  panes: with a single Claude Code pane working, its tab reported `working`
-  while every other tab reported `unknown`. How it aggregates two agent panes in
-  one tab has not been probed.
-- `tab.rename` costs 0.16 ms median and 0.21 ms at p95 over forty calls —
-  cheaper than the snapshot that precedes it.
-- **A tab label is one line.** `tab.rename` accepts a newline and stores it
-  verbatim — no error, no stripping — but the tab bar renders a single line, so
-  a two-line label is not available. Herdr exposes no tab-bar height setting.
-- **`PaneInfo.cwd` is the pane's own shell, not what the user is typing into.**
-  A subshell moves `foreground_cwd` and leaves `cwd` behind: probed with
-  `chezmoi cd`, which runs `$SHELL` in the source directory, the pane reported
-  `cwd: ~/Work/global-sso` and `foreground_cwd: ~/.local/share/chezmoi` for as
-  long as that subshell lived. Neither field is the pane's directory on its own
-  — see the next two.
-- **`foreground_cwd` is the deepest descendant's directory**, not the foreground
-  process's own: a pane running `python3` that had spawned `sleep` in `/tmp`
-  reported `foreground_cwd: /private/tmp` while `cwd` stayed on the pane's
-  directory. Anything a program starts elsewhere takes it with it: an agent
-  whose MCP server sits in `/tmp` reported that as the pane's.
-- **A pane's directory is its foreground process's own `cwd`**, which only
-  `pane.process_info` reports. Measured on a live session: an agent pane held
-  `cwd: ~/Work/herdr-auto-title` (the shell, left behind) and
-  `foreground_cwd: ~/Work/self-care-portal` (an MCP server), while the agent
-  process itself was in `~/Work/self-care-portal` — the project the user was
-  working in. The snapshot's pair is the fallback for a pane nothing was read
-  for.
-- **`foreground_processes` is the pane's foreground process group**, by the
-  group id `pane.process_info` reports and the pane's controlling terminal. An
-  agent's MCP servers are in it; a descendant started in a group of its own
-  without a terminal, as Claude Code starts the commands it runs, is not.
-- `PaneInfo` carries no foreground process name; that needs `pane.process_info`,
-  one request per pane at 0.11 ms — cheaper than the snapshot, but one per pane:
-  on an eight-pane session the reads measured 0.17 ms each against a 1.35 ms
-  snapshot, so making one every poll cost as much again as the snapshot itself.
-  Its `foreground_processes` lists the pane's foreground process *and its
-  descendants*, deepest first, each with `pid`, `name`, `argv0`, a nullable
-  `argv`, `cmdline` and `cwd`; the pane's entry carries `shell_pid` and
-  `foreground_process_group_id`.
-- Pane revisions are monotonic, which is how a poll tells which panes drew.
-- **A revision does not track what is running in the pane.** Measured over ten
-  minutes of a live eight-pane session: the foreground processes changed nine
-  times and the revision moved with them only four. A pane running a build went
-  `env` → `node` → `esbuild` → `fish` while its revision held at 10 throughout.
-  A revision says the pane drew, which starting a command usually but not
-  always provokes, so it is a cheap hint that a process read is due and never a
+  so every `Call` dials its own. That is why nothing here reconnects.
+- Auto Title uses three methods and no others: `session.snapshot`,
+  `pane.process_info` and `tab.rename`.
+- **Do not reintroduce an event subscription.** `events.subscribe` replays
+  about ten seconds of backlog per pane before anything live, with no cursor to
+  skip it, so a subscriber opens by reacting to a session that is gone. A
+  snapshot describes the present and costs less than the rename that follows it.
+- **No single field is a pane's directory.** `cwd` is the pane's own shell,
+  which a subshell leaves behind; `foreground_cwd` is the *deepest
+  descendant's*, so anything a program starts elsewhere takes the pane with it.
+  The directory is the foreground process's own `cwd`, which only
+  `pane.process_info` reports.
+- **A revision does not track what is running in a pane.** Measured, the
+  foreground processes changed nine times while the revision moved four. A
+  revision says the pane drew: a hint that a process read is due, never a
   promise that one is not.
-- **`TabInfo.number` is not the label an unnamed tab carries.** It counts every
-  tab the workspace has ever held and never repeats (a six-tab workspace
-  numbered 2, 9, 30, 33, 35, 36). Herdr labels an unnamed tab with its
-  *position* in the workspace, counted from one, and that label shifts down when
-  a tab to its left closes. The snapshot lists tabs in display order, so the
-  position is their count within the workspace.
-- **An unnamed tab reports one of two labels.** A tab nobody has named carries
-  its position, but `tab.rename` with an empty label stores the empty string and
-  the snapshot reports it. Both render as the position in the tab bar, so code
-  reading the label to mean "unnamed" must accept either.
+- **`TabInfo.number` is not the label an unnamed tab carries.** Herdr labels an
+  unnamed tab with its *position*, which slides down when a tab to its left
+  closes, while `number` counts every tab the workspace has held and never
+  repeats. Reading `number` as the label once locked every tab made after start.
+- **An unnamed tab reports one of two labels**: its position, or the empty
+  string `tab.rename` stores verbatim when given one. Code reading the label to
+  mean "nobody named this" must accept either.
+- **A tab label is one line.** `tab.rename` takes a newline and stores it
+  verbatim, but the tab bar renders one row and Herdr exposes no height setting.
+- **`PaneInfo.title` is the agent's own title, and is null in practice.** Claude
+  Code reports its topic through `terminal_title_stripped` instead, and
+  `agent_session` stays null until that agent's integration is installed.
 - **A plugin the server starts inherits the server's environment**, not the
   shell of whoever installed it, which is why `HERDR_AUTO_TITLE_*` settings
   arrive through `config.env` (see
   [docs/architecture/configuration.md](docs/architecture/configuration.md)).
-  Herdr creates `~/.config/herdr/plugins/config/<plugin id>/` and prints it from
-  `herdr plugin config-dir <id>` and `herdr plugin list` (confirmed directly),
-  and the 0.8.2 binary names `HERDR_PLUGIN_ROOT`, `HERDR_PLUGIN_CONFIG_DIR` and
-  `HERDR_PLUGIN_STATE_DIR` for a plugin process — that half is read out of the
-  binary's strings, **not observed on a live plugin**, because seeing it needs a
-  `herdr server stop`. Auto Title uses its own directory and depends on none of
-  them.
-- `tab.get` and `pane.get` read one object each; `pane.list` filters by
-  workspace only, not by tab. Neither is needed while the snapshot is one call.
-
-Keep this list current: when a probe teaches you something new, add it here and
-to [docs/architecture/herdr-socket-api.md](docs/architecture/herdr-socket-api.md),
-which carries the same facts in full.
 
 ## Working here
 

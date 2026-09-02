@@ -13,8 +13,9 @@ Everything Auto Title knows about a session arrives over one Unix socket. The
 originating specification is wrong on several protocol details, so every fact
 below was verified against a live **Herdr 0.8.2, protocol 20** install with
 `scripts/probe.py` or a direct socket request. **Probe before assuming anything
-not listed here**, and add what a probe teaches you both here and to the list in
-`CLAUDE.md`.
+not listed here**, and record what a probe teaches you in this file, which is
+the record. `CLAUDE.md` carries the short list of facts that would otherwise
+mislead the code in silence; a new one goes there too.
 
 ## Transport
 

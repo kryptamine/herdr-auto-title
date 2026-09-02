@@ -60,8 +60,9 @@ in [docs/architecture](docs/architecture/).
   API.
 - Probe before assuming anything about Herdr's API (`make probe-*`,
   `scripts/probe.py`): the originating specification is wrong in several
-  places. When a probe teaches you something new, record it in `CLAUDE.md` and
-  in [docs/architecture/herdr-socket-api.md](docs/architecture/herdr-socket-api.md).
+  places. Record what a probe teaches you in
+  [docs/architecture/herdr-socket-api.md](docs/architecture/herdr-socket-api.md),
+  which is the record; `CLAUDE.md` keeps only the facts that mislead in silence.
 
 ## Pull requests
 

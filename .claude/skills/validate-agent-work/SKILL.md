@@ -38,8 +38,9 @@ before handing work back.
    commit, type, script and comment rules, and the "Working here" list. The
    linter checks none of them. Two need a search rather than a read: a field,
    method or constant added without a reader in the same change, and a probe
-   whose finding has not reached both `CLAUDE.md` and
-   `docs/architecture/herdr-socket-api.md`.
+   whose finding has not reached `docs/architecture/herdr-socket-api.md`, which
+   is the record — `CLAUDE.md` takes it only if it misleads the code in
+   silence.
 
 5. **Check nothing was left running:**
 
