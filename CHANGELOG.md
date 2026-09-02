@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.3](https://github.com/kryptamine/herdr-auto-title/compare/v0.3.2...v0.3.3) (2026-09-02)
+
+
+### Bug Fixes
+
+* **herdr:** name a pane after the directory in front of it ([743bb2f](https://github.com/kryptamine/herdr-auto-title/commit/743bb2f9c8b7e70cdeb0cbb998ed343acb77690a))
+* **state:** keep the manual lock file to the user who owns it ([5c12576](https://github.com/kryptamine/herdr-auto-title/commit/5c12576dcf47e1baf986b029bbbf74a81ecf6fd9))
+* **state:** name a pane after its foreground process's directory ([b5fd498](https://github.com/kryptamine/herdr-auto-title/commit/b5fd49879615ee5599650a1ee9067074d80fb289))
+
+
+### Refactoring
+
+* **state:** fold the process read back into Read ([8e5ca75](https://github.com/kryptamine/herdr-auto-title/commit/8e5ca75deaaa7352a3cf97b7ec00033c53a013b2))
+
 ## [0.3.2](https://github.com/kryptamine/herdr-auto-title/compare/v0.3.1...v0.3.2) (2026-08-28)
 
 
