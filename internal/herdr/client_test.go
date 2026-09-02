@@ -37,7 +37,9 @@ type testServer struct {
 func newTestServer(t *testing.T, reply func(incoming) string) *testServer {
 	t.Helper()
 
-	// Unix socket paths are short; keep well clear of the platform limit.
+	// t.TempDir() names the directory after the test, which measured 122 bytes
+	// here — past the 104 a socket's sun_path holds.
+	//nolint:usetesting // t.TempDir() overruns sun_path, as measured above
 	dir, err := os.MkdirTemp("", "at")
 	if err != nil {
 		t.Fatalf("temp dir: %v", err)

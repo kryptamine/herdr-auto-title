@@ -187,7 +187,7 @@ func rebasingBranch(gitDir string) (string, bool) {
 // readRef returns the first line of a ref file, or false when there is nothing
 // to read. Reading is bounded: these files hold one line.
 func readRef(path string) (string, bool) {
-	file, err := os.Open(path)
+	file, err := os.Open(path) //nolint:gosec // path is a .git file this package located itself
 	if err != nil {
 		return "", false
 	}

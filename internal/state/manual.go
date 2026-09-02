@@ -40,7 +40,7 @@ func LoadManual(path string) *Manual {
 		locked: make(map[string]string),
 	}
 
-	raw, err := os.ReadFile(path)
+	raw, err := os.ReadFile(path) //nolint:gosec // the path is configured, never terminal-derived
 	if err != nil {
 		return m
 	}
