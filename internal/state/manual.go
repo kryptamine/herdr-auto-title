@@ -181,7 +181,7 @@ func (m *Manual) saveLocked() {
 		return
 	}
 
-	if os.MkdirAll(filepath.Dir(m.path), 0o755) != nil {
+	if os.MkdirAll(filepath.Dir(m.path), 0o700) != nil {
 		return
 	}
 
@@ -192,7 +192,7 @@ func (m *Manual) saveLocked() {
 	}
 
 	tmp := m.path + ".tmp"
-	if os.WriteFile(tmp, raw, 0o644) != nil {
+	if os.WriteFile(tmp, raw, 0o600) != nil {
 		return
 	}
 
