@@ -51,15 +51,49 @@ func (SSH) Resolve(pane *state.PaneState) (Parts, bool) {
 	return Parts{Context: qualify(host, sshKind)}, true
 }
 
-// sshArgs finds an ssh process in the pane and returns its arguments.
+// sshArgs finds an ssh process in the pane and returns its arguments. A
+// tunnel (`ssh -N`) runs no remote shell, so it says nothing about where the
+// pane's work is; an MCP server or a database client behind an agent keeps one.
 func sshArgs(pane *state.PaneState) ([]string, bool) {
 	for _, process := range pane.Processes {
-		if strings.EqualFold(process.Name, "ssh") {
+		if strings.EqualFold(process.Name, "ssh") && !sshIsTunnel(process.Args) {
 			return process.Args, true
 		}
 	}
 
 	return nil, false
+}
+
+// sshIsTunnel reports whether argv carries -N before the destination, alone
+// or in a cluster such as -NT or -fN. A letter that takes a value ends the
+// cluster: -pN is a port. Anything after the destination is the remote command.
+func sshIsTunnel(args []string) bool {
+	for i := 1; i < len(args); i++ {
+		arg := args[i]
+		if arg == "-" {
+			continue
+		}
+
+		if len(arg) < 2 || arg[0] != '-' {
+			return false
+		}
+
+		for j := 1; j < len(arg); j++ {
+			if _, takesValue := sshFlagsWithValue[arg[j]]; takesValue {
+				if j == len(arg)-1 {
+					i++
+				}
+
+				break
+			}
+
+			if arg[j] == 'N' {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 // sshHost extracts the destination: the first argument that is not an option or
