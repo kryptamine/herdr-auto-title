@@ -10,8 +10,8 @@ What the plugin does and how to install it are in the
 - Small fixes go straight to a PR: a typo, an obvious bug, a dependency bump.
 - If an issue rests on something false about Herdr's API, say so on the issue
   and correct it rather than working around it in silence.
-- Anything with security consequences: open an issue naming what is affected,
-  and leave the exploit out of it.
+- Anything with security consequences goes to the address in
+  [SECURITY.md](SECURITY.md), not to an issue.
 
 ## Getting set up
 
