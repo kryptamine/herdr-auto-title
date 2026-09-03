@@ -118,9 +118,6 @@ func TestAnUnreadableDestinationKeepsTheMarkUnderARemoteTitle(t *testing.T) {
 }
 
 func TestATunnelDoesNotMarkTheTabRemote(t *testing.T) {
-	// `ssh -N` forwards ports and runs no remote shell: an MCP server or a
-	// database client behind an agent keeps one open, and the pane's work is
-	// still local. Alone, clustered, or beside options that take a value.
 	for _, argv := range [][]string{
 		{"ssh", "-N", "-L", "5432:db:5432", "bastion"},
 		{"ssh", "-N", "-T", "-o", "BatchMode=yes", "-L", "5432:db:5432", "bastion"},
@@ -138,8 +135,6 @@ func TestATunnelDoesNotMarkTheTabRemote(t *testing.T) {
 }
 
 func TestAValueSpelledNIsNotTheTunnelSwitch(t *testing.T) {
-	// -pN reads N as the port and -o N=... as an option, and past the
-	// destination -N is part of the remote command; none is the switch.
 	for _, argv := range [][]string{
 		{"ssh", "-pN", "prod-01"},
 		{"ssh", "-o", "N=1", "prod-01"},
