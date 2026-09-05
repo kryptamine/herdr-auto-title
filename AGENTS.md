@@ -4,6 +4,22 @@ Herdr Auto Title — a Herdr plugin, written in Go, that generates tab titles fr
 each tab's current context. Long-running process that polls the Herdr session,
 no LLM and no external service.
 
+## Repository layout
+
+```
+cmd/herdr-auto-title  the binary
+internal/app          the poll loop, configuration, failure handling
+internal/herdr        the socket client; herdrtest beside it is its stub
+internal/state        a session snapshot turned into what each tab is doing
+internal/resolver     that state turned into a title, one source at a time
+internal/claude       what a Claude Code session is about, from its transcript
+internal/git          what a repository has checked out, read from .git
+scripts/              the Python probes
+docs/architecture/    how the plugin works and why
+```
+
+Each package's doc comment says the rest.
+
 ## Language rule (mandatory)
 
 **Everything written into this repository is in English.** Code comments, commit
@@ -29,6 +45,22 @@ Scope is a package or area (`resolver`, `state`, `herdr`, `app`).
 - The body explains why, not what — the diff already says what.
 - One logical change per commit.
 - Never add a co-author trailer.
+
+## Branches and pull requests (mandatory)
+
+**Never commit to `main`.** Branch from it first, named `<type>/<kebab-summary>`
+with the types the commits use: `feat/optional-agent-name`,
+`docs/security-policy`, `chore/tighten-the-linter-set`.
+
+- **Pull requests are merged by rebase.** Merge commits and squashing are both
+  disabled, and each broke something: GitHub puts the conventional PR title into
+  a merge commit, so release-please counted every change twice, and a squash
+  collapses a pull request into one changelog line, losing the granularity that
+  "one logical change per commit" exists to produce.
+- **`CHANGELOG.md`, the tags and the version in `herdr-plugin.toml` belong to
+  release-please.** Never edit one by hand.
+- Keep a pull request to one thing. A refactor, a feature and a formatting sweep
+  are three pull requests.
 
 ## Type rule (mandatory)
 
@@ -151,6 +183,10 @@ are only the facts that would otherwise mislead the code in silence.
   pane — and how far each agent transcript has been read, because a transcript
   only grows and re-reading megabytes twice a second to find one new line would
   cost more than the rest of the loop together.
+- **The code is the source of truth, then `docs/architecture`, then a comment.**
+  A doc that contradicts the code is a bug in the doc, so fix it in the change
+  that found it rather than leaving the next reader to rediscover the same
+  thing.
 - Never pass terminal-derived values to a shell. Renames go over the socket API.
 - How the plugin works and why — the poll loop, title resolution, sanitizing
   untrusted values, manual rename protection — is in
