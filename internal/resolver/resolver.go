@@ -59,15 +59,18 @@ func activityFrom(pane *state.PaneState, value string) (Parts, bool) {
 		return Parts{}, false
 	}
 
-	kind := paneKind(pane)
+	return partsFrom(pane, paneKind(pane), activity), true
+}
+
+// partsFrom places a pane's kind: an agent's name is a field of its own, any
+// other kind qualifies the activity. An agent's activity is stripped of the
+// name whether or not it is shown, so it cannot come back as text.
+func partsFrom(pane *state.PaneState, kind, activity string) Parts {
 	if pane.HasAgent() {
-		// The kind is stripped from the activity here rather than at the join,
-		// so an activity that carried the agent's name is rid of it however the
-		// name itself is treated.
-		return Parts{Agent: kind, Activity: stripKind(activity, kind)}, true
+		return Parts{Agent: kind, Activity: stripKind(activity, kind)}
 	}
 
-	return Parts{Activity: qualify(activity, kind)}, true
+	return Parts{Activity: qualify(activity, kind)}
 }
 
 // echoesAgentName reports an activity that is no more than the agent's own
