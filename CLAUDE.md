@@ -7,8 +7,9 @@ to Claude Code is below.
 
 ## Tooling
 
-- `validate-agent-work` — the skill to run after any change, before handing work
-  back. It runs `make check` and reads the diff against the mandatory rules.
+- `validate-agent-work` — run it after any change before handing work back, and
+  again before opening a pull request. It runs `make check` and reads the whole
+  branch against the mandatory rules in AGENTS.md, which no linter checks.
 - Delegate a broad multi-file search to the **Explore** agent and keep the
   conclusion, not the file dumps.
 
