@@ -64,7 +64,7 @@ func TestTheHostBecomesTheContext(t *testing.T) {
 func TestTheTabIsNamedAfterTheMarkedHost(t *testing.T) {
 	pane := sshPane("ssh", "root@prod-01")
 
-	got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(pane))
+	got := defaultChain().Resolve(tabWithPane(pane))
 	if want := "ssh › prod-01"; got.Name != want {
 		t.Errorf("name = %q, want %q", got.Name, want)
 	}
@@ -82,10 +82,7 @@ func TestTheHostOutranksTheWorkingDirectory(t *testing.T) {
 	// The local directory of a pane running ssh describes the wrong machine.
 	pane := sshPane("ssh", "prod-01")
 
-	if got := Default(
-		DefaultMaxLength,
-		DefaultBranchMaxLength,
-	).Resolve(tabWithPane(pane)); got.Name != "ssh › prod-01" {
+	if got := defaultChain().Resolve(tabWithPane(pane)); got.Name != "ssh › prod-01" {
 		t.Errorf("name = %q, want %q", got.Name, "ssh › prod-01")
 	}
 }
@@ -97,7 +94,7 @@ func TestAnUnreadableDestinationStillMarksTheTabRemote(t *testing.T) {
 	for _, argv := range [][]string{nil, {"ssh"}, {"ssh", "-p", "2222"}, {"ssh", "-"}} {
 		pane := sshPane(argv...)
 
-		got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(pane))
+		got := defaultChain().Resolve(tabWithPane(pane))
 		if want := "ssh"; got.Name != want {
 			t.Errorf("argv %v → %q, want %q", argv, got.Name, want)
 		}
@@ -111,7 +108,7 @@ func TestAnUnreadableDestinationKeepsTheMarkUnderARemoteTitle(t *testing.T) {
 	pane := sshPane()
 	pane.TerminalTitle = "Restart the queue workers"
 
-	got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(pane))
+	got := defaultChain().Resolve(tabWithPane(pane))
 	if want := "ssh › Restart the queue workers"; got.Name != want {
 		t.Errorf("name = %q, want %q", got.Name, want)
 	}
@@ -127,7 +124,7 @@ func TestATunnelDoesNotMarkTheTabRemote(t *testing.T) {
 	} {
 		pane := sshPane(argv...)
 
-		got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(pane))
+		got := defaultChain().Resolve(tabWithPane(pane))
 		if strings.Contains(strings.ToLower(got.Name), "ssh") {
 			t.Errorf("argv %v → %q, want nothing about ssh", argv, got.Name)
 		}
@@ -156,7 +153,7 @@ func TestAPaneWithoutSSHIsUnaffected(t *testing.T) {
 		},
 	}
 
-	got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(pane))
+	got := defaultChain().Resolve(tabWithPane(pane))
 	if strings.Contains(strings.ToLower(got.Name), "ssh") {
 		t.Errorf("name = %q, want nothing about ssh", got.Name)
 	}
@@ -174,10 +171,7 @@ func TestSSHIsFoundAmongOtherProcesses(t *testing.T) {
 		},
 	}
 
-	if got := Default(
-		DefaultMaxLength,
-		DefaultBranchMaxLength,
-	).Resolve(tabWithPane(pane)); got.Name != "ssh › prod-01" {
+	if got := defaultChain().Resolve(tabWithPane(pane)); got.Name != "ssh › prod-01" {
 		t.Errorf("name = %q, want %q", got.Name, "ssh › prod-01")
 	}
 }
@@ -189,7 +183,7 @@ func TestTheMarkSurvivesARemoteTitle(t *testing.T) {
 	pane := sshPane("ssh", "prod-01")
 	pane.TerminalTitle = "Restart the queue workers"
 
-	got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(pane))
+	got := defaultChain().Resolve(tabWithPane(pane))
 	if want := "ssh › prod-01 › Restart the queue workers"; got.Name != want {
 		t.Errorf("name = %q, want %q", got.Name, want)
 	}
@@ -199,7 +193,7 @@ func TestHostsFromArgvAreSanitized(t *testing.T) {
 	// argv is terminal-derived input like any other.
 	pane := sshPane("ssh", "root@prod\x1b[31m-01")
 
-	got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(pane))
+	got := defaultChain().Resolve(tabWithPane(pane))
 	if strings.ContainsRune(got.Name, '\x1b') {
 		t.Errorf("name = %q, still carries an escape", got.Name)
 	}
