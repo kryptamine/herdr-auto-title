@@ -10,7 +10,7 @@ import (
 func TestATopicNamesATabTheTerminalTitleCannot(t *testing.T) {
 	// The session that motivated the source: the agent never titled its
 	// terminal, so without the transcript the tab is just `claude`.
-	got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(&state.PaneState{
+	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
 		Dir:           "/Users/dev/work/dashboard",
 		TerminalTitle: "Claude Code",
 		Agent:         "claude",
@@ -33,7 +33,7 @@ func TestATopicNamesATabTheTerminalTitleCannot(t *testing.T) {
 
 func TestATerminalTitleOutranksTheTranscript(t *testing.T) {
 	// Both say what the session is about, and the agent says it sooner.
-	got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(&state.PaneState{
+	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
 		Dir:           "/Users/dev/work/dashboard",
 		TerminalTitle: "Fix OAuth redirect",
 		Agent:         "claude",
@@ -62,7 +62,7 @@ func TestATopicWithoutAnAgentIsIgnored(t *testing.T) {
 }
 
 func TestATopicThatNamesTheAgentFallsThrough(t *testing.T) {
-	got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(&state.PaneState{
+	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
 		Dir:         "/Users/dev/work/dashboard",
 		Agent:       "claude",
 		AgentStatus: "idle",

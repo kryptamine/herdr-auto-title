@@ -18,7 +18,7 @@ func repoPane(branch, defaultBranch string) *state.PaneState {
 }
 
 func resolveRepoPane(pane *state.PaneState) string {
-	return Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(pane)).Name
+	return defaultChain().Resolve(tabWithPane(pane)).Name
 }
 
 func TestTheBranchQualifiesTheDirectory(t *testing.T) {
@@ -122,7 +122,7 @@ func TestTheBranchSurvivesTheWorkspaceItRepeats(t *testing.T) {
 	tab := tabWithPane(repoPane("feat/oauth", "main"))
 	tab.WorkspaceName = "dashboard"
 
-	got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tab).Name
+	got := defaultChain().Resolve(tab).Name
 	if got != "feat/oauth" {
 		t.Errorf("title %q, want the branch alone", got)
 	}
@@ -157,7 +157,7 @@ func TestABranchStandsWhereTheDirectorySaysNothing(t *testing.T) {
 func TestTheBranchIsCreditedLikeAContext(t *testing.T) {
 	// The reason a tab carries a name is the source that named the work, and a
 	// branch is not work: it answers for the title only when nothing else does.
-	resolver := Default(DefaultMaxLength, DefaultBranchMaxLength)
+	resolver := defaultChain()
 
 	pane := repoPane("feat/oauth", "main")
 

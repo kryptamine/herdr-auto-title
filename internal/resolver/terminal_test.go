@@ -19,7 +19,7 @@ func tabWithPane(pane *state.PaneState) state.TabState {
 }
 
 func TestTerminalTitleBeatsTheWorkingDirectory(t *testing.T) {
-	got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(&state.PaneState{
+	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
 		Dir:           "/Users/dev/work/dashboard",
 		TerminalTitle: "Fix OAuth redirect",
 	}))
@@ -41,10 +41,7 @@ func TestGenericTerminalTitleFallsThrough(t *testing.T) {
 	// Every one of these was observed on a live Herdr session.
 	for _, title := range []string{"zsh", "Claude Code", "node", "~", "~/W/dashboard", ""} {
 		t.Run(title, func(t *testing.T) {
-			got := Default(
-				DefaultMaxLength,
-				DefaultBranchMaxLength,
-			).Resolve(tabWithPane(&state.PaneState{
+			got := defaultChain().Resolve(tabWithPane(&state.PaneState{
 				Dir:           "/Users/dev/work/dashboard",
 				TerminalTitle: title,
 			}))
@@ -61,7 +58,7 @@ func TestGenericTerminalTitleFallsThrough(t *testing.T) {
 }
 
 func TestTerminalTitleFallsBackToTheRawField(t *testing.T) {
-	got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(&state.PaneState{
+	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
 		Dir:              "/Users/dev/work/dashboard",
 		TerminalTitleRaw: "\x1b[32m✳ Fix OAuth redirect\x1b[0m",
 	}))
@@ -73,7 +70,7 @@ func TestTerminalTitleFallsBackToTheRawField(t *testing.T) {
 }
 
 func TestStrippedTerminalTitleWinsOverTheRawOne(t *testing.T) {
-	got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(&state.PaneState{
+	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
 		Dir:              "/Users/dev/work/dashboard",
 		TerminalTitle:    "Fix OAuth redirect",
 		TerminalTitleRaw: "◐ Fix OAuth redirect",
@@ -85,7 +82,7 @@ func TestStrippedTerminalTitleWinsOverTheRawOne(t *testing.T) {
 }
 
 func TestTerminalTitleIsSanitized(t *testing.T) {
-	got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(&state.PaneState{
+	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
 		Dir:           "/Users/dev/work/dashboard",
 		TerminalTitle: "\x1b[31mFix OAuth\nredirect\x1b[0m\t",
 	}))
@@ -96,7 +93,7 @@ func TestTerminalTitleIsSanitized(t *testing.T) {
 }
 
 func TestLongTerminalTitleIsTruncatedAsAWhole(t *testing.T) {
-	got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(&state.PaneState{
+	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
 		Dir:           "/Users/dev/work/dashboard",
 		TerminalTitle: strings.Repeat("long ", 40),
 	}))
@@ -111,7 +108,7 @@ func TestLongTerminalTitleIsTruncatedAsAWhole(t *testing.T) {
 }
 
 func TestTerminalTitleWithoutAWorkingDirectory(t *testing.T) {
-	got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(&state.PaneState{
+	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
 		TerminalTitle: "Fix OAuth redirect",
 	}))
 
@@ -122,7 +119,7 @@ func TestTerminalTitleWithoutAWorkingDirectory(t *testing.T) {
 }
 
 func TestTerminalTitleRepeatingTheContextIsDropped(t *testing.T) {
-	got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(&state.PaneState{
+	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
 		Dir:           "/Users/dev/work/dashboard",
 		TerminalTitle: "Dashboard",
 	}))
@@ -133,7 +130,7 @@ func TestTerminalTitleRepeatingTheContextIsDropped(t *testing.T) {
 }
 
 func TestTerminalTitleWithNothingElse(t *testing.T) {
-	got := Default(DefaultMaxLength, DefaultBranchMaxLength).Resolve(tabWithPane(&state.PaneState{
+	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
 		TerminalTitle: "zsh",
 	}))
 
