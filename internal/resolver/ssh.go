@@ -8,8 +8,8 @@ import (
 
 const (
 	// sshKind marks a session as remote: `ssh › prod-01`, or `ssh` alone when
-	// the host cannot be read. It goes in the context, never the activity,
-	// which the terminal title would outrank — see docs/architecture.
+	// the host cannot be read. It goes in the context, never the activity the
+	// terminal title outranks — see docs/architecture/title-resolution.md.
 	sshKind = "ssh"
 )
 

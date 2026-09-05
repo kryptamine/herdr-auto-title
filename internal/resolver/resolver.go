@@ -90,8 +90,7 @@ type Source interface {
 	// what it reads, not for what it happened to find this time.
 	Confidence() int
 	// Resolve reports the parts this source derives, or false when the pane
-	// carries nothing this source recognizes. The pane is never nil: a tab
-	// with no panes is declined by collect, before any source is asked.
+	// carries nothing this source recognizes. The pane is never nil.
 	Resolve(pane *state.PaneState) (Parts, bool)
 }
 
