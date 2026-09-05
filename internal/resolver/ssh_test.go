@@ -7,11 +7,11 @@ import (
 	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
 
-// sshPane builds a pane running the given ssh command line, beside the shell
-// that started it — which is how Herdr reports a pane's processes.
 // paneCWD is the directory every ssh pane in these tests sits in.
 const paneCWD = "/Users/dev/work/dashboard"
 
+// sshPane builds a pane running the given ssh command line, beside the shell
+// that started it — which is how Herdr reports a pane's processes.
 func sshPane(argv ...string) *state.PaneState {
 	return &state.PaneState{
 		Dir: paneCWD,
@@ -23,8 +23,8 @@ func sshPane(argv ...string) *state.PaneState {
 }
 
 func TestTheHostBecomesTheContext(t *testing.T) {
-	// Every form the ticket lists, and the flags that must not be mistaken for
-	// a destination.
+	// Every destination form ssh accepts, and the flags that must not be
+	// mistaken for one.
 	cases := map[string]string{
 		"ssh prod-01":                             "prod-01",
 		"ssh root@prod-01":                        "prod-01",
