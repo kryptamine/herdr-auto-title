@@ -37,7 +37,11 @@ type Parts struct {
 	Context string
 	// Branch qualifies the context rather than standing on its own: a branch
 	// is part of where the user is, not of what they are doing.
-	Branch   string
+	Branch string
+	// Agent names the agent running in the pane. It is kept apart from the
+	// activity because whether the two are joined belongs to the title as a
+	// whole, not to the source that read them.
+	Agent    string
 	Activity string
 }
 
@@ -54,7 +58,33 @@ func activityFrom(pane *state.PaneState, value string) (Parts, bool) {
 		return Parts{}, false
 	}
 
-	return Parts{Activity: qualify(activity, paneKind(pane))}, true
+	kind := paneKind(pane)
+	if pane.HasAgent() {
+		// The kind is stripped from the activity here rather than at the join,
+		// so an activity that carried the agent's name is rid of it however the
+		// name itself is treated.
+		return Parts{Agent: kind, Activity: stripKind(activity, kind)}, true
+	}
+
+	return Parts{Activity: qualify(activity, kind)}, true
+}
+
+// withAgentName puts the agent's name in front of the work it reported. An
+// agent that has reported nothing leaves its name standing as the activity,
+// which is what names a tab that is only known to hold an agent.
+func withAgentName(parts Parts) Parts {
+	if parts.Agent == "" {
+		return parts
+	}
+
+	activity := parts.Agent
+	if parts.Activity != "" {
+		activity += Separator + parts.Activity
+	}
+
+	parts.Agent, parts.Activity = "", activity
+
+	return parts
 }
 
 // echoesAgentName reports an activity that is no more than the agent's own
@@ -126,13 +156,14 @@ func Default(maxLength, branchMax int) *Deterministic {
 	)
 }
 
-// Resolve names a tab in three steps: ask the sources what they see, drop the
-// parts that only repeat something already on screen, and assemble the rest.
+// Resolve names a tab in four steps: ask the sources what they see, drop the
+// parts that only repeat something already on screen, put the agent's name
+// back in front of its work, and assemble the rest.
 func (d *Deterministic) Resolve(tab state.TabState) Decision {
 	found := d.collect(state.SelectContextPane(tab))
-	found.parts = withoutRepetition(found.parts, tab.WorkspaceName)
+	parts := withoutRepetition(found.parts, tab.WorkspaceName)
 
-	name := Format(found.parts, d.maxLength)
+	name := Format(withAgentName(parts), d.maxLength)
 	if name == "" {
 		return Decision{
 			Name:       GenericFallback,
@@ -183,11 +214,18 @@ func (d *Deterministic) collect(pane *state.PaneState) collected {
 // take fills whatever this source supplies and nothing already has.
 func (c *collected) take(source Source, parts Parts) {
 	// The activity is what a title is about, so its source answers for the
-	// title whenever one turns up. A context and a branch are credited only
-	// while no activity has been found.
+	// title whenever one turns up. Every other part is credited only while
+	// nothing has been.
 	if c.parts.Activity == "" && parts.Activity != "" {
 		c.parts.Activity = parts.Activity
 		c.credit(source)
+	}
+
+	if c.parts.Agent == "" && parts.Agent != "" {
+		c.parts.Agent = parts.Agent
+		if c.reason == "" {
+			c.credit(source)
+		}
 	}
 
 	if c.parts.Branch == "" && parts.Branch != "" {
@@ -210,11 +248,11 @@ func (c *collected) credit(source Source) {
 	c.confidence = source.Confidence()
 }
 
-// complete stops the walk once both halves of a title are answered. The branch
-// is not required: a tab outside a repository has none, and waiting for one
-// would only walk sources that have already been outranked.
+// complete stops the walk once both halves of a title are answered, an agent's
+// name counting as the activity half. The branch is not required: a tab outside
+// a repository has none, and waiting for one only walks outranked sources.
 func (c *collected) complete() bool {
-	return c.parts.Context != "" && c.parts.Activity != ""
+	return c.parts.Context != "" && (c.parts.Activity != "" || c.parts.Agent != "")
 }
 
 // withoutRepetition drops the parts of a title that only say again what the
@@ -233,9 +271,10 @@ func withoutRepetition(parts Parts, workspace string) Parts {
 	}
 
 	// Herdr shows the workspace above its tabs, so repeating it wastes half the
-	// width. Dropped only when something else remains — the branch counts,
-	// which is what keeps `feat/oauth › nvim` from losing where it is.
-	if (parts.Activity != "" || parts.Branch != "") && strings.EqualFold(parts.Context, workspace) {
+	// width. Dropped only when something else remains: a branch counts, and so
+	// does an agent's name, which by here is gone if it is not to be shown.
+	if (parts.Activity != "" || parts.Branch != "" || parts.Agent != "") &&
+		strings.EqualFold(parts.Context, workspace) {
 		parts.Context = ""
 	}
 

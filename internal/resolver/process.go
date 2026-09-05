@@ -118,5 +118,9 @@ func (Process) Resolve(pane *state.PaneState) (Parts, bool) {
 		return Parts{}, false
 	}
 
+	if pane.HasAgent() {
+		return Parts{Agent: kind}, true
+	}
+
 	return Parts{Activity: kind}, true
 }
