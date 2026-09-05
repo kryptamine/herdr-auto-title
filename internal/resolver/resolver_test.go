@@ -11,7 +11,7 @@ import (
 )
 
 func defaultChain() *Deterministic {
-	return Default(DefaultMaxLength, DefaultBranchMaxLength)
+	return Default(Options{MaxLength: DefaultMaxLength, BranchMax: DefaultBranchMaxLength})
 }
 
 func tabWithCWD(dir string) state.TabState {

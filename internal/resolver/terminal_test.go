@@ -165,7 +165,9 @@ func TestEditorTitleKeepsTheFileAndDropsThePath(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.title, func(t *testing.T) {
-			got := Default(wide, DefaultBranchMaxLength).Resolve(tabWithPane(&state.PaneState{
+			got := Default(
+				Options{MaxLength: wide, BranchMax: DefaultBranchMaxLength},
+			).Resolve(tabWithPane(&state.PaneState{
 				Dir:           "/Users/dev/Work/herdr-auto-title",
 				TerminalTitle: tc.title,
 			}))

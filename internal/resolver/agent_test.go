@@ -186,3 +186,87 @@ func TestAnAgentTabDoesNotRepeatItsOwnDirectory(t *testing.T) {
 		t.Errorf("name = %q, want %q", got.Name, want)
 	}
 }
+
+func hiddenAgentChain() *Deterministic {
+	return Default(Options{
+		MaxLength:     DefaultMaxLength,
+		BranchMax:     DefaultBranchMaxLength,
+		HideAgentName: true,
+	})
+}
+
+func TestAHiddenAgentNameLeavesTheWorkAlone(t *testing.T) {
+	got := hiddenAgentChain().Resolve(tabWithPane(&state.PaneState{
+		Dir:         "/Users/dev/work/dashboard",
+		Agent:       "claude",
+		AgentStatus: herdr.AgentStatusWorking,
+		AgentTitle:  "Implement OAuth scopes",
+	}))
+
+	if want := "dashboard › Implement OAuth scopes"; got.Name != want {
+		t.Errorf("name = %q, want %q", got.Name, want)
+	}
+}
+
+func TestAHiddenAgentNameIsAlsoStrippedFromTheWork(t *testing.T) {
+	// An agent that signs its terminal title must not smuggle its name back in
+	// as text once the name itself is turned off.
+	got := hiddenAgentChain().Resolve(tabWithPane(&state.PaneState{
+		Dir:           "/Users/dev/work/dashboard",
+		TerminalTitle: "Claude — Implement OAuth scopes",
+		Agent:         "claude",
+		AgentStatus:   herdr.AgentStatusWorking,
+	}))
+
+	if want := "dashboard › Implement OAuth scopes"; got.Name != want {
+		t.Errorf("name = %q, want %q", got.Name, want)
+	}
+}
+
+func TestASilentAgentHiddenLeavesTheTabToItsDirectory(t *testing.T) {
+	// The name is the whole title of a pane whose agent has reported nothing,
+	// so turning it off has to leave that tab named like any other.
+	pane := &state.PaneState{
+		Dir:         "/Users/dev/work/dashboard",
+		Agent:       "claude",
+		AgentStatus: herdr.AgentStatusWorking,
+	}
+
+	if got := defaultChain().Resolve(tabWithPane(pane)); got.Name != "dashboard › claude" {
+		t.Errorf("name = %q, want dashboard › claude", got.Name)
+	}
+
+	if got := hiddenAgentChain().Resolve(tabWithPane(pane)); got.Name != "dashboard" {
+		t.Errorf("name = %q, want dashboard", got.Name)
+	}
+}
+
+func TestASilentAgentHiddenWithNoDirectoryFallsBack(t *testing.T) {
+	got := hiddenAgentChain().Resolve(tabWithPane(&state.PaneState{
+		Agent:       "claude",
+		AgentStatus: herdr.AgentStatusWorking,
+	}))
+
+	if got.Name != GenericFallback {
+		t.Errorf("name = %q, want %q", got.Name, GenericFallback)
+	}
+}
+
+func TestAHiddenAgentNameKeepsAWorkspaceDirectory(t *testing.T) {
+	// The workspace is dropped only when something else is left to read, and a
+	// name that is about to be hidden is not something else.
+	tab := tabWithPane(&state.PaneState{
+		Dir:         "/Users/dev/work/dashboard",
+		Agent:       "claude",
+		AgentStatus: herdr.AgentStatusWorking,
+	})
+	tab.WorkspaceName = "dashboard"
+
+	if got := defaultChain().Resolve(tab); got.Name != "claude" {
+		t.Errorf("name = %q, want claude", got.Name)
+	}
+
+	if got := hiddenAgentChain().Resolve(tab); got.Name != "dashboard" {
+		t.Errorf("name = %q, want dashboard", got.Name)
+	}
+}

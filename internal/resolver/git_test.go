@@ -129,7 +129,10 @@ func TestTheBranchSurvivesTheWorkspaceItRepeats(t *testing.T) {
 }
 
 func TestABranchWidthOfZeroLeavesBranchesOut(t *testing.T) {
-	got := Default(DefaultMaxLength, 0).Resolve(tabWithPane(repoPane("feat/oauth", "main"))).Name
+	got := Default(
+		Options{MaxLength: DefaultMaxLength},
+	).Resolve(tabWithPane(repoPane("feat/oauth", "main"))).
+		Name
 	if got != "dashboard" {
 		t.Errorf("title %q, want no branch at all", got)
 	}

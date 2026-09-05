@@ -22,7 +22,12 @@ func isolate(t *testing.T) {
 	// isolate anything until it is out of the way.
 	t.Setenv("XDG_CONFIG_HOME", "")
 
-	for _, name := range []string{EnvDebug, EnvPoll, EnvMaxLength, EnvBranchMax, EnvPosition, EnvManual, EnvTranscript} {
+	names := []string{
+		EnvDebug, EnvPoll, EnvMaxLength, EnvBranchMax,
+		EnvPosition, EnvManual, EnvTranscript, EnvAgentName,
+	}
+
+	for _, name := range names {
 		// Setenv first for its cleanup, which then also undoes what the
 		// configuration file sets; an empty variable is not an absent one.
 		t.Setenv(name, "")
@@ -75,6 +80,10 @@ func TestLoadConfigDefaults(t *testing.T) {
 	if !cfg.ShowPosition {
 		t.Error("positions are off by default")
 	}
+
+	if !cfg.ShowAgentName {
+		t.Error("agent names are off by default")
+	}
 }
 
 func TestLoadConfigTurnsPositionsOff(t *testing.T) {
@@ -88,6 +97,20 @@ func TestLoadConfigTurnsPositionsOff(t *testing.T) {
 
 	if cfg.ShowPosition {
 		t.Error("positions are on despite being disabled")
+	}
+}
+
+func TestLoadConfigTurnsTheAgentNameOff(t *testing.T) {
+	isolate(t)
+	t.Setenv(EnvAgentName, "false")
+
+	cfg, warnings := LoadConfig()
+	if len(warnings) != 0 {
+		t.Errorf("warnings = %v, want none", warnings)
+	}
+
+	if cfg.ShowAgentName {
+		t.Error("agent names are shown despite being disabled")
 	}
 }
 
@@ -208,6 +231,7 @@ HERDR_AUTO_TITLE_MAX_LENGTH=32
 HERDR_AUTO_TITLE_BRANCH_MAX=0
 HERDR_AUTO_TITLE_POSITION=false
 HERDR_AUTO_TITLE_TRANSCRIPT=false
+HERDR_AUTO_TITLE_AGENT_NAME=false
 HERDR_AUTO_TITLE_MANUAL_FILE=/tmp/names.json
 `)
 
@@ -238,6 +262,10 @@ HERDR_AUTO_TITLE_MANUAL_FILE=/tmp/names.json
 
 	if cfg.ReadTranscripts {
 		t.Error("transcripts are read despite the file turning them off")
+	}
+
+	if cfg.ShowAgentName {
+		t.Error("agent names are shown despite the file turning them off")
 	}
 
 	if cfg.ManualPath != "/tmp/names.json" {
