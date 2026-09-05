@@ -170,3 +170,19 @@ func TestContextAndActivityComeFromTheSamePane(t *testing.T) {
 		t.Errorf("name = %q, want %q", got.Name, want)
 	}
 }
+
+func TestAnAgentTabDoesNotRepeatItsOwnDirectory(t *testing.T) {
+	// Claude Code titles its terminal after the project it was started in, so
+	// the activity says what the context already does. The agent's name in
+	// front of it must not hide that.
+	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
+		Dir:           "/Users/dev/work/dashboard",
+		TerminalTitle: "dashboard",
+		Agent:         "claude",
+		AgentStatus:   herdr.AgentStatusWorking,
+	}))
+
+	if want := "dashboard › claude"; got.Name != want {
+		t.Errorf("name = %q, want %q", got.Name, want)
+	}
+}
