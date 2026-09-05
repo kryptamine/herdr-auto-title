@@ -25,6 +25,7 @@ const (
 	EnvPosition   = "HERDR_AUTO_TITLE_POSITION"
 	EnvManual     = "HERDR_AUTO_TITLE_MANUAL_FILE"
 	EnvTranscript = "HERDR_AUTO_TITLE_TRANSCRIPT"
+	EnvAgentName  = "HERDR_AUTO_TITLE_AGENT_NAME"
 )
 
 // ConfigFile is the configuration file, read from the same directory the
@@ -56,6 +57,10 @@ type Config struct {
 	// when the agent has not titled its terminal. It reads what the user has
 	// been saying to that agent, so it can be turned off.
 	ReadTranscripts bool
+	// ShowAgentName puts the name of the agent running in a pane in front of
+	// what it is working on. Turned off, a pane whose agent has said nothing
+	// is named like any other pane in that directory.
+	ShowAgentName bool
 }
 
 // LoadConfig reads configuration from the configuration file and the
@@ -74,6 +79,7 @@ func LoadConfig() (Config, []string) {
 		ShowPosition:    true,
 		ManualPath:      state.DefaultManualPath(),
 		ReadTranscripts: true,
+		ShowAgentName:   true,
 	}
 
 	cfg.Debug = fromEnv(&warnings, EnvDebug, cfg.Debug, boolean)
@@ -83,6 +89,7 @@ func LoadConfig() (Config, []string) {
 	cfg.BranchMax = fromEnv(&warnings, EnvBranchMax, cfg.BranchMax, countOrNone)
 	cfg.ShowPosition = fromEnv(&warnings, EnvPosition, cfg.ShowPosition, boolean)
 	cfg.ReadTranscripts = fromEnv(&warnings, EnvTranscript, cfg.ReadTranscripts, boolean)
+	cfg.ShowAgentName = fromEnv(&warnings, EnvAgentName, cfg.ShowAgentName, boolean)
 	// A path needs neither parsing nor checking, so it does not go through
 	// fromEnv: any string the user set is the path they meant, and an empty
 	// one asks for locks that do not outlive the process.

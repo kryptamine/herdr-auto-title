@@ -119,10 +119,22 @@ type TitleResolver interface {
 	Resolve(tab state.TabState) Decision
 }
 
+// Options are the settings a title is assembled under, as opposed to the ones
+// a single source reads.
+type Options struct {
+	MaxLength int
+	BranchMax int
+	// HideAgentName leaves the agent's name out of a title. It is stated this
+	// way round so that the zero value keeps the name, which is what a resolver
+	// built without options wants.
+	HideAgentName bool
+}
+
 // Deterministic resolves titles from a fixed priority list of sources.
 type Deterministic struct {
-	sources   []Source
-	maxLength int
+	sources       []Source
+	maxLength     int
+	hideAgentName bool
 }
 
 var _ TitleResolver = (*Deterministic)(nil)
@@ -144,16 +156,19 @@ func New(maxLength int, sources ...Source) *Deterministic {
 
 // Default builds the chain Auto Title ships with, so nothing else has to list
 // what it contains.
-func Default(maxLength, branchMax int) *Deterministic {
-	return New(maxLength,
+func Default(opts Options) *Deterministic {
+	d := New(opts.MaxLength,
 		NewAgent(),
 		NewTerminalTitle(),
 		NewTranscript(),
 		NewProcess(),
 		NewSSH(),
-		NewGit(branchMax),
+		NewGit(opts.BranchMax),
 		NewCWD(),
 	)
+	d.hideAgentName = opts.HideAgentName
+
+	return d
 }
 
 // Resolve names a tab in four steps: ask the sources what they see, drop the
@@ -161,7 +176,16 @@ func Default(maxLength, branchMax int) *Deterministic {
 // back in front of its work, and assemble the rest.
 func (d *Deterministic) Resolve(tab state.TabState) Decision {
 	found := d.collect(state.SelectContextPane(tab))
-	parts := withoutRepetition(found.parts, tab.WorkspaceName)
+
+	parts := found.parts
+	if d.hideAgentName {
+		// Dropped before the repetition check, so a tab left with nothing but
+		// its directory keeps it rather than losing it to a name it will not
+		// show.
+		parts.Agent = ""
+	}
+
+	parts = withoutRepetition(parts, tab.WorkspaceName)
 
 	name := Format(withAgentName(parts), d.maxLength)
 	if name == "" {
