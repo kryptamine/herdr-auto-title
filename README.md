@@ -63,6 +63,13 @@ transcript in its own format, so **only Claude Code is read so far**. Any other
 agent's tab is named from its terminal title, exactly as before, and
 `HERDR_AUTO_TITLE_TRANSCRIPT=false` stops Auto Title reading transcripts at all.
 
+If your terminal already shows which agent holds a pane, the name in the tab is
+saying it twice: `HERDR_AUTO_TITLE_AGENT_NAME=false` leaves it out, and
+`dashboard › claude › Implement OAuth scopes` becomes
+`dashboard › Implement OAuth scopes`. It goes everywhere, including the tabs
+where the name was all there was — a pane whose agent has reported nothing then
+reads as its directory, `dashboard`, in place of `claude`.
+
 ## What your tabs will be called
 
 ```
@@ -124,6 +131,7 @@ restarts**, with the same `herdr server stop` the install needs.
 | `HERDR_AUTO_TITLE_POSITION`    | `true`                                    | Put each tab's position in front of its title                              |
 | `HERDR_AUTO_TITLE_MANUAL_FILE` | `manual-names.json`, next to `config.env` | Where tabs you renamed by hand are remembered; empty keeps them in memory  |
 | `HERDR_AUTO_TITLE_TRANSCRIPT`  | `true`                                    | Read an agent's own session transcript when it has not titled its terminal |
+| `HERDR_AUTO_TITLE_AGENT_NAME`  | `true`                                    | Put the agent's name in front of what an agent pane is doing               |
 
 ## Documentation
 
