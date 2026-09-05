@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.4.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.3.3...v0.4.0) (2026-09-05)
+
+
+### Features
+
+* **app:** let the agent name be turned off ([f72b03f](https://github.com/kryptamine/herdr-auto-title/commit/f72b03f106e28173f6e15c10e2d91cfd034ad994))
+
+
+### Bug Fixes
+
+* **resolver:** leave a tunnel-only ssh out of the tab's context ([f326333](https://github.com/kryptamine/herdr-auto-title/commit/f3263339cf68a03693dcf321b0fbc430ffe01545))
+* **resolver:** stop an agent tab repeating its own directory ([d7eec20](https://github.com/kryptamine/herdr-auto-title/commit/d7eec20ad3241eca03d0c2031c799b2beb40cbf5))
+
+
+### Refactoring
+
+* **resolver:** build a resolver in one step ([5d29cb3](https://github.com/kryptamine/herdr-auto-title/commit/5d29cb360e666af390f6812480c2a66eedc56739))
+* **resolver:** format the agent's name as the part it is ([2d0bc76](https://github.com/kryptamine/herdr-auto-title/commit/2d0bc76e2e526351ac39af44d06abeb1d7ca73ef))
+* **resolver:** place a pane's kind in one function ([d84bacb](https://github.com/kryptamine/herdr-auto-title/commit/d84bacbbd18a42829882a99e7b70dc575427e36f))
+* **resolver:** trim the tunnel comments ([2906e44](https://github.com/kryptamine/herdr-auto-title/commit/2906e44089775c73dadde9671d24766926c097ad))
+
 ## [0.3.3](https://github.com/kryptamine/herdr-auto-title/compare/v0.3.2...v0.3.3) (2026-09-02)
 
 

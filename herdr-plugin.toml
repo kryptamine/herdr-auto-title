@@ -2,7 +2,7 @@
 
 id = "herdr.auto-title"
 name = "Auto Title"
-version = "0.3.3"
+version = "0.4.0"
 min_herdr_version = "0.8.2"
 description = "Automatically generates contextual tab titles"
 # Windows is not claimed: nothing has ever run there, and the test fixtures
