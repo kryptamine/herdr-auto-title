@@ -25,7 +25,10 @@ title, and [carries a mark of its own](#the-position-is-not-a-part-of-the-title)
 Structurally a title is three fields, `Parts{Context, Branch, Activity}`
 (`internal/resolver/resolver.go`): *where* the user is and *what* they are
 doing. The branch belongs to the first of those — it qualifies the directory
-rather than standing beside it as a separate kind of thing.
+rather than standing beside it as a separate kind of thing. A fourth field,
+`Agent`, exists only between a source and the assembled title: an agent's name
+is held apart from its work because [the user decides whether it is
+shown](#the-agents-name-is-optional).
 
 ## One pane speaks for the tab
 
@@ -85,7 +88,8 @@ terminal title instead. An agent that echoes its own name (`Claude Code`) is
 rejected as an activity — it is compared against the agent Herdr recognized in
 the pane rather than against a list — and reappears as a *kind*, so a tab reads
 `dashboard › claude` until there is something to report and
-`dashboard › claude › Implement OAuth scopes` after.
+`dashboard › claude › Implement OAuth scopes` after. That name can be [turned
+off](#the-agents-name-is-optional).
 
 ### Terminal title
 
@@ -148,7 +152,9 @@ What this source produces is a **kind** — the program, not the work.
 `qualify` binds a kind to whatever a higher source found, and `stripKind` drops
 a kind a detail already carries, so `nvim › auth.provider.ts - Nvim` does not say
 the same thing twice. A kind with nothing left to add stands alone:
-`dashboard › nvim` for an editor with no file open.
+`dashboard › nvim` for an editor with no file open. An agent is the one kind
+that is not bound here — only stripped — because binding it is a decision the
+whole title makes.
 
 A mapping from command lines to friendlier names (`yarn dev` → `Dev`) was
 specified and is deliberately not built: the commands it would map are invisible
@@ -274,7 +280,39 @@ lost more than it saved — and only on an exact match, so a tab whose directory
 has left its workspace behind is exactly the one that keeps saying where it is.
 A branch counts as something remaining, and the match is against the directory
 alone, so a tab in the workspace of the repository it is in reads `feat/oauth ›
-nvim`: the half that repeats goes, the half that distinguishes stays.
+nvim`: the half that repeats goes, the half that distinguishes stays. An agent's
+name counts too, but only while it is going to be shown — which is why it is
+dropped before this runs rather than after.
+
+## The agent's name is optional
+
+`HERDR_AUTO_TITLE_AGENT_NAME=false` leaves the agent's name out of every title.
+Some terminals say which agent holds a pane on their own, and a name repeated in
+the tab costs columns the work could use.
+
+Off means off, including the case where the name is the entire title: a pane
+whose agent has reported nothing then reads as its directory, `dashboard`, or as
+the generic fallback where there is no directory either. Keeping the name for
+that one case would make the setting a rule with an exception, and the exception
+would have to be explained to everyone who set it.
+
+The name is still stripped from the *edges* of an activity that carries it,
+under either value, so an agent signing its terminal title cannot smuggle the
+name back in as text. Nothing looks for the name anywhere else in an activity: a
+repository called `claude-mcp` keeps its title.
+
+**It is a switch, not a format string.** A template — `{agent} › {activity}`,
+with the name dropped by leaving `{agent}` out — is the more general answer, and
+it costs a grammar to parse, validate and document, plus a rule for the
+separator a placeholder leaves dangling when it resolves to nothing. That last
+case is not hypothetical: an agent that never reports its work is ordinary, and
+`{agent}: {activity}` would leave `dashboard › claude:` in the tab bar. One bit
+was what was asked for, so one bit is what is stored.
+
+Because the name is held apart until the title is assembled, the repetition
+check sees the activity as it is. A tab whose agent titles its terminal after
+the project it was started in reads `dashboard › claude` rather than
+`dashboard › claude › dashboard`.
 
 ## The position is not a part of the title
 
