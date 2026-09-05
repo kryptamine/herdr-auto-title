@@ -110,6 +110,18 @@ func TestFormat(t *testing.T) {
 			Parts{Context: "dashboard", Activity: "Tests"},
 			"dashboard › Tests",
 		},
+		{
+			// The agent's name sits between where the user is and what the
+			// agent is doing, and holds that place with either neighbour gone.
+			"every part is joined in reading order",
+			Parts{Context: "dashboard", Branch: "feat/oauth", Agent: "claude", Activity: "Scopes"},
+			"dashboard › feat/oauth › claude › Scopes",
+		},
+		{
+			"an agent that reported nothing stands alone",
+			Parts{Context: "dashboard", Agent: "claude"},
+			"dashboard › claude",
+		},
 		{"context alone carries no separator", Parts{Context: "dashboard"}, "dashboard"},
 		{"activity alone carries no separator", Parts{Activity: "Tests"}, "Tests"},
 		{"nothing yields nothing", Parts{}, ""},

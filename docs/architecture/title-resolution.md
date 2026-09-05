@@ -22,13 +22,14 @@ distinction they cannot see. So every part shares one, `Separator`
 (`internal/resolver/sanitize.go`). The number in front is not a part of the
 title, and [carries a mark of its own](#the-position-is-not-a-part-of-the-title).
 
-Structurally a title is three fields, `Parts{Context, Branch, Activity}`
-(`internal/resolver/resolver.go`): *where* the user is and *what* they are
-doing. The branch belongs to the first of those — it qualifies the directory
-rather than standing beside it as a separate kind of thing. A fourth field,
-`Agent`, exists only between a source and the assembled title: an agent's name
-is held apart from its work because [the user decides whether it is
-shown](#the-agents-name-is-optional).
+Structurally a title is four fields, `Parts{Context, Branch, Agent, Activity}`
+(`internal/resolver/resolver.go`), formatted in that order: *where* the user is
+and *what* they are doing. The branch belongs to the first of those — it
+qualifies the directory rather than standing beside it as a separate kind of
+thing. The agent's name is a field rather than a prefix on the activity because
+[the user decides whether it is shown](#the-agents-name-is-optional), and
+because holding it apart is what lets the repetition check see the activity as
+it is.
 
 ## One pane speaks for the tab
 
@@ -153,8 +154,8 @@ What this source produces is a **kind** — the program, not the work.
 a kind a detail already carries, so `nvim › auth.provider.ts - Nvim` does not say
 the same thing twice. A kind with nothing left to add stands alone:
 `dashboard › nvim` for an editor with no file open. An agent is the one kind
-that is not bound here — only stripped — because binding it is a decision the
-whole title makes.
+that is not bound here — only stripped — because it is a field of its own, which
+the user can switch off.
 
 A mapping from command lines to friendlier names (`yarn dev` → `Dev`) was
 specified and is deliberately not built: the commands it would map are invisible
@@ -309,10 +310,10 @@ case is not hypothetical: an agent that never reports its work is ordinary, and
 `{agent}: {activity}` would leave `dashboard › claude:` in the tab bar. One bit
 was what was asked for, so one bit is what is stored.
 
-Because the name is held apart until the title is assembled, the repetition
-check sees the activity as it is. A tab whose agent titles its terminal after
-the project it was started in reads `dashboard › claude` rather than
-`dashboard › claude › dashboard`.
+Because the name is a field of its own rather than a prefix glued onto the
+activity, the repetition check sees the activity as it is. A tab whose agent
+titles its terminal after the project it was started in reads
+`dashboard › claude` rather than `dashboard › claude › dashboard`.
 
 ## The position is not a part of the title
 

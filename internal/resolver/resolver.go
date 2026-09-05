@@ -32,15 +32,16 @@ const (
 )
 
 // Parts are the components a source contributes to a title, formatted as
-// "<context> › <branch> › <activity>". A source may supply any of them.
+// "<context> › <branch> › <agent> › <activity>". A source may supply any of
+// them.
 type Parts struct {
 	Context string
 	// Branch qualifies the context rather than standing on its own: a branch
 	// is part of where the user is, not of what they are doing.
 	Branch string
-	// Agent names the agent running in the pane. It is kept apart from the
-	// activity because whether the two are joined belongs to the title as a
-	// whole, not to the source that read them.
+	// Agent names the agent running in the pane. It stands apart from the
+	// activity because the user can turn it off, which is a decision the whole
+	// title makes rather than the source that read it.
 	Agent    string
 	Activity string
 }
@@ -67,24 +68,6 @@ func activityFrom(pane *state.PaneState, value string) (Parts, bool) {
 	}
 
 	return Parts{Activity: qualify(activity, kind)}, true
-}
-
-// withAgentName puts the agent's name in front of the work it reported. An
-// agent that has reported nothing leaves its name standing as the activity,
-// which is what names a tab that is only known to hold an agent.
-func withAgentName(parts Parts) Parts {
-	if parts.Agent == "" {
-		return parts
-	}
-
-	activity := parts.Agent
-	if parts.Activity != "" {
-		activity += Separator + parts.Activity
-	}
-
-	parts.Agent, parts.Activity = "", activity
-
-	return parts
 }
 
 // echoesAgentName reports an activity that is no more than the agent's own
@@ -171,9 +154,8 @@ func Default(opts Options) *Deterministic {
 	return d
 }
 
-// Resolve names a tab in four steps: ask the sources what they see, drop the
-// parts that only repeat something already on screen, put the agent's name
-// back in front of its work, and assemble the rest.
+// Resolve names a tab in three steps: ask the sources what they see, drop the
+// parts that only repeat something already on screen, and assemble the rest.
 func (d *Deterministic) Resolve(tab state.TabState) Decision {
 	found := d.collect(state.SelectContextPane(tab))
 
@@ -187,7 +169,7 @@ func (d *Deterministic) Resolve(tab state.TabState) Decision {
 
 	parts = withoutRepetition(parts, tab.WorkspaceName)
 
-	name := Format(withAgentName(parts), d.maxLength)
+	name := Format(parts, d.maxLength)
 	if name == "" {
 		return Decision{
 			Name:       GenericFallback,
