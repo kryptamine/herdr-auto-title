@@ -127,9 +127,9 @@ var _ TitleResolver = (*Deterministic)(nil)
 
 // New builds a resolver from sources, ordering them by confidence rather than
 // by the order they are listed in. Equal confidences keep the order given.
-func New(maxLength int, sources ...Source) *Deterministic {
-	if maxLength <= 0 {
-		maxLength = DefaultMaxLength
+func New(opts Options, sources ...Source) *Deterministic {
+	if opts.MaxLength <= 0 {
+		opts.MaxLength = DefaultMaxLength
 	}
 
 	ordered := slices.Clone(sources)
@@ -137,13 +137,17 @@ func New(maxLength int, sources ...Source) *Deterministic {
 		return cmp.Compare(b.Confidence(), a.Confidence())
 	})
 
-	return &Deterministic{sources: ordered, maxLength: maxLength}
+	return &Deterministic{
+		sources:       ordered,
+		maxLength:     opts.MaxLength,
+		hideAgentName: opts.HideAgentName,
+	}
 }
 
 // Default builds the chain Auto Title ships with, so nothing else has to list
 // what it contains.
 func Default(opts Options) *Deterministic {
-	d := New(opts.MaxLength,
+	return New(opts,
 		NewAgent(),
 		NewTerminalTitle(),
 		NewTranscript(),
@@ -152,9 +156,6 @@ func Default(opts Options) *Deterministic {
 		NewGit(opts.BranchMax),
 		NewCWD(),
 	)
-	d.hideAgentName = opts.HideAgentName
-
-	return d
 }
 
 // Resolve names a tab in three steps: ask the sources what they see, drop the

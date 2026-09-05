@@ -26,7 +26,7 @@ func tabWithCWD(dir string) state.TabState {
 func TestResolveFromCWD(t *testing.T) {
 	home := t.TempDir()
 	source := CWD{home: filepath.Clean(home)}
-	r := New(DefaultMaxLength, source)
+	r := New(Options{MaxLength: DefaultMaxLength}, source)
 
 	tests := []struct {
 		name       string
@@ -63,7 +63,7 @@ func TestResolveFromCWD(t *testing.T) {
 }
 
 func TestResolveNamesATabAfterItsDirectory(t *testing.T) {
-	r := New(DefaultMaxLength, NewCWD())
+	r := New(Options{MaxLength: DefaultMaxLength}, NewCWD())
 	tab := state.TabState{
 		ID: "wE:t1",
 		Panes: []*state.PaneState{
@@ -77,7 +77,7 @@ func TestResolveNamesATabAfterItsDirectory(t *testing.T) {
 }
 
 func TestResolveTabWithoutPanes(t *testing.T) {
-	r := New(DefaultMaxLength, NewCWD())
+	r := New(Options{MaxLength: DefaultMaxLength}, NewCWD())
 
 	got := r.Resolve(state.TabState{ID: "wE:t1"})
 	if got.Name != GenericFallback {
@@ -87,7 +87,7 @@ func TestResolveTabWithoutPanes(t *testing.T) {
 
 func TestResolveTruncatesToMaxLength(t *testing.T) {
 	long := strings.Repeat("x", 100)
-	r := New(10, NewCWD())
+	r := New(Options{MaxLength: 10}, NewCWD())
 
 	got := r.Resolve(tabWithCWD("/Users/dev/" + long))
 	if len([]rune(got.Name)) != 10 {
@@ -96,7 +96,7 @@ func TestResolveTruncatesToMaxLength(t *testing.T) {
 }
 
 func TestResolveIsDeterministic(t *testing.T) {
-	r := New(DefaultMaxLength, NewCWD())
+	r := New(Options{MaxLength: DefaultMaxLength}, NewCWD())
 	panes := []*state.PaneState{
 		{ID: "wE:p1", Dir: "/Users/dev/work/dashboard"},
 		{ID: "wE:p2", Dir: "/Users/dev/work/api"},
@@ -130,7 +130,7 @@ func (s higherSource) Resolve(*state.PaneState) (Parts, bool) {
 }
 
 func TestHigherPrioritySourceSuppliesActivity(t *testing.T) {
-	r := New(DefaultMaxLength,
+	r := New(Options{MaxLength: DefaultMaxLength},
 		higherSource{confidence: ConfidenceProcess, parts: Parts{Activity: "Tests"}, ok: true},
 		NewCWD(),
 	)
@@ -152,7 +152,7 @@ func TestHigherPrioritySourceSuppliesActivity(t *testing.T) {
 
 func TestHigherPrioritySourceOverridesContext(t *testing.T) {
 	r := New(
-		DefaultMaxLength,
+		Options{MaxLength: DefaultMaxLength},
 		higherSource{
 			confidence: ConfidenceSSH,
 			parts:      Parts{Context: "prod-01", Activity: "SSH"},
@@ -168,7 +168,7 @@ func TestHigherPrioritySourceOverridesContext(t *testing.T) {
 }
 
 func TestSourceThatDeclinesIsSkipped(t *testing.T) {
-	r := New(DefaultMaxLength,
+	r := New(Options{MaxLength: DefaultMaxLength},
 		higherSource{ok: false},
 		NewCWD(),
 	)
@@ -277,8 +277,8 @@ func TestSourcesAreOrderedByConfidenceNotByArgument(t *testing.T) {
 
 	tab := tabWithPane(&state.PaneState{})
 	for _, chain := range []*Deterministic{
-		New(DefaultMaxLength, high, low),
-		New(DefaultMaxLength, low, high),
+		New(Options{MaxLength: DefaultMaxLength}, high, low),
+		New(Options{MaxLength: DefaultMaxLength}, low, high),
 	} {
 		got := chain.Resolve(tab)
 		if got.Name != "high" {

@@ -11,7 +11,7 @@ import (
 
 // numberedCWD names a tab after its directory and puts its position in front.
 func numberedCWD(maxLength int) *Numbered {
-	return NewNumbered(New(maxLength, NewCWD()), maxLength)
+	return NewNumbered(New(Options{MaxLength: maxLength}, NewCWD()), maxLength)
 }
 
 func atPosition(position int, dir string) state.TabState {
@@ -82,7 +82,7 @@ func TestAPositionWithNoRoomIsDropped(t *testing.T) {
 func TestNumberedWithoutAWidthTakesTheDefault(t *testing.T) {
 	// Zero means "no bound" to Sanitize but would leave no room at all here,
 	// so every tab would quietly lose the position instead.
-	got := NewNumbered(New(0, NewCWD()), 0).Resolve(atPosition(2, "/Users/dev/work/api"))
+	got := NewNumbered(New(Options{}, NewCWD()), 0).Resolve(atPosition(2, "/Users/dev/work/api"))
 	if got.Name != "2 · api" {
 		t.Errorf("name = %q, want the position kept", got.Name)
 	}
