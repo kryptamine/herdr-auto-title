@@ -127,7 +127,7 @@ func splitAtWidth(s string, maxWidth int) (head, rest string) {
 func Format(parts Parts, maxLen int) string {
 	var b strings.Builder
 
-	for _, part := range []string{parts.Context, parts.Branch, parts.Activity} {
+	for _, part := range []string{parts.Context, parts.Branch, parts.Agent, parts.Activity} {
 		if part == "" {
 			continue
 		}
