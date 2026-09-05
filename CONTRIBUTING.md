@@ -62,7 +62,7 @@ in [docs/architecture](docs/architecture/).
   `scripts/probe.py`): the originating specification is wrong in several
   places. Record what a probe teaches you in
   [docs/architecture/herdr-socket-api.md](docs/architecture/herdr-socket-api.md),
-  which is the record; `CLAUDE.md` keeps only the facts that mislead in silence.
+  which is the record; `AGENTS.md` keeps only the facts that mislead in silence.
 
 ## Pull requests
 

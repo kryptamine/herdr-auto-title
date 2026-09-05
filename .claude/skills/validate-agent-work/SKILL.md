@@ -5,7 +5,7 @@ description: Use when finishing any change to this repository, or when the user 
 
 # Validate Agent Work
 
-The rules live in [CLAUDE.md](../../../CLAUDE.md) and
+The rules live in [AGENTS.md](../../../AGENTS.md) and
 [CONTRIBUTING.md](../../../CONTRIBUTING.md); this is the order to check them in
 before handing work back.
 
@@ -34,12 +34,12 @@ before handing work back.
    [`.claude/rules/comments.md`](../../rules/comments.md), over the comments
    this change added or touched.
 
-4. **Read the diff against the mandatory rules in CLAUDE.md** — the language,
+4. **Read the diff against the mandatory rules in AGENTS.md** — the language,
    commit, type, script and comment rules, and the "Working here" list. The
    linter checks none of them. Two need a search rather than a read: a field,
    method or constant added without a reader in the same change, and a probe
    whose finding has not reached `docs/architecture/herdr-socket-api.md`, which
-   is the record — `CLAUDE.md` takes it only if it misleads the code in
+   is the record — `AGENTS.md` takes it only if it misleads the code in
    silence.
 
 5. **Check nothing was left running:**
