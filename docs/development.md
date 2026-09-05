@@ -99,7 +99,7 @@ per active pane before anything live.
 
 The current list of verified facts lives in
 [architecture/herdr-socket-api.md](architecture/herdr-socket-api.md), with a
-summary of it — and the measurements behind the polling decision — in CLAUDE.md.
+summary of it — and the measurements behind the polling decision — in AGENTS.md.
 When a probe teaches you something new, add it to both.
 
 ## Registering it with Herdr
@@ -195,7 +195,7 @@ and logged at DEBUG; if you see it as a warning, something regressed.
 **Do not reach for the event stream.** It looks like the obvious mechanism and
 it is a trap: subscribing replays about ten seconds of history per active pane
 before anything live, and there is no cursor to skip it. The measurements are in
-CLAUDE.md. If you think you have found a way around it, measure and record the
+AGENTS.md. If you think you have found a way around it, measure and record the
 result there before changing the design back.
 
 **`go test -race` is the gate, not `go test`.** The change history is shared

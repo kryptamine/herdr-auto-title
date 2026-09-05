@@ -24,6 +24,6 @@ session, a pane arranged to reproduce the bug, a probe under `scripts/`.
 - [ ] Tests land with the behaviour they cover.
 - [ ] `CHANGELOG.md`, the tags and the version in `herdr-plugin.toml` are
       untouched — they belong to release-please.
-- [ ] A probe that taught something new is recorded in `CLAUDE.md` and in
+- [ ] A probe that taught something new is recorded in `AGENTS.md` and in
       `docs/architecture/herdr-socket-api.md`.
 - [ ] This pull request is one thing.

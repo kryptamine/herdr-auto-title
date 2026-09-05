@@ -26,7 +26,7 @@ else written into the repository, whatever language the request was made in.
   when that is not obvious. Never who calls it or when it runs — call sites
   move and the comment then lies.
 - Never record provenance: which probe, which issue, which measurement session,
-  which commit. That is what `git log`, `CLAUDE.md` and `docs/architecture`
+  which commit. That is what `git log`, `AGENTS.md` and `docs/architecture`
   are for. A *measured value* is worth stating; the session that measured it is
   not.
 - Never justify code somewhere else. A contract is stated where it is relied
