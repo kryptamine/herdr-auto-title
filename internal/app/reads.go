@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/kryptamine/herdr-auto-title/internal/claude"
 	"github.com/kryptamine/herdr-auto-title/internal/git"
@@ -11,7 +12,7 @@ import (
 
 // tabsIn assembles the snapshot's tabs with their panes, and reads nothing:
 // what a pane is running, has checked out and is talking about each costs a
-// request or a file, and readInto spends that on the panes that earn it.
+// request or a file, and paneReads spends that on the panes that earn it.
 func (a *App) tabsIn(snapshot herdr.Snapshot) []state.TabState {
 	workspaces := make(map[string]string, len(snapshot.Workspaces))
 
@@ -50,63 +51,99 @@ func (a *App) tabsIn(snapshot herdr.Snapshot) []state.TabState {
 	return tabs
 }
 
-// readInto fills in what the snapshot could not say about the one pane a tab
-// is named from. The other panes of that tab keep what the snapshot said,
-// because nothing reads any more of them.
-func (a *App) readInto(
-	ctx context.Context,
-	client herdr.Client,
-	pane *state.PaneState,
-	checkouts checkoutMemo,
-) {
+// paneReader reads what a snapshot cannot say about a pane. It outlives a poll
+// because what it remembers does: what each pane was last seen running, and how
+// far each agent's transcript has been read.
+type paneReader struct {
+	changes *state.Changes
+	topics  *claude.Reader
+	log     *slog.Logger
+	// branchMax and readTranscripts are the settings that turn a read off
+	// rather than shape it, so they are tested before one is started.
+	branchMax       int
+	readTranscripts bool
+}
+
+func newPaneReader(cfg Config, log *slog.Logger, changes *state.Changes) *paneReader {
+	return &paneReader{
+		changes:         changes,
+		topics:          claude.NewReader(),
+		log:             log,
+		branchMax:       cfg.BranchMax,
+		readTranscripts: cfg.ReadTranscripts,
+	}
+}
+
+// forPoll opens the reads of one poll, forgetting the agent sessions the
+// snapshot no longer holds. The panes come from the snapshot rather than from
+// the tabs, because a session is gone once no pane holds it.
+func (r *paneReader) forPoll(panes []herdr.PaneInfo) *paneReads {
+	r.topics.Retain(sessionsIn(panes))
+
+	return &paneReads{reader: r, checkouts: make(checkoutMemo)}
+}
+
+// paneReads are one poll's reads. It is a thing of its own so that what it
+// memoizes cannot outlast the poll that filled it.
+type paneReads struct {
+	reader    *paneReader
+	checkouts checkoutMemo
+}
+
+// fill supplies what the snapshot could not say about the one pane a tab is
+// named from. The other panes of that tab keep what the snapshot said, because
+// nothing reads any more of them.
+func (p *paneReads) fill(ctx context.Context, client herdr.Client, pane *state.PaneState) {
 	if pane == nil {
 		return
 	}
 
-	processes := a.processesIn(ctx, client, pane.ID)
+	processes := p.processes(ctx, client, pane.ID)
 	dir := state.PaneDir(processes, pane.Dir)
 
-	pane.Read(state.Reads{
-		Processes: processes,
-		Dir:       dir,
-		Git:       a.checkoutIn(ctx, dir, checkouts),
-		Topic:     a.topicIn(ctx, pane, dir),
-	})
+	pane.Processes = state.ProcessesFrom(processes)
+	pane.Dir = dir
+	pane.Git = p.checkout(ctx, dir)
+	pane.AgentTopic = p.topic(ctx, pane, dir)
 }
 
-// processesIn reports what a pane is running, reusing the last read while the
+// processes reports what a pane is running, reusing the last read while the
 // pane's revision holds and that read is recent. Neither test is exact, which
 // is why there are two — see docs/architecture/poll-loop.md.
-func (a *App) processesIn(
+func (p *paneReads) processes(
 	ctx context.Context,
 	client herdr.Client,
 	paneID string,
 ) []herdr.PaneProcessInfoProcess {
-	if processes, read := a.changes.Processes(paneID); read {
+	if processes, read := p.reader.changes.Processes(paneID); read {
 		return processes
 	}
 
 	processes, err := herdr.PaneProcesses(ctx, client, paneID)
 	if err != nil {
 		if herdr.ErrorCode(err) != herdr.CodePaneNotFound && ctx.Err() == nil {
-			a.log.Debug("could not read what a pane is running", "pane_id", paneID, "error", err)
+			p.reader.log.Debug(
+				"could not read what a pane is running",
+				"pane_id", paneID,
+				"error", err,
+			)
 		}
 
 		return nil
 	}
 
-	a.changes.Ran(paneID, processes)
+	p.reader.changes.Ran(paneID, processes)
 
 	return processes
 }
 
-// checkoutIn reports what the repository holding the pane has checked out.
+// checkout reports what the repository holding the pane has checked out.
 // Nothing is remembered past the poll, and why not is in
 // docs/architecture/title-resolution.md.
-func (a *App) checkoutIn(ctx context.Context, dir string, checkouts checkoutMemo) git.Checkout {
+func (p *paneReads) checkout(ctx context.Context, dir string) git.Checkout {
 	// A branch width of zero is how branches are turned off, and a read whose
 	// answer is thrown away is still a read on every pane twice a second.
-	if a.cfg.BranchMax <= 0 {
+	if p.reader.branchMax <= 0 {
 		return git.Checkout{}
 	}
 
@@ -114,7 +151,7 @@ func (a *App) checkoutIn(ctx context.Context, dir string, checkouts checkoutMemo
 		return git.Checkout{}
 	}
 
-	return checkouts.read(dir)
+	return p.checkouts.read(dir)
 }
 
 // checkoutMemo holds the checkouts one poll has read. The tabs of a project
@@ -136,11 +173,11 @@ func (m checkoutMemo) read(dir string) git.Checkout {
 	return checkout
 }
 
-// topicIn reports what the session the pane's agent is holding says it is
-// about. Only Claude Code's transcripts are understood, and only Herdr's
-// integration hook says which session a pane holds.
-func (a *App) topicIn(ctx context.Context, pane *state.PaneState, dir string) string {
-	if !a.cfg.ReadTranscripts || spentPoll(ctx) {
+// topic reports what the session the pane's agent is holding says it is about.
+// Only Claude Code's transcripts are understood, and only Herdr's integration
+// hook says which session a pane holds.
+func (p *paneReads) topic(ctx context.Context, pane *state.PaneState, dir string) string {
+	if !p.reader.readTranscripts || spentPoll(ctx) {
 		return ""
 	}
 
@@ -149,7 +186,7 @@ func (a *App) topicIn(ctx context.Context, pane *state.PaneState, dir string) st
 		return ""
 	}
 
-	return a.topics.Topic(sessionID, dir).Text()
+	return p.reader.topics.Topic(sessionID, dir).Text()
 }
 
 // spentPoll reports that this poll is past its deadline. The reads it guards

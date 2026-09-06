@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/kryptamine/herdr-auto-title/internal/claude"
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
 	"github.com/kryptamine/herdr-auto-title/internal/resolver"
 	"github.com/kryptamine/herdr-auto-title/internal/state"
@@ -23,9 +22,7 @@ type App struct {
 	titles  resolver.TitleResolver
 	changes *state.Changes
 	manual  *state.Manual
-	// topics reads what an agent's own session is about. It keeps its place in
-	// each transcript, so a poll reads only what was appended since the last.
-	topics *claude.Reader
+	reads   *paneReader
 	// failures is the run of polls that have failed in a row, which decides
 	// how loudly the next one is reported.
 	failures failureLog
@@ -34,13 +31,15 @@ type App struct {
 // New builds the application. The client belongs to Run rather than to the
 // App, so one App can be driven by any connection.
 func New(cfg Config, log *slog.Logger, titles resolver.TitleResolver) *App {
+	changes := state.NewChanges()
+
 	return &App{
 		cfg:     cfg,
 		log:     log,
 		titles:  titles,
-		changes: state.NewChanges(),
+		changes: changes,
 		manual:  state.LoadManual(cfg.ManualPath),
-		topics:  claude.NewReader(),
+		reads:   newPaneReader(cfg, log, changes),
 	}
 }
 
@@ -97,14 +96,12 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 	}
 
 	a.changes.Observe(snapshot.Panes)
-	a.topics.Retain(sessionsIn(snapshot.Panes))
 	// Taken from the snapshot rather than from the tabs below, because this is
 	// what decides which of them are locked, and a locked tab is never read.
 	a.manual.Retain(labelsIn(snapshot.Tabs))
 
 	tabs := a.tabsIn(snapshot)
-	// One memo for this poll, because the tabs of a project share a directory.
-	checkouts := make(checkoutMemo, len(tabs))
+	reads := a.reads.forPoll(snapshot.Panes)
 
 	for _, tab := range tabs {
 		if ctx.Err() != nil {
@@ -118,7 +115,7 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 		// Read here rather than during assembly: the reads are what a poll
 		// spends, and only a tab that will be renamed is worth them. The
 		// resolver picks the same pane, because the choice is made from state.
-		a.readInto(ctx, client, state.SelectContextPane(tab), checkouts)
+		reads.fill(ctx, client, state.SelectContextPane(tab))
 
 		decision := a.titles.Resolve(tab)
 		if a.manual.Observe(state.SightingFrom(tab, decision.Name)) {
