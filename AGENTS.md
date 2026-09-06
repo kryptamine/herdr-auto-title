@@ -112,9 +112,9 @@ make watch-tabs # ...refreshed every second
 make probe-snapshot # the session snapshot the plugin polls
 ```
 
-`go test -race` is the gate, not `go test`: the poll loop and the change history
-it keeps are exercised concurrently in tests, and a future reset action will
-touch that history from outside the loop.
+`go test -race` is the gate, not `go test`: the state a poll carries between
+polls is shared, two tests still run the loop in a goroutine of its own, and a
+future reset action will touch that state from outside the loop.
 
 The linter lives in `tools/go.mod`, a module of its own, so its dependency tree
 stays out of the plugin's: the main module keeps two dependencies and still
