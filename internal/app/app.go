@@ -17,12 +17,14 @@ const pollTimeout = 5 * time.Second
 
 // App is one run of the Auto Title loop.
 type App struct {
-	cfg     Config
-	log     *slog.Logger
-	titles  resolver.TitleResolver
-	changes *state.Changes
-	manual  *state.Manual
-	reads   *paneReader
+	// pollEvery is how often the session is read, which is all the loop itself
+	// decides anything by.
+	pollEvery time.Duration
+	log       *slog.Logger
+	titles    resolver.TitleResolver
+	changes   *state.Changes
+	manual    *state.Manual
+	reads     *paneReader
 	// failures is the run of polls that have failed in a row, which decides
 	// how loudly the next one is reported.
 	failures failureLog
@@ -34,12 +36,12 @@ func New(cfg Config, log *slog.Logger, titles resolver.TitleResolver) *App {
 	changes := state.NewChanges()
 
 	return &App{
-		cfg:     cfg,
-		log:     log,
-		titles:  titles,
-		changes: changes,
-		manual:  state.LoadManual(cfg.ManualPath),
-		reads:   newPaneReader(cfg, log, changes),
+		pollEvery: cfg.Poll,
+		log:       log,
+		titles:    titles,
+		changes:   changes,
+		manual:    state.LoadManual(cfg.ManualPath),
+		reads:     newPaneReader(cfg, log, changes),
 	}
 }
 
@@ -50,7 +52,7 @@ func (a *App) Run(ctx context.Context, client herdr.Client) {
 	// Name what already exists before waiting for the first tick.
 	a.poll(ctx, client)
 
-	ticker := time.NewTicker(a.cfg.Poll)
+	ticker := time.NewTicker(a.pollEvery)
 	defer ticker.Stop()
 
 	for {
