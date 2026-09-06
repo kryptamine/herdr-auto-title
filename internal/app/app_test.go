@@ -1008,3 +1008,42 @@ func TestAPaneIsReadFromItsForegroundProcessesDirectory(t *testing.T) {
 		t.Errorf("branch = %q, want the checkout of the directory the pane is in", got)
 	}
 }
+
+func TestRunNamesWhatExistsBeforeTheFirstTick(t *testing.T) {
+	// A tab is named as the plugin starts, not a poll interval later. The
+	// interval here is long enough that a rename arriving at all can only have
+	// come from the poll Run makes before it waits.
+	client := herdrtest.New(
+		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
+		[]herdr.PaneInfo{
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard", Focused: true},
+		},
+	)
+
+	cfg := testConfig()
+	cfg.Poll = time.Minute
+	app := New(cfg, discardLogger(), testResolver(t))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	done := make(chan struct{})
+
+	go func() { app.Run(ctx, client); close(done) }()
+
+	deadline := time.Now().Add(2 * time.Second)
+	for len(client.Renames()) == 0 {
+		if time.Now().After(deadline) {
+			t.Fatal("nothing was named in the two seconds before the first tick was due")
+		}
+
+		time.Sleep(time.Millisecond)
+	}
+
+	if got := client.Renames()[0].Label; got != "dashboard" {
+		t.Errorf("rename = %q, want dashboard", got)
+	}
+
+	cancel()
+	<-done
+}
