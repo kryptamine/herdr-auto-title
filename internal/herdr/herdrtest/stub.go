@@ -44,7 +44,6 @@ type Client struct {
 	renameErr  error
 	processErr error
 	callErr    error
-	polls      int
 	reads      int
 }
 
@@ -147,15 +146,6 @@ func (s *Client) ProcessReads() int {
 	return s.reads
 }
 
-// Polls counts the snapshots asked for so far, whether or not they were
-// answered.
-func (s *Client) Polls() int {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	return s.polls
-}
-
 func (s *Client) Call(ctx context.Context, method string, params any, result any) error {
 	if err := ctx.Err(); err != nil {
 		return err
@@ -163,12 +153,6 @@ func (s *Client) Call(ctx context.Context, method string, params any, result any
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
-	// Counted before the error, so a test can wait out a stretch of polls that
-	// are failing as readily as one of polls that work.
-	if method == herdr.MethodSessionSnapshot {
-		s.polls++
-	}
 
 	if s.callErr != nil {
 		return s.callErr
