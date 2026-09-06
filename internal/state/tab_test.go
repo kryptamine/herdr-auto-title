@@ -76,7 +76,7 @@ func TestPaneFromReadsAgentContext(t *testing.T) {
 		DisplayAgent:          "Claude Code",
 		AgentStatus:           herdr.AgentStatusWorking,
 	}, stamp)
-	pane.Read(Reads{Dir: pane.Dir, Topic: "Rework the poll loop"})
+	pane.AgentTopic = "Rework the poll loop"
 
 	switch {
 	case pane.TerminalTitle != "Claude Code":
@@ -235,7 +235,8 @@ func TestPaneDirTakesTheForegroundProcessesOwnDirectory(t *testing.T) {
 		PaneID: "wE:p1", Agent: "claude",
 		CWD: "/work/dashboard", ForegroundCWD: "/opt/gimp-mcp",
 	}, time.Time{})
-	pane.Read(Reads{Processes: processes, Dir: PaneDir(processes, pane.Dir)})
+	pane.Dir = PaneDir(processes, pane.Dir)
+	pane.Processes = ProcessesFrom(processes)
 
 	if pane.Dir != "/work/self-care-portal" {
 		t.Errorf("dir = %q, want the foreground process's own", pane.Dir)

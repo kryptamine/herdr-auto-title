@@ -116,8 +116,9 @@ changes name at most once per poll however fast its pane is churning, so
 4. `tabsIn` — assemble tabs with their panes from the snapshot alone. Nothing
    is read here: assembly is what says which pane will be asked about.
 5. Per tab: skip it if locked, otherwise read the one pane the tab is named
-   from (`readInto`), resolve a title, check whether the label moved under us,
-   and rename when the result differs from the label the tab already carries.
+   from (`paneReads.fill`), resolve a title, check whether the label moved
+   under us, and rename when the result differs from the label the tab already
+   carries.
 
 **Only the pane that names its tab is read**, and only while its tab is
 nobody's. `pane.process_info` is asked about the panes that moved since they

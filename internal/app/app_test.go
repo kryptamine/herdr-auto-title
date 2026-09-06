@@ -14,6 +14,7 @@ import (
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
 	"github.com/kryptamine/herdr-auto-title/internal/herdr/herdrtest"
 	"github.com/kryptamine/herdr-auto-title/internal/resolver"
+	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
 
 const testPoll = 10 * time.Millisecond
@@ -746,7 +747,14 @@ func TestALockedTabIsNotReadEither(t *testing.T) {
 // `main`, so passing that as the branch is how a tab on the trunk is written.
 func repoAt(t *testing.T, branch string) string {
 	t.Helper()
-	root := t.TempDir()
+	return repoIn(t, t.TempDir(), branch)
+}
+
+// repoIn builds one in a directory that already exists, so a test can watch a
+// repository appear under a pane that was read before it did.
+func repoIn(t *testing.T, root, branch string) string {
+	t.Helper()
+
 	gitDir := filepath.Join(root, ".git")
 
 	remote := filepath.Join(gitDir, "refs", "remotes", "origin")
@@ -763,6 +771,12 @@ func repoAt(t *testing.T, branch string) string {
 	write(filepath.Join(remote, "HEAD"), "ref: refs/remotes/origin/main\n")
 
 	return root
+}
+
+// paneAt is a pane sitting in dir and running nothing Herdr will answer for,
+// so that a read of it finds only what the directory holds.
+func paneAt(paneID, dir string) *state.PaneState {
+	return state.PaneFrom(herdr.PaneInfo{PaneID: paneID, TabID: "wE:t1", CWD: dir}, time.Time{})
 }
 
 func TestAPollNamesATabAfterItsBranch(t *testing.T) {
@@ -806,15 +820,19 @@ func TestCheckingOutABranchRetitlesTheTab(t *testing.T) {
 
 func TestARepositoryIsWalkedOncePerPoll(t *testing.T) {
 	// Every tab of a project reads the same directory, and the walk up to it is
-	// the read. Rewriting HEAD between the two calls is how the test sees that
-	// the second one never reached the disk.
+	// the read. Rewriting HEAD between two panes of one poll is how the test
+	// sees that the second one never reached the disk.
 	repo := repoAt(t, "feat/oauth")
 	app := New(testConfig(), discardLogger(), testResolver(t))
-	ctx := context.Background()
+	ctx, client := context.Background(), herdrtest.New(nil, nil)
 
-	poll := make(checkoutMemo)
-	if got := app.checkoutIn(ctx, repo, poll).Branch; got != "feat/oauth" {
-		t.Fatalf("branch = %q, want feat/oauth", got)
+	reads := app.reads.forPoll(nil)
+
+	first := paneAt("wE:p1", repo)
+	reads.fill(ctx, client, first)
+
+	if first.Git.Branch != "feat/oauth" {
+		t.Fatalf("branch = %q, want feat/oauth", first.Git.Branch)
 	}
 
 	head := filepath.Join(repo, ".git", "HEAD")
@@ -822,12 +840,18 @@ func TestARepositoryIsWalkedOncePerPoll(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if got := app.checkoutIn(ctx, repo, poll).Branch; got != "feat/oauth" {
-		t.Errorf("branch = %q, want the answer this poll already had", got)
+	second := paneAt("wE:p2", repo)
+	reads.fill(ctx, client, second)
+
+	if second.Git.Branch != "feat/oauth" {
+		t.Errorf("branch = %q, want the answer this poll already had", second.Git.Branch)
 	}
 
-	if got := app.checkoutIn(ctx, repo, make(checkoutMemo)).Branch; got != "fix/token" {
-		t.Errorf("branch = %q, want the next poll to read HEAD again", got)
+	next := paneAt("wE:p3", repo)
+	app.reads.forPoll(nil).fill(ctx, client, next)
+
+	if next.Git.Branch != "fix/token" {
+		t.Errorf("branch = %q, want the next poll to read HEAD again", next.Git.Branch)
 	}
 }
 
@@ -836,14 +860,26 @@ func TestADirectoryHoldingNoRepositoryIsRememberedToo(t *testing.T) {
 	// as finding one, so a pane outside a checkout must not repeat it per tab.
 	dir := t.TempDir()
 	app := New(testConfig(), discardLogger(), testResolver(t))
+	ctx, client := context.Background(), herdrtest.New(nil, nil)
 
-	poll := make(checkoutMemo)
-	if got := app.checkoutIn(context.Background(), dir, poll); got != (git.Checkout{}) {
-		t.Fatalf("checkout = %+v, want nothing found", got)
+	reads := app.reads.forPoll(nil)
+
+	first := paneAt("wE:p1", dir)
+	reads.fill(ctx, client, first)
+
+	if first.Git != (git.Checkout{}) {
+		t.Fatalf("checkout = %+v, want nothing found", first.Git)
 	}
 
-	if _, remembered := poll[dir]; !remembered {
-		t.Error("a directory holding no repository was not remembered")
+	// A repository under the same directory is what a second walk would find,
+	// and a poll that remembered the miss makes none.
+	repoIn(t, dir, "feat/oauth")
+
+	second := paneAt("wE:p2", dir)
+	reads.fill(ctx, client, second)
+
+	if second.Git != (git.Checkout{}) {
+		t.Errorf("checkout = %+v, want the miss this poll already had", second.Git)
 	}
 }
 
@@ -856,12 +892,11 @@ func TestBranchesSwitchedOffAreNotRead(t *testing.T) {
 	cfg.BranchMax = 0
 	app := New(cfg, discardLogger(), testResolver(t))
 
-	if checkout := app.checkoutIn(
-		context.Background(),
-		repo,
-		make(checkoutMemo),
-	); checkout != (git.Checkout{}) {
-		t.Errorf("checkout = %+v, want nothing read", checkout)
+	pane := paneAt("wE:p1", repo)
+	app.reads.forPoll(nil).fill(context.Background(), herdrtest.New(nil, nil), pane)
+
+	if pane.Git != (git.Checkout{}) {
+		t.Errorf("checkout = %+v, want nothing read", pane.Git)
 	}
 }
 
@@ -956,7 +991,7 @@ func TestAPollPastItsDeadlineStopsReadingTheFilesystem(t *testing.T) {
 	// The live read first, so a checkout that never resolves cannot make the
 	// spent one below look like the guard working.
 	live := app.tabsIn(snapshot)
-	app.readInto(context.Background(), client, live[0].Panes[0], make(checkoutMemo))
+	app.reads.forPoll(nil).fill(context.Background(), client, live[0].Panes[0])
 
 	if got := live[0].Panes[0].Git.Branch; got != "feat/oauth" {
 		t.Fatalf("branch = %q with time left, so this test proves nothing", got)
@@ -966,7 +1001,7 @@ func TestAPollPastItsDeadlineStopsReadingTheFilesystem(t *testing.T) {
 	cancel()
 
 	tabs := app.tabsIn(snapshot)
-	app.readInto(spent, client, tabs[0].Panes[0], make(checkoutMemo))
+	app.reads.forPoll(nil).fill(spent, client, tabs[0].Panes[0])
 
 	if got := tabs[0].Panes[0].Git; got != (git.Checkout{}) {
 		t.Errorf("checkout = %+v, want a poll past its deadline to read nothing", got)
@@ -998,7 +1033,7 @@ func TestAPaneIsReadFromItsForegroundProcessesDirectory(t *testing.T) {
 	})
 
 	read := tabs[0].Panes[0]
-	app.readInto(context.Background(), client, read, make(checkoutMemo))
+	app.reads.forPoll(nil).fill(context.Background(), client, read)
 
 	if read.Dir != repo {
 		t.Errorf("dir = %q, want the agent's own %q", read.Dir, repo)

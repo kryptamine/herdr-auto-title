@@ -59,19 +59,6 @@ type Process struct {
 	Args []string
 }
 
-// Reads is what a poll learned about a pane that its snapshot entry does not
-// carry: each field costs a request or a file of its own, which is why only
-// the pane that names its tab is read.
-type Reads struct {
-	Processes []herdr.PaneProcessInfoProcess
-	// Dir is the directory the pane speaks for, which only what it is running
-	// says exactly — see PaneDir.
-	Dir string
-	Git git.Checkout
-	// Topic is what the agent's own session says it is about.
-	Topic string
-}
-
 // PaneDir is the directory a pane speaks for, settled by what it is running:
 // the list is deepest first, so the pane's own foreground process is last and
 // the directory it is in is the pane's. A read saying nothing leaves guess.
@@ -113,17 +100,10 @@ func PaneFrom(info herdr.PaneInfo, changedAt time.Time) *PaneState {
 	}
 }
 
-// Read fills in what a snapshot does not carry. It is a step of its own so a
-// poll can leave it out: a tab is named from one pane, and every read behind
-// this costs a request or a file — see docs/architecture/poll-loop.md.
-func (p *PaneState) Read(reads Reads) {
-	p.Processes = processesFrom(reads.Processes)
-	p.Dir = reads.Dir
-	p.Git = reads.Git
-	p.AgentTopic = reads.Topic
-}
-
-func processesFrom(processes []herdr.PaneProcessInfoProcess) []Process {
+// ProcessesFrom is a process read as a pane holds it: the name and the whole
+// argument vector. The directory a process is in is read by PaneDir and not
+// carried.
+func ProcessesFrom(processes []herdr.PaneProcessInfoProcess) []Process {
 	if len(processes) == 0 {
 		return nil
 	}
