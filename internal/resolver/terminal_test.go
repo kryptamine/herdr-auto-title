@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/kryptamine/herdr-auto-title/internal/herdr/herdrtest"
 	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
 
@@ -20,7 +21,7 @@ func tabWithPane(pane *state.PaneState) state.TabState {
 
 func TestTerminalTitleBeatsTheWorkingDirectory(t *testing.T) {
 	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
-		Dir:           "/Users/dev/work/dashboard",
+		Dir:           dashboard,
 		TerminalTitle: "Fix OAuth redirect",
 	}))
 
@@ -42,7 +43,7 @@ func TestGenericTerminalTitleFallsThrough(t *testing.T) {
 	for _, title := range []string{"zsh", "Claude Code", "node", "~", "~/W/dashboard", ""} {
 		t.Run(title, func(t *testing.T) {
 			got := defaultChain().Resolve(tabWithPane(&state.PaneState{
-				Dir:           "/Users/dev/work/dashboard",
+				Dir:           dashboard,
 				TerminalTitle: title,
 			}))
 
@@ -59,7 +60,7 @@ func TestGenericTerminalTitleFallsThrough(t *testing.T) {
 
 func TestTerminalTitleFallsBackToTheRawField(t *testing.T) {
 	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
-		Dir:              "/Users/dev/work/dashboard",
+		Dir:              dashboard,
 		TerminalTitleRaw: "\x1b[32m✳ Fix OAuth redirect\x1b[0m",
 	}))
 
@@ -71,7 +72,7 @@ func TestTerminalTitleFallsBackToTheRawField(t *testing.T) {
 
 func TestStrippedTerminalTitleWinsOverTheRawOne(t *testing.T) {
 	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
-		Dir:              "/Users/dev/work/dashboard",
+		Dir:              dashboard,
 		TerminalTitle:    "Fix OAuth redirect",
 		TerminalTitleRaw: "◐ Fix OAuth redirect",
 	}))
@@ -83,7 +84,7 @@ func TestStrippedTerminalTitleWinsOverTheRawOne(t *testing.T) {
 
 func TestTerminalTitleIsSanitized(t *testing.T) {
 	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
-		Dir:           "/Users/dev/work/dashboard",
+		Dir:           dashboard,
 		TerminalTitle: "\x1b[31mFix OAuth\nredirect\x1b[0m\t",
 	}))
 
@@ -94,7 +95,7 @@ func TestTerminalTitleIsSanitized(t *testing.T) {
 
 func TestLongTerminalTitleIsTruncatedAsAWhole(t *testing.T) {
 	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
-		Dir:           "/Users/dev/work/dashboard",
+		Dir:           dashboard,
 		TerminalTitle: strings.Repeat("long ", 40),
 	}))
 
@@ -120,7 +121,7 @@ func TestTerminalTitleWithoutAWorkingDirectory(t *testing.T) {
 
 func TestTerminalTitleRepeatingTheContextIsDropped(t *testing.T) {
 	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
-		Dir:           "/Users/dev/work/dashboard",
+		Dir:           dashboard,
 		TerminalTitle: "Dashboard",
 	}))
 
@@ -168,7 +169,7 @@ func TestEditorTitleKeepsTheFileAndDropsThePath(t *testing.T) {
 			got := Default(
 				Options{MaxLength: wide, BranchMax: DefaultBranchMaxLength},
 			).Resolve(tabWithPane(&state.PaneState{
-				Dir:           "/Users/dev/Work/herdr-auto-title",
+				Dir:           herdrtest.Dir("Work", "herdr-auto-title"),
 				TerminalTitle: tc.title,
 			}))
 

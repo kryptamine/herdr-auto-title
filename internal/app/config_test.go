@@ -12,15 +12,18 @@ import (
 	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
 
-// isolate takes a test off the developer's machine: HOME decides where the
-// configuration file is looked for, and every variable Auto Title reads is
-// removed so the test sees only what it sets.
+// isolate takes a test off the developer's machine: the home decides where
+// the configuration file is looked for, and every variable Auto Title reads
+// is removed so the test sees only what it sets.
 func isolate(t *testing.T) {
 	t.Helper()
-	t.Setenv("HOME", t.TempDir())
-	// Where os.UserConfigDir looks first on Linux, so HOME alone does not
-	// isolate anything until it is out of the way.
+
+	home := t.TempDir()
+	setHome(t, home)
+	// Where os.UserConfigDir looks first on Linux and on Windows, so the home
+	// alone does not isolate anything until both point elsewhere.
 	t.Setenv("XDG_CONFIG_HOME", "")
+	t.Setenv("AppData", filepath.Join(home, "AppData", "Roaming"))
 
 	names := []string{
 		EnvDebug, EnvPoll, EnvMaxLength, EnvBranchMax,

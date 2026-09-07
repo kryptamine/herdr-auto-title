@@ -12,7 +12,7 @@ import (
 // origin/HEAD naming defaultBranch.
 func repoPane(branch, defaultBranch string) *state.PaneState {
 	return &state.PaneState{
-		Dir: "/Users/dev/work/dashboard",
+		Dir: dashboard,
 		Git: git.Checkout{Branch: branch, Default: defaultBranch},
 	}
 }
@@ -67,7 +67,7 @@ func TestARepositoryWithNoRecordedTrunkAlwaysShowsItsBranch(t *testing.T) {
 
 func TestADetachedHeadShowsTheCommit(t *testing.T) {
 	pane := &state.PaneState{
-		Dir: "/Users/dev/work/dashboard",
+		Dir: dashboard,
 		Git: git.Checkout{Commit: "a1b2c3d", Default: "main"},
 	}
 

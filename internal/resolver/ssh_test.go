@@ -7,14 +7,11 @@ import (
 	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
 
-// paneCWD is the directory every ssh pane in these tests sits in.
-const paneCWD = "/Users/dev/work/dashboard"
-
 // sshPane builds a pane running the given ssh command line, beside the shell
 // that started it — which is how Herdr reports a pane's processes.
 func sshPane(argv ...string) *state.PaneState {
 	return &state.PaneState{
-		Dir: paneCWD,
+		Dir: dashboard,
 		Processes: []state.Process{
 			{Name: "fish", Args: []string{"-fish"}},
 			{Name: "ssh", Args: argv},
@@ -146,7 +143,7 @@ func TestAValueSpelledNIsNotTheTunnelSwitch(t *testing.T) {
 
 func TestAPaneWithoutSSHIsUnaffected(t *testing.T) {
 	pane := &state.PaneState{
-		Dir: "/Users/dev/work/dashboard",
+		Dir: dashboard,
 		Processes: []state.Process{
 			{Name: "fish", Args: []string{"-fish"}},
 			{Name: "nvim", Args: []string{"nvim"}},
@@ -163,7 +160,7 @@ func TestSSHIsFoundAmongOtherProcesses(t *testing.T) {
 	// Herdr lists the foreground process and its descendants, so ssh can be
 	// anywhere in the list.
 	pane := &state.PaneState{
-		Dir: "/Users/dev/work/dashboard",
+		Dir: dashboard,
 		Processes: []state.Process{
 			{Name: "fish", Args: []string{"-fish"}},
 			{Name: "ssh", Args: []string{"ssh", "prod-01"}},
