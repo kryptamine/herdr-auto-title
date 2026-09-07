@@ -21,8 +21,8 @@ https://github.com/user-attachments/assets/606fde6a-dfd3-4010-b4f3-80c79d74ea63
 ## Quick start
 
 > [!NOTE]
-> Requires Herdr 0.8.2+ and Go 1.24+ on macOS or Linux. Herdr compiles the
-> plugin from source on your machine when it installs it.
+> Requires Herdr 0.8.2+ and Go 1.24+ on macOS, Linux or Windows. Herdr compiles
+> the plugin from source on your machine when it installs it.
 
 ```sh
 herdr plugin install kryptamine/herdr-auto-title
@@ -102,6 +102,10 @@ These rules explain most surprises:
   because they only repeat what the screen already shows.
 - A tab with several panes takes its name from one of them: the focused pane, a
   pane running a busy agent, or the pane that changed last.
+- **On Windows, an editor or an ssh session does not name its tab.** Herdr
+  reports only the shell or an agent as what a pane there is running, so
+  `nvim › auth.provider.ts` and `ssh › prod-01` are titles other platforms get;
+  the directory, the branch and every agent title work the same.
 
 ## Configuration
 
@@ -112,6 +116,7 @@ Settings live in a file Auto Title reads once, at startup:
 | -------- | ----------------------------------------------------------- |
 | macOS    | `~/Library/Application Support/herdr-auto-title/config.env` |
 | Linux    | `~/.config/herdr-auto-title/config.env`                     |
+| Windows  | `%APPDATA%\herdr-auto-title\config.env`                     |
 
 Nothing creates it for you; [`config.env.example`](config.env.example) lists
 every setting commented out. **A change reaches the plugin only when it

@@ -9,13 +9,14 @@ generated: { by: claude-code/opus-5, at: 2026-08-25T12:46:22+03:00 }
 
 # Herdr Socket API
 
-Everything Auto Title knows about a session arrives over one Unix socket. The
-originating specification is wrong on several protocol details, so every fact
-below was verified against a live **Herdr 0.8.2, protocol 20** install with
-`scripts/probe.py` or a direct socket request. **Probe before assuming anything
-not listed here**, and record what a probe teaches you in this file, which is
-the record. `AGENTS.md` carries the short list of facts that would otherwise
-mislead the code in silence; a new one goes there too.
+Everything Auto Title knows about a session arrives over one local socket: a
+Unix socket, or on Windows a named pipe. The originating specification is wrong
+on several protocol details, so every fact below was verified against a live
+**Herdr 0.8.2, protocol 20** install with `scripts/probe.py` or a direct socket
+request, and the Windows facts against **0.8.2-preview, protocol 22**. **Probe
+before assuming anything not listed here**, and record what a probe teaches you
+in this file, which is the record. `AGENTS.md` carries the short list of facts
+that would otherwise mislead the code in silence; a new one goes there too.
 
 ## Transport
 
@@ -32,6 +33,17 @@ See [the poll loop](./poll-loop.md).
 
 A malformed request is answered with an uncorrelated error frame, and the
 connection is then closed.
+
+**On Windows the socket is a named pipe.** `HERDR_SOCKET_PATH` still names a
+file, `%APPDATA%\herdr\herdr.sock`, but that file is 25 bytes of text —
+`<server pid>:<start time in ns>` — and not a socket: dialing it as a Unix
+socket is refused, and Herdr listens instead on `\\.\pipe\` followed by the
+whole path, drive letter and backslashes included. `dial_windows.go` opens that
+pipe as a file. Opened so it takes no read deadline, but closing it from another
+goroutine does unblock a pending read — measured on Go 1.24.0 and 1.26.3 — which
+is what cancelling a call relies on. Framing and the one request per connection
+are unchanged: one line comes back, then EOF. A `session.snapshot` of nineteen
+panes measured 1.0 ms and 29 KB over the pipe, `pane.process_info` 1.0 ms.
 
 ## What Herdr gives a plugin process
 
@@ -154,6 +166,21 @@ reads, so this section describes Herdr rather than those types.
   pane's entry carries `shell_pid` and `foreground_process_group_id`. Auto
   Title reads the name, the arguments and the directory; the rest is listed
   here so a future change need not probe again.
+- **On Windows, `foreground_processes` holds the pane's shell or a recognized
+  agent, and nothing else.** Probed with `python.exe` and then `node.exe`
+  running under a pane's `pwsh.exe`, both confirmed present in the process tree:
+  the list held `pwsh.exe` alone, while a Claude Code pane listed `claude.exe`
+  alone. Windows has no foreground process group, and Herdr's detection there
+  scans for agents and known wrappers rather than reading one. The process and
+  ssh sources therefore go quiet on Windows; the directory read still holds,
+  because Herdr's pwsh prompt hook keeps the shell's own directory current —
+  `Set-Location C:\Windows` moved both `cwd` and the process's `cwd` within one
+  prompt. Names carry `.exe`, a process's `cwd` carries a trailing backslash
+  (`C:\github\x\`), and `foreground_cwd` was null on every pane.
+- **A Windows pane whose program has set no title carries `pwsh in <dir>`**,
+  the shell and the basename of its directory, `pwsh in Windows` after the
+  `Set-Location` above. It is Herdr's own fallback, and the resolver refuses it
+  the way it refuses a shell prompt.
 - **`PaneInfo` carries no foreground process name.** Only `pane.process_info`
   answers that, and nothing announces that a command started.
 - **`PaneInfo.title` is the agent's own title**, not the terminal's. Herdr left

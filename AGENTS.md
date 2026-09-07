@@ -135,6 +135,14 @@ are only the facts that would otherwise mislead the code in silence.
 
 - **One request per connection.** Herdr closes the connection after answering,
   so every `Call` dials its own. That is why nothing here reconnects.
+- **On Windows the socket is a named pipe**, `\\.\pipe\` followed by the whole
+  of `HERDR_SOCKET_PATH`. The path itself names a small text file, and dialing
+  it as a Unix socket is refused; `dial_windows.go` opens the pipe, and nothing
+  else in the client differs.
+- **On Windows `pane.process_info` lists only the pane's shell or a recognized
+  agent**, never an editor, a build or an ssh session running under the shell.
+  Names arrive with `.exe` and a process's `cwd` with a trailing backslash; the
+  state package strips the one, and every path is cleaned before it is used.
 - Auto Title uses three methods and no others: `session.snapshot`,
   `pane.process_info` and `tab.rename`.
 - **Do not reintroduce an event subscription.** `events.subscribe` replays

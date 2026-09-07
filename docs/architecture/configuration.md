@@ -36,6 +36,7 @@ it did before.
 |----------|------|
 | macOS | `~/Library/Application Support/herdr-auto-title/config.env` |
 | Linux | `~/.config/herdr-auto-title/config.env` (`$XDG_CONFIG_HOME` if set) |
+| Windows | `%APPDATA%\herdr-auto-title\config.env` |
 
 That is `os.UserConfigDir()`, the same call `state.DefaultManualPath` makes.
 One directory holds everything Auto Title owns, and a user who has found one
@@ -44,8 +45,9 @@ because a configuration file whose location is itself configurable needs a
 configuration file to find it.
 
 **Herdr offers a directory of its own and Auto Title does not use it.** Herdr
-creates `~/.config/herdr/plugins/config/<plugin id>/` and prints it in `herdr
-plugin list`, and it names `HERDR_PLUGIN_CONFIG_DIR` among the variables it
+creates `~/.config/herdr/plugins/config/<plugin id>/` (under `%APPDATA%\herdr`
+on Windows) and prints it in `herdr plugin list`, and it names
+`HERDR_PLUGIN_CONFIG_DIR` among the variables it
 passes a plugin it starts — see [the socket API note](./herdr-socket-api.md) for
 how far that second half is verified. Two reasons against it: it exists only when the server starts the
 plugin, so a plugin run by hand — `make run`, `make dev`, every debugging

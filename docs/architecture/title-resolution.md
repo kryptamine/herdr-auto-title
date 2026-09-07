@@ -162,6 +162,13 @@ specified and is deliberately not built: the commands it would map are invisible
 in the process table, visible only in the terminal title, and a source below the
 terminal title can never fill an activity the terminal title has already filled.
 
+**On Windows this source and the ssh one below are mostly silent.** Herdr lists
+only the pane's shell or a recognized agent as what a pane there is running —
+see [the socket API](./herdr-socket-api.md) — so an editor or an ssh session
+never reaches either source, and its tab is named from the terminal title and
+the directory alone. Process names arrive there with an `.exe` the state package
+strips, so `pwsh.exe` is read as the shell it is.
+
 ### SSH
 
 A pane running `ssh` is named after the machine it reached, not the directory it
@@ -267,7 +274,10 @@ moved on.
 
 Directories that say nothing — the home directory, the filesystem root, a
 relative path — yield nothing, and a tab left with no name at all becomes
-`Shell`.
+`Shell`. On Windows the home directory is matched without regard to case, which
+is how Windows spells one, and Herdr's own title for an idle pane there,
+`pwsh in dashboard`, is refused as a shell prompt is: it names the shell and
+the directory the context already names.
 
 ## The workspace is not repeated
 
