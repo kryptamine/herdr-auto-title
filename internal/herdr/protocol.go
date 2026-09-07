@@ -1,6 +1,6 @@
 // Package herdr implements a client for the Herdr local socket API: NDJSON over
-// the socket named by HERDR_SOCKET_PATH, one request per connection.
-// Verified against Herdr v0.8.2, protocol 20.
+// the socket named by HERDR_SOCKET_PATH — a named pipe on Windows — with one
+// request per connection. Verified against Herdr v0.8.2, protocol 20.
 package herdr
 
 import (
