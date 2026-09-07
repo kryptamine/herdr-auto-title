@@ -69,4 +69,4 @@ probe-snapshot: ## Show the session snapshot the plugin polls
 
 .PHONY: clean
 clean: ## Remove the built binary
-	@rm -f $(BINARY)
+	@rm -f $(BINARY) $(BINARY).exe
