@@ -110,10 +110,22 @@ func ProcessesFrom(processes []herdr.PaneProcessInfoProcess) []Process {
 
 	out := make([]Process, 0, len(processes))
 	for _, p := range processes {
-		out = append(out, Process{Name: p.Name, Args: p.Argv})
+		out = append(out, Process{Name: programName(p.Name), Args: p.Argv})
 	}
 
 	return out
+}
+
+// exeSuffix is what Windows spells a program name with, and it says nothing
+// about the program: `pwsh.exe` is the shell every other platform calls pwsh.
+const exeSuffix = ".exe"
+
+func programName(name string) string {
+	if len(name) > len(exeSuffix) && strings.EqualFold(name[len(name)-len(exeSuffix):], exeSuffix) {
+		return name[:len(name)-len(exeSuffix)]
+	}
+
+	return name
 }
 
 // HasAgent reports whether Herdr recognizes an agent in the pane.

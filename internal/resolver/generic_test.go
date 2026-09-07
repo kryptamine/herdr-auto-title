@@ -27,6 +27,9 @@ func TestMeaningful(t *testing.T) {
 		{"korn shell", "ksh", "", false},
 		{"c shell", "csh", "", false},
 		{"the login shell", "login", "", false},
+		{"the windows shells", "pwsh", "", false},
+		{"the older windows shell", "PowerShell", "", false},
+		{"the oldest windows shell", "cmd", "", false},
 		{"multi-word program name", "Claude Code", "", false},
 		{"runtime name", "node", "", false},
 		{"surrounded by whitespace", "  bash  ", "", false},
@@ -37,6 +40,29 @@ func TestMeaningful(t *testing.T) {
 		{"home directory", "~", "", false},
 		{"abbreviated path", "~/W/herdr-auto-title", "", false},
 		{"absolute path", "/Users/dev/work/dashboard", "", false},
+		{"windows path", `C:\Users\dev\work\dashboard`, "", false},
+		{"windows path with forward slashes", "C:/Users/dev/work/dashboard", "", false},
+		{"windows home path", `~\work\dashboard`, "", false},
+		{"unc path", `\\build-01\share\dashboard`, "", false},
+		{"drive letter alone is not a path", "C:", "C:", true},
+
+		// Herdr's own title for a Windows pane whose program has set none. It
+		// names the shell and the directory, and neither is what the user is
+		// doing there.
+		{"herdr's title for an idle windows pane", "pwsh in dashboard", "", false},
+		{"the same under cmd", "cmd in herdr-auto-title", "", false},
+		{"the same in the home directory", "pwsh in ~", "", false},
+		{
+			"work that happens to be in something",
+			"Fix login in dashboard",
+			"Fix login in dashboard",
+			true,
+		},
+		{
+			"editor title carrying a windows path",
+			`auth.ts (C:\Users\dev\work\dashboard) - Nvim`,
+			"auth.ts - Nvim", true,
+		},
 
 		// Every one of these was observed on a live session.
 		{

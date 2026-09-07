@@ -190,8 +190,11 @@ func (r *Reader) locate(sessionID, dir string) (string, bool) {
 }
 
 // slugOf is how Claude Code names a project directory: every character that is
-// not a letter or a digit becomes a dash, the leading separator included.
+// not a letter or a digit becomes a dash, the leading separator included. A
+// trailing one is not, because the directory Claude Code names carries none.
 func slugOf(dir string) string {
+	dir = filepath.Clean(dir)
+
 	var slug strings.Builder
 	slug.Grow(len(dir))
 

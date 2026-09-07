@@ -247,6 +247,20 @@ func TestPaneDirTakesTheForegroundProcessesOwnDirectory(t *testing.T) {
 	}
 }
 
+func TestAProcessIsNamedWithoutItsWindowsExtension(t *testing.T) {
+	// Windows reports `pwsh.exe` where every other platform reports `pwsh`,
+	// and the extension would keep a shell from being read as one.
+	processes := ProcessesFrom([]herdr.PaneProcessInfoProcess{
+		{Name: "pwsh.exe"}, {Name: "claude.EXE"}, {Name: "nvim"}, {Name: ".exe"},
+	})
+
+	for i, want := range []string{"pwsh", "claude", "nvim", ".exe"} {
+		if processes[i].Name != want {
+			t.Errorf("process %d = %q, want %q", i, processes[i].Name, want)
+		}
+	}
+}
+
 func TestPaneDirKeepsTheSnapshotsGuessWhenItLearnsNone(t *testing.T) {
 	if dir := PaneDir(nil, "/work/api"); dir != "/work/api" {
 		t.Errorf("dir = %q for an unread pane, want the snapshot's", dir)

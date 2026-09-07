@@ -40,6 +40,11 @@ var uriPattern = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9+.-]*://`)
 // already says, and never what the user is doing.
 var promptPattern = regexp.MustCompile(`^[^\s@]+@[^\s@:]+:\S*$`)
 
+// fallbackTitlePattern matches the title Herdr gives a Windows pane whose
+// program has set none: `pwsh in dashboard`, which names the shell and where
+// it is, and the context already says where.
+var fallbackTitlePattern = regexp.MustCompile(`^(\S+) in .+$`)
+
 // punctuation wraps and joins words inside titles such as
 // `Makefile (~/work/dashboard) - Nvim`.
 const punctuation = `()[]{}<>"'` + ",;:-–—|"
@@ -48,7 +53,12 @@ const punctuation = `()[]{}<>"'` + ",;:-–—|"
 // anything useful survived: `auth.ts (~/work/src) - Nvim` keeps `auth.ts -
 // Nvim`, while a bare `~` leaves nothing.
 func Meaningful(value string) (string, bool) {
-	cleaned := stripLocations(strings.TrimSpace(value))
+	trimmed := strings.TrimSpace(value)
+	if isFallbackTitle(trimmed) {
+		return "", false
+	}
+
+	cleaned := stripLocations(trimmed)
 	if cleaned == "" {
 		return "", false
 	}
@@ -82,15 +92,36 @@ func stripLocations(value string) string {
 	return tidy(kept)
 }
 
+// isFallbackTitle reports a title that only says which shell sits where. The
+// check runs before locations are stripped, because the place can be one.
+func isFallbackTitle(value string) bool {
+	match := fallbackTitlePattern.FindStringSubmatch(value)
+
+	return match != nil && isGeneric(strings.ToLower(match[1]))
+}
+
 func isLocation(word string) bool {
 	switch {
-	case word == "~", strings.HasPrefix(word, "~/"):
+	case word == "~", strings.HasPrefix(word, "~/"), strings.HasPrefix(word, `~\`):
 		return true
-	case strings.HasPrefix(word, "/"):
+	case strings.HasPrefix(word, "/"), strings.HasPrefix(word, `\\`):
+		return true
+	case isDrivePath(word):
 		return true
 	default:
 		return uriPattern.MatchString(word)
 	}
+}
+
+// isDrivePath reports a path rooted on a Windows drive, `C:\work` or `C:/work`.
+func isDrivePath(word string) bool {
+	if len(word) < 3 || word[1] != ':' || (word[2] != '\\' && word[2] != '/') {
+		return false
+	}
+
+	letter := word[0] | 0x20
+
+	return letter >= 'a' && letter <= 'z'
 }
 
 // tidy joins words back together, dropping the punctuation that only made sense

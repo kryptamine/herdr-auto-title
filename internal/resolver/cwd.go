@@ -3,6 +3,8 @@ package resolver
 import (
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 
 	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
@@ -54,7 +56,7 @@ func (c CWD) base(dir string) string {
 		return ""
 	}
 
-	if c.home != "" && clean == c.home {
+	if c.home != "" && sameDir(clean, c.home) {
 		return ""
 	}
 
@@ -65,4 +67,14 @@ func (c CWD) base(dir string) string {
 	}
 
 	return base
+}
+
+// sameDir compares two clean paths the way the platform does: on Windows a
+// path spelled in another case is the same directory.
+func sameDir(a, b string) bool {
+	if runtime.GOOS == "windows" {
+		return strings.EqualFold(a, b)
+	}
+
+	return a == b
 }
