@@ -60,3 +60,15 @@ jobs:
           go-version: stable
       - run: go build ./...
       - run: go test -race ./...
+
+  windows:
+    name: Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - run: go build ./...
+      # The race detector needs cgo on Windows, and the runner ships gcc.
+      - run: go test -race ./...
