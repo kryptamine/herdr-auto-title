@@ -7,10 +7,11 @@ import (
 )
 
 // shellNames are the programs that run in a pane without being what the pane is
-// for. A pane running a shell is described by what the shell is running.
+// for. A pane running a shell is described by what the shell is running. The
+// last three are Windows shells, spelled without the `.exe` Windows reports.
 var shellNames = map[string]struct{}{
 	"bash": {}, "zsh": {}, "fish": {}, "sh": {}, "dash": {}, "ksh": {},
-	"tcsh": {}, "csh": {}, "login": {},
+	"tcsh": {}, "csh": {}, "login": {}, "pwsh": {}, "powershell": {}, "cmd": {},
 }
 
 // paneKind names what a pane is running, or "" when that cannot be said. The

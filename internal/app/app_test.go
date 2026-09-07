@@ -1105,3 +1105,27 @@ func TestRunNamesWhatExistsBeforeTheFirstTick(t *testing.T) {
 	cancel()
 	<-done
 }
+
+func TestAWindowsShellPaneIsNamedAfterItsDirectory(t *testing.T) {
+	// What Herdr reports for an idle pane on Windows: the shell with its
+	// extension, its directory with a trailing separator, and a title of
+	// Herdr's own making that names both. None of it is what the pane is doing.
+	h := start(
+		t,
+		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
+		[]herdr.PaneInfo{{
+			PaneID: "wE:p1", TabID: "wE:t1", Focused: true,
+			CWD:                   dashboard,
+			TerminalTitleStripped: "pwsh in dashboard",
+		}},
+	)
+	h.client.SetProcesses("wE:p1", herdr.PaneProcessInfoProcess{
+		Name: "pwsh.exe",
+		CWD:  dashboard + string(filepath.Separator),
+	})
+	h.poll()
+
+	if got := h.client.Renames()[0].Label; got != "dashboard" {
+		t.Errorf("rename = %q, want dashboard", got)
+	}
+}

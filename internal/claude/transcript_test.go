@@ -346,6 +346,13 @@ func TestSlugMatchesHowClaudeCodeNamesAProject(t *testing.T) {
 	if got := slugOf("/Users/dev/.claude/skills"); got != "-Users-dev--claude-skills" {
 		t.Errorf("slug = %q", got)
 	}
+
+	// Windows reports a process's directory with a trailing separator, and
+	// Claude Code names the project without one.
+	trailing := filepath.Join("work", "dashboard") + string(filepath.Separator)
+	if got := slugOf(trailing); got != "work-dashboard" {
+		t.Errorf("slug = %q, want the separator dropped", got)
+	}
 }
 
 func TestATranscriptThatWentMissingIsLookedForAgain(t *testing.T) {

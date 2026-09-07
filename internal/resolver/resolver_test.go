@@ -2,6 +2,7 @@ package resolver
 
 import (
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -301,6 +302,22 @@ func TestSourcesAreOrderedByConfidenceNotByArgument(t *testing.T) {
 
 func TestTheShippedChainResolvesATabWithNoPanes(t *testing.T) {
 	got := defaultChain().Resolve(state.TabState{ID: "wE:t1"})
+	if got.Name != GenericFallback {
+		t.Errorf("name = %q, want %q", got.Name, GenericFallback)
+	}
+}
+
+func TestTheHomeDirectoryIsMatchedTheWayWindowsSpellsIt(t *testing.T) {
+	// A Windows path names the same directory in any case, and a pane sitting
+	// in the home directory must yield nothing whichever case it arrived in.
+	if runtime.GOOS != "windows" {
+		t.Skip("only Windows compares paths without regard to case")
+	}
+
+	home := t.TempDir()
+	r := New(Options{MaxLength: DefaultMaxLength}, CWD{home: filepath.Clean(home)})
+
+	got := r.Resolve(tabWithCWD(strings.ToUpper(home)))
 	if got.Name != GenericFallback {
 		t.Errorf("name = %q, want %q", got.Name, GenericFallback)
 	}

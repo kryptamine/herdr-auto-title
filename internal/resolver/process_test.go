@@ -180,3 +180,16 @@ func TestAPaneWithoutAnAgentIsNotNamedAfterOne(t *testing.T) {
 		t.Errorf("name = %q, want dashboard", got.Name)
 	}
 }
+
+func TestAWindowsShellIsNotWhatAPaneIsFor(t *testing.T) {
+	// The shells Windows panes run, spelled as they arrive once the extension
+	// is gone: a pane running one is described by its directory, like any
+	// other shell's.
+	for _, shell := range []string{"pwsh", "powershell", "cmd"} {
+		pane := &state.PaneState{Dir: dashboard, Processes: running(shell)}
+
+		if got := defaultChain().Resolve(tabWithPane(pane)); got.Name != "dashboard" {
+			t.Errorf("%s pane = %q, want dashboard", shell, got.Name)
+		}
+	}
+}
