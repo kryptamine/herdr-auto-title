@@ -68,7 +68,7 @@ in [docs/architecture](docs/architecture/).
 
 - `make check` green locally. CI then runs `go vet`, `go build` and
   `go test -race` on Go 1.24 and stable, the formatters and `golangci-lint`
-  once, and a build and test run on macOS.
+  once, and a build and test run on macOS and on Windows.
 - **PRs are merged by rebase.** Merge commits are disabled on the repository:
   GitHub puts the PR title into the merge commit, and since the titles here are
   conventional, release-please counted every change twice. Squashing would
