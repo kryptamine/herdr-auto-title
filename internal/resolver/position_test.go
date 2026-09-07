@@ -6,6 +6,7 @@ import (
 
 	"github.com/rivo/uniseg"
 
+	"github.com/kryptamine/herdr-auto-title/internal/herdr/herdrtest"
 	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
 
@@ -30,9 +31,9 @@ func TestPositionLeadsTheTitle(t *testing.T) {
 		dir      string
 		want     string
 	}{
-		{"the first tab", 1, "/Users/dev/work/dashboard", "1 · dashboard"},
-		{"a tab past the ninth", 12, "/Users/dev/work/dashboard", "12 · dashboard"},
-		{"a tab with nothing to say", 3, "/", "3 · " + GenericFallback},
+		{"the first tab", 1, dashboard, "1 · dashboard"},
+		{"a tab past the ninth", 12, dashboard, "12 · dashboard"},
+		{"a tab with nothing to say", 3, herdrtest.Root(), "3 · " + GenericFallback},
 	}
 
 	for _, tc := range tests {
@@ -45,7 +46,7 @@ func TestPositionLeadsTheTitle(t *testing.T) {
 }
 
 func TestPositionKeepsTheDecisionItWraps(t *testing.T) {
-	got := numberedCWD(DefaultMaxLength).Resolve(atPosition(1, "/Users/dev/work/dashboard"))
+	got := numberedCWD(DefaultMaxLength).Resolve(atPosition(1, dashboard))
 	if got.Reason != "cwd" {
 		t.Errorf("reason = %q, want cwd", got.Reason)
 	}
@@ -58,7 +59,7 @@ func TestPositionKeepsTheDecisionItWraps(t *testing.T) {
 func TestAPositionIsCountedAgainstTheWidth(t *testing.T) {
 	const maxLength = 16
 
-	long := "/Users/dev/work/" + strings.Repeat("a", 40)
+	long := herdrtest.Dir("work", strings.Repeat("a", 40))
 
 	got := numberedCWD(maxLength).Resolve(atPosition(7, long))
 	if width := uniseg.StringWidth(got.Name); width > maxLength {
@@ -73,7 +74,7 @@ func TestAPositionIsCountedAgainstTheWidth(t *testing.T) {
 // A tab bar narrower than the position itself keeps the name over the number:
 // a title cut down to nothing has lost more than the position is worth.
 func TestAPositionWithNoRoomIsDropped(t *testing.T) {
-	got := numberedCWD(3).Resolve(atPosition(10, "/Users/dev/work/dashboard"))
+	got := numberedCWD(3).Resolve(atPosition(10, dashboard))
 	if got.Name != "das" {
 		t.Errorf("name = %q, want the bare title", got.Name)
 	}
@@ -82,7 +83,7 @@ func TestAPositionWithNoRoomIsDropped(t *testing.T) {
 func TestNumberedWithoutAWidthTakesTheDefault(t *testing.T) {
 	// Zero means "no bound" to Sanitize but would leave no room at all here,
 	// so every tab would quietly lose the position instead.
-	got := NewNumbered(New(Options{}, NewCWD()), 0).Resolve(atPosition(2, "/Users/dev/work/api"))
+	got := NewNumbered(New(Options{}, NewCWD()), 0).Resolve(atPosition(2, api))
 	if got.Name != "2 · api" {
 		t.Errorf("name = %q, want the position kept", got.Name)
 	}
@@ -105,7 +106,7 @@ func TestAnyResolverCanBeNumbered(t *testing.T) {
 		Reason:     "test_source",
 	}}
 
-	got := NewNumbered(inner, DefaultMaxLength).Resolve(atPosition(4, "/Users/dev/work/api"))
+	got := NewNumbered(inner, DefaultMaxLength).Resolve(atPosition(4, api))
 	want := Decision{
 		Name:       "4 · release notes",
 		Confidence: ConfidenceAgent,
@@ -122,7 +123,7 @@ func TestAnyResolverCanBeNumbered(t *testing.T) {
 func TestANumberedTitleLeavesNoDanglingSeparator(t *testing.T) {
 	inner := fixedResolver{decision: Decision{Name: "dashboard › nvim"}}
 
-	got := NewNumbered(inner, 16).Resolve(atPosition(1, "/Users/dev/work/dashboard"))
+	got := NewNumbered(inner, 16).Resolve(atPosition(1, dashboard))
 	if got.Name != "1 · dashboard" {
 		t.Errorf("name = %q, want %q", got.Name, "1 · dashboard")
 	}

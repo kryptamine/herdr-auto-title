@@ -11,7 +11,7 @@ func TestATopicNamesATabTheTerminalTitleCannot(t *testing.T) {
 	// The session that motivated the source: the agent never titled its
 	// terminal, so without the transcript the tab is just `claude`.
 	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
-		Dir:           "/Users/dev/work/dashboard",
+		Dir:           dashboard,
 		TerminalTitle: "Claude Code",
 		Agent:         "claude",
 		AgentStatus:   "idle",
@@ -34,7 +34,7 @@ func TestATopicNamesATabTheTerminalTitleCannot(t *testing.T) {
 func TestATerminalTitleOutranksTheTranscript(t *testing.T) {
 	// Both say what the session is about, and the agent says it sooner.
 	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
-		Dir:           "/Users/dev/work/dashboard",
+		Dir:           dashboard,
 		TerminalTitle: "Fix OAuth redirect",
 		Agent:         "claude",
 		AgentStatus:   herdr.AgentStatusWorking,
@@ -54,7 +54,7 @@ func TestATopicWithoutAnAgentIsIgnored(t *testing.T) {
 	// A pane whose agent Herdr no longer recognizes keeps whatever was read of
 	// its session, and that is no longer what the pane is doing.
 	if _, ok := NewTranscript().Resolve(&state.PaneState{
-		Dir:        "/Users/dev/work/dashboard",
+		Dir:        dashboard,
 		AgentTopic: "grill-me",
 	}); ok {
 		t.Error("the transcript source claimed a pane with no agent")
@@ -63,7 +63,7 @@ func TestATopicWithoutAnAgentIsIgnored(t *testing.T) {
 
 func TestATopicThatNamesTheAgentFallsThrough(t *testing.T) {
 	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
-		Dir:         "/Users/dev/work/dashboard",
+		Dir:         dashboard,
 		Agent:       "claude",
 		AgentStatus: "idle",
 		AgentTopic:  "Claude Code",

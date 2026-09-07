@@ -19,6 +19,14 @@ import (
 
 const testPoll = 10 * time.Millisecond
 
+// The directories the fixtures sit in, absolute on whichever platform the
+// tests run on: a relative directory names no tab, and Windows has no /Users.
+var (
+	dashboard = herdrtest.Dir("work", "dashboard")
+	api       = herdrtest.Dir("work", "api")
+	billing   = herdrtest.Dir("work", "billing")
+)
+
 func testConfig() Config {
 	return Config{
 		Poll:      testPoll,
@@ -31,12 +39,20 @@ func discardLogger() *slog.Logger {
 	return slog.New(slog.DiscardHandler)
 }
 
+// setHome points os.UserHomeDir at dir. Unix reads HOME and Windows reads
+// USERPROFILE, and setting both spares every fixture from knowing which.
+func setHome(t *testing.T, dir string) {
+	t.Helper()
+	t.Setenv("HOME", dir)
+	t.Setenv("USERPROFILE", dir)
+}
+
 // testResolver builds the shipped chain against a home directory of the test's
 // own, because CWD declines a pane sitting in the user's and the fixtures below
 // must not depend on whose machine they run on.
 func testResolver(t *testing.T) resolver.TitleResolver {
 	t.Helper()
-	t.Setenv("HOME", filepath.Join(t.TempDir(), "home"))
+	setHome(t, filepath.Join(t.TempDir(), "home"))
 
 	return resolver.Default(resolver.Options{
 		MaxLength: resolver.DefaultMaxLength,
@@ -50,6 +66,10 @@ type harness struct {
 	t      *testing.T
 	app    *App
 	client *herdrtest.Client
+	// polled is when the last poll finished. The clock is what orders the
+	// changes a poll sees, and on Windows it ticks too coarsely to tell two
+	// polls apart unless one waits for it.
+	polled time.Time
 }
 
 func start(t *testing.T, tabs []herdr.TabInfo, panes []herdr.PaneInfo) *harness {
@@ -68,7 +88,13 @@ func startConfigured(t *testing.T, client *herdrtest.Client, cfg Config) *harnes
 // exercises what the loop does rather than a shortcut past it.
 func (h *harness) poll() {
 	h.t.Helper()
+
+	for !time.Now().After(h.polled) {
+		time.Sleep(time.Millisecond)
+	}
+
 	h.app.poll(context.Background(), h.client)
+	h.polled = time.Now()
 }
 
 func (h *harness) polls(n int) {
@@ -84,7 +110,7 @@ func TestTabsAreNamedFromTheFirstPoll(t *testing.T) {
 		t,
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{
-			{PaneID: "wE:p1", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard", Focused: true},
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
 		},
 	)
 	h.poll()
@@ -108,7 +134,7 @@ func TestATabAppearingLaterIsNamed(t *testing.T) {
 	h.client.SetTab(herdr.TabInfo{TabID: "wE:t1", Label: "1"})
 	h.client.SetPane(herdr.PaneInfo{
 		PaneID: "wE:p1", TabID: "wE:t1", Focused: true,
-		CWD:                   "/Users/dev/work/dashboard",
+		CWD:                   dashboard,
 		TerminalTitleStripped: "Fix OAuth redirect",
 	})
 	h.poll()
@@ -124,14 +150,14 @@ func TestChangedContextRetitlesTheTab(t *testing.T) {
 		t,
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{
-			{PaneID: "wE:p1", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard", Focused: true},
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
 		},
 	)
 	h.poll()
 
 	h.client.SetPane(herdr.PaneInfo{
 		PaneID: "wE:p1", TabID: "wE:t1", Focused: true, Revision: 2,
-		CWD: "/Users/dev/work/api",
+		CWD: api,
 	})
 	h.poll()
 
@@ -147,7 +173,7 @@ func TestAnUnchangedSessionIsRenamedOnce(t *testing.T) {
 		t,
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{
-			{PaneID: "wE:p1", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard", Focused: true},
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
 		},
 	)
 	h.polls(10)
@@ -162,7 +188,7 @@ func TestATabAlreadyCorrectlyNamedIsLeftAlone(t *testing.T) {
 		t,
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "dashboard"}},
 		[]herdr.PaneInfo{
-			{PaneID: "wE:p1", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard", Focused: true},
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
 		},
 	)
 	h.polls(5)
@@ -191,8 +217,8 @@ func TestATabClosingMidPollIsNotFatal(t *testing.T) {
 			{TabID: "wE:t2", Label: "2"},
 		},
 		[]herdr.PaneInfo{
-			{PaneID: "wE:p1", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard", Focused: true},
-			{PaneID: "wE:p2", TabID: "wE:t2", CWD: "/Users/dev/work/api", Focused: true},
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
+			{PaneID: "wE:p2", TabID: "wE:t2", CWD: api, Focused: true},
 		},
 	)
 	h.poll()
@@ -201,7 +227,7 @@ func TestATabClosingMidPollIsNotFatal(t *testing.T) {
 	h.client.ClosePane("wE:p1")
 	h.client.SetPane(herdr.PaneInfo{
 		PaneID: "wE:p2", TabID: "wE:t2", Focused: true, Revision: 2,
-		CWD: "/Users/dev/work/billing",
+		CWD: billing,
 	})
 	h.poll()
 
@@ -215,7 +241,7 @@ func TestFailedRenameIsRetriedOnTheNextPoll(t *testing.T) {
 		t,
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{
-			{PaneID: "wE:p1", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard", Focused: true},
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
 		},
 	)
 	h.client.SetRenameError(errors.New("herdr is busy"))
@@ -240,7 +266,7 @@ func TestAFailedPollIsFollowedByAWorkingOne(t *testing.T) {
 		t,
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{
-			{PaneID: "wE:p1", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard", Focused: true},
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
 		},
 	)
 	h.poll()
@@ -251,7 +277,7 @@ func TestAFailedPollIsFollowedByAWorkingOne(t *testing.T) {
 
 	h.client.SetPane(herdr.PaneInfo{
 		PaneID: "wE:p1", TabID: "wE:t1", Focused: true, Revision: 2,
-		CWD: "/Users/dev/work/api",
+		CWD: api,
 	})
 	h.poll()
 
@@ -268,7 +294,7 @@ func TestAFailingFirstPollIsTreatedLikeAnyOther(t *testing.T) {
 		t,
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{
-			{PaneID: "wE:p1", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard", Focused: true},
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
 		},
 	)
 	h.client.SetCallError(errors.New("no such socket"))
@@ -286,7 +312,7 @@ func TestRunStopsCleanlyOnCancellation(t *testing.T) {
 	client := herdrtest.New(
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{
-			{PaneID: "wE:p1", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard", Focused: true},
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
 		},
 	)
 	app := New(testConfig(), discardLogger(), testResolver(t))
@@ -312,14 +338,14 @@ func TestTheMostRecentlyChangedPaneNamesTheTab(t *testing.T) {
 	h := start(t,
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{
-			{PaneID: "wE:p1", TabID: "wE:t1", Revision: 1, CWD: "/Users/dev/work/dashboard"},
-			{PaneID: "wE:p2", TabID: "wE:t1", Revision: 1, CWD: "/Users/dev/work/api"},
+			{PaneID: "wE:p1", TabID: "wE:t1", Revision: 1, CWD: dashboard},
+			{PaneID: "wE:p2", TabID: "wE:t1", Revision: 1, CWD: api},
 		},
 	)
 	h.poll()
 
 	h.client.SetPane(herdr.PaneInfo{
-		PaneID: "wE:p2", TabID: "wE:t1", Revision: 2, CWD: "/Users/dev/work/api",
+		PaneID: "wE:p2", TabID: "wE:t1", Revision: 2, CWD: api,
 	})
 	h.poll()
 
@@ -333,7 +359,7 @@ func TestAgentContextNamesTheTab(t *testing.T) {
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{{
 			PaneID: "wE:p1", TabID: "wE:t1", Focused: true,
-			CWD:         "/Users/dev/work/dashboard",
+			CWD:         dashboard,
 			Agent:       "claude",
 			AgentStatus: herdr.AgentStatusWorking,
 			Title:       "Implement OAuth scopes",
@@ -355,8 +381,8 @@ func TestAnAgentPaneIsNamedAfterTheAgentsOwnDirectory(t *testing.T) {
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{{
 			PaneID: "wE:p1", TabID: "wE:t1", Focused: true,
-			CWD:           "/Users/dev/work/dashboard",
-			ForegroundCWD: "/private/tmp",
+			CWD:           dashboard,
+			ForegroundCWD: herdrtest.Dir("tmp"),
 			Agent:         "claude",
 			AgentStatus:   herdr.AgentStatusWorking,
 			Title:         "Implement OAuth scopes",
@@ -364,10 +390,10 @@ func TestAnAgentPaneIsNamedAfterTheAgentsOwnDirectory(t *testing.T) {
 	)
 	h.client.SetProcesses(
 		"wE:p1",
-		herdr.PaneProcessInfoProcess{Name: "fff-mcp", CWD: "/private/tmp"},
+		herdr.PaneProcessInfoProcess{Name: "fff-mcp", CWD: herdrtest.Dir("tmp")},
 		herdr.PaneProcessInfoProcess{
 			Name: "claude",
-			CWD:  "/Users/dev/work/self-care-portal",
+			CWD:  herdrtest.Dir("work", "self-care-portal"),
 		},
 	)
 	h.poll()
@@ -385,7 +411,7 @@ func TestARemoteSessionIsNamedAfterItsHost(t *testing.T) {
 		t,
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{
-			{PaneID: "wE:p1", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard", Focused: true},
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
 		},
 	)
 	h.poll()
@@ -402,7 +428,7 @@ func TestARemoteSessionIsNamedAfterItsHost(t *testing.T) {
 	)
 	h.client.SetPane(herdr.PaneInfo{
 		PaneID: "wE:p1", TabID: "wE:t1", Focused: true, Revision: 2,
-		CWD: "/Users/dev/work/dashboard",
+		CWD: dashboard,
 	})
 	h.poll()
 
@@ -418,7 +444,7 @@ func TestAPaneWhoseProcessesCannotBeReadIsStillNamed(t *testing.T) {
 		t,
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{
-			{PaneID: "wE:p1", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard", Focused: true},
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
 		},
 	)
 	h.client.SetProcessError(&herdr.APIError{
@@ -443,7 +469,7 @@ func TestAWorkspaceNameIsNotRepeatedInItsTabs(t *testing.T) {
 		[]herdr.TabInfo{{TabID: "wE:t1", WorkspaceID: "wE", Label: "1"}},
 		[]herdr.PaneInfo{{
 			PaneID: "wE:p1", TabID: "wE:t1", Focused: true,
-			CWD:                   "/Users/dev/work/dashboard",
+			CWD:                   dashboard,
 			TerminalTitleStripped: "Fix OAuth redirect",
 		}},
 	)
@@ -460,7 +486,7 @@ func TestARenameByTheUserTurnsAutomaticNamingOff(t *testing.T) {
 		t,
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{
-			{PaneID: "wE:p1", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard", Focused: true},
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
 		},
 	)
 	h.poll()
@@ -471,7 +497,7 @@ func TestARenameByTheUserTurnsAutomaticNamingOff(t *testing.T) {
 	// The context moves on; the tab does not.
 	h.client.SetPane(herdr.PaneInfo{
 		PaneID: "wE:p1", TabID: "wE:t1", Focused: true, Revision: 2,
-		CWD: "/Users/dev/work/api",
+		CWD: api,
 	})
 	h.poll()
 
@@ -487,7 +513,7 @@ func TestClearingTheNameHandsTheTabBack(t *testing.T) {
 		t,
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{
-			{PaneID: "wE:p1", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard", Focused: true},
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
 		},
 	)
 	h.poll()
@@ -510,7 +536,7 @@ func TestATabPutBackOnItsPositionIsHandedBack(t *testing.T) {
 		t,
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{
-			{PaneID: "wE:p1", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard", Focused: true},
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
 		},
 	)
 	h.poll()
@@ -533,7 +559,7 @@ func TestThePluginsOwnRenamesDoNotLockTheTab(t *testing.T) {
 		t,
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{
-			{PaneID: "wE:p1", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard", Focused: true},
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
 		},
 	)
 	h.poll()
@@ -541,7 +567,7 @@ func TestThePluginsOwnRenamesDoNotLockTheTab(t *testing.T) {
 	for i, dir := range []string{"api", "billing", "dashboard"} {
 		h.client.SetPane(herdr.PaneInfo{
 			PaneID: "wE:p1", TabID: "wE:t1", Focused: true, Revision: uint64(i + 2),
-			CWD: "/Users/dev/work/" + dir,
+			CWD: herdrtest.Dir("work", dir),
 		})
 		h.poll()
 
@@ -561,8 +587,8 @@ func TestNoTabIsLockedOnTheFirstPoll(t *testing.T) {
 			{TabID: "wE:t2", Label: "2"},
 		},
 		[]herdr.PaneInfo{
-			{PaneID: "wE:p1", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard", Focused: true},
-			{PaneID: "wE:p2", TabID: "wE:t2", CWD: "/Users/dev/work/api", Focused: true},
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
+			{PaneID: "wE:p2", TabID: "wE:t2", CWD: api, Focused: true},
 		},
 	)
 	h.poll()
@@ -586,14 +612,14 @@ func TestATabCreatedAndNamedBeforeTheNextPollIsLeftAlone(t *testing.T) {
 		t,
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{
-			{PaneID: "wE:p1", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard", Focused: true},
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
 		},
 	)
 	h.poll()
 
 	h.client.SetTab(herdr.TabInfo{TabID: "wE:t9", Label: "My thing"})
 	h.client.SetPane(
-		herdr.PaneInfo{PaneID: "wE:p9", TabID: "wE:t9", CWD: "/Users/dev/work/api", Focused: true},
+		herdr.PaneInfo{PaneID: "wE:p9", TabID: "wE:t9", CWD: api, Focused: true},
 	)
 	h.polls(2)
 
@@ -612,14 +638,14 @@ func TestATabCreatedWithoutANameIsNamed(t *testing.T) {
 		t,
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{
-			{PaneID: "wE:p1", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard", Focused: true},
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
 		},
 	)
 	h.poll()
 
 	h.client.SetTab(herdr.TabInfo{TabID: "wE:t9", Label: "2"})
 	h.client.SetPane(
-		herdr.PaneInfo{PaneID: "wE:p9", TabID: "wE:t9", CWD: "/Users/dev/work/api", Focused: true},
+		herdr.PaneInfo{PaneID: "wE:p9", TabID: "wE:t9", CWD: api, Focused: true},
 	)
 	h.poll()
 
@@ -636,7 +662,7 @@ func TestAPaneHoldingStillIsAskedAboutOnce(t *testing.T) {
 		t,
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{
-			{PaneID: "wE:p1", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard", Focused: true},
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
 		},
 	)
 	h.polls(10)
@@ -651,7 +677,7 @@ func TestAPaneThatMovedIsAskedAboutAgain(t *testing.T) {
 		t,
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{
-			{PaneID: "wE:p1", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard", Focused: true},
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
 		},
 	)
 	h.poll()
@@ -659,7 +685,7 @@ func TestAPaneThatMovedIsAskedAboutAgain(t *testing.T) {
 	h.client.SetProcesses("wE:p1", herdr.PaneProcessInfoProcess{Name: "nvim"})
 	h.client.SetPane(herdr.PaneInfo{
 		PaneID: "wE:p1", TabID: "wE:t1", Focused: true, Revision: 2,
-		CWD: "/Users/dev/work/dashboard",
+		CWD: dashboard,
 	})
 	h.poll()
 
@@ -674,7 +700,7 @@ func TestAPaneThatCannotBeReadIsAskedAgain(t *testing.T) {
 		t,
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{
-			{PaneID: "wE:p1", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard", Focused: true},
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
 		},
 	)
 	h.client.SetProcessError(errors.New("herdr is busy"))
@@ -699,9 +725,9 @@ func TestAPaneThatDoesNotNameItsTabIsNotRead(t *testing.T) {
 		t,
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{
-			{PaneID: "wE:p1", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard", Focused: true},
-			{PaneID: "wE:p2", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard"},
-			{PaneID: "wE:p3", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard"},
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
+			{PaneID: "wE:p2", TabID: "wE:t1", CWD: dashboard},
+			{PaneID: "wE:p3", TabID: "wE:t1", CWD: dashboard},
 		},
 	)
 	h.polls(10)
@@ -718,7 +744,7 @@ func TestALockedTabIsNotReadEither(t *testing.T) {
 		t,
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{
-			{PaneID: "wE:p1", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard", Focused: true},
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
 		},
 	)
 	h.poll()
@@ -732,7 +758,7 @@ func TestALockedTabIsNotReadEither(t *testing.T) {
 	for i := range 4 {
 		h.client.SetPane(herdr.PaneInfo{
 			PaneID: "wE:p1", TabID: "wE:t1", Focused: true, Revision: uint64(i + 2),
-			CWD: "/Users/dev/work/dashboard",
+			CWD: dashboard,
 		})
 		h.poll()
 	}
@@ -901,10 +927,7 @@ func TestBranchesSwitchedOffAreNotRead(t *testing.T) {
 }
 
 // The session an agent pane is holding in the tests below.
-const (
-	testSession = "8852bfe0-8b24-4a23-a35e-7521d04da061"
-	testDir     = "/Users/dev/work/dashboard"
-)
+const testSession = "8852bfe0-8b24-4a23-a35e-7521d04da061"
 
 // transcript lays down a Claude Code session transcript and points the plugin
 // at the state directory holding it. Which project directory it lands in is
@@ -928,7 +951,7 @@ func transcript(t *testing.T, lines ...string) {
 // terminal, which is the only pane shape these tests care about.
 func agentPane() herdr.PaneInfo {
 	return herdr.PaneInfo{
-		PaneID: "wE:p1", TabID: "wE:t1", Focused: true, CWD: testDir,
+		PaneID: "wE:p1", TabID: "wE:t1", Focused: true, CWD: dashboard,
 		TerminalTitleStripped: "Claude Code",
 		Agent:                 "claude",
 		AgentStatus:           "idle",
@@ -1051,7 +1074,7 @@ func TestRunNamesWhatExistsBeforeTheFirstTick(t *testing.T) {
 	client := herdrtest.New(
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{
-			{PaneID: "wE:p1", TabID: "wE:t1", CWD: "/Users/dev/work/dashboard", Focused: true},
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
 		},
 	)
 

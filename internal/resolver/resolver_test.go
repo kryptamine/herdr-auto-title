@@ -7,7 +7,15 @@ import (
 	"testing"
 
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
+	"github.com/kryptamine/herdr-auto-title/internal/herdr/herdrtest"
 	"github.com/kryptamine/herdr-auto-title/internal/state"
+)
+
+// The directories the fixtures sit in, absolute on whichever platform the
+// tests run on: a relative directory names no tab, and Windows has no /Users.
+var (
+	dashboard = herdrtest.Dir("work", "dashboard")
+	api       = herdrtest.Dir("work", "api")
 )
 
 func defaultChain() *Deterministic {
@@ -34,16 +42,16 @@ func TestResolveFromCWD(t *testing.T) {
 		want       string
 		wantReason string
 	}{
-		{"project directory becomes the title", "/Users/dev/work/dashboard", "dashboard", "cwd"},
+		{"project directory becomes the title", dashboard, "dashboard", "cwd"},
 		{
 			"nested directory uses its own basename",
-			"/Users/dev/work/dashboard/src/api",
+			herdrtest.Dir("work", "dashboard", "src", "api"),
 			"api",
 			"cwd",
 		},
-		{"trailing slash is ignored", "/Users/dev/work/dashboard/", "dashboard", "cwd"},
+		{"trailing slash is ignored", dashboard + string(filepath.Separator), "dashboard", "cwd"},
 		{"home directory falls back", home, GenericFallback, "generic_fallback"},
-		{"filesystem root falls back", "/", GenericFallback, "generic_fallback"},
+		{"filesystem root falls back", herdrtest.Root(), GenericFallback, "generic_fallback"},
 		{"relative path falls back", "work/dashboard", GenericFallback, "generic_fallback"},
 		{"empty path falls back", "", GenericFallback, "generic_fallback"},
 	}
@@ -67,7 +75,7 @@ func TestResolveNamesATabAfterItsDirectory(t *testing.T) {
 	tab := state.TabState{
 		ID: "wE:t1",
 		Panes: []*state.PaneState{
-			{ID: "wE:p1", Dir: "/Users/dev/work/api", Focused: true},
+			{ID: "wE:p1", Dir: api, Focused: true},
 		},
 	}
 
@@ -89,7 +97,7 @@ func TestResolveTruncatesToMaxLength(t *testing.T) {
 	long := strings.Repeat("x", 100)
 	r := New(Options{MaxLength: 10}, NewCWD())
 
-	got := r.Resolve(tabWithCWD("/Users/dev/" + long))
+	got := r.Resolve(tabWithCWD(herdrtest.Dir(long)))
 	if len([]rune(got.Name)) != 10 {
 		t.Errorf("name %q has %d runes, want 10", got.Name, len([]rune(got.Name)))
 	}
@@ -98,9 +106,9 @@ func TestResolveTruncatesToMaxLength(t *testing.T) {
 func TestResolveIsDeterministic(t *testing.T) {
 	r := New(Options{MaxLength: DefaultMaxLength}, NewCWD())
 	panes := []*state.PaneState{
-		{ID: "wE:p1", Dir: "/Users/dev/work/dashboard"},
-		{ID: "wE:p2", Dir: "/Users/dev/work/api"},
-		{ID: "wE:p3", Dir: "/Users/dev/work/infra"},
+		{ID: "wE:p1", Dir: dashboard},
+		{ID: "wE:p2", Dir: api},
+		{ID: "wE:p3", Dir: herdrtest.Dir("work", "infra")},
 	}
 
 	// The same panes in whichever order a snapshot listed them must name the
@@ -135,7 +143,7 @@ func TestHigherPrioritySourceSuppliesActivity(t *testing.T) {
 		NewCWD(),
 	)
 
-	got := r.Resolve(tabWithCWD("/Users/dev/work/dashboard"))
+	got := r.Resolve(tabWithCWD(dashboard))
 	if got.Name != "dashboard › Tests" {
 		t.Errorf("name = %q, want %q", got.Name, "dashboard › Tests")
 	}
@@ -161,7 +169,7 @@ func TestHigherPrioritySourceOverridesContext(t *testing.T) {
 		NewCWD(),
 	)
 
-	got := r.Resolve(tabWithCWD("/Users/dev/work/dashboard"))
+	got := r.Resolve(tabWithCWD(dashboard))
 	if got.Name != "prod-01 › SSH" {
 		t.Errorf("name = %q, want %q", got.Name, "prod-01 › SSH")
 	}
@@ -173,7 +181,7 @@ func TestSourceThatDeclinesIsSkipped(t *testing.T) {
 		NewCWD(),
 	)
 
-	got := r.Resolve(tabWithCWD("/Users/dev/work/dashboard"))
+	got := r.Resolve(tabWithCWD(dashboard))
 	if got.Name != "dashboard" || got.Reason != "cwd" {
 		t.Errorf("decision = %+v, want dashboard via cwd", got)
 	}
@@ -183,7 +191,7 @@ func TestATabDoesNotRepeatItsWorkspace(t *testing.T) {
 	// Herdr shows the workspace above its tabs, so a tab in the workspace it is
 	// named after spends half its width saying what is already on screen.
 	tab := tabWithPane(&state.PaneState{
-		Dir:           "/Users/dev/work/dashboard",
+		Dir:           dashboard,
 		TerminalTitle: "Fix OAuth redirect",
 	})
 	tab.WorkspaceName = "dashboard"
@@ -197,7 +205,7 @@ func TestATabDoesNotRepeatItsWorkspace(t *testing.T) {
 func TestATabWithNothingElseKeepsItsContext(t *testing.T) {
 	// Dropping it here would leave the tab with no name at all, which loses
 	// more than it saves.
-	tab := tabWithPane(&state.PaneState{Dir: "/Users/dev/work/dashboard"})
+	tab := tabWithPane(&state.PaneState{Dir: dashboard})
 	tab.WorkspaceName = "dashboard"
 
 	got := defaultChain().Resolve(tab)
@@ -210,7 +218,7 @@ func TestADifferentWorkspaceIsNotDropped(t *testing.T) {
 	// A tab whose directory left its workspace behind is exactly the tab that
 	// needs to say where it is.
 	tab := tabWithPane(&state.PaneState{
-		Dir:           "/Users/dev/work/dashboard",
+		Dir:           dashboard,
 		TerminalTitle: "Fix OAuth redirect",
 	})
 	tab.WorkspaceName = "api"
@@ -224,7 +232,7 @@ func TestADifferentWorkspaceIsNotDropped(t *testing.T) {
 func TestAWorkspaceWithoutAName(t *testing.T) {
 	// An unnamed workspace must not make every context look like a repeat.
 	tab := tabWithPane(&state.PaneState{
-		Dir:           "/Users/dev/work/dashboard",
+		Dir:           dashboard,
 		TerminalTitle: "Fix OAuth redirect",
 	})
 

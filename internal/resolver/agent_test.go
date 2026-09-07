@@ -9,7 +9,7 @@ import (
 
 func TestAgentTitleBeatsEverySourceBelowIt(t *testing.T) {
 	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
-		Dir:           "/Users/dev/work/dashboard",
+		Dir:           dashboard,
 		TerminalTitle: "Claude Code",
 		Agent:         "claude",
 		AgentStatus:   herdr.AgentStatusWorking,
@@ -31,7 +31,7 @@ func TestAgentTitleBeatsEverySourceBelowIt(t *testing.T) {
 
 func TestAgentTitleOutranksAMeaningfulTerminalTitle(t *testing.T) {
 	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
-		Dir:           "/Users/dev/work/dashboard",
+		Dir:           dashboard,
 		TerminalTitle: "Fix OAuth redirect",
 		Agent:         "claude",
 		AgentStatus:   herdr.AgentStatusWorking,
@@ -49,7 +49,7 @@ func TestGenericAgentNameFallsThrough(t *testing.T) {
 	for _, title := range []string{"Claude", "Claude Code", "Agent", "Coding Agent", ""} {
 		t.Run(title, func(t *testing.T) {
 			got := defaultChain().Resolve(tabWithPane(&state.PaneState{
-				Dir:           "/Users/dev/work/dashboard",
+				Dir:           dashboard,
 				TerminalTitle: "Fix OAuth redirect",
 				Agent:         "claude",
 				AgentStatus:   herdr.AgentStatusWorking,
@@ -72,7 +72,7 @@ func TestAgentEchoingItsOwnNameIsNotAgentContext(t *testing.T) {
 	// off as a report of their work. The name still reaches the tab, but as the
 	// kind of program running there rather than as what it is doing.
 	pane := &state.PaneState{
-		Dir:          "/Users/dev/work/dashboard",
+		Dir:          dashboard,
 		Agent:        "acme-bot",
 		DisplayAgent: "Acme Bot",
 		AgentStatus:  herdr.AgentStatusWorking,
@@ -97,7 +97,7 @@ func TestAnEchoedAgentNameIsDeclinedWhateverReportsIt(t *testing.T) {
 	// A terminal title and a transcript topic carry the echo as readily as the
 	// agent title does, and it says no more about the work there.
 	pane := &state.PaneState{
-		Dir:           "/Users/dev/work/dashboard",
+		Dir:           dashboard,
 		Agent:         "acme-bot",
 		DisplayAgent:  "Acme Bot",
 		AgentStatus:   herdr.AgentStatusWorking,
@@ -123,7 +123,7 @@ func TestAgentTitleWithoutAnAgentIsIgnored(t *testing.T) {
 	// Herdr leaves the title on a pane whose agent it no longer recognizes;
 	// without an agent it is not agent context.
 	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
-		Dir:        "/Users/dev/work/dashboard",
+		Dir:        dashboard,
 		AgentTitle: "Implement OAuth scopes",
 	}))
 
@@ -152,12 +152,12 @@ func TestContextAndActivityComeFromTheSamePane(t *testing.T) {
 		Panes: []*state.PaneState{
 			{
 				ID:            "wE:p1",
-				Dir:           "/Users/dev/work/api",
+				Dir:           api,
 				TerminalTitle: "Run migrations",
 			},
 			{
 				ID:          "wE:p2",
-				Dir:         "/Users/dev/work/dashboard",
+				Dir:         dashboard,
 				Agent:       "claude",
 				AgentStatus: herdr.AgentStatusWorking,
 				AgentTitle:  "Implement OAuth scopes",
@@ -176,7 +176,7 @@ func TestAnAgentTabDoesNotRepeatItsOwnDirectory(t *testing.T) {
 	// the activity says what the context already does. The agent's name in
 	// front of it must not hide that.
 	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
-		Dir:           "/Users/dev/work/dashboard",
+		Dir:           dashboard,
 		TerminalTitle: "dashboard",
 		Agent:         "claude",
 		AgentStatus:   herdr.AgentStatusWorking,
@@ -197,7 +197,7 @@ func hiddenAgentChain() *Deterministic {
 
 func TestAHiddenAgentNameLeavesTheWorkAlone(t *testing.T) {
 	got := hiddenAgentChain().Resolve(tabWithPane(&state.PaneState{
-		Dir:         "/Users/dev/work/dashboard",
+		Dir:         dashboard,
 		Agent:       "claude",
 		AgentStatus: herdr.AgentStatusWorking,
 		AgentTitle:  "Implement OAuth scopes",
@@ -212,7 +212,7 @@ func TestAHiddenAgentNameIsAlsoStrippedFromTheWork(t *testing.T) {
 	// An agent that signs its terminal title must not smuggle its name back in
 	// as text once the name itself is turned off.
 	got := hiddenAgentChain().Resolve(tabWithPane(&state.PaneState{
-		Dir:           "/Users/dev/work/dashboard",
+		Dir:           dashboard,
 		TerminalTitle: "Claude — Implement OAuth scopes",
 		Agent:         "claude",
 		AgentStatus:   herdr.AgentStatusWorking,
@@ -227,7 +227,7 @@ func TestASilentAgentHiddenLeavesTheTabToItsDirectory(t *testing.T) {
 	// The name is the whole title of a pane whose agent has reported nothing,
 	// so turning it off has to leave that tab named like any other.
 	pane := &state.PaneState{
-		Dir:         "/Users/dev/work/dashboard",
+		Dir:         dashboard,
 		Agent:       "claude",
 		AgentStatus: herdr.AgentStatusWorking,
 	}
@@ -256,7 +256,7 @@ func TestAHiddenAgentNameKeepsAWorkspaceDirectory(t *testing.T) {
 	// The workspace is dropped only when something else is left to read, and a
 	// name that is about to be hidden is not something else.
 	tab := tabWithPane(&state.PaneState{
-		Dir:         "/Users/dev/work/dashboard",
+		Dir:         dashboard,
 		Agent:       "claude",
 		AgentStatus: herdr.AgentStatusWorking,
 	})
