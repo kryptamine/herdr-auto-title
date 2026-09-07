@@ -6,9 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"net"
-	"os"
-	"path/filepath"
 	"sync"
 	"testing"
 )
@@ -20,10 +17,17 @@ type incoming struct {
 	Params json.RawMessage `json:"params"`
 }
 
+// listener accepts connections the way Herdr does on this platform: over a
+// Unix socket, or on Windows over the named pipe carrying the socket's path.
+type listener interface {
+	accept() (io.ReadWriteCloser, error)
+	close()
+}
+
 // testServer imitates Herdr: one request per connection, answered and closed.
 type testServer struct {
 	t    *testing.T
-	ln   net.Listener
+	ln   listener
 	path string
 
 	mu          sync.Mutex
@@ -37,35 +41,19 @@ type testServer struct {
 func newTestServer(t *testing.T, reply func(incoming) string) *testServer {
 	t.Helper()
 
-	// t.TempDir() names the directory after the test, which measured 122 bytes
-	// here — past the 104 a socket's sun_path holds.
-	//nolint:usetesting // t.TempDir() overruns sun_path, as measured above
-	dir, err := os.MkdirTemp("", "at")
-	if err != nil {
-		t.Fatalf("temp dir: %v", err)
-	}
-
-	path := filepath.Join(dir, "h.sock")
-
-	ln, err := net.Listen("unix", path)
-	if err != nil {
-		t.Fatalf("listen on %s: %v", path, err)
-	}
+	ln, path := listen(t)
 
 	s := &testServer{t: t, ln: ln, path: path, reply: reply}
 	go s.accept()
 
-	t.Cleanup(func() {
-		ln.Close()
-		os.RemoveAll(dir)
-	})
+	t.Cleanup(ln.close)
 
 	return s
 }
 
 func (s *testServer) accept() {
 	for {
-		conn, err := s.ln.Accept()
+		conn, err := s.ln.accept()
 		if err != nil {
 			return
 		}
@@ -74,7 +62,7 @@ func (s *testServer) accept() {
 	}
 }
 
-func (s *testServer) serve(conn net.Conn) {
+func (s *testServer) serve(conn io.ReadWriteCloser) {
 	s.mu.Lock()
 	s.connections++
 	s.mu.Unlock()

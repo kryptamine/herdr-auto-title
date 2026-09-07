@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net"
 	"os"
 	"sync/atomic"
 )
@@ -62,9 +61,7 @@ func (c *SocketClient) Call(ctx context.Context, method string, params any, resu
 		params = emptyParams{}
 	}
 
-	var d net.Dialer
-
-	conn, err := d.DialContext(ctx, "unix", c.path)
+	conn, err := dial(ctx, c.path)
 	if err != nil {
 		return fmt.Errorf("connect to herdr socket %s: %w", c.path, err)
 	}
