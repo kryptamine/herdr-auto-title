@@ -9,7 +9,10 @@ that is the plugin doing its job, not a problem to fix.
 Everything below assumes `make`, Go 1.24+ and a shell running inside a Herdr
 pane (which is what exports `HERDR_SOCKET_PATH`).
 
-Run `make` on its own to list every target.
+Run `make` on its own to list every target. On Windows, Git Bash ships neither
+`make`, `pgrep` nor `pkill`; every recipe is one line, so run the line itself —
+`go test -race ./...`, `go tool -modfile=tools/go.mod golangci-lint run ./...` —
+and stop a stray plugin from the task manager.
 
 ## The three loops
 
@@ -26,9 +29,13 @@ make check       # fmt + vet + lint + test, run this before every commit
 
 The same four run in CI on every push and pull request
 (`.github/workflows/ci.yml`), plus the Go version floor the manifest promises,
-which a laptop on the newest toolchain does not cover. Windows was tried once
-and dropped: the fixtures assume Unix paths, so `filepath.IsAbs` rejects every
-directory in them and every tab falls back to `Shell`.
+which a laptop on the newest toolchain does not cover, and the suite on macOS
+and Windows. The fixtures take their directories from `herdrtest.Dir`, which
+roots them on whichever filesystem the tests run on: spelled as `/Users/dev/...`
+they were relative on Windows, and every tab fell back to `Shell`. On Windows
+the client tests speak to a named pipe server of their own, so the transport
+the plugin ships there is what the suite exercises, and `go test -race` needs a
+C compiler — gcc on `PATH` with `CGO_ENABLED=1`, which the CI runner ships.
 
 The suite drives the whole loop through `herdrtest.Client`: the first poll, a
 tab appearing later, deduplication, rename failures, a poll that fails outright.

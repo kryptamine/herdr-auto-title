@@ -32,8 +32,9 @@ rather not be named.
 
 ## Scope
 
-Auto Title polls a local Herdr session over a Unix socket and renames tabs. It
-starts no subprocess, and that socket is the only thing it talks to. Every
+Auto Title polls a local Herdr session over a local socket — a Unix socket, or
+a named pipe on Windows — and renames tabs. It starts no subprocess, and that
+socket is the only thing it talks to. Every
 value that reaches a tab title comes from terminal output and is treated as
 hostile; [docs/architecture/sanitization.md](docs/architecture/sanitization.md)
 says what is stripped and what is rejected.
