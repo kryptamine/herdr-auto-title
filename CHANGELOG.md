@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.5.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.4.0...v0.5.0) (2026-09-08)
+
+
+### Features
+
+* claim windows in the plugin manifest ([4a32a59](https://github.com/kryptamine/herdr-auto-title/commit/4a32a59a4406ef23d8acdf1a4eec04335ccbde39))
+* **herdr:** reach the socket through a named pipe on Windows ([4addde4](https://github.com/kryptamine/herdr-auto-title/commit/4addde4c2c9e9c242033991d91016a1445dd307f))
+* **resolver:** read what Herdr reports for a Windows pane ([f5bcb5d](https://github.com/kryptamine/herdr-auto-title/commit/f5bcb5d83b074cd3c9bfc56efbbb5c72aaf9b1dd))
+
+
+### Bug Fixes
+
+* leave when another server takes the socket ([e84aff9](https://github.com/kryptamine/herdr-auto-title/commit/e84aff945e0e196a168383ef47cff1fe4cc03878))
+
+
+### Refactoring
+
+* **app:** give a pane's reads a module of their own ([2a9516a](https://github.com/kryptamine/herdr-auto-title/commit/2a9516aa2eb7c29c785c0564a60cdf96dbea5660))
+* **app:** keep only the interval the loop reads ([73d59da](https://github.com/kryptamine/herdr-auto-title/commit/73d59da533bd1ef30b696326be5d7a86fe06274a))
+* **state:** clean a pane's directory where it enters ([2811dda](https://github.com/kryptamine/herdr-auto-title/commit/2811ddaa3d20326dd5c3867b32bfc4e8d6663546))
+
 ## [0.4.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.3.3...v0.4.0) (2026-09-05)
 
 
