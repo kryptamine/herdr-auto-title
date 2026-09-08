@@ -145,3 +145,8 @@ restarts**, with the same `herdr server stop` the install needs.
   a tab becomes a name, where configuration comes from, and the measured facts
   about the Herdr socket API.
 - [Development](docs/development.md) — working on it.
+
+## Contributors
+
+<a href="https://github.com/recih"><img src="https://github.com/recih.png?size=64" width="64" alt="recih"></a>
+<a href="https://github.com/bartekbp"><img src="https://github.com/bartekbp.png?size=64" width="64" alt="Bartosz Polnik"></a>
