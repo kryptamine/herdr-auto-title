@@ -1,10 +1,12 @@
 package state
 
 import (
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
+	"github.com/kryptamine/herdr-auto-title/internal/herdr/herdrtest"
 )
 
 func TestSelectContextPanePrefersFocused(t *testing.T) {
@@ -208,17 +210,19 @@ func TestAgentIsActiveOnANilPane(t *testing.T) {
 func TestPaneFromPrefersTheForegroundDirectory(t *testing.T) {
 	// A subshell — `chezmoi cd`, `nix develop` — moves the foreground process
 	// and leaves the pane's own shell where it was started.
+	dashboard, chezmoi := herdrtest.Dir("work", "dashboard"), herdrtest.Dir("work", "chezmoi")
+
 	both := PaneFrom(herdr.PaneInfo{
-		PaneID: "wE:p1", CWD: "/work/dashboard", ForegroundCWD: "/work/chezmoi",
+		PaneID: "wE:p1", CWD: dashboard, ForegroundCWD: chezmoi,
 	}, time.Time{})
-	if both.Dir != "/work/chezmoi" {
+	if both.Dir != chezmoi {
 		t.Errorf("dir = %q, want the foreground process's", both.Dir)
 	}
 
-	shell := PaneFrom(herdr.PaneInfo{
-		PaneID: "wE:p1", CWD: "/work/api",
-	}, time.Time{})
-	if shell.Dir != "/work/api" {
+	api := herdrtest.Dir("work", "api")
+
+	shell := PaneFrom(herdr.PaneInfo{PaneID: "wE:p1", CWD: api}, time.Time{})
+	if shell.Dir != api {
 		t.Errorf("dir = %q, want the shell's own", shell.Dir)
 	}
 }
@@ -226,19 +230,20 @@ func TestPaneFromPrefersTheForegroundDirectory(t *testing.T) {
 func TestPaneDirTakesTheForegroundProcessesOwnDirectory(t *testing.T) {
 	// A snapshot reports the deepest descendant's directory, which for an agent
 	// is a server it spawned. The process list is deepest first.
+	server, portal := herdrtest.Dir("opt", "gimp-mcp"), herdrtest.Dir("work", "self-care-portal")
 	processes := []herdr.PaneProcessInfoProcess{
-		{Name: "gimp-mcp", CWD: "/opt/gimp-mcp"},
-		{Name: "claude", CWD: "/work/self-care-portal"},
+		{Name: "gimp-mcp", CWD: server},
+		{Name: "claude", CWD: portal},
 	}
 
 	pane := PaneFrom(herdr.PaneInfo{
 		PaneID: "wE:p1", Agent: "claude",
-		CWD: "/work/dashboard", ForegroundCWD: "/opt/gimp-mcp",
+		CWD: herdrtest.Dir("work", "dashboard"), ForegroundCWD: server,
 	}, time.Time{})
 	pane.Dir = PaneDir(processes, pane.Dir)
 	pane.Processes = ProcessesFrom(processes)
 
-	if pane.Dir != "/work/self-care-portal" {
+	if pane.Dir != portal {
 		t.Errorf("dir = %q, want the foreground process's own", pane.Dir)
 	}
 
@@ -258,6 +263,28 @@ func TestAProcessIsNamedWithoutItsWindowsExtension(t *testing.T) {
 		if processes[i].Name != want {
 			t.Errorf("process %d = %q, want %q", i, processes[i].Name, want)
 		}
+	}
+}
+
+func TestAPaneDirectoryIsCleanedAsItArrives(t *testing.T) {
+	// Windows reports a directory with a trailing separator, which no reader
+	// of Dir should have to know; a pane without one keeps "" rather than the
+	// "." filepath.Clean would make of it.
+	dir := herdrtest.Dir("work", "dashboard")
+	trailing := dir + string(filepath.Separator)
+
+	pane := PaneFrom(herdr.PaneInfo{PaneID: "wE:p1", CWD: trailing}, time.Time{})
+	if pane.Dir != dir {
+		t.Errorf("dir = %q from the snapshot, want %q", pane.Dir, dir)
+	}
+
+	read := []herdr.PaneProcessInfoProcess{{Name: "pwsh.exe", CWD: trailing}}
+	if got := PaneDir(read, ""); got != dir {
+		t.Errorf("dir = %q from a process read, want %q", got, dir)
+	}
+
+	if none := PaneFrom(herdr.PaneInfo{PaneID: "wE:p2"}, time.Time{}); none.Dir != "" {
+		t.Errorf("dir = %q for a pane without one, want it empty", none.Dir)
 	}
 }
 

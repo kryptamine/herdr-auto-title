@@ -3,6 +3,7 @@
 package state
 
 import (
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -64,7 +65,7 @@ type Process struct {
 // the directory it is in is the pane's. A read saying nothing leaves guess.
 func PaneDir(processes []herdr.PaneProcessInfoProcess, guess string) string {
 	if last := len(processes) - 1; last >= 0 && processes[last].CWD != "" {
-		return processes[last].CWD
+		return cleanDir(processes[last].CWD)
 	}
 
 	return guess
@@ -75,10 +76,21 @@ func PaneDir(processes []herdr.PaneProcessInfoProcess, guess string) string {
 // is preferred — but it is a descendant's, and only PaneDir is exact.
 func snapshotDir(info herdr.PaneInfo) string {
 	if info.ForegroundCWD != "" {
-		return info.ForegroundCWD
+		return cleanDir(info.ForegroundCWD)
 	}
 
-	return info.CWD
+	return cleanDir(info.CWD)
+}
+
+// cleanDir is a reported directory as filepath.Clean spells it, the trailing
+// separator Windows adds gone. "" stays "": a pane without a directory is real,
+// and Clean would spell it ".".
+func cleanDir(dir string) string {
+	if dir == "" {
+		return ""
+	}
+
+	return filepath.Clean(dir)
 }
 
 // PaneFrom builds pane context from a snapshot entry and when a poll last saw
