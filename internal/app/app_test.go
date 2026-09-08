@@ -66,10 +66,6 @@ type harness struct {
 	t      *testing.T
 	app    *App
 	client *herdrtest.Client
-	// polled is when the last poll finished. The clock is what orders the
-	// changes a poll sees, and on Windows it ticks too coarsely to tell two
-	// polls apart unless one waits for it.
-	polled time.Time
 }
 
 func start(t *testing.T, tabs []herdr.TabInfo, panes []herdr.PaneInfo) *harness {
@@ -89,12 +85,7 @@ func startConfigured(t *testing.T, client *herdrtest.Client, cfg Config) *harnes
 func (h *harness) poll() {
 	h.t.Helper()
 
-	for !time.Now().After(h.polled) {
-		time.Sleep(time.Millisecond)
-	}
-
 	h.app.poll(context.Background(), h.client)
-	h.polled = time.Now()
 }
 
 func (h *harness) polls(n int) {
@@ -102,6 +93,16 @@ func (h *harness) polls(n int) {
 
 	for range n {
 		h.poll()
+	}
+}
+
+// awaitClock returns once the wall clock has moved on. Which pane changed last
+// is told by the clock, and on Windows it ticks too coarsely to tell two polls
+// apart unless one waits for it.
+func awaitClock() {
+	start := time.Now()
+	for !time.Now().After(start) {
+		time.Sleep(time.Millisecond)
 	}
 }
 
@@ -347,6 +348,7 @@ func TestTheMostRecentlyChangedPaneNamesTheTab(t *testing.T) {
 	h.client.SetPane(herdr.PaneInfo{
 		PaneID: "wE:p2", TabID: "wE:t1", Revision: 2, CWD: api,
 	})
+	awaitClock()
 	h.poll()
 
 	if got := h.client.Renames()[1].Label; got != "api" {
