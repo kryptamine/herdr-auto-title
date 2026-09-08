@@ -142,7 +142,7 @@ are only the facts that would otherwise mislead the code in silence.
 - **On Windows `pane.process_info` lists only the pane's shell or a recognized
   agent**, never an editor, a build or an ssh session running under the shell.
   Names arrive with `.exe` and a process's `cwd` with a trailing backslash; the
-  state package strips the one, and every path is cleaned before it is used.
+  state package strips both as they arrive, so no reader of a pane sees either.
 - Auto Title uses three methods and no others: `session.snapshot`,
   `pane.process_info` and `tab.rename`.
 - **Do not reintroduce an event subscription.** `events.subscribe` replays
