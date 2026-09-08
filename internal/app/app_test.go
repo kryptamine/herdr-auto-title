@@ -81,11 +81,12 @@ func startConfigured(t *testing.T, client *herdrtest.Client, cfg Config) *harnes
 }
 
 // poll runs the step the ticker runs, its failure handling included, so a test
-// exercises what the loop does rather than a shortcut past it.
-func (h *harness) poll() {
+// exercises what the loop does rather than a shortcut past it. It reports what
+// the step reports: whether the loop would go on.
+func (h *harness) poll() bool {
 	h.t.Helper()
 
-	h.app.poll(context.Background(), h.client)
+	return h.app.poll(context.Background(), h.client)
 }
 
 func (h *harness) polls(n int) {
@@ -284,6 +285,101 @@ func TestAFailedPollIsFollowedByAWorkingOne(t *testing.T) {
 
 	if got := h.client.Renames()[1].Label; got != "api" {
 		t.Errorf("rename = %q, want api", got)
+	}
+}
+
+func TestAnotherServerOnTheSocketEndsTheRun(t *testing.T) {
+	// Herdr neither stops a startup process when it stops nor looks for one
+	// when it starts, so the instance an earlier server started would double
+	// the new one's, and lock every tab the two named differently.
+	h := start(
+		t,
+		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
+		[]herdr.PaneInfo{
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
+		},
+	)
+	if !h.poll() {
+		t.Fatal("the first poll ended the run")
+	}
+
+	h.client.SetServer("")
+
+	if !h.poll() {
+		t.Fatal("a poll with no server on the socket ended the run")
+	}
+
+	h.client.SetServer("herdrtest")
+
+	if !h.poll() {
+		t.Fatal("the same server back on the socket ended the run")
+	}
+
+	h.client.SetServer("successor")
+
+	if h.poll() {
+		t.Error("a successor on the socket did not end the run")
+	}
+}
+
+func TestTheServerIsLearnedFromTheFirstPollThatSeesOne(t *testing.T) {
+	// A startup hook can outrun the socket, so the first poll may find no
+	// server; the one that then appears is this instance's own, not a successor.
+	h := start(
+		t,
+		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
+		[]herdr.PaneInfo{
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
+		},
+	)
+	h.client.SetServer("")
+	h.polls(3)
+
+	h.client.SetServer("herdrtest")
+
+	if !h.poll() {
+		t.Fatal("the first server seen ended the run")
+	}
+
+	h.client.SetServer("successor")
+
+	if h.poll() {
+		t.Error("a successor on the socket did not end the run")
+	}
+}
+
+func TestRunReturnsWhenAnotherServerTakesTheSocket(t *testing.T) {
+	client := herdrtest.New(
+		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
+		[]herdr.PaneInfo{
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
+		},
+	)
+
+	cfg := testConfig()
+	cfg.Poll = time.Millisecond
+	app := New(cfg, discardLogger(), testResolver(t))
+
+	done := make(chan struct{})
+
+	go func() { app.Run(t.Context(), client); close(done) }()
+
+	// The first poll has to learn the server before a successor can be one.
+	deadline := time.Now().Add(2 * time.Second)
+	for len(client.Renames()) == 0 {
+		if time.Now().After(deadline) {
+			t.Fatal("nothing was named in two seconds")
+		}
+
+		time.Sleep(time.Millisecond)
+	}
+
+	client.SetServer("successor")
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("Run did not return within two seconds of another server taking the socket")
 	}
 }
 

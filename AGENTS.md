@@ -174,6 +174,13 @@ are only the facts that would otherwise mislead the code in silence.
   shell of whoever installed it, which is why `HERDR_AUTO_TITLE_*` settings
   arrive through `config.env` (see
   [docs/architecture/configuration.md](docs/architecture/configuration.md)).
+- **Herdr keeps no handle on a plugin it started.** A startup hook is spawned
+  and forgotten: the server stops nothing when it stops, and runs the hooks
+  again at every start and live handoff, so an instance that stayed would run
+  beside its successor and lock the tabs the two name differently.
+  `App.superseded` is what makes it leave instead; the loop must not survive
+  a change of server (see
+  [docs/architecture/poll-loop.md](docs/architecture/poll-loop.md)).
 
 ## Working here
 

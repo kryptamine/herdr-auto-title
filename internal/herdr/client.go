@@ -18,6 +18,9 @@ type Client interface {
 	// Call issues one request and decodes its result into result, which may be
 	// nil when the caller does not need it.
 	Call(ctx context.Context, method string, params any, result any) error
+	// Server identifies the server holding the socket, or is "" while none
+	// does. It changes when another server binds the path.
+	Server() string
 }
 
 // SocketClient speaks NDJSON to the Herdr socket. Herdr closes the connection
@@ -52,6 +55,13 @@ func New() (*SocketClient, error) {
 
 func newWithPath(path string) *SocketClient {
 	return &SocketClient{path: path}
+}
+
+// Server reads the socket's identity the way Herdr tells its own socket from a
+// successor's: the socket file's device and inode, or on Windows the marker
+// written into the file. It performs no request.
+func (c *SocketClient) Server() string {
+	return serverIdentity(c.path)
 }
 
 // Call sends one request on a connection of its own and reads the single
