@@ -169,17 +169,47 @@ recovery is the first dial that succeeds.
   the way out says how many polls were missed.
 
 The only failure that stops the process is a missing `HERDR_SOCKET_PATH`, caught
-in `herdr.New` before the loop is ever entered.
+in `herdr.New` before the loop is ever entered. What else ends a run is not a
+failure at all: another server on the socket, below.
 
 Measured on a live session: with the socket removed for eight seconds the
 process stayed up and polls resumed the moment it returned; started with no
 socket at all, it stayed up for ten seconds on five warnings and named every tab
 as soon as the socket appeared.
 
+## A successor on the socket
+
+Herdr starts a plugin through a one-shot startup hook and forgets it. Read from
+the Herdr source: `start_plugin_command` in `src/app/api/plugins/runtime.rs`
+spawns the command and only waits on it, keeping no handle; `complete_shutdown`
+in `src/server/headless/lifecycle.rs` closes clients and removes the socket
+files, and touches no plugin process; and `src/server/headless/bootstrap.rs`
+calls `run_plugin_startup_hooks` from both of its entry points, a fresh start
+and a live handoff import. So a server that stops leaves its Auto Title
+running, and the next server starts one of its own.
+
+Two instances are worse than one. Both dial the same socket, and when they
+disagree — after a settings change, the old one still runs the old
+configuration — each reads the other's rename as the user's and locks the tab
+(see [manual rename protection](./manual-rename-protection.md)).
+
+So each instance knows which server it answers to, and leaves when that
+changes. `Client.Server` reads the socket's identity the way Herdr itself tells
+its own socket from a successor's (`socket_file_identity` in `src/ipc.rs`): on
+macOS and Linux the socket file's device and inode, which a fresh bind renews;
+on Windows the marker Herdr writes into the socket file when it binds the pipe,
+its pid and start time. `App.superseded` records the first identity a poll can
+read and ends the run on the first poll that reads a different one. An
+unreadable identity decides nothing: the socket is gone while Herdr is down and
+can be a moment late at startup, and neither is a successor. The process exits
+with status 0, because the successor's own startup hook has already started the
+instance that replaces it.
+
 ## Shutdown
 
 `signal.NotifyContext` in `cmd/herdr-auto-title/main.go` cancels the context on
-`SIGINT` and `SIGTERM`; `Run` returns and the process exits. There are no
+`SIGINT` and `SIGTERM`; `Run` returns and the process exits, as it does when a
+successor takes the socket. There are no
 debounce timers to cancel and no socket to close, because a connection never
 outlives the call that made it.
 

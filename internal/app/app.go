@@ -28,6 +28,10 @@ type App struct {
 	// failures is the run of polls that have failed in a row, which decides
 	// how loudly the next one is reported.
 	failures failureLog
+	// server identifies the Herdr this instance answers to, learned from the
+	// first poll that could read it. Another server on the socket has started
+	// an instance of its own, and this one leaves rather than double it.
+	server string
 }
 
 // New builds the application. The client belongs to Run rather than to the
@@ -50,7 +54,9 @@ func New(cfg Config, log *slog.Logger, titles resolver.TitleResolver) *App {
 // docs/architecture/poll-loop.md.
 func (a *App) Run(ctx context.Context, client herdr.Client) {
 	// Name what already exists before waiting for the first tick.
-	a.poll(ctx, client)
+	if !a.poll(ctx, client) {
+		return
+	}
 
 	ticker := time.NewTicker(a.pollEvery)
 	defer ticker.Stop()
@@ -61,18 +67,25 @@ func (a *App) Run(ctx context.Context, client herdr.Client) {
 			a.log.Info("shutting down")
 			return
 		case <-ticker.C:
-			a.poll(ctx, client)
+			if !a.poll(ctx, client) {
+				return
+			}
 		}
 	}
 }
 
-// poll is one turn of the loop. No failure is fatal, the first one included: a
-// plugin that gave up would stay dead, and Herdr's socket can be a moment
-// behind the process it just launched.
-func (a *App) poll(ctx context.Context, client herdr.Client) {
+// poll is one turn of the loop, and reports whether there should be another.
+// No failure is fatal — Herdr's socket can lag the process it just launched —
+// but another server on the socket ends the run: docs/architecture/poll-loop.md.
+func (a *App) poll(ctx context.Context, client herdr.Client) bool {
+	if a.superseded(client) {
+		a.log.Info("another server holds the socket and starts an auto title of its own, leaving")
+		return false
+	}
+
 	err := a.readAndRename(ctx, client)
 	if ctx.Err() != nil {
-		return
+		return true
 	}
 
 	if err != nil {
@@ -80,11 +93,30 @@ func (a *App) poll(ctx context.Context, client herdr.Client) {
 			a.log.Warn("poll failed", "error", err, "in a row", run)
 		}
 
-		return
+		return true
 	}
 
 	if run := a.failures.recovered(); run > 0 {
 		a.log.Info("the session is answering again", "polls missed", run)
+	}
+
+	return true
+}
+
+// superseded reports whether the socket has passed to a server other than the
+// one this instance first saw. While no server can be read nothing is decided:
+// Herdr comes and goes, and only a successor is a reason to leave.
+func (a *App) superseded(client herdr.Client) bool {
+	current := client.Server()
+
+	switch {
+	case current == "":
+		return false
+	case a.server == "":
+		a.server = current
+		return false
+	default:
+		return current != a.server
 	}
 }
 

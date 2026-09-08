@@ -45,6 +45,7 @@ type Client struct {
 	processErr error
 	callErr    error
 	reads      int
+	server     string
 }
 
 var _ herdr.Client = (*Client)(nil)
@@ -54,6 +55,7 @@ func New(tabs []herdr.TabInfo, panes []herdr.PaneInfo) *Client {
 		tabs:      make(map[string]herdr.TabInfo, len(tabs)),
 		panes:     make(map[string]herdr.PaneInfo, len(panes)),
 		processes: make(map[string][]herdr.PaneProcessInfoProcess),
+		server:    "herdrtest",
 	}
 	for _, tab := range tabs {
 		s.tabs[tab.TabID] = tab
@@ -64,6 +66,22 @@ func New(tabs []herdr.TabInfo, panes []herdr.PaneInfo) *Client {
 	}
 
 	return s
+}
+
+// SetServer changes which server the stub reports on the socket: "" for none,
+// another name for a successor.
+func (s *Client) SetServer(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.server = id
+}
+
+func (s *Client) Server() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.server
 }
 
 func (s *Client) SetWorkspaces(workspaces ...herdr.WorkspaceInfo) {

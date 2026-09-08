@@ -41,7 +41,8 @@ herdr plugin install kryptamine/herdr-auto-title
 
 Herdr clones the repository, builds the binary and registers it. Until the
 server has restarted, nothing is renamed. `herdr plugin list` shows the plugin,
-`herdr plugin disable` turns it off.
+`herdr plugin disable` turns it off. Every server start brings a fresh instance,
+and the one the previous server started leaves on its own.
 
 ### Better names for agent tabs
 

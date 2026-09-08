@@ -64,6 +64,20 @@ exists here.
 > `herdr server stop`, which closes the session. The directory and the two CLI
 > commands were confirmed directly. Auto Title depends on none of it.
 
+**A startup hook is run and forgotten.** In the Herdr source,
+`start_plugin_command` (`src/app/api/plugins/runtime.rs`) spawns the command
+and waits on it in a thread of its own, keeping no handle; server shutdown
+(`complete_shutdown`, `src/server/headless/lifecycle.rs`) closes clients and
+removes the socket files and touches no plugin process; and
+`run_plugin_startup_hooks` runs from both server entry points
+(`src/server/headless/bootstrap.rs`), a fresh start and a live handoff import.
+What tells one server from the next is the socket file itself, the test Herdr
+uses to decide whether a socket file is its own (`socket_file_identity`,
+`src/ipc.rs`): on macOS and Linux the socket's device and inode, new with every
+bind; on Windows the file's content, `<pid>:<unix nanoseconds>` written when
+the pipe is bound. `Client.Server` reads it, and [the poll loop](./poll-loop.md)
+leaves when it changes.
+
 ## The methods Auto Title uses
 
 Three, and no others (`internal/herdr/session.go`):
