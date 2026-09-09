@@ -42,6 +42,10 @@ both. `SelectContextPane` (`internal/state/tab.go`) picks, in order:
    the pane below it saw the last update;
 3. failing that, the pane that changed most recently.
 
+With `HERDR_AUTO_TITLE_PREFER_AGENT=true` a pane running an agent, in any state,
+comes before all three: opening an editor beside an agent then leaves the tab
+named after the agent instead of flipping with focus.
+
 Ties break on the most recent change and then on pane ID, so identical state
 always yields the same choice. Both halves of the name then come from that pane
 alone.

@@ -76,17 +76,18 @@ the path for your platform and uncomment what you need:
 Auto Title reads the file once at startup, so run `herdr server stop` after a
 change. It does not read the config directory that `herdr plugin list` prints.
 
-| Setting                        | Default                                  | What it does                                                      |
-| ------------------------------ | ---------------------------------------- | ----------------------------------------------------------------- |
-| `HERDR_AUTO_TITLE_DEBUG`       | `false`                                  | Log at DEBUG instead of INFO                                      |
-| `HERDR_AUTO_TITLE_POLL_MS`     | `500`                                    | How often the session is read, in milliseconds                    |
-| `HERDR_AUTO_TITLE_MAX_LENGTH`  | `50`                                     | Longest title, in columns                                         |
-| `HERDR_AUTO_TITLE_BRANCH_MAX`  | `12`                                     | Longest branch in a title, in columns; `0` hides branches         |
-| `HERDR_AUTO_TITLE_POSITION`    | `true`                                   | Put the tab's position in front of its title                      |
-| `HERDR_AUTO_TITLE_MANUAL_FILE` | `manual-names.json` next to `config.env` | Where names you set by hand are kept; empty keeps them in memory  |
-| `HERDR_AUTO_TITLE_TRANSCRIPT`  | `true`                                   | Read Claude Code's transcript when it has not titled its terminal |
-| `HERDR_AUTO_TITLE_AGENT_NAME`  | `true`                                   | Put the agent's name in front of what it is doing                 |
-| `HERDR_AUTO_TITLE_PANES`       | `true`                                   | Name panes as well as tabs                                        |
+| Setting                         | Default                                  | What it does                                                       |
+| ------------------------------- | ---------------------------------------- | ------------------------------------------------------------------ |
+| `HERDR_AUTO_TITLE_DEBUG`        | `false`                                  | Log at DEBUG instead of INFO                                       |
+| `HERDR_AUTO_TITLE_POLL_MS`      | `500`                                    | How often the session is read, in milliseconds                     |
+| `HERDR_AUTO_TITLE_MAX_LENGTH`   | `50`                                     | Longest title, in columns                                          |
+| `HERDR_AUTO_TITLE_BRANCH_MAX`   | `12`                                     | Longest branch in a title, in columns; `0` hides branches          |
+| `HERDR_AUTO_TITLE_POSITION`     | `true`                                   | Put the tab's position in front of its title                       |
+| `HERDR_AUTO_TITLE_MANUAL_FILE`  | `manual-names.json` next to `config.env` | Where names you set by hand are kept; empty keeps them in memory   |
+| `HERDR_AUTO_TITLE_TRANSCRIPT`   | `true`                                   | Read Claude Code's transcript when it has not titled its terminal  |
+| `HERDR_AUTO_TITLE_AGENT_NAME`   | `true`                                   | Put the agent's name in front of what it is doing                  |
+| `HERDR_AUTO_TITLE_PANES`        | `true`                                   | Name panes as well as tabs                                         |
+| `HERDR_AUTO_TITLE_PREFER_AGENT` | `false`                                  | Name a tab after its agent pane even while another pane is focused |
 
 ## Documentation
 

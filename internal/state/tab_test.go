@@ -298,3 +298,18 @@ func TestPaneDirKeepsTheSnapshotsGuessWhenItLearnsNone(t *testing.T) {
 		t.Errorf("dir = %q for a process with no directory, want the snapshot's", dir)
 	}
 }
+
+func TestSelectContextPaneWithPreferAgentOutranksFocus(t *testing.T) {
+	tab := TabState{Panes: []*PaneState{
+		{ID: "wE:p1", Agent: "claude", AgentStatus: "idle", ChangedAt: time.Unix(1, 0)},
+		{ID: "wE:p2", Focused: true, ChangedAt: time.Unix(2, 0)},
+	}}
+
+	if got := SelectContextPaneWith(tab, true); got == nil || got.ID != "wE:p1" {
+		t.Fatalf("SelectContextPaneWith(prefer agent) = %v, want the agent pane wE:p1", got)
+	}
+
+	if got := SelectContextPaneWith(tab, false); got == nil || got.ID != "wE:p2" {
+		t.Fatalf("SelectContextPaneWith(no preference) = %v, want the focused pane wE:p2", got)
+	}
+}
