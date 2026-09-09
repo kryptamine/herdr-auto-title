@@ -26,6 +26,7 @@ const (
 	EnvManual     = "HERDR_AUTO_TITLE_MANUAL_FILE"
 	EnvTranscript = "HERDR_AUTO_TITLE_TRANSCRIPT"
 	EnvAgentName  = "HERDR_AUTO_TITLE_AGENT_NAME"
+	EnvPanes      = "HERDR_AUTO_TITLE_PANES"
 )
 
 // ConfigFile is the configuration file, read from the same directory the
@@ -61,6 +62,10 @@ type Config struct {
 	// what it is working on. Turned off, a pane whose agent has said nothing
 	// is named like any other pane in that directory.
 	ShowAgentName bool
+	// RenamePanes names each pane as well as its tab, which is what Herdr's
+	// goto panel lists a pane by. Off by default: it costs a read per pane
+	// rather than per tab — see docs/architecture/poll-loop.md.
+	RenamePanes bool
 }
 
 // LoadConfig reads configuration from the configuration file and the
@@ -90,6 +95,7 @@ func LoadConfig() (Config, []string) {
 	cfg.ShowPosition = fromEnv(&warnings, EnvPosition, cfg.ShowPosition, boolean)
 	cfg.ReadTranscripts = fromEnv(&warnings, EnvTranscript, cfg.ReadTranscripts, boolean)
 	cfg.ShowAgentName = fromEnv(&warnings, EnvAgentName, cfg.ShowAgentName, boolean)
+	cfg.RenamePanes = fromEnv(&warnings, EnvPanes, cfg.RenamePanes, boolean)
 	// A path needs neither parsing nor checking, so it does not go through
 	// fromEnv: any string the user set is the path they meant, and an empty
 	// one asks for locks that do not outlive the process.

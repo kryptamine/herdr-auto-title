@@ -149,3 +149,9 @@ func PaneProcesses(ctx context.Context, c Client, paneID string) ([]PaneProcessI
 func RenameTab(ctx context.Context, c Client, tabID, label string) error {
 	return c.Call(ctx, MethodTabRename, TabRenameParams{TabID: tabID, Label: label}, nil)
 }
+
+// RenamePane names a pane, which is what the goto panel lists a pane by. An
+// empty label clears the name rather than storing it, so nothing here sends one.
+func RenamePane(ctx context.Context, c Client, paneID, label string) error {
+	return c.Call(ctx, MethodPaneRename, PaneRenameParams{PaneID: paneID, Label: label}, nil)
+}

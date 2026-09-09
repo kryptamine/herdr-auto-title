@@ -115,10 +115,13 @@ changes name at most once per poll however fast its pane is churning, so
    labels, because it is what decides which tabs the next step can skip.
 4. `tabsIn` — assemble tabs with their panes from the snapshot alone. Nothing
    is read here: assembly is what says which pane will be asked about.
-5. Per tab: skip it if locked, otherwise read the one pane the tab is named
-   from (`paneReads.fill`), resolve a title, check whether the label moved
-   under us, and rename when the result differs from the label the tab already
-   carries.
+5. Per tab (`nameTab`): skip it if locked, otherwise read the one pane the tab
+   is named from (`paneReads.fill`), resolve a title, check whether the label
+   moved under us, and rename when the result differs from the label the tab
+   already carries.
+6. Per tab again (`namePanes`), and only when pane naming is on: the same five
+   steps over every pane of it, against the pane's own label. A pane with
+   nothing its tab does not already say is left unnamed.
 
 **Only the pane that names its tab is read**, and only while its tab is
 nobody's. `pane.process_info` is asked about the panes that moved since they
@@ -145,9 +148,18 @@ it — which is also what stops a rename from provoking the next one. A session
 where every tab already carries the right name, and whose panes are sitting
 still, issues nothing beyond the snapshot itself.
 
+**Naming panes turns the per-tab read into a per-pane one.** With
+`HERDR_AUTO_TITLE_PANES` on, step 6 reads every pane of every tab rather than
+the one its tab speaks through, so the four-pane tab above costs four process
+requests instead of one. The reads a poll has already spent are not spent again
+— the pane that named the tab is filled once, the git checkouts are memoized by
+directory, and a pane holding still keeps its last process answer — but the
+floor is one read per pane, and that is the whole reason the setting exists and
+defaults to off ([configuration](./configuration.md)).
+
 The whole poll is bounded by `pollTimeout` (5 s). A tab that closed between the
 snapshot and its rename answers `tab_not_found`, which is expected rather than an
-error.
+error; a pane that closed answers `pane_not_found` and is treated the same way.
 
 ## When Herdr is not there
 

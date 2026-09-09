@@ -9,7 +9,8 @@ generated: { by: claude-code/opus-5, at: 2026-08-25T12:46:22+03:00 }
 
 # Manual Rename Protection
 
-Rename a tab yourself and Auto Title leaves it alone from then on.
+Rename a tab yourself and Auto Title leaves it alone from then on. The same
+holds for a pane, once pane naming is turned on.
 
 There is nothing to correlate a rename with. The plugin polls rather than
 subscribing, so a rename is not an event that arrives but **a label that has
@@ -119,6 +120,33 @@ in memory and the file is rewritten from them.
 
 A `reset` subcommand talking to the running process over a control channel of
 its own is specified and not built.
+
+## Panes are protected the same way, and separately
+
+Auto Title can name panes as well as tabs
+([configuration](./configuration.md)), and a pane it names is a pane the user
+can rename back. The rule above is the same rule: `Manual` holds a set of
+claims per kind, and `ObservePane`, `AppliedPane`, `LockedPane` and
+`RetainPanes` are the tab methods over the pane set. Locks for both live in the
+same file, panes under `locked_panes`, so a store written by an older version
+reads back unchanged.
+
+Two things differ, both because Herdr labels a pane differently from a tab.
+
+**A pane has one unnamed spelling, not two.** `pane.rename` *clears* an empty
+label rather than storing it, and Herdr omits the field entirely until a pane
+has a label, so an unnamed pane is `""` and nothing else. There is no position
+to compare against and no `TabInfo.number` trap to walk into — the whole of
+`PaneSightingFrom` is the pane's id, its label and what the resolver wants.
+
+**Claiming a tab does not claim its panes.** The two are separate locks on
+purpose: naming a tab by hand says what the tab bar should read, and says
+nothing about how the panes inside it should be listed in the goto panel. A tab
+the user has taken still has its panes named, and a pane the user has taken sits
+inside a tab Auto Title goes on naming.
+
+Handing a pane back is the same gesture with one spelling: clear its label
+(`herdr pane rename <PANE_ID>`) and the next poll takes it again.
 
 ## Nothing expires
 

@@ -15,6 +15,9 @@ import (
 // PaneState is one pane's context as Herdr reported it when it was last read.
 type PaneState struct {
 	ID string
+	// CurrentName is the label the pane carries, empty while nobody has named
+	// it. Herdr falls back to the agent's name for display and stores nothing.
+	CurrentName string
 
 	// Dir is the directory this pane speaks for: its foreground process's own
 	// once a poll has read it, and the snapshot's guess until then.
@@ -99,6 +102,7 @@ func cleanDir(dir string) string {
 func PaneFrom(info herdr.PaneInfo, changedAt time.Time) *PaneState {
 	return &PaneState{
 		ID:               info.PaneID,
+		CurrentName:      info.Label,
 		Dir:              snapshotDir(info),
 		TerminalTitle:    info.TerminalTitleStripped,
 		TerminalTitleRaw: info.TerminalTitle,

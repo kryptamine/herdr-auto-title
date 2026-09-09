@@ -27,7 +27,7 @@ func isolate(t *testing.T) {
 
 	names := []string{
 		EnvDebug, EnvPoll, EnvMaxLength, EnvBranchMax,
-		EnvPosition, EnvManual, EnvTranscript, EnvAgentName,
+		EnvPosition, EnvManual, EnvTranscript, EnvAgentName, EnvPanes,
 	}
 
 	for _, name := range names {
@@ -87,6 +87,11 @@ func TestLoadConfigDefaults(t *testing.T) {
 	if !cfg.ShowAgentName {
 		t.Error("agent names are off by default")
 	}
+	// Naming panes changes what an existing user sees and costs a read per
+	// pane, so it is the one setting that has to be asked for.
+	if cfg.RenamePanes {
+		t.Error("panes are named without being asked for")
+	}
 }
 
 func TestLoadConfigTurnsPositionsOff(t *testing.T) {
@@ -114,6 +119,20 @@ func TestLoadConfigTurnsTheAgentNameOff(t *testing.T) {
 
 	if cfg.ShowAgentName {
 		t.Error("agent names are shown despite being disabled")
+	}
+}
+
+func TestLoadConfigTurnsPaneNamingOn(t *testing.T) {
+	isolate(t)
+	t.Setenv(EnvPanes, "true")
+
+	cfg, warnings := LoadConfig()
+	if len(warnings) != 0 {
+		t.Errorf("warnings = %v, want none", warnings)
+	}
+
+	if !cfg.RenamePanes {
+		t.Error("panes are not named despite being enabled")
 	}
 }
 
