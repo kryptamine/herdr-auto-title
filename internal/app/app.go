@@ -25,10 +25,13 @@ type App struct {
 	titles    resolver.TitleResolver
 	// panes names each pane of a tab as well as the tab itself, and is nil
 	// when the user turned that off.
-	panes   resolver.PaneResolver
-	changes *state.Changes
-	manual  *state.Manual
-	reads   *paneReader
+	panes resolver.PaneResolver
+	// preferAgent picks the pane a tab is named after as its resolver does, so
+	// the process read lands on that pane.
+	preferAgent bool
+	changes     *state.Changes
+	manual      *state.Manual
+	reads       *paneReader
 	// failures is the run of polls that have failed in a row, which decides
 	// how loudly the next one is reported.
 	failures failureLog
@@ -50,13 +53,14 @@ func New(
 	changes := state.NewChanges()
 
 	return &App{
-		pollEvery: cfg.Poll,
-		log:       log,
-		titles:    titles,
-		panes:     panes,
-		changes:   changes,
-		manual:    state.LoadManual(cfg.ManualPath),
-		reads:     newPaneReader(cfg, log, changes),
+		pollEvery:   cfg.Poll,
+		log:         log,
+		titles:      titles,
+		panes:       panes,
+		preferAgent: cfg.PreferAgentPane,
+		changes:     changes,
+		manual:      state.LoadManual(cfg.ManualPath),
+		reads:       newPaneReader(cfg, log, changes),
 	}
 }
 
@@ -65,9 +69,10 @@ func New(
 // is turned off.
 func Resolvers(cfg Config) (resolver.TitleResolver, resolver.PaneResolver) {
 	chain := resolver.Default(resolver.Options{
-		MaxLength:     cfg.MaxLength,
-		BranchMax:     cfg.BranchMax,
-		HideAgentName: !cfg.ShowAgentName,
+		MaxLength:       cfg.MaxLength,
+		BranchMax:       cfg.BranchMax,
+		HideAgentName:   !cfg.ShowAgentName,
+		PreferAgentPane: cfg.PreferAgentPane,
 	})
 
 	var titles resolver.TitleResolver = chain
@@ -204,7 +209,7 @@ func (a *App) nameTab(
 	// Read here rather than during assembly: the reads are what a poll
 	// spends, and only a tab that will be renamed is worth them. The
 	// resolver picks the same pane, because the choice is made from state.
-	reads.fill(ctx, client, state.SelectContextPane(tab))
+	reads.fill(ctx, client, state.SelectContextPaneWith(tab, a.preferAgent))
 
 	decision := a.titles.Resolve(tab)
 	a.apply(
@@ -228,7 +233,7 @@ func (a *App) namePanes(
 ) {
 	// Every pane is named against the tab's own pane, which is read even when
 	// the tab is claimed; a poll never spends the same read twice.
-	reads.fill(ctx, client, state.SelectContextPane(tab))
+	reads.fill(ctx, client, state.SelectContextPaneWith(tab, a.preferAgent))
 
 	for _, pane := range tab.Panes {
 		if !a.manual.Panes.Locked(pane.ID) {

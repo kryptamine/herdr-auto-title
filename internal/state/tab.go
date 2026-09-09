@@ -197,9 +197,23 @@ func TabFrom(info herdr.TabInfo, workspaceName string, position int, panes []*Pa
 // then one running an active agent, then whichever changed last. Ties break on
 // pane ID, so identical state always yields the same choice.
 func SelectContextPane(tab TabState) *PaneState {
+	return SelectContextPaneWith(tab, false)
+}
+
+// SelectContextPaneWith is SelectContextPane with one more rule in front when
+// preferAgent is set: a tab holding an agent is about that agent, whichever
+// pane is focused. Without it, focusing an editor beside the agent renames the
+// tab after the editor and back again, twice a second.
+func SelectContextPaneWith(tab TabState, preferAgent bool) *PaneState {
 	panes := tab.Panes
 	if len(panes) == 0 {
 		return nil
+	}
+
+	if preferAgent {
+		if agent := mostRecent(panes, (*PaneState).HasAgent); agent != nil {
+			return agent
+		}
 	}
 
 	for _, p := range panes {
