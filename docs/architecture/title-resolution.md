@@ -307,6 +307,41 @@ nvim`: the half that repeats goes, the half that distinguishes stays. An agent's
 name counts too, but only while it is going to be shown — which is why it is
 dropped before this runs rather than after.
 
+## A pane is named for what tells it from its tab
+
+Naming panes is off by default ([configuration](./configuration.md)). When it
+is on, the same chain names a pane, from that pane's own state rather than from
+the pane its tab speaks through — which is the point, because a tab speaks
+through one pane and the goto panel lists them all.
+
+The panel puts a pane's row **under** its tab's, so the rule of the section
+above applies again with the tab in the workspace's place: a part the tab's
+title was built from is worth less on the pane's row than a part that tells the
+two apart. A split of two agents in one repository reads
+
+```
+pane-rename › herdr-auto-title pane      the tab, truncated
+  herdr-auto-title pane 重命名            the pane the tab speaks through
+  herdr-reviewr                          the pane doing something else
+```
+
+The comparison is against what the tab was built from, **not** against the tab's
+finished title. Those differ whenever the tab dropped a part for repeating the
+workspace: the workspace is still on screen above them both, so a pane that
+picked it back up would put it there a third time.
+
+**The activity is never dropped, whatever the tab says.** Where a pane is has a
+row of its own above it; what it is doing is the whole of what a pane's row is
+for. That is why the first row above keeps its activity and loses the directory
+— and why it ends up carrying more than the tab, which had to truncate the same
+words to fit the directory in front of them.
+
+**A pane whose only fact is its directory keeps it**, and then does repeat its
+tab. There is nothing else known about such a pane, and the alternative is what
+Herdr shows for a pane with no label at all: the name of the agent in it, which
+is the same word on every row of the session and the reason this setting
+exists.
+
 ## The agent's name is optional
 
 `HERDR_AUTO_TITLE_AGENT_NAME=false` leaves the agent's name out of every title.

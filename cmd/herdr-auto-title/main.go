@@ -58,7 +58,7 @@ func run() error {
 		titles = resolver.NewNumbered(chain, cfg.MaxLength)
 	}
 
-	app.New(cfg, log, titles).Run(ctx, client)
+	app.New(cfg, log, titles, chain).Run(ctx, client)
 
 	return nil
 }

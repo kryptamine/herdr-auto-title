@@ -53,11 +53,12 @@ func ErrorCode(err error) string {
 	return ""
 }
 
-// Method names used by Auto Title: two to read the session and one to act on it.
+// Method names used by Auto Title: two to read the session and two to act on it.
 const (
 	MethodSessionSnapshot = "session.snapshot"
 	MethodPaneProcessInfo = "pane.process_info"
 	MethodTabRename       = "tab.rename"
+	MethodPaneRename      = "pane.rename"
 )
 
 type PaneTarget struct {
@@ -67,6 +68,11 @@ type PaneTarget struct {
 type TabRenameParams struct {
 	TabID string `json:"tab_id"`
 	Label string `json:"label"`
+}
+
+type PaneRenameParams struct {
+	PaneID string `json:"pane_id"`
+	Label  string `json:"label"`
 }
 
 type emptyParams struct{}

@@ -71,6 +71,31 @@ saying it twice: `HERDR_AUTO_TITLE_AGENT_NAME=false` leaves it out, and
 where the name was all there was — a pane whose agent has reported nothing then
 reads as its directory, `dashboard`, in place of `claude`.
 
+## Naming panes as well as tabs
+
+Herdr's goto panel (`prefix`+`g`) lists panes by their own label, falling back
+to the agent's name — so a session of Claude Code panes reads as a column of
+`claude` with nothing to pick between them. `HERDR_AUTO_TITLE_PANES=true` names
+each pane from its own directory, branch, process and agent topic, preferring
+whatever tells it from its tab:
+
+```
+pane-rename › herdr-auto-title pane      the tab, truncated
+  herdr-auto-title pane 重命名            the pane the tab speaks through
+  herdr-reviewr                          the pane doing something else
+```
+
+Where a pane is stays on the tab's row, so a pane row spends its width on what
+the pane is doing. A pane whose only fact is its directory does repeat its tab —
+which still beats the `claude` Herdr shows for a pane with no label.
+
+It is off by default for two reasons. It changes what an existing user sees,
+and it costs one `pane.process_info` read per pane per poll rather than one per
+tab — a split-heavy session pays for every split, twice a second.
+
+Renaming a pane by hand protects it exactly as renaming a tab does, and
+`herdr pane rename <PANE_ID>` with no name hands it back.
+
 ## What your tabs will be called
 
 ```
@@ -138,6 +163,7 @@ restarts**, with the same `herdr server stop` the install needs.
 | `HERDR_AUTO_TITLE_MANUAL_FILE` | `manual-names.json`, next to `config.env` | Where tabs you renamed by hand are remembered; empty keeps them in memory  |
 | `HERDR_AUTO_TITLE_TRANSCRIPT`  | `true`                                    | Read an agent's own session transcript when it has not titled its terminal |
 | `HERDR_AUTO_TITLE_AGENT_NAME`  | `true`                                    | Put the agent's name in front of what an agent pane is doing               |
+| `HERDR_AUTO_TITLE_PANES`       | `false`                                   | Name each pane as well as its tab, which is what the goto panel lists      |
 
 ## Documentation
 

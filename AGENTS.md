@@ -143,8 +143,12 @@ are only the facts that would otherwise mislead the code in silence.
   agent**, never an editor, a build or an ssh session running under the shell.
   Names arrive with `.exe` and a process's `cwd` with a trailing backslash; the
   state package strips both as they arrive, so no reader of a pane sees either.
-- Auto Title uses three methods and no others: `session.snapshot`,
-  `pane.process_info` and `tab.rename`.
+- Auto Title uses four methods and no others: `session.snapshot`,
+  `pane.process_info`, `tab.rename` and `pane.rename`.
+- **A pane carries no label until it has one, and an empty one clears it.**
+  Herdr omits `label` from a pane object entirely until the pane is named, and
+  `pane.rename` clears rather than stores an empty label — the opposite of
+  `tab.rename`. So a pane has one unnamed spelling and a tab has two.
 - **Do not reintroduce an event subscription.** `events.subscribe` replays
   about ten seconds of backlog per pane before anything live, with no cursor to
   skip it, so a subscriber opens by reacting to a session that is gone. A

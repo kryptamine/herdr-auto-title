@@ -1,6 +1,6 @@
-// Package resolver turns a tab's read state into a tab title. Resolution is
-// deterministic: identical state always yields an identical decision. No
-// network call and no LLM: every source names a tab from state already read.
+// Package resolver turns a pane's read state into a title, for the tab that
+// pane speaks for or for the pane itself. Resolution is deterministic: no
+// network call and no LLM, and identical state yields an identical decision.
 package resolver
 
 import (
@@ -104,6 +104,14 @@ type TitleResolver interface {
 	Resolve(tab state.TabState) Decision
 }
 
+// PaneResolver names one pane rather than a tab. Herdr's goto panel lists a
+// pane under its tab, so a pane is named for what tells it from that tab.
+type PaneResolver interface {
+	// ResolvePane names one pane of tab, or returns an empty decision when the
+	// pane has nothing to say that its tab does not. The pane is never nil.
+	ResolvePane(pane *state.PaneState, tab state.TabState) Decision
+}
+
 // Options are the settings a title is assembled under, as opposed to the ones
 // a single source reads.
 type Options struct {
@@ -122,7 +130,10 @@ type Deterministic struct {
 	hideAgentName bool
 }
 
-var _ TitleResolver = (*Deterministic)(nil)
+var (
+	_ TitleResolver = (*Deterministic)(nil)
+	_ PaneResolver  = (*Deterministic)(nil)
+)
 
 // New builds a resolver from sources, ordering them by confidence rather than
 // by the order they are listed in. Equal confidences keep the order given.
@@ -160,7 +171,76 @@ func Default(opts Options) *Deterministic {
 // Resolve names a tab in three steps: ask the sources what they see, drop the
 // parts that only repeat something already on screen, and assemble the rest.
 func (d *Deterministic) Resolve(tab state.TabState) Decision {
-	found := d.collect(state.SelectContextPane(tab))
+	return d.name(state.SelectContextPane(tab), tab.WorkspaceName)
+}
+
+// ResolvePane names one pane of a tab by what tells it from that tab: the
+// panes of a tab share a directory and an agent, and the goto panel puts the
+// pane's row under the tab's, so repeating either says nothing twice over.
+func (d *Deterministic) ResolvePane(pane *state.PaneState, tab state.TabState) Decision {
+	found := d.collect(pane)
+
+	parts := found.parts
+	if d.hideAgentName {
+		parts.Agent = ""
+	}
+
+	parts = withoutRepetition(parts, tab.WorkspaceName)
+
+	// What tells this pane from its tab is the best name it can have. A pane
+	// left with nothing still gets one — Herdr would list it as the agent in
+	// it, which is the same word on every row and the reason this exists.
+	if name := Format(withoutTheTabs(parts, d.tabParts(tab)), d.maxLength); name != "" {
+		return Decision{Name: name, Confidence: found.confidence, Reason: found.reason}
+	}
+
+	name := Format(parts, d.maxLength)
+	if name == "" {
+		return Decision{
+			Name:       GenericFallback,
+			Confidence: ConfidenceFallback,
+			Reason:     "generic_fallback",
+		}
+	}
+
+	return Decision{Name: name, Confidence: found.confidence, Reason: found.reason}
+}
+
+// tabParts is what the tab was built from, before the parts that only repeat
+// the workspace were dropped: a pane must not say again what the tab dropped
+// for want of width, because the workspace above them both still says it.
+func (d *Deterministic) tabParts(tab state.TabState) Parts {
+	parts := d.collect(state.SelectContextPane(tab)).parts
+	if d.hideAgentName {
+		parts.Agent = ""
+	}
+
+	return parts
+}
+
+// withoutTheTabs drops the parts of a pane's title that its tab already carries.
+// Where the pane is stays on the tab's row above; what it is doing is the whole
+// of what a pane row is for, so the activity is kept whatever the tab says.
+func withoutTheTabs(parts, tab Parts) Parts {
+	if strings.EqualFold(parts.Context, tab.Context) {
+		parts.Context = ""
+	}
+
+	if strings.EqualFold(parts.Branch, tab.Branch) {
+		parts.Branch = ""
+	}
+
+	if strings.EqualFold(parts.Agent, tab.Agent) {
+		parts.Agent = ""
+	}
+
+	return parts
+}
+
+// name is the resolution both entry points share, given the pane to read and
+// the surrounding label a title must not merely repeat.
+func (d *Deterministic) name(pane *state.PaneState, context string) Decision {
+	found := d.collect(pane)
 
 	parts := found.parts
 	if d.hideAgentName {
@@ -170,7 +250,7 @@ func (d *Deterministic) Resolve(tab state.TabState) Decision {
 		parts.Agent = ""
 	}
 
-	parts = withoutRepetition(parts, tab.WorkspaceName)
+	parts = withoutRepetition(parts, context)
 
 	name := Format(parts, d.maxLength)
 	if name == "" {

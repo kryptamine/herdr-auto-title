@@ -80,7 +80,7 @@ leaves when it changes.
 
 ## The methods Auto Title uses
 
-Three, and no others (`internal/herdr/session.go`):
+Four, and no others (`internal/herdr/session.go`):
 
 - **`session.snapshot`** returns the whole session — every tab with its label,
   every pane with its directory, terminal title, agent and agent status.
@@ -100,6 +100,12 @@ Three, and no others (`internal/herdr/session.go`):
 - **`tab.rename`** takes `{tab_id, label}`. Measured at 0.16 ms median and
   0.21 ms at p95 over forty calls, against 0.99 ms for the `session.snapshot`
   preceding them. Renaming is not what limits anything.
+- **`pane.rename`** takes `{pane_id, label}` and answers with the pane. It is
+  what Herdr's goto panel lists a pane by: that panel falls back through the
+  pane's label, the agent's name, its display name, its title and finally
+  `pane N`, so a session of Claude Code panes reads as a column of `claude`
+  until something sets a label. Auto Title uses it only when asked to — see
+  [configuration](./configuration.md).
 
 A label is **one line**. `tab.rename` accepts a newline and stores it verbatim,
 with no error and no stripping, but the tab bar renders a single line and Herdr
@@ -109,6 +115,7 @@ or does not get said.
 `tab.get` and `pane.get` read one object each, and `pane.list` filters by
 workspace only, never by tab. None of them is needed while the snapshot is one
 call.
+
 
 ## Why the event stream is not used
 
@@ -240,3 +247,14 @@ reads, so this section describes Herdr rather than those types.
   was given: `herdr tab rename wG:tS ""` answered `label: ""`, and the snapshot
   reported the same. The tab bar shows the position for both. Anything reading
   the label to mean "unnamed" has to accept the empty string as well.
+- **A pane's label is absent from the wire until the pane has one.** Across a
+  seven-pane session no pane object carried `label` in `session.snapshot`,
+  `pane.get` or `pane.list`; renaming one made the key appear in all three, and
+  clearing it made the key vanish again. It decodes to `""`, which is the one
+  thing an absent label can mean — and reading it back is what makes protecting
+  a manual pane rename possible at all.
+- **A pane has one unnamed shape where a tab has two.** `pane.rename` *clears*
+  an empty label rather than storing it: both `{"pane_id": p}` with no label and
+  `{"pane_id": p, "label": ""}` answered with the `label` key gone. So clearing
+  a pane's name is the whole of the gesture that hands it back, and there is no
+  position spelling to accept beside it.

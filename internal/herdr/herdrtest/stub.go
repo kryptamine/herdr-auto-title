@@ -32,20 +32,26 @@ type RenameCall struct {
 	Label string
 }
 
+type PaneRenameCall struct {
+	PaneID string
+	Label  string
+}
+
 // Client is an in-memory herdr.Client. Tests change the session it describes
 // and inspect the renames it received.
 type Client struct {
-	mu         sync.Mutex
-	workspaces []herdr.WorkspaceInfo
-	tabs       map[string]herdr.TabInfo
-	panes      map[string]herdr.PaneInfo
-	processes  map[string][]herdr.PaneProcessInfoProcess
-	renames    []RenameCall
-	renameErr  error
-	processErr error
-	callErr    error
-	reads      int
-	server     string
+	mu          sync.Mutex
+	workspaces  []herdr.WorkspaceInfo
+	tabs        map[string]herdr.TabInfo
+	panes       map[string]herdr.PaneInfo
+	processes   map[string][]herdr.PaneProcessInfoProcess
+	renames     []RenameCall
+	paneRenames []PaneRenameCall
+	renameErr   error
+	processErr  error
+	callErr     error
+	reads       int
+	server      string
 }
 
 var _ herdr.Client = (*Client)(nil)
@@ -155,6 +161,13 @@ func (s *Client) Renames() []RenameCall {
 	return slices.Clone(s.renames)
 }
 
+func (s *Client) PaneRenames() []PaneRenameCall {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return slices.Clone(s.paneRenames)
+}
+
 // ProcessReads counts the pane.process_info calls received so far, which is how
 // a test sees that a pane was not asked about twice.
 func (s *Client) ProcessReads() int {
@@ -189,6 +202,9 @@ func (s *Client) Call(ctx context.Context, method string, params any, result any
 
 	case herdr.MethodTabRename:
 		return s.rename(params)
+
+	case herdr.MethodPaneRename:
+		return s.renamePane(params)
 
 	default:
 		return fmt.Errorf("stub client: unsupported method %s", method)
@@ -240,6 +256,27 @@ func (s *Client) rename(params any) error {
 	tab.Label = call.Label
 	s.tabs[call.TabID] = tab
 	s.renames = append(s.renames, RenameCall(call))
+
+	return nil
+}
+
+func (s *Client) renamePane(params any) error {
+	var call herdr.PaneRenameParams
+	if err := decode(params, &call); err != nil {
+		return err
+	}
+
+	pane, live := s.panes[call.PaneID]
+	if !live {
+		return &herdr.APIError{
+			Code:    herdr.CodePaneNotFound,
+			Message: "pane " + call.PaneID + " not found",
+		}
+	}
+	// Herdr's label really does change, so the next poll must agree.
+	pane.Label = call.Label
+	s.panes[call.PaneID] = pane
+	s.paneRenames = append(s.paneRenames, PaneRenameCall(call))
 
 	return nil
 }

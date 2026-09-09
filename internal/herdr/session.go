@@ -31,6 +31,11 @@ type PaneInfo struct {
 	Focused  bool   `json:"focused"`
 	Revision uint64 `json:"revision"`
 
+	// Label is the name the pane carries, which Herdr omits entirely while it
+	// has none. Unlike a tab, a pane has one spelling for unnamed: the empty
+	// string, because pane.rename clears rather than stores one.
+	Label string `json:"label"`
+
 	CWD                   string `json:"cwd"`
 	ForegroundCWD         string `json:"foreground_cwd"`
 	TerminalTitle         string `json:"terminal_title"`

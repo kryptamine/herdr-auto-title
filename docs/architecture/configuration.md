@@ -90,6 +90,27 @@ pair it reads into the environment, and a key Auto Title does not read simply
 has no effect. Nothing checks names against a list, so a typo is silent — the
 cost of that is one line in the README table.
 
+## Why naming panes is a setting and not the behaviour
+
+Auto Title renames tabs. `HERDR_AUTO_TITLE_PANES` makes it name panes too, and
+it defaults to off for two reasons that are worth keeping separate.
+
+**It changes what an existing user sees.** A pane nobody has labelled is listed
+by the agent running in it, and a user who has come to read that column as "the
+agent" would find it replaced. A setting that changes an existing display
+defaults to what the user already has.
+
+**It multiplies what a poll spends.** Naming a tab reads one pane of it — the
+one the tab speaks through — so the cost is a `pane.process_info` per tab.
+Naming panes reads every pane, so a session of four-way splits pays four times
+as much twice a second. The measured per-read cost is in
+[the socket API note](./herdr-socket-api.md); what makes it a decision rather
+than a rounding error is that it scales with how the user splits.
+
+The setting decides one thing only: whether `App` holds a pane resolver at all.
+Everything below that — which pane is read, how it is named, whether the user
+has claimed it — is the same code either way.
+
 ## Why it is not reread
 
 The file is read once. Half the settings are consumed in `main.run` while it

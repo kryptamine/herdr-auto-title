@@ -322,3 +322,75 @@ func TestTheHomeDirectoryIsMatchedTheWayWindowsSpellsIt(t *testing.T) {
 		t.Errorf("name = %q, want %q", got.Name, GenericFallback)
 	}
 }
+
+func TestResolvePaneNamesThePaneItIsGiven(t *testing.T) {
+	// The point of naming panes: a tab speaks through one pane, and the goto
+	// panel lists them all. Each must be named from itself or the split reads
+	// as one row repeated.
+	chain := defaultChain()
+	tab := state.TabState{
+		ID: "wE:t1",
+		Panes: []*state.PaneState{
+			{ID: "wE:p1", Dir: dashboard, Focused: true},
+			{ID: "wE:p2", Dir: api},
+		},
+	}
+
+	if got := chain.Resolve(tab).Name; got != "dashboard" {
+		t.Errorf("tab = %q, want the focused pane's directory", got)
+	}
+
+	if got := chain.ResolvePane(tab.Panes[1], tab).Name; got != "api" {
+		t.Errorf("pane = %q, want the unfocused pane's own directory", got)
+	}
+}
+
+func TestResolvePaneDropsWhatItsTabAlreadySays(t *testing.T) {
+	// The goto panel puts a pane's row under its tab's, so the directory both
+	// share is on screen once already and only the agent tells them apart.
+	chain := defaultChain()
+	speaker := &state.PaneState{ID: "wE:p1", Dir: dashboard, Focused: true}
+	pane := &state.PaneState{ID: "wE:p2", Dir: dashboard, Agent: "claude"}
+	tab := state.TabState{ID: "wE:t1", Panes: []*state.PaneState{speaker, pane}}
+
+	if got := chain.Resolve(tab).Name; got != "dashboard" {
+		t.Fatalf("tab = %q, want the directory", got)
+	}
+
+	if got := chain.ResolvePane(pane, tab).Name; got != "claude" {
+		t.Errorf("pane = %q, want the directory its tab carries dropped", got)
+	}
+}
+
+func TestAPaneKeepsItsActivityAndDropsTheSharedContext(t *testing.T) {
+	// The pane a tab speaks through says the same thing the tab does. Where it
+	// is belongs to the tab's row; the width the pane's row has is worth more
+	// spent on what it is doing, which here is what the tab had to truncate.
+	chain := defaultChain()
+	pane := &state.PaneState{
+		ID: "wE:p1", Dir: dashboard, Focused: true,
+		TerminalTitle: "rewriting the pane label rules",
+	}
+	tab := state.TabState{ID: "wE:t1", Panes: []*state.PaneState{pane}}
+
+	if got := chain.Resolve(tab).Name; got != "dashboard › rewriting the pane label rules" {
+		t.Fatalf("tab = %q, want where and what", got)
+	}
+
+	if got := chain.ResolvePane(pane, tab).Name; got != "rewriting the pane label rules" {
+		t.Errorf("pane = %q, want the what alone", got)
+	}
+}
+
+func TestAPaneWithOnlyAContextStillGetsIt(t *testing.T) {
+	// The floor: a pane whose only known fact is its directory has nothing but
+	// its tab's words to be named by, and Herdr's own fallback — the agent's
+	// name, the same on every row — is the worse of the two.
+	chain := defaultChain()
+	pane := &state.PaneState{ID: "wE:p1", Dir: dashboard, Focused: true}
+	tab := state.TabState{ID: "wE:t1", Panes: []*state.PaneState{pane}}
+
+	if got := chain.ResolvePane(pane, tab).Name; got != "dashboard" {
+		t.Errorf("pane = %q, want the directory it has and nothing else", got)
+	}
+}
