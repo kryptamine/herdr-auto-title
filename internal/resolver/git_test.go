@@ -116,6 +116,18 @@ func TestABranchIsNotShownForARemoteMachine(t *testing.T) {
 	}
 }
 
+func TestAWorktreeNamedAfterItsBranchSaysItOnce(t *testing.T) {
+	// `git worktree add ../dashboard dashboard` makes a directory and a branch
+	// of the same name, and the two are one fact rather than two.
+	pane := repoPane("dashboard", "main")
+	pane.TerminalTitle = "auth.ts - Nvim"
+	pane.Processes = []state.Process{{Name: "nvim"}}
+
+	if got := resolveRepoPane(pane); got != "dashboard › nvim › auth.ts" {
+		t.Errorf("title %q, want the branch said once", got)
+	}
+}
+
 func TestTheBranchSurvivesTheWorkspaceItRepeats(t *testing.T) {
 	// Herdr shows the workspace above the tabs, so the directory goes — but
 	// the branch is exactly what tells two tabs of that workspace apart.

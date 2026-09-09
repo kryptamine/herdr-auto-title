@@ -279,6 +279,13 @@ func withoutRepetition(parts Parts, workspace string) Parts {
 		parts.Activity = ""
 	}
 
+	// A worktree is usually named after the branch checked out in it, so
+	// `git worktree add ../feat-oauth feat-oauth` would otherwise produce
+	// `feat-oauth › feat-oauth`. The directory leads, so the branch goes.
+	if parts.Branch != "" && strings.EqualFold(parts.Branch, parts.Context) {
+		parts.Branch = ""
+	}
+
 	// Herdr shows the workspace above its tabs, so repeating it wastes half the
 	// width. Dropped only when something else remains: a branch counts, and so
 	// does an agent's name, which by here is gone if it is not to be shown.

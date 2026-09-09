@@ -279,6 +279,18 @@ is how Windows spells one, and Herdr's own title for an idle pane there,
 `pwsh in dashboard`, is refused as a shell prompt is: it names the shell and
 the directory the context already names.
 
+## A worktree does not say its branch twice
+
+`git worktree add ../feat-oauth feat-oauth` makes a directory and a branch of
+the same name, and the two are one fact rather than two: the title would read
+`feat-oauth › feat-oauth › nvim`. The branch is dropped when it matches the
+directory exactly, because the directory leads the title and the branch only
+qualifies it.
+
+Exactly, and no more than that — the rule below makes the same trade. A worktree
+whose directory spells its branch differently (`xl-knp-3` against `xl-knp.3`)
+keeps both, because nothing here can tell a near-miss from two real facts.
+
 ## The workspace is not repeated
 
 Herdr shows the workspace above its tabs, so a tab in the workspace it is named
