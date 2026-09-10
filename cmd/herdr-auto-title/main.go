@@ -47,16 +47,12 @@ func run() error {
 		return err
 	}
 
-	chain := resolver.Default(resolver.Options{
+	titles := resolver.Default(resolver.Options{
 		MaxLength:     cfg.MaxLength,
 		BranchMax:     cfg.BranchMax,
 		HideAgentName: !cfg.ShowAgentName,
+		ShowPosition:  cfg.ShowPosition,
 	})
-
-	var titles resolver.TitleResolver = chain
-	if cfg.ShowPosition {
-		titles = resolver.NewNumbered(chain, cfg.MaxLength)
-	}
 
 	app.New(cfg, log, titles).Run(ctx, client)
 

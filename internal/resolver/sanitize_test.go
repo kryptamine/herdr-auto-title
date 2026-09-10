@@ -134,7 +134,7 @@ func TestFormat(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := Format(tc.parts, 64); got != tc.want {
+			if got := Format(tc.parts); got != tc.want {
 				t.Errorf("Format(%+v) = %q, want %q", tc.parts, got, tc.want)
 			}
 		})
@@ -175,9 +175,9 @@ func TestTruncationNeverCutsAGraphemeClusterOpen(t *testing.T) {
 	}
 }
 
-func TestFormatTruncatesAssembledTitle(t *testing.T) {
-	got := Format(Parts{Context: "dashboard", Activity: "OAuth scopes"}, 12)
+func TestATruncatedTitleLosesWholeParts(t *testing.T) {
+	got := truncate(Format(Parts{Context: "dashboard", Activity: "OAuth scopes"}), 12)
 	if got != "dashboard" {
-		t.Errorf("Format truncated to %q, want %q", got, "dashboard")
+		t.Errorf("truncated to %q, want %q", got, "dashboard")
 	}
 }

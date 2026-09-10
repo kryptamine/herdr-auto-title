@@ -333,7 +333,7 @@ unnamed tab with that same position, so naming a tab is what takes the number
 away — and a tab bar of names is a tab bar the user has to count along to reach
 the fourth one.
 
-**It is a decorator, `Numbered` (`internal/resolver/position.go`), not a
+**It is a decorator, `Fitted` (`internal/resolver/fitted.go`), not a
 source.** A source answers what a tab is about from what a pane holds; the
 position says nothing about that and comes from the workspace instead. Wrapping
 the resolver keeps the ladder about content, and keeps `Resolve` returning the
@@ -342,18 +342,17 @@ compares against.
 
 Three things follow from what the tab bar does with a title:
 
-- **The position leads.** Truncation cuts the tail (see
+- **The position leads.** The cut takes the tail (see
   [Sanitization](sanitization.md)), so a position at the end is the first thing
   a long title loses — exactly the titles a user is scanning when they reach
   for a key. In front it also puts every number in one column.
 - **The mark is `·`, not `›`.** The parts separator would read as if the
   position were one more thing the title says about the tab.
-- **It is counted against `MaxLength`, not added to it.** The decorator reads
-  that bound off the resolver it wraps rather than being handed one of its own,
-  so there are not two numbers to keep in step. The body is only cut to what
-  the prefix leaves — it arrives sanitized, and truncating an already-truncated
-  title again is the same cut, one column further in. Where nothing would be
-  left — a tab bar narrower than the number itself — the number goes and the
-  name stays.
+- **It is counted against `MaxLength`, not added to it.** The chain's titles
+  are unbounded, and the decorator is the one place a title is fitted: to what
+  the prefix leaves, or, where nothing would be left — a tab bar narrower than
+  the number itself — to the whole width with the number dropped and the name
+  kept.
 
-`HERDR_AUTO_TITLE_POSITION=false` drops the decorator.
+`HERDR_AUTO_TITLE_POSITION=false` leaves the position off; the decorator stays,
+because fitting is its job too.

@@ -11,8 +11,12 @@ import (
 )
 
 // numberedCWD names a tab after its directory and puts its position in front.
-func numberedCWD(maxLength int) *Numbered {
-	return NewNumbered(New(Options{MaxLength: maxLength}, NewCWD()), maxLength)
+func numberedCWD(maxLength int) *Fitted {
+	return numbered(New(Options{}, NewCWD()), maxLength)
+}
+
+func numbered(inner TitleResolver, maxLength int) *Fitted {
+	return NewFitted(inner, Options{MaxLength: maxLength, ShowPosition: true})
 }
 
 func atPosition(position int, dir string) state.TabState {
@@ -83,13 +87,13 @@ func TestAPositionWithNoRoomIsDropped(t *testing.T) {
 func TestNumberedWithoutAWidthTakesTheDefault(t *testing.T) {
 	// Zero means "no bound" to Sanitize but would leave no room at all here,
 	// so every tab would quietly lose the position instead.
-	got := NewNumbered(New(Options{}, NewCWD()), 0).Resolve(atPosition(2, api))
+	got := numbered(New(Options{}, NewCWD()), 0).Resolve(atPosition(2, api))
 	if got.Name != "2 · api" {
 		t.Errorf("name = %q, want the position kept", got.Name)
 	}
 }
 
-// fixedResolver names every tab the same, which is all Numbered needs of what
+// fixedResolver names every tab the same, which is all Fitted needs of what
 // it wraps.
 type fixedResolver struct {
 	decision Decision
@@ -98,7 +102,7 @@ type fixedResolver struct {
 func (f fixedResolver) Resolve(state.TabState) Decision { return f.decision }
 
 func TestAnyResolverCanBeNumbered(t *testing.T) {
-	// Numbered asks what it wraps for a name and nothing else, so a resolver
+	// Fitted asks what it wraps for a name and nothing else, so a resolver
 	// that is not the shipped chain is numbered just the same.
 	inner := fixedResolver{decision: Decision{
 		Name:       "release notes",
@@ -106,7 +110,7 @@ func TestAnyResolverCanBeNumbered(t *testing.T) {
 		Reason:     "test_source",
 	}}
 
-	got := NewNumbered(inner, DefaultMaxLength).Resolve(atPosition(4, api))
+	got := numbered(inner, DefaultMaxLength).Resolve(atPosition(4, api))
 	want := Decision{
 		Name:       "4 · release notes",
 		Confidence: ConfidenceAgent,
@@ -118,12 +122,12 @@ func TestAnyResolverCanBeNumbered(t *testing.T) {
 	}
 }
 
-// Making room for the position is the one thing Numbered does to a name, and a
-// cut that lands on a separator says a part was lost without saying which.
+// Making room for the position cuts a name, and a cut that lands on a
+// separator says a part was lost without saying which.
 func TestANumberedTitleLeavesNoDanglingSeparator(t *testing.T) {
 	inner := fixedResolver{decision: Decision{Name: "dashboard › nvim"}}
 
-	got := NewNumbered(inner, 16).Resolve(atPosition(1, dashboard))
+	got := numbered(inner, 16).Resolve(atPosition(1, dashboard))
 	if got.Name != "1 · dashboard" {
 		t.Errorf("name = %q, want %q", got.Name, "1 · dashboard")
 	}
