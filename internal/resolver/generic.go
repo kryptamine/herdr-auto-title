@@ -18,6 +18,8 @@ var genericValues = map[string]struct{}{
 	"claude code":  {},
 	"agent":        {},
 	"coding agent": {},
+	// A wait line with no work after it. The prefixed form is stripped below.
+	"thinking": {},
 }
 
 // isGeneric reports whether a lower-cased value names something rather than
@@ -40,6 +42,14 @@ var uriPattern = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9+.-]*://`)
 // already says, and never what the user is doing.
 var promptPattern = regexp.MustCompile(`^[^\s@]+@[^\s@:]+:\S*$`)
 
+// hookRunningPrefix is an agent's own hook or wait line sitting in front of
+// the work. See docs/architecture/title-resolution.md.
+var hookRunningPrefix = regexp.MustCompile(`^(?:Running:\s+\S+|Thinking)\s+[-–—]\s+`)
+
+// hookOnly is that same hook line with nothing after it, so there is no work
+// to keep. `Running: production deploy` is a sentence and must not match.
+var hookOnly = regexp.MustCompile(`(?i)^running:\s+\S+$`)
+
 // fallbackTitlePattern matches the title Herdr gives a Windows pane whose
 // program has set none: `pwsh in dashboard`, which names the shell and where
 // it is, and the context already says where.
@@ -53,7 +63,7 @@ const punctuation = `()[]{}<>"'` + ",;:-–—|"
 // anything useful survived: `auth.ts (~/work/src) - Nvim` keeps `auth.ts -
 // Nvim`, while a bare `~` leaves nothing.
 func Meaningful(value string) (string, bool) {
-	trimmed := strings.TrimSpace(value)
+	trimmed := stripTransientStatus(strings.TrimSpace(value))
 	if isFallbackTitle(trimmed) {
 		return "", false
 	}
@@ -63,7 +73,8 @@ func Meaningful(value string) (string, bool) {
 		return "", false
 	}
 
-	if isGeneric(strings.ToLower(cleaned)) {
+	lowered := strings.ToLower(cleaned)
+	if isGeneric(lowered) || hookOnly.MatchString(lowered) {
 		return "", false
 	}
 
@@ -90,6 +101,18 @@ func stripLocations(value string) string {
 	}
 
 	return tidy(kept)
+}
+
+func stripTransientStatus(value string) string {
+	s := value
+	for {
+		next := hookRunningPrefix.ReplaceAllString(s, "")
+		if next == s {
+			return s
+		}
+
+		s = next
+	}
 }
 
 // isFallbackTitle reports a title that only says which shell sits where. The

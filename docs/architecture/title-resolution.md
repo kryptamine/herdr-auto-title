@@ -98,6 +98,12 @@ The richest source in practice, and the one that carries most agent context. Its
 value is cleaned hard before it is trusted — see
 [sanitization](./sanitization.md).
 
+A coding agent also writes its own status into that title for a moment:
+`Running: orca-status - Fix login`, `Thinking - Fix login`. Those prefixes are
+the agent's hook or wait state, not the work. `stripTransientStatus` drops them
+before the title is trusted, and a leftover that is only `Running: orca-status`
+or `Thinking` is declined the same way a bare `Claude Code` is.
+
 ### The session transcript
 
 An agent that has titled its terminal has already said what it is doing, sooner
