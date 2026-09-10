@@ -18,7 +18,7 @@ that settled it.
 | Note | What it covers |
 |------|----------------|
 | [The poll loop](./poll-loop.md) | Why polling beats the event stream, what one poll does, what survives between polls, and how the loop behaves when Herdr is unreachable |
-| [Title resolution](./title-resolution.md) | Which pane speaks for a tab, the confidence ladder, what each source contributes, why the workspace name is not repeated, and why the tab position leads the title |
+| [Title resolution](./title-resolution.md) | Which pane speaks for a tab, the confidence ladder, what each source contributes, why the workspace name is not repeated, why the tab position leads the title, and how a title too wide for the tab bar is cut or slid |
 | [Sanitizing untrusted values](./sanitization.md) | What is stripped from terminal-derived values, what is rejected as saying nothing, and why the length limit is counted in columns |
 | [Manual rename protection](./manual-rename-protection.md) | Telling your rename from the plugin's own using nothing but successive polls, and what that costs |
 | [Configuration](./configuration.md) | Why a configuration file exists at all, where it lives, why the environment overrides it, and what the file format does and does not do |

@@ -29,9 +29,11 @@ var (
 
 func testConfig() Config {
 	return Config{
-		Poll:      testPoll,
-		MaxLength: resolver.DefaultMaxLength,
-		BranchMax: resolver.DefaultBranchMaxLength,
+		Poll:          testPoll,
+		MaxLength:     resolver.DefaultMaxLength,
+		BranchMax:     resolver.DefaultBranchMaxLength,
+		ScrollStep:    resolver.DefaultScrollStep,
+		ShowAgentName: true,
 	}
 }
 
@@ -47,17 +49,14 @@ func setHome(t *testing.T, dir string) {
 	t.Setenv("USERPROFILE", dir)
 }
 
-// testResolver builds the shipped chain against a home directory of the test's
-// own, because CWD declines a pane sitting in the user's and the fixtures below
-// must not depend on whose machine they run on.
-func testResolver(t *testing.T) resolver.TitleResolver {
+// testApp builds an App against a home directory of the test's own, because
+// CWD declines a pane sitting in the user's and the fixtures below must not
+// depend on whose machine they run on.
+func testApp(t *testing.T, cfg Config) *App {
 	t.Helper()
 	setHome(t, filepath.Join(t.TempDir(), "home"))
 
-	return resolver.Default(resolver.Options{
-		MaxLength: resolver.DefaultMaxLength,
-		BranchMax: resolver.DefaultBranchMaxLength,
-	})
+	return New(cfg, discardLogger())
 }
 
 // harness drives an App against a stubbed Herdr session one poll at a time, so
@@ -77,7 +76,7 @@ func start(t *testing.T, tabs []herdr.TabInfo, panes []herdr.PaneInfo) *harness 
 func startConfigured(t *testing.T, client *herdrtest.Client, cfg Config) *harness {
 	t.Helper()
 
-	return &harness{t: t, app: New(cfg, discardLogger(), testResolver(t)), client: client}
+	return &harness{t: t, app: testApp(t, cfg), client: client}
 }
 
 // poll runs the step the ticker runs, its failure handling included, so a test
@@ -358,7 +357,7 @@ func TestRunReturnsWhenAnotherServerTakesTheSocket(t *testing.T) {
 
 	cfg := testConfig()
 	cfg.Poll = time.Millisecond
-	app := New(cfg, discardLogger(), testResolver(t))
+	app := testApp(t, cfg)
 
 	done := make(chan struct{})
 
@@ -412,7 +411,7 @@ func TestRunStopsCleanlyOnCancellation(t *testing.T) {
 			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
 		},
 	)
-	app := New(testConfig(), discardLogger(), testResolver(t))
+	app := testApp(t, testConfig())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
@@ -947,7 +946,7 @@ func TestARepositoryIsWalkedOncePerPoll(t *testing.T) {
 	// the read. Rewriting HEAD between two panes of one poll is how the test
 	// sees that the second one never reached the disk.
 	repo := repoAt(t, "feat/oauth")
-	app := New(testConfig(), discardLogger(), testResolver(t))
+	app := testApp(t, testConfig())
 	ctx, client := context.Background(), herdrtest.New(nil, nil)
 
 	reads := app.reads.forPoll(nil)
@@ -983,7 +982,7 @@ func TestADirectoryHoldingNoRepositoryIsRememberedToo(t *testing.T) {
 	// Finding out that there is no repository costs the same walk to the root
 	// as finding one, so a pane outside a checkout must not repeat it per tab.
 	dir := t.TempDir()
-	app := New(testConfig(), discardLogger(), testResolver(t))
+	app := testApp(t, testConfig())
 	ctx, client := context.Background(), herdrtest.New(nil, nil)
 
 	reads := app.reads.forPoll(nil)
@@ -1014,7 +1013,7 @@ func TestBranchesSwitchedOffAreNotRead(t *testing.T) {
 
 	cfg := testConfig()
 	cfg.BranchMax = 0
-	app := New(cfg, discardLogger(), testResolver(t))
+	app := testApp(t, cfg)
 
 	pane := paneAt("wE:p1", repo)
 	app.reads.forPoll(nil).fill(context.Background(), herdrtest.New(nil, nil), pane)
@@ -1101,7 +1100,7 @@ func TestAPollPastItsDeadlineStopsReadingTheFilesystem(t *testing.T) {
 	// and a pane sitting on a hung mount blocks the whole loop for as long as
 	// the mount does. A poll the tab loop will throw away makes none of them.
 	repo := repoAt(t, "feat/oauth")
-	app := New(testConfig(), discardLogger(), testResolver(t))
+	app := testApp(t, testConfig())
 	client := herdrtest.New(nil, nil)
 
 	snapshot := herdr.Snapshot{
@@ -1140,7 +1139,7 @@ func TestAPaneIsReadFromItsForegroundProcessesDirectory(t *testing.T) {
 		CWD: elsewhere, ForegroundCWD: elsewhere,
 	}
 
-	app := New(testConfig(), discardLogger(), testResolver(t))
+	app := testApp(t, testConfig())
 	client := herdrtest.New([]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}}, []herdr.PaneInfo{pane})
 	client.SetProcesses(
 		"wE:p1",
@@ -1178,7 +1177,7 @@ func TestRunNamesWhatExistsBeforeTheFirstTick(t *testing.T) {
 
 	cfg := testConfig()
 	cfg.Poll = time.Minute
-	app := New(cfg, discardLogger(), testResolver(t))
+	app := testApp(t, cfg)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

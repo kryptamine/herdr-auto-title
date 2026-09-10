@@ -35,7 +35,7 @@ subprocess at all — there is no `sh -c` anywhere to pass anything to.
    value that already contains `›` cannot forge extra structure;
 6. trims leading and trailing separators and whitespace;
 7. truncates to the limit, when given one. The assembled title is not: it is
-   cut to the width of the tab bar afterwards.
+   cut, or slid, to the width of the tab bar afterwards.
 
 `Sanitize` is idempotent: running it on its own output changes nothing.
 

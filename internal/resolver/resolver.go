@@ -115,6 +115,8 @@ type Options struct {
 	HideAgentName bool
 	// ShowPosition puts each tab's position in front of its title.
 	ShowPosition bool
+	// Fit is how a title too wide for MaxLength is made to fit. Nil truncates.
+	Fit Fit
 }
 
 // Deterministic resolves titles from a fixed priority list of sources. Its
