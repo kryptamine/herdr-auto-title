@@ -12,7 +12,6 @@ import (
 
 	"github.com/kryptamine/herdr-auto-title/internal/app"
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
-	"github.com/kryptamine/herdr-auto-title/internal/resolver"
 )
 
 func main() {
@@ -37,7 +36,15 @@ func run() error {
 		log.Warn(warning)
 	}
 
-	log.Info("starting auto title", "poll", cfg.Poll, "max_length", cfg.MaxLength)
+	log.Info(
+		"starting auto title",
+		"poll",
+		cfg.Poll,
+		"max_length",
+		cfg.MaxLength,
+		"scroll",
+		cfg.Scroll,
+	)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -47,18 +54,7 @@ func run() error {
 		return err
 	}
 
-	chain := resolver.Default(resolver.Options{
-		MaxLength:     cfg.MaxLength,
-		BranchMax:     cfg.BranchMax,
-		HideAgentName: !cfg.ShowAgentName,
-	})
-
-	var titles resolver.TitleResolver = chain
-	if cfg.ShowPosition {
-		titles = resolver.NewNumbered(chain, cfg.MaxLength)
-	}
-
-	app.New(cfg, log, titles).Run(ctx, client)
+	app.New(cfg, log).Run(ctx, client)
 
 	return nil
 }

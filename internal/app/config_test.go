@@ -26,7 +26,7 @@ func isolate(t *testing.T) {
 	t.Setenv("AppData", filepath.Join(home, "AppData", "Roaming"))
 
 	names := []string{
-		EnvDebug, EnvPoll, EnvMaxLength, EnvBranchMax,
+		EnvDebug, EnvPoll, EnvMaxLength, EnvScroll, EnvScrollStep, EnvBranchMax,
 		EnvPosition, EnvManual, EnvTranscript, EnvAgentName,
 	}
 
@@ -80,6 +80,14 @@ func TestLoadConfigDefaults(t *testing.T) {
 		t.Errorf("branch max = %d, want %d", cfg.BranchMax, resolver.DefaultBranchMaxLength)
 	}
 
+	if cfg.Scroll {
+		t.Error("scrolling is on by default")
+	}
+
+	if cfg.ScrollStep != resolver.DefaultScrollStep {
+		t.Errorf("scroll step = %d, want %d", cfg.ScrollStep, resolver.DefaultScrollStep)
+	}
+
 	if !cfg.ShowPosition {
 		t.Error("positions are off by default")
 	}
@@ -103,6 +111,20 @@ func TestLoadConfigTurnsPositionsOff(t *testing.T) {
 	}
 }
 
+func TestLoadConfigTurnsScrollingOn(t *testing.T) {
+	isolate(t)
+	t.Setenv(EnvScroll, "true")
+
+	cfg, warnings := LoadConfig()
+	if len(warnings) != 0 {
+		t.Errorf("warnings = %v, want none", warnings)
+	}
+
+	if !cfg.Scroll {
+		t.Error("scrolling is off despite being enabled")
+	}
+}
+
 func TestLoadConfigTurnsTheAgentNameOff(t *testing.T) {
 	isolate(t)
 	t.Setenv(EnvAgentName, "false")
@@ -116,13 +138,13 @@ func TestLoadConfigTurnsTheAgentNameOff(t *testing.T) {
 		t.Error("agent names are shown despite being disabled")
 	}
 }
-
 func TestLoadConfigFromEnvironment(t *testing.T) {
 	isolate(t)
 	t.Setenv(EnvDebug, "true")
 	t.Setenv(EnvPoll, "250")
 	t.Setenv(EnvMaxLength, "32")
 	t.Setenv(EnvBranchMax, "20")
+	t.Setenv(EnvScrollStep, "2")
 
 	cfg, warnings := LoadConfig()
 	if len(warnings) != 0 {
@@ -143,6 +165,10 @@ func TestLoadConfigFromEnvironment(t *testing.T) {
 
 	if cfg.BranchMax != 20 {
 		t.Errorf("branch max = %d, want 20", cfg.BranchMax)
+	}
+
+	if cfg.ScrollStep != 2 {
+		t.Errorf("scroll step = %d, want 2", cfg.ScrollStep)
 	}
 }
 

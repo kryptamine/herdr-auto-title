@@ -19,7 +19,7 @@ var (
 	api       = herdrtest.Dir("work", "api")
 )
 
-func defaultChain() *Deterministic {
+func defaultChain() TitleResolver {
 	return Default(Options{MaxLength: DefaultMaxLength, BranchMax: DefaultBranchMaxLength})
 }
 
@@ -96,7 +96,7 @@ func TestResolveTabWithoutPanes(t *testing.T) {
 
 func TestResolveTruncatesToMaxLength(t *testing.T) {
 	long := strings.Repeat("x", 100)
-	r := New(Options{MaxLength: 10}, NewCWD())
+	r := NewFitted(New(Options{}, NewCWD()), Options{MaxLength: 10})
 
 	got := r.Resolve(tabWithCWD(herdrtest.Dir(long)))
 	if len([]rune(got.Name)) != 10 {
@@ -247,7 +247,7 @@ func TestTheShippedChainIsAWellFormedLadder(t *testing.T) {
 	// Confidences used to be repeated in every result a source returned, and
 	// the chain's order was a second, unchecked statement of the same ladder.
 	// Now the numbers are the only statement, so they have to hold up.
-	chain := defaultChain()
+	chain := New(Options{}, defaultSources(DefaultBranchMaxLength)...)
 
 	seen := make(map[int]string, len(chain.sources))
 	previous := 0

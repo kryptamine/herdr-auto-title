@@ -25,6 +25,7 @@ type App struct {
 	changes   *state.Changes
 	manual    *state.Manual
 	reads     *paneReader
+	scroll    *scroller
 	// failures is the run of polls that have failed in a row, which decides
 	// how loudly the next one is reported.
 	failures failureLog
@@ -36,16 +37,28 @@ type App struct {
 
 // New builds the application. The client belongs to Run rather than to the
 // App, so one App can be driven by any connection.
-func New(cfg Config, log *slog.Logger, titles resolver.TitleResolver) *App {
+func New(cfg Config, log *slog.Logger) *App {
 	changes := state.NewChanges()
+	scroll := newScroller(cfg.ScrollStep)
+
+	opts := resolver.Options{
+		MaxLength:     cfg.MaxLength,
+		BranchMax:     cfg.BranchMax,
+		HideAgentName: !cfg.ShowAgentName,
+		ShowPosition:  cfg.ShowPosition,
+	}
+	if cfg.Scroll {
+		opts.Fit = scroll.Fit
+	}
 
 	return &App{
 		pollEvery: cfg.Poll,
 		log:       log,
-		titles:    titles,
+		titles:    resolver.Default(opts),
 		changes:   changes,
 		manual:    state.LoadManual(cfg.ManualPath),
 		reads:     newPaneReader(cfg, log, changes),
+		scroll:    scroll,
 	}
 }
 
@@ -132,7 +145,9 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 	a.changes.Observe(snapshot.Panes)
 	// Taken from the snapshot rather than from the tabs below, because this is
 	// what decides which of them are locked, and a locked tab is never read.
-	a.manual.Retain(labelsIn(snapshot.Tabs))
+	live := labelsIn(snapshot.Tabs)
+	a.manual.Retain(live)
+	a.scroll.Retain(live)
 
 	tabs := a.tabsIn(snapshot)
 	reads := a.reads.forPoll(snapshot.Panes)
@@ -196,6 +211,14 @@ func (a *App) rename(
 	// Recorded before the log line so the next poll cannot read this rename as
 	// the user's.
 	a.manual.Applied(tab.ID, decision.Name)
+
+	// A slide is not a rename: the title is the one the last poll set, one
+	// step further along.
+	if a.scroll.sliding(tab.ID) {
+		a.log.Debug("title slid", "tab_id", tab.ID, "label", decision.Name)
+		return
+	}
+
 	a.log.Info("tab renamed",
 		"tab_id", tab.ID,
 		"old", tab.CurrentName,

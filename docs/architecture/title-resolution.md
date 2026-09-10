@@ -333,7 +333,7 @@ unnamed tab with that same position, so naming a tab is what takes the number
 away — and a tab bar of names is a tab bar the user has to count along to reach
 the fourth one.
 
-**It is a decorator, `Numbered` (`internal/resolver/position.go`), not a
+**It is a decorator, `Fitted` (`internal/resolver/fitted.go`), not a
 source.** A source answers what a tab is about from what a pane holds; the
 position says nothing about that and comes from the workspace instead. Wrapping
 the resolver keeps the ladder about content, and keeps `Resolve` returning the
@@ -342,18 +342,48 @@ compares against.
 
 Three things follow from what the tab bar does with a title:
 
-- **The position leads.** Truncation cuts the tail (see
-  [Sanitization](sanitization.md)), so a position at the end is the first thing
-  a long title loses — exactly the titles a user is scanning when they reach
-  for a key. In front it also puts every number in one column.
+- **The position leads.** Fitting keeps the head of a title, whichever form it
+  takes, so a position at the end is the first thing a long title loses —
+  exactly the titles a user is scanning when they reach for a key. In front it
+  also puts every number in one column.
 - **The mark is `·`, not `›`.** The parts separator would read as if the
   position were one more thing the title says about the tab.
-- **It is counted against `MaxLength`, not added to it.** The decorator reads
-  that bound off the resolver it wraps rather than being handed one of its own,
-  so there are not two numbers to keep in step. The body is only cut to what
-  the prefix leaves — it arrives sanitized, and truncating an already-truncated
-  title again is the same cut, one column further in. Where nothing would be
-  left — a tab bar narrower than the number itself — the number goes and the
-  name stays.
+- **It is counted against `MaxLength`, not added to it.** The chain's titles
+  are unbounded, and the decorator is the one place a title is fitted: to what
+  the prefix leaves, or, where nothing would be left — a tab bar narrower than
+  the number itself — to the whole width with the number dropped and the name
+  kept. Fitting in one place is what lets fitting mean sliding, below.
 
-`HERDR_AUTO_TITLE_POSITION=false` drops the decorator.
+`HERDR_AUTO_TITLE_POSITION=false` leaves the position off; the decorator stays,
+because fitting is its job too.
+
+## Fitting: cut or slide
+
+A title wider than `MaxLength` is cut by default — the tail goes, and no
+separator is left dangling (see [Sanitization](sanitization.md)). With
+`HERDR_AUTO_TITLE_SCROLL=true` it slides instead: as much of it as the width
+is shown at a time, the head held still for a few polls and then moved
+`HERDR_AUTO_TITLE_SCROLL_STEP` columns per poll, round through a three-column
+gap to the head again. The position, being in front, never moves.
+
+The step is the speed knob, and the poll interval is deliberately not: a lap of
+a 44-column title at one column per poll takes 51 polls, which is 25 seconds at
+the default rate, while lowering `POLL_MS` to catch up would speed up every
+read the loop makes for every tab in the session. A larger step costs nothing —
+a poll still renames a sliding tab exactly once. A step of two also suits CJK
+titles, whose characters are two columns wide: the window then never lands
+between the halves of one.
+
+Every window is padded to exactly the width it was given — `MaxLength` less
+the position in front of it. A cluster two columns wide cannot always land on
+the edge, and a window one column short would shrink the tab, twice a second.
+
+The resolver stays deterministic by not owning that choice. `Fitted` is built
+with a `Fit` (`internal/resolver/fitted.go`), a function from a tab, a name
+and a width to what the tab bar shows, and truncation is the one it uses when
+given none. `Slide` (`internal/resolver/slide.go`) is a pure function of the
+name, the width, a tick and the step; the tick per tab lives in the poll loop,
+which is what carries state between polls (see [the poll loop](poll-loop.md)).
+Sliding renames the tab every poll it moves, which is the rate the loop already
+bounds renames to. A poll that only moved the window logs a slide at DEBUG
+rather than a rename, so the log stays about the titles that changed.

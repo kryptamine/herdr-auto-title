@@ -83,16 +83,17 @@ $HOME                                  →  6 · Shell
 ```
 
 Titles read `<position> · <context> › <activity>`, capped at 50 columns of the
-tab bar. The activity is the first of these that has something to say: what an
-agent reports it is working on, then the terminal title, then a lone program in
-the pane. The context is the directory you are in, or the machine you reached
+tab bar — cut to fit, or slid across it with `HERDR_AUTO_TITLE_SCROLL=true`.
+The activity is the first of these that has something to say: what an agent
+reports it is working on, then the terminal title, then a lone program in the
+pane. The context is the directory you are in, or the machine you reached
 over `ssh`, and the branch you have checked out qualifies it.
 
 These rules explain most surprises:
 
 - **The number in front is the tab's position in the workspace**, which is the
-  key that switches to it. It leads the title because the tab bar cuts the tail
-  of one too wide for it. `HERDR_AUTO_TITLE_POSITION=false` leaves it out.
+  key that switches to it. It leads the title because a title too wide for the
+  tab bar keeps its head. `HERDR_AUTO_TITLE_POSITION=false` leaves it out.
 - **A branch shows when it distinguishes.** Your repository's default branch
   says nothing, so it is left out; anything else is shown, shortened to what
   identifies it (`bugfix-asa-cpanel-uapi-mc-13675` → `MC-13675`).
@@ -133,6 +134,8 @@ restarts**, with the same `herdr server stop` the install needs.
 | `HERDR_AUTO_TITLE_DEBUG`       | `false`                                   | Log at DEBUG rather than INFO                                              |
 | `HERDR_AUTO_TITLE_POLL_MS`     | `500`                                     | How often the session is read, in milliseconds                             |
 | `HERDR_AUTO_TITLE_MAX_LENGTH`  | `50`                                      | Longest title, in columns of the tab bar                                   |
+| `HERDR_AUTO_TITLE_SCROLL`      | `false`                                   | Slide a title too long for that across the tab bar instead of cutting it   |
+| `HERDR_AUTO_TITLE_SCROLL_STEP` | `1`                                       | How far a sliding title moves per poll, in columns                        |
 | `HERDR_AUTO_TITLE_BRANCH_MAX`  | `12`                                      | Longest branch a title may carry, in columns; `0` leaves branches out      |
 | `HERDR_AUTO_TITLE_POSITION`    | `true`                                    | Put each tab's position in front of its title                              |
 | `HERDR_AUTO_TITLE_MANUAL_FILE` | `manual-names.json`, next to `config.env` | Where tabs you renamed by hand are remembered; empty keeps them in memory  |

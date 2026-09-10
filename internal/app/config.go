@@ -21,6 +21,8 @@ const (
 	EnvDebug      = "HERDR_AUTO_TITLE_DEBUG"
 	EnvPoll       = "HERDR_AUTO_TITLE_POLL_MS"
 	EnvMaxLength  = "HERDR_AUTO_TITLE_MAX_LENGTH"
+	EnvScroll     = "HERDR_AUTO_TITLE_SCROLL"
+	EnvScrollStep = "HERDR_AUTO_TITLE_SCROLL_STEP"
 	EnvBranchMax  = "HERDR_AUTO_TITLE_BRANCH_MAX"
 	EnvPosition   = "HERDR_AUTO_TITLE_POSITION"
 	EnvManual     = "HERDR_AUTO_TITLE_MANUAL_FILE"
@@ -44,6 +46,12 @@ type Config struct {
 	// MaxLength and BranchMax are measured in columns of the tab bar rather
 	// than in characters: a CJK character or an emoji takes two.
 	MaxLength int
+	// Scroll slides a title too wide for MaxLength across the tab bar instead
+	// of cutting it.
+	Scroll bool
+	// ScrollStep is how far a sliding title moves per poll, in columns. It is
+	// the speed knob that Poll is not: a poll still renames a tab once.
+	ScrollStep int
 	// BranchMax bounds what a git branch may add to a title. Zero leaves
 	// branches out of titles entirely.
 	BranchMax int
@@ -75,6 +83,7 @@ func LoadConfig() (Config, []string) {
 	cfg := Config{
 		Poll:            DefaultPoll,
 		MaxLength:       resolver.DefaultMaxLength,
+		ScrollStep:      resolver.DefaultScrollStep,
 		BranchMax:       resolver.DefaultBranchMaxLength,
 		ShowPosition:    true,
 		ManualPath:      state.DefaultManualPath(),
@@ -85,6 +94,8 @@ func LoadConfig() (Config, []string) {
 	cfg.Debug = fromEnv(&warnings, EnvDebug, cfg.Debug, boolean)
 	cfg.Poll = fromEnv(&warnings, EnvPoll, cfg.Poll, milliseconds)
 	cfg.MaxLength = fromEnv(&warnings, EnvMaxLength, cfg.MaxLength, count)
+	cfg.Scroll = fromEnv(&warnings, EnvScroll, cfg.Scroll, boolean)
+	cfg.ScrollStep = fromEnv(&warnings, EnvScrollStep, cfg.ScrollStep, count)
 	// Zero is meaningful here, and only here: it leaves branches out of titles.
 	cfg.BranchMax = fromEnv(&warnings, EnvBranchMax, cfg.BranchMax, countOrNone)
 	cfg.ShowPosition = fromEnv(&warnings, EnvPosition, cfg.ShowPosition, boolean)

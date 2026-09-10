@@ -187,7 +187,7 @@ func TestAnAgentTabDoesNotRepeatItsOwnDirectory(t *testing.T) {
 	}
 }
 
-func hiddenAgentChain() *Deterministic {
+func hiddenAgentChain() TitleResolver {
 	return Default(Options{
 		MaxLength:     DefaultMaxLength,
 		BranchMax:     DefaultBranchMaxLength,
