@@ -64,6 +64,13 @@ exists here.
 > `herdr server stop`, which closes the session. The directory and the two CLI
 > commands were confirmed directly. Auto Title depends on none of it.
 
+**Nothing a plugin writes to stderr is kept.** No file under
+`~/.config/herdr` holds a line of it — searched for the plugin's own log format
+while it was running — and `herdr plugin log` offers `list` alone, which
+reports the command and whether it is still up. A plugin the server started
+cannot be read back; seeing its log means running it in the foreground, which
+is what `make run` is for.
+
 **A startup hook is run and forgotten.** In the Herdr source,
 `start_plugin_command` (`src/app/api/plugins/runtime.rs`) spawns the command
 and waits on it in a thread of its own, keeping no handle; server shutdown
@@ -99,7 +106,11 @@ Three, and no others (`internal/herdr/session.go`):
   held at 10. A revision reports that the pane drew, nothing more.
 - **`tab.rename`** takes `{tab_id, label}`. Measured at 0.16 ms median and
   0.21 ms at p95 over forty calls, against 0.99 ms for the `session.snapshot`
-  preceding them. Renaming is not what limits anything.
+  preceding them. Renaming is not what limits anything — on the wire. It costs
+  three lines in Herdr's own `herdr-server.log`, one for the event and two for
+  the request around it: with titles sliding, one minute held 453 renames,
+  1363 lines and 236 KB. The file is replaced when the server starts, so it
+  does not grow across runs.
 
 A label is **one line**. `tab.rename` accepts a newline and stores it verbatim,
 with no error and no stripping, but the tab bar renders a single line and Herdr

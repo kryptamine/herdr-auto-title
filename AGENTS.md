@@ -170,6 +170,9 @@ are only the facts that would otherwise mislead the code in silence.
 - **`PaneInfo.title` is the agent's own title, and is null in practice.** Claude
   Code reports its topic through `terminal_title_stripped` instead, and
   `agent_session` stays null until that agent's integration is installed.
+- **Nothing a plugin writes to stderr is kept**, and `herdr plugin log` only
+  lists the command. The log of a plugin the server started cannot be read
+  back, so seeing one means running it in the foreground (`make run`).
 - **A plugin the server starts inherits the server's environment**, not the
   shell of whoever installed it, which is why `HERDR_AUTO_TITLE_*` settings
   arrive through `config.env` (see
