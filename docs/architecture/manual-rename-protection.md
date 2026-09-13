@@ -10,7 +10,7 @@ generated: { by: claude-code/opus-5, at: 2026-08-25T12:46:22+03:00 }
 # Manual Rename Protection
 
 Rename a tab yourself and Auto Title leaves it alone from then on. The same
-holds for a pane, once pane naming is turned on.
+holds for a pane, which Auto Title names too unless that is turned off.
 
 There is nothing to correlate a rename with. The plugin polls rather than
 subscribing, so a rename is not an event that arrives but **a label that has

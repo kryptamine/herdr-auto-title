@@ -8,8 +8,8 @@ import (
 	"github.com/kryptamine/herdr-auto-title/internal/herdr/herdrtest"
 )
 
-// paneConfig is the configuration with pane naming asked for, which nothing
-// else in these tests turns on.
+// paneConfig is the configuration with pane naming on, as it ships. The rest of
+// this package's tests leave it off, so what they count is a tab's reads alone.
 func paneConfig() Config {
 	cfg := testConfig()
 	cfg.RenamePanes = true
@@ -18,8 +18,7 @@ func paneConfig() Config {
 }
 
 // split is a tab of two panes in different directories. The focused one names
-// the tab, so `wE:p2` is the pane with something of its own left to say — which
-// is the only kind of pane that gets a label at all.
+// the tab, so `wE:p2` is the pane with something of its own left to say.
 func split() []herdr.PaneInfo {
 	return []herdr.PaneInfo{
 		{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
@@ -51,9 +50,9 @@ func labelsOf(h *harness, paneID string) []string {
 	return labels
 }
 
-func TestPanesAreLeftAloneUnlessAskedFor(t *testing.T) {
-	// The setting exists because naming panes costs a read per pane rather
-	// than per tab, and because it changes what an existing user sees.
+func TestPanesAreLeftAloneWhenTurnedOff(t *testing.T) {
+	// Turning pane naming off gives the user back the goto panel Herdr draws
+	// on its own, and a poll that reads one pane per tab.
 	h := start(t, oneTab(), split())
 	h.poll()
 

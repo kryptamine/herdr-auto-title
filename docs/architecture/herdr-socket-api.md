@@ -104,8 +104,8 @@ Four, and no others (`internal/herdr/session.go`):
   what Herdr's goto panel lists a pane by: that panel falls back through the
   pane's label, the agent's name, its display name, its title and finally
   `pane N`, so a session of Claude Code panes reads as a column of `claude`
-  until something sets a label. Auto Title uses it only when asked to — see
-  [configuration](./configuration.md).
+  until something sets a label. Auto Title uses it unless pane naming is turned
+  off — see [configuration](./configuration.md).
 
 A label is **one line**. `tab.rename` accepts a newline and stores it verbatim,
 with no error and no stripping, but the tab bar renders a single line and Herdr

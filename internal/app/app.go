@@ -1,6 +1,6 @@
 // Package app polls the Herdr session and keeps every tab's title in step with
-// what that tab is doing, and each pane's label too where the configuration
-// asks for it.
+// what that tab is doing, and each pane's label too unless the configuration
+// turns that off.
 package app
 
 import (
@@ -24,7 +24,7 @@ type App struct {
 	log       *slog.Logger
 	titles    resolver.TitleResolver
 	// panes names each pane of a tab as well as the tab itself, and is nil
-	// unless the user asked for it.
+	// when the user turned that off.
 	panes   resolver.PaneResolver
 	changes *state.Changes
 	manual  *state.Manual
@@ -61,8 +61,8 @@ func New(
 }
 
 // Resolvers builds what the configuration asks titles to be resolved by: the
-// shipped chain, its position in front when asked, and panes named only when
-// asked.
+// shipped chain, its position in front when asked, and panes named unless that
+// is turned off.
 func Resolvers(cfg Config) (resolver.TitleResolver, resolver.PaneResolver) {
 	chain := resolver.Default(resolver.Options{
 		MaxLength:     cfg.MaxLength,

@@ -9,7 +9,7 @@ generated: { by: claude-code/opus-5, at: 2026-08-26T14:14:17+03:00 }
 
 # Configuration
 
-Every setting Auto Title has is one of eight `HERDR_AUTO_TITLE_*` variables,
+Every setting Auto Title has is one of nine `HERDR_AUTO_TITLE_*` variables,
 read in `internal/app/config.go`. They can be set in the environment, or written
 into a file that is loaded into the environment before anything reads it.
 
@@ -90,22 +90,27 @@ pair it reads into the environment, and a key Auto Title does not read simply
 has no effect. Nothing checks names against a list, so a typo is silent — the
 cost of that is one line in the README table.
 
-## Why naming panes is a setting and not the behaviour
+## Why naming panes is on by default, and still a setting
 
-Auto Title renames tabs. `HERDR_AUTO_TITLE_PANES` makes it name panes too, and
-it defaults to off for two reasons that are worth keeping separate.
+Auto Title names panes as well as tabs unless `HERDR_AUTO_TITLE_PANES=false`.
+It was first built switched off, for two reasons, and neither held up.
 
 **It changes what an existing user sees.** A pane nobody has labelled is listed
-by the agent running in it, and a user who has come to read that column as "the
-agent" would find it replaced. A setting that changes an existing display
-defaults to what the user already has.
+by the agent running in it, so a session of Claude Code panes is a column of
+`claude`. That column is the problem the feature exists for rather than a
+display anyone relies on, so the change shipped as a breaking one instead of as
+an opt-in. The one real loss is on the first start: nothing marks a pane label
+as the user's before Auto Title has watched it, so a pane labelled by hand
+before then is renamed once. After that it is protected like a tab
+([manual rename protection](./manual-rename-protection.md)).
 
-**It multiplies what a poll spends.** Naming a tab reads one pane of it — the
-one the tab speaks through — so the cost is a `pane.process_info` per tab.
-Naming panes reads every pane, so a session of four-way splits pays four times
-as much twice a second. The measured per-read cost is in
-[the socket API note](./herdr-socket-api.md); what makes it a decision rather
-than a rounding error is that it scales with how the user splits.
+**It multiplies what a poll spends.** Naming a tab reads one pane of it, so the
+cost is a `pane.process_info` per tab; naming panes reads every pane. A read is
+reused while its pane sits still and for at most `processRefresh`, so a pane
+costs between one read every two seconds and two a second. At the measured
+0.17 ms a read ([the socket API note](./herdr-socket-api.md)), twenty panes all
+busy at once cost Herdr about 7 ms a second — it scales with how the user
+splits, but from a floor too low to decide a default by.
 
 The setting decides one thing only: whether `App` holds a pane resolver at all.
 Everything below that — which pane is read, how it is named, whether the user
