@@ -309,8 +309,8 @@ dropped before this runs rather than after.
 
 ## A pane is named for what tells it from its tab
 
-Naming panes is off by default ([configuration](./configuration.md)). When it
-is on, the same chain names a pane, from that pane's own state rather than from
+Pane naming is on unless it is turned off ([configuration](./configuration.md)).
+The same chain names a pane, from that pane's own state rather than from
 the pane its tab speaks through — which is the point, because a tab speaks
 through one pane and the goto panel lists them all.
 

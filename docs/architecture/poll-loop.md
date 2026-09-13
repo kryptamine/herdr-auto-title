@@ -157,8 +157,8 @@ requests instead of one, and a tab the user has claimed is read as well, because
 its panes are still named against it. The reads a poll has already spent are not
 spent again — the pane that named the tab is filled once, the git checkouts are
 memoized by directory, and a pane holding still keeps its last process answer —
-but the floor is one read per pane, and that is the whole reason the setting
-exists and defaults to off ([configuration](./configuration.md)).
+but the floor is one read per pane, which is why it can be turned off
+([configuration](./configuration.md)).
 
 The whole poll is bounded by `pollTimeout` (5 s). A tab that closed between the
 snapshot and its rename answers `tab_not_found`, which is expected rather than an

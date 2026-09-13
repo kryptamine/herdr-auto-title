@@ -63,8 +63,8 @@ type Config struct {
 	// is named like any other pane in that directory.
 	ShowAgentName bool
 	// RenamePanes names each pane as well as its tab, which is what Herdr's
-	// goto panel lists a pane by. Off by default: it costs a read per pane
-	// rather than per tab — see docs/architecture/poll-loop.md.
+	// goto panel lists a pane by. It costs a read per pane rather than per
+	// tab — see docs/architecture/poll-loop.md.
 	RenamePanes bool
 }
 
@@ -85,6 +85,7 @@ func LoadConfig() (Config, []string) {
 		ManualPath:      state.DefaultManualPath(),
 		ReadTranscripts: true,
 		ShowAgentName:   true,
+		RenamePanes:     true,
 	}
 
 	cfg.Debug = fromEnv(&warnings, EnvDebug, cfg.Debug, boolean)

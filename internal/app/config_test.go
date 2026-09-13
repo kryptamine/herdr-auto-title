@@ -87,10 +87,9 @@ func TestLoadConfigDefaults(t *testing.T) {
 	if !cfg.ShowAgentName {
 		t.Error("agent names are off by default")
 	}
-	// Naming panes changes what an existing user sees and costs a read per
-	// pane, so it is the one setting that has to be asked for.
-	if cfg.RenamePanes {
-		t.Error("panes are named without being asked for")
+
+	if !cfg.RenamePanes {
+		t.Error("panes are not named by default")
 	}
 }
 
@@ -122,17 +121,19 @@ func TestLoadConfigTurnsTheAgentNameOff(t *testing.T) {
 	}
 }
 
-func TestLoadConfigTurnsPaneNamingOn(t *testing.T) {
+func TestLoadConfigTurnsPaneNamingOff(t *testing.T) {
+	// The way back to the goto panel Herdr draws on its own, for a user who
+	// read the column of agent names as what it was for.
 	isolate(t)
-	t.Setenv(EnvPanes, "true")
+	t.Setenv(EnvPanes, "false")
 
 	cfg, warnings := LoadConfig()
 	if len(warnings) != 0 {
 		t.Errorf("warnings = %v, want none", warnings)
 	}
 
-	if !cfg.RenamePanes {
-		t.Error("panes are not named despite being enabled")
+	if cfg.RenamePanes {
+		t.Error("panes are named despite being turned off")
 	}
 }
 
