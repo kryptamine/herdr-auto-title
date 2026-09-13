@@ -26,7 +26,7 @@ func sighting(current string) Sighting {
 func TestSightingFromDerivesTheDefaultLabel(t *testing.T) {
 	// A tab nobody has named wears its position, so the third tab of a
 	// workspace is `3` however high the ids around it have climbed.
-	tab := TabFrom(herdr.TabInfo{TabID: "wE:t9", Label: "Important work"}, "work", 3, nil)
+	tab := TabFrom(herdr.TabInfo{TabID: "wE:t9", Label: "Important work"}, "work", 3, nil, false)
 
 	got := SightingFrom(tab, "dashboard")
 	want := Sighting{

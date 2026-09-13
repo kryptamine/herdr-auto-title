@@ -178,11 +178,27 @@ type TabState struct {
 	// Panes are ordered by ID, which is what makes every traversal of them
 	// yield the same answer from the same session.
 	Panes []*PaneState
+	// Context is the pane the tab is named after, nil only when it has no
+	// panes. Picked once here, so what is read and what is named cannot differ.
+	Context *PaneState
 }
 
-func TabFrom(info herdr.TabInfo, workspaceName string, position int, panes []*PaneState) TabState {
+// TabFrom builds a tab and picks its context pane. With preferAgent a pane
+// running an agent, in any state, outranks focus.
+func TabFrom(
+	info herdr.TabInfo,
+	workspaceName string,
+	position int,
+	panes []*PaneState,
+	preferAgent bool,
+) TabState {
 	ordered := slices.Clone(panes)
 	slices.SortFunc(ordered, func(a, b *PaneState) int { return strings.Compare(a.ID, b.ID) })
+
+	rules := contextRules
+	if preferAgent {
+		rules = agentFirstRules
+	}
 
 	return TabState{
 		ID:            info.TabID,
@@ -190,44 +206,28 @@ func TabFrom(info herdr.TabInfo, workspaceName string, position int, panes []*Pa
 		WorkspaceName: workspaceName,
 		Position:      position,
 		Panes:         ordered,
+		Context:       contextPane(ordered, rules),
 	}
 }
 
-// SelectContextPane picks the one pane a title is built from: the focused one,
-// then one running an active agent, then whichever changed last. Ties break on
-// pane ID, so identical state always yields the same choice.
-func SelectContextPane(tab TabState) *PaneState {
-	return SelectContextPaneWith(tab, false)
-}
+func focused(p *PaneState) bool { return p.Focused }
 
-// SelectContextPaneWith is SelectContextPane with one more rule in front when
-// preferAgent is set: a tab holding an agent is about that agent, whichever
-// pane is focused. Without it, focusing an editor beside the agent renames the
-// tab after the editor and back again, twice a second.
-func SelectContextPaneWith(tab TabState, preferAgent bool) *PaneState {
-	panes := tab.Panes
-	if len(panes) == 0 {
-		return nil
-	}
+// contextRules rank the panes a tab may be named after: the focused one, then
+// one running an active agent, then any. A nil rule takes every pane.
+var (
+	contextRules    = []func(*PaneState) bool{focused, (*PaneState).AgentIsActive, nil}
+	agentFirstRules = append([]func(*PaneState) bool{(*PaneState).HasAgent}, contextRules...)
+)
 
-	if preferAgent {
-		if agent := mostRecent(panes, (*PaneState).HasAgent); agent != nil {
-			return agent
+// contextPane is the last-changed pane of the first rule any pane passes.
+func contextPane(panes []*PaneState, rules []func(*PaneState) bool) *PaneState {
+	for _, keep := range rules {
+		if pane := mostRecent(panes, keep); pane != nil {
+			return pane
 		}
 	}
 
-	for _, p := range panes {
-		if p.Focused {
-			return p
-		}
-	}
-
-	// A split with an agent running is about that agent, whatever moved last.
-	if agent := mostRecent(panes, (*PaneState).AgentIsActive); agent != nil {
-		return agent
-	}
-
-	return mostRecent(panes, nil)
+	return nil
 }
 
 // mostRecent returns the last-changed pane keep accepts, or nil when it

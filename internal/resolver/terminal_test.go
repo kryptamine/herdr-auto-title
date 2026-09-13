@@ -13,10 +13,7 @@ func tabWithPane(pane *state.PaneState) state.TabState {
 	_ = pane
 	pane.Focused = true
 
-	return state.TabState{
-		ID:    "wE:t1",
-		Panes: []*state.PaneState{pane},
-	}
+	return tabOf([]*state.PaneState{pane})
 }
 
 func TestTerminalTitleBeatsTheWorkingDirectory(t *testing.T) {

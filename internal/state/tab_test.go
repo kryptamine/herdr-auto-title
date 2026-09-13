@@ -9,34 +9,28 @@ import (
 	"github.com/kryptamine/herdr-auto-title/internal/herdr/herdrtest"
 )
 
-func TestSelectContextPanePrefersFocused(t *testing.T) {
+func TestTabContextPrefersFocused(t *testing.T) {
 	now := time.Now()
-	tab := TabState{
-		ID: "wE:t1",
-		Panes: []*PaneState{
-			{ID: "wE:p1", ChangedAt: now},
-			{ID: "wE:p2", ChangedAt: now.Add(time.Minute), Focused: true},
-			{ID: "wE:p3", ChangedAt: now.Add(time.Hour)},
-		},
-	}
+	tab := tabOf([]*PaneState{
+		{ID: "wE:p1", ChangedAt: now},
+		{ID: "wE:p2", ChangedAt: now.Add(time.Minute), Focused: true},
+		{ID: "wE:p3", ChangedAt: now.Add(time.Hour)},
+	})
 
-	if got := SelectContextPane(tab); got == nil || got.ID != "wE:p2" {
+	if got := tab.Context; got == nil || got.ID != "wE:p2" {
 		t.Fatalf("selected %v, want the focused pane wE:p2", got)
 	}
 }
 
-func TestSelectContextPaneFallsBackToMostRecent(t *testing.T) {
+func TestTabContextFallsBackToMostRecent(t *testing.T) {
 	now := time.Now()
-	tab := TabState{
-		ID: "wE:t1",
-		Panes: []*PaneState{
-			{ID: "wE:p1", ChangedAt: now},
-			{ID: "wE:p2", ChangedAt: now.Add(time.Hour)},
-			{ID: "wE:p3", ChangedAt: now.Add(time.Minute)},
-		},
-	}
+	tab := tabOf([]*PaneState{
+		{ID: "wE:p1", ChangedAt: now},
+		{ID: "wE:p2", ChangedAt: now.Add(time.Hour)},
+		{ID: "wE:p3", ChangedAt: now.Add(time.Minute)},
+	})
 
-	if got := SelectContextPane(tab); got == nil || got.ID != "wE:p2" {
+	if got := tab.Context; got == nil || got.ID != "wE:p2" {
 		t.Fatalf("selected %v, want the most recently updated pane wE:p2", got)
 	}
 }
@@ -47,6 +41,7 @@ func TestTabFromKeepsItsLabel(t *testing.T) {
 		"dashboard",
 		1,
 		[]*PaneState{{ID: "wE:p1", Dir: "/work/dashboard"}},
+		false,
 	)
 
 	if tab.CurrentName != "dashboard" {
@@ -106,96 +101,84 @@ func TestPaneWithoutAnAgent(t *testing.T) {
 	}
 }
 
-func TestSelectContextPaneBreaksTiesOnID(t *testing.T) {
+func TestTabContextBreaksTiesOnID(t *testing.T) {
 	stamp := time.Now()
 	// Built through TabFrom, because that is where the order is imposed: the
 	// snapshot lists panes in whatever order it pleases.
-	tab := TabFrom(herdr.TabInfo{TabID: "wE:t1"}, "", 1, []*PaneState{
+	tab := tabOf([]*PaneState{
 		{ID: "wE:p3", ChangedAt: stamp},
 		{ID: "wE:p1", ChangedAt: stamp},
 		{ID: "wE:p2", ChangedAt: stamp},
 	})
 
-	if got := SelectContextPane(tab); got == nil || got.ID != "wE:p1" {
+	if got := tab.Context; got == nil || got.ID != "wE:p1" {
 		t.Fatalf("selected %v, want the lowest id wE:p1", got)
 	}
 }
 
-func TestSelectContextPaneWithoutPanes(t *testing.T) {
-	if got := SelectContextPane(TabState{ID: "wE:t1"}); got != nil {
+func TestTabContextWithoutPanes(t *testing.T) {
+	if got := tabOf(nil).Context; got != nil {
 		t.Fatalf("selected %v, want nil", got)
 	}
 }
 
-func TestSelectContextPanePrefersAnActiveAgent(t *testing.T) {
+func TestTabContextPrefersAnActiveAgent(t *testing.T) {
 	now := time.Now()
-	tab := TabState{
-		ID: "wE:t1",
-		Panes: []*PaneState{
-			// The agent runs in a split the user is not typing in, so a build
-			// scrolling past in the pane below keeps winning on recency.
-			{ID: "wE:p1", ChangedAt: now, Agent: "claude", AgentStatus: herdr.AgentStatusWorking},
-			{ID: "wE:p2", ChangedAt: now.Add(time.Hour)},
-		},
-	}
+	tab := tabOf([]*PaneState{
+		// The agent runs in a split the user is not typing in, so a build
+		// scrolling past in the pane below keeps winning on recency.
+		{ID: "wE:p1", ChangedAt: now, Agent: "claude", AgentStatus: herdr.AgentStatusWorking},
+		{ID: "wE:p2", ChangedAt: now.Add(time.Hour)},
+	})
 
-	if got := SelectContextPane(tab); got == nil || got.ID != "wE:p1" {
+	if got := tab.Context; got == nil || got.ID != "wE:p1" {
 		t.Fatalf("selected %v, want the agent pane wE:p1", got)
 	}
 }
 
-func TestSelectContextPaneIgnoresAnIdleAgent(t *testing.T) {
+func TestTabContextIgnoresAnIdleAgent(t *testing.T) {
 	now := time.Now()
 
 	for _, status := range []string{"idle", "done", "unknown"} {
 		t.Run(status, func(t *testing.T) {
-			tab := TabState{
-				ID: "wE:t1",
-				Panes: []*PaneState{
-					{ID: "wE:p1", ChangedAt: now, Agent: "claude", AgentStatus: status},
-					{ID: "wE:p2", ChangedAt: now.Add(time.Hour)},
-				},
-			}
+			tab := tabOf([]*PaneState{
+				{ID: "wE:p1", ChangedAt: now, Agent: "claude", AgentStatus: status},
+				{ID: "wE:p2", ChangedAt: now.Add(time.Hour)},
+			})
 
-			if got := SelectContextPane(tab); got == nil || got.ID != "wE:p2" {
+			if got := tab.Context; got == nil || got.ID != "wE:p2" {
 				t.Fatalf("selected %v, want the most recently updated pane wE:p2", got)
 			}
 		})
 	}
 }
 
-func TestSelectContextPanePrefersTheFocusedPaneOverAnAgent(t *testing.T) {
+func TestTabContextPrefersTheFocusedPaneOverAnAgent(t *testing.T) {
 	now := time.Now()
-	tab := TabState{
-		ID: "wE:t1",
-		Panes: []*PaneState{
-			{ID: "wE:p1", ChangedAt: now, Agent: "claude", AgentStatus: herdr.AgentStatusWorking},
-			{ID: "wE:p2", ChangedAt: now, Focused: true},
-		},
-	}
+	tab := tabOf([]*PaneState{
+		{ID: "wE:p1", ChangedAt: now, Agent: "claude", AgentStatus: herdr.AgentStatusWorking},
+		{ID: "wE:p2", ChangedAt: now, Focused: true},
+	})
 
-	if got := SelectContextPane(tab); got == nil || got.ID != "wE:p2" {
+	if got := tab.Context; got == nil || got.ID != "wE:p2" {
 		t.Fatalf("selected %v, want the focused pane wE:p2", got)
 	}
 }
 
-func TestSelectContextPaneAmongSeveralAgents(t *testing.T) {
+func TestTabContextAmongSeveralAgents(t *testing.T) {
 	now := time.Now()
-	tab := TabState{
-		ID: "wE:t1",
-		Panes: []*PaneState{
-			{ID: "wE:p1", ChangedAt: now, Agent: "claude", AgentStatus: herdr.AgentStatusWorking},
-			{
-				ID:          "wE:p2",
-				ChangedAt:   now.Add(time.Hour),
-				Agent:       "claude",
-				AgentStatus: herdr.AgentStatusBlocked,
-			},
-			{ID: "wE:p3", ChangedAt: now.Add(2 * time.Hour)},
+	tab := tabOf([]*PaneState{
+		{ID: "wE:p1", ChangedAt: now, Agent: "claude", AgentStatus: herdr.AgentStatusWorking},
+		{
+			ID:          "wE:p2",
+			ChangedAt:   now.Add(time.Hour),
+			Agent:       "claude",
+			AgentStatus: herdr.AgentStatusBlocked,
 		},
-	}
+		{ID: "wE:p3", ChangedAt: now.Add(2 * time.Hour)},
+	})
 
-	if got := SelectContextPane(tab); got == nil || got.ID != "wE:p2" {
+	if got := tab.Context; got == nil || got.ID != "wE:p2" {
 		t.Fatalf("selected %v, want the most recently updated agent pane wE:p2", got)
 	}
 }
@@ -299,17 +282,31 @@ func TestPaneDirKeepsTheSnapshotsGuessWhenItLearnsNone(t *testing.T) {
 	}
 }
 
-func TestSelectContextPaneWithPreferAgentOutranksFocus(t *testing.T) {
-	tab := TabState{Panes: []*PaneState{
-		{ID: "wE:p1", Agent: "claude", AgentStatus: "idle", ChangedAt: time.Unix(1, 0)},
+func TestAPreferredAgentOutranksFocusInAnyState(t *testing.T) {
+	// An editor focused beside the agent must not take the tab over, even from
+	// an agent that has finished, which the default rules pass over.
+	panes := []*PaneState{
+		{ID: "wE:p1", Agent: "claude", AgentStatus: "done", ChangedAt: time.Unix(1, 0)},
 		{ID: "wE:p2", Focused: true, ChangedAt: time.Unix(2, 0)},
-	}}
-
-	if got := SelectContextPaneWith(tab, true); got == nil || got.ID != "wE:p1" {
-		t.Fatalf("SelectContextPaneWith(prefer agent) = %v, want the agent pane wE:p1", got)
 	}
 
-	if got := SelectContextPaneWith(tab, false); got == nil || got.ID != "wE:p2" {
-		t.Fatalf("SelectContextPaneWith(no preference) = %v, want the focused pane wE:p2", got)
+	if got := TabFrom(
+		herdr.TabInfo{TabID: "wE:t1"},
+		"",
+		1,
+		panes,
+		true,
+	).Context; got == nil ||
+		got.ID != "wE:p1" {
+		t.Fatalf("context = %v, want the agent pane wE:p1", got)
 	}
+
+	if got := tabOf(panes).Context; got == nil || got.ID != "wE:p2" {
+		t.Fatalf("context = %v without the preference, want the focused pane wE:p2", got)
+	}
+}
+
+// tabOf builds a tab without the agent preference, which is how it ships.
+func tabOf(panes []*PaneState) TabState {
+	return TabFrom(herdr.TabInfo{TabID: "wE:t1"}, "", 1, panes, false)
 }

@@ -147,23 +147,20 @@ func TestAgentTitleWithNoDirectoryStandsAlone(t *testing.T) {
 func TestContextAndActivityComeFromTheSamePane(t *testing.T) {
 	// The agent pane wins the selection; the other pane's directory must not
 	// leak into the name and describe neither of them.
-	tab := state.TabState{
-		ID: "wE:t1",
-		Panes: []*state.PaneState{
-			{
-				ID:            "wE:p1",
-				Dir:           api,
-				TerminalTitle: "Run migrations",
-			},
-			{
-				ID:          "wE:p2",
-				Dir:         dashboard,
-				Agent:       "claude",
-				AgentStatus: herdr.AgentStatusWorking,
-				AgentTitle:  "Implement OAuth scopes",
-			},
+	tab := tabOf([]*state.PaneState{
+		{
+			ID:            "wE:p1",
+			Dir:           api,
+			TerminalTitle: "Run migrations",
 		},
-	}
+		{
+			ID:          "wE:p2",
+			Dir:         dashboard,
+			Agent:       "claude",
+			AgentStatus: herdr.AgentStatusWorking,
+			AgentTitle:  "Implement OAuth scopes",
+		},
+	})
 
 	got := defaultChain().Resolve(tab)
 	if want := "dashboard › claude › Implement OAuth scopes"; got.Name != want {

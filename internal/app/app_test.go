@@ -517,6 +517,29 @@ func TestAnAgentPaneIsNamedAfterTheAgentsOwnDirectory(t *testing.T) {
 	}
 }
 
+func TestAPreferredAgentPaneIsTheOneRead(t *testing.T) {
+	// The pane a tab is named after is the one whose processes are read, or its
+	// directory is the snapshot's guess rather than where the agent runs.
+	cfg := testConfig()
+	cfg.PreferAgentPane = true
+
+	client := herdrtest.New(
+		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
+		[]herdr.PaneInfo{
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
+			{PaneID: "wE:p2", TabID: "wE:t1", CWD: api, Agent: "claude"},
+		},
+	)
+	client.SetProcesses("wE:p2", herdr.PaneProcessInfoProcess{Name: "claude", CWD: billing})
+
+	h := startConfigured(t, client, cfg)
+	h.poll()
+
+	if got := h.client.Renames(); len(got) != 1 || got[0].Label != "billing › claude" {
+		t.Errorf("renames = %v, want the agent pane's read directory", got)
+	}
+}
+
 func TestARemoteSessionIsNamedAfterItsHost(t *testing.T) {
 	// What is running in a pane is not in the snapshot, so this exercises the
 	// extra read the poll makes for the pane that names the tab.
