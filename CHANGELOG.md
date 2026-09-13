@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.6.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.5.0...v0.6.0) (2026-09-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* **app:** Auto Title now names every pane as well as every tab, changing how panes are listed in Herdr's goto panel. The first start renames panes you labelled by hand before, since nothing marks a label as yours until Auto Title has watched it; a pane renamed after that is left alone. Set HERDR_AUTO_TITLE_PANES=false to keep the previous behaviour.
+
+### Features
+
+* **app:** name panes as well as tabs ([7e1f18c](https://github.com/kryptamine/herdr-auto-title/commit/7e1f18c8928442953a20b4375b49ad3b64318d34))
+* **app:** name panes by default ([901c0d6](https://github.com/kryptamine/herdr-auto-title/commit/901c0d6d5f4ba3a6fbc18db8ba3e26a08fa182e9))
+* HERDR_AUTO_TITLE_PREFER_AGENT names a split tab after its agent pane ([82ed493](https://github.com/kryptamine/herdr-auto-title/commit/82ed493c314a48d135be52ad2029944725cb28b7))
+
+
+### Bug Fixes
+
+* **resolver:** do not repeat a branch its worktree is named after ([7fcec81](https://github.com/kryptamine/herdr-auto-title/commit/7fcec810280696b8b38b5bd884be2b340c73e02b))
+
+
+### Refactoring
+
+* name tabs and panes through one path ([a491b66](https://github.com/kryptamine/herdr-auto-title/commit/a491b661812033aa3f4002ed460d05d7b3655245))
+* **state:** name the context pane rule and drop its nil case ([7dbcccd](https://github.com/kryptamine/herdr-auto-title/commit/7dbcccd91337325a5701f8489df73513e4b69f40))
+* **state:** pick a tab's context pane once, when it is built ([3946461](https://github.com/kryptamine/herdr-auto-title/commit/394646179c21e5c02229c9c0471484c2130bd3fd))
+
 ## [0.5.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.4.0...v0.5.0) (2026-09-08)
 
 
