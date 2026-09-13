@@ -210,17 +210,22 @@ func TabFrom(
 	}
 }
 
+// paneRule is a condition a pane must meet to name its tab.
+type paneRule func(*PaneState) bool
+
 func focused(p *PaneState) bool { return p.Focused }
 
+func anyPane(*PaneState) bool { return true }
+
 // contextRules rank the panes a tab may be named after: the focused one, then
-// one running an active agent, then any. A nil rule takes every pane.
+// one running an active agent, then any.
 var (
-	contextRules    = []func(*PaneState) bool{focused, (*PaneState).AgentIsActive, nil}
-	agentFirstRules = append([]func(*PaneState) bool{(*PaneState).HasAgent}, contextRules...)
+	contextRules    = []paneRule{focused, (*PaneState).AgentIsActive, anyPane}
+	agentFirstRules = append([]paneRule{(*PaneState).HasAgent}, contextRules...)
 )
 
 // contextPane is the last-changed pane of the first rule any pane passes.
-func contextPane(panes []*PaneState, rules []func(*PaneState) bool) *PaneState {
+func contextPane(panes []*PaneState, rules []paneRule) *PaneState {
 	for _, keep := range rules {
 		if pane := mostRecent(panes, keep); pane != nil {
 			return pane
@@ -231,13 +236,13 @@ func contextPane(panes []*PaneState, rules []func(*PaneState) bool) *PaneState {
 }
 
 // mostRecent returns the last-changed pane keep accepts, or nil when it
-// accepts none. A nil keep takes every pane. Panes arrive ordered by ID, and
-// the strict comparison keeps the lowest of them when timestamps tie.
-func mostRecent(panes []*PaneState, keep func(*PaneState) bool) *PaneState {
+// accepts none. Panes arrive ordered by ID, and the strict comparison keeps
+// the lowest of them when timestamps tie.
+func mostRecent(panes []*PaneState, keep paneRule) *PaneState {
 	var best *PaneState
 
 	for _, p := range panes {
-		if keep != nil && !keep(p) {
+		if !keep(p) {
 			continue
 		}
 
