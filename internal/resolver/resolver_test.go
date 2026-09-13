@@ -19,17 +19,19 @@ var (
 	api       = herdrtest.Dir("work", "api")
 )
 
+// tabOf builds a tab the way a poll does, so it names the pane a poll would.
+func tabOf(panes []*state.PaneState) state.TabState {
+	return state.TabFrom(herdr.TabInfo{TabID: "wE:t1"}, "", 1, panes, false)
+}
+
 func defaultChain() *Deterministic {
 	return Default(Options{MaxLength: DefaultMaxLength, BranchMax: DefaultBranchMaxLength})
 }
 
 func tabWithCWD(dir string) state.TabState {
-	return state.TabState{
-		ID: "wE:t1",
-		Panes: []*state.PaneState{
-			{ID: "wE:p1", Dir: dir, Focused: true},
-		},
-	}
+	return tabOf([]*state.PaneState{
+		{ID: "wE:p1", Dir: dir, Focused: true},
+	})
 }
 
 func TestResolveFromCWD(t *testing.T) {
@@ -73,12 +75,9 @@ func TestResolveFromCWD(t *testing.T) {
 
 func TestResolveNamesATabAfterItsDirectory(t *testing.T) {
 	r := New(Options{MaxLength: DefaultMaxLength}, NewCWD())
-	tab := state.TabState{
-		ID: "wE:t1",
-		Panes: []*state.PaneState{
-			{ID: "wE:p1", Dir: api, Focused: true},
-		},
-	}
+	tab := tabOf([]*state.PaneState{
+		{ID: "wE:p1", Dir: api, Focused: true},
+	})
 
 	if got := r.Resolve(tab); got.Name != "api" {
 		t.Errorf("name = %q, want %q", got.Name, "api")
@@ -88,7 +87,7 @@ func TestResolveNamesATabAfterItsDirectory(t *testing.T) {
 func TestResolveTabWithoutPanes(t *testing.T) {
 	r := New(Options{MaxLength: DefaultMaxLength}, NewCWD())
 
-	got := r.Resolve(state.TabState{ID: "wE:t1"})
+	got := r.Resolve(tabOf(nil))
 	if got.Name != GenericFallback {
 		t.Errorf("name = %q, want %q", got.Name, GenericFallback)
 	}
@@ -114,11 +113,11 @@ func TestResolveIsDeterministic(t *testing.T) {
 
 	// The same panes in whichever order a snapshot listed them must name the
 	// tab the same way, which is what TabFrom's ordering is for.
-	want := r.Resolve(state.TabFrom(herdr.TabInfo{TabID: "wE:t1"}, "", 1, panes))
+	want := r.Resolve(state.TabFrom(herdr.TabInfo{TabID: "wE:t1"}, "", 1, panes, false))
 	for i := range len(panes) {
 		rotated := append(slices.Clone(panes[i:]), panes[:i]...)
 
-		got := r.Resolve(state.TabFrom(herdr.TabInfo{TabID: "wE:t1"}, "", 1, rotated))
+		got := r.Resolve(state.TabFrom(herdr.TabInfo{TabID: "wE:t1"}, "", 1, rotated, false))
 		if got != want {
 			t.Fatalf("panes from %d: resolution = %+v, want %+v", i, got, want)
 		}
@@ -301,7 +300,7 @@ func TestSourcesAreOrderedByConfidenceNotByArgument(t *testing.T) {
 }
 
 func TestTheShippedChainResolvesATabWithNoPanes(t *testing.T) {
-	got := defaultChain().Resolve(state.TabState{ID: "wE:t1"})
+	got := defaultChain().Resolve(tabOf(nil))
 	if got.Name != GenericFallback {
 		t.Errorf("name = %q, want %q", got.Name, GenericFallback)
 	}
@@ -328,13 +327,10 @@ func TestResolvePanesNamesThePaneItIsGiven(t *testing.T) {
 	// panel lists them all. Each must be named from itself or the split reads
 	// as one row repeated.
 	chain := defaultChain()
-	tab := state.TabState{
-		ID: "wE:t1",
-		Panes: []*state.PaneState{
-			{ID: "wE:p1", Dir: dashboard, Focused: true},
-			{ID: "wE:p2", Dir: api},
-		},
-	}
+	tab := tabOf([]*state.PaneState{
+		{ID: "wE:p1", Dir: dashboard, Focused: true},
+		{ID: "wE:p2", Dir: api},
+	})
 
 	if got := chain.Resolve(tab).Name; got != "dashboard" {
 		t.Errorf("tab = %q, want the focused pane's directory", got)
@@ -351,7 +347,7 @@ func TestResolvePanesDropsWhatItsTabAlreadySays(t *testing.T) {
 	chain := defaultChain()
 	speaker := &state.PaneState{ID: "wE:p1", Dir: dashboard, Focused: true}
 	pane := &state.PaneState{ID: "wE:p2", Dir: dashboard, Agent: "claude"}
-	tab := state.TabState{ID: "wE:t1", Panes: []*state.PaneState{speaker, pane}}
+	tab := tabOf([]*state.PaneState{speaker, pane})
 
 	if got := chain.Resolve(tab).Name; got != "dashboard" {
 		t.Fatalf("tab = %q, want the directory", got)
@@ -371,7 +367,7 @@ func TestAPaneKeepsItsActivityAndDropsTheSharedContext(t *testing.T) {
 		ID: "wE:p1", Dir: dashboard, Focused: true,
 		TerminalTitle: "rewriting the pane label rules",
 	}
-	tab := state.TabState{ID: "wE:t1", Panes: []*state.PaneState{pane}}
+	tab := tabOf([]*state.PaneState{pane})
 
 	if got := chain.Resolve(tab).Name; got != "dashboard › rewriting the pane label rules" {
 		t.Fatalf("tab = %q, want where and what", got)
@@ -388,7 +384,7 @@ func TestAPaneWithOnlyAContextStillGetsIt(t *testing.T) {
 	// name, the same on every row — is the worse of the two.
 	chain := defaultChain()
 	pane := &state.PaneState{ID: "wE:p1", Dir: dashboard, Focused: true}
-	tab := state.TabState{ID: "wE:t1", Panes: []*state.PaneState{pane}}
+	tab := tabOf([]*state.PaneState{pane})
 
 	if got := chain.ResolvePanes(tab)[0].Name; got != "dashboard" {
 		t.Errorf("pane = %q, want the directory it has and nothing else", got)

@@ -34,7 +34,8 @@ it is.
 ## One pane speaks for the tab
 
 A tab holding several panes is named after one of them, never after a blend of
-both. `SelectContextPane` (`internal/state/tab.go`) picks, in order:
+both. `TabFrom` (`internal/state/tab.go`) picks it once, as `TabState.Context`,
+in order:
 
 1. the focused pane;
 2. failing that, a pane running an agent that is `working` or `blocked` — a
@@ -42,13 +43,15 @@ both. `SelectContextPane` (`internal/state/tab.go`) picks, in order:
    the pane below it saw the last update;
 3. failing that, the pane that changed most recently.
 
-With `HERDR_AUTO_TITLE_PREFER_AGENT=true` a pane running an agent, in any state,
-comes before all three: opening an editor beside an agent then leaves the tab
-named after the agent instead of flipping with focus.
+Each rule takes the pane that changed most recently among those it accepts,
+and ties break on pane ID, so identical state always yields the same choice.
+Both halves of the name then come from that pane alone.
 
-Ties break on the most recent change and then on pane ID, so identical state
-always yields the same choice. Both halves of the name then come from that pane
-alone.
+With `HERDR_AUTO_TITLE_PREFER_AGENT=true` a pane running an agent comes before
+all three, so an editor opened beside the agent leaves the tab named after the
+agent instead of flipping with focus. That rule takes an agent in any state,
+unlike rule 2: a user who asked for it has said the tab is about its agent,
+and an agent that finished is still what that tab was opened for.
 
 ## The confidence ladder
 

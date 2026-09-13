@@ -44,6 +44,7 @@ func (a *App) tabsIn(snapshot herdr.Snapshot) []state.TabState {
 				workspaces[info.WorkspaceID],
 				positions[info.WorkspaceID],
 				byTab[info.TabID],
+				a.preferAgent,
 			),
 		)
 	}

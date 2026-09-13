@@ -137,12 +137,12 @@ walking the same tree once each — see
 [title resolution](./title-resolution.md#the-git-branch).
 
 The reads are left out rather than made and discarded because a tab is named
-from one pane (`SelectContextPane`) and a locked tab is not named at all. A
+from one pane (`TabState.Context`) and a locked tab is not named at all. A
 four-pane tab therefore costs one process request rather than four, and a
 session the user has named by hand costs the snapshot and nothing else. The
 choice of pane is made from state the snapshot already carries — focus, agent
-status, and which pane last drew — so it can be made before anything is read,
-and the resolver arrives at the same pane on its own.
+status, and which pane last drew — so it is made once, when the tab is built,
+and both the reads and the resolver take that pane rather than choosing again.
 
 **Deduplication is what keeps the loop quiet.** The snapshot reports each tab's
 current label, and a rename is skipped when the resolved title already equals

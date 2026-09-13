@@ -108,7 +108,7 @@ type TitleResolver interface {
 // lists a pane under its tab, so a pane is named for what tells it from that tab.
 type PaneResolver interface {
 	// ResolvePanes names every pane of tab, in the order tab.Panes holds them.
-	// The tab's own pane is read from too, so it must be filled first.
+	// tab.Context is read from too, so it must be filled first.
 	ResolvePanes(tab state.TabState) []Decision
 }
 
@@ -121,18 +121,13 @@ type Options struct {
 	// way round so that the zero value keeps the name, which is what a resolver
 	// built without options wants.
 	HideAgentName bool
-	// PreferAgentPane names a tab after the pane running an agent even while
-	// another pane in it is focused, so an editor opened beside the agent does
-	// not take the title over.
-	PreferAgentPane bool
 }
 
 // Deterministic resolves titles from a fixed priority list of sources.
 type Deterministic struct {
-	sources         []Source
-	maxLength       int
-	hideAgentName   bool
-	preferAgentPane bool
+	sources       []Source
+	maxLength     int
+	hideAgentName bool
 }
 
 var (
@@ -153,10 +148,9 @@ func New(opts Options, sources ...Source) *Deterministic {
 	})
 
 	return &Deterministic{
-		sources:         ordered,
-		maxLength:       opts.MaxLength,
-		hideAgentName:   opts.HideAgentName,
-		preferAgentPane: opts.PreferAgentPane,
+		sources:       ordered,
+		maxLength:     opts.MaxLength,
+		hideAgentName: opts.HideAgentName,
 	}
 }
 
@@ -177,7 +171,7 @@ func Default(opts Options) *Deterministic {
 // Resolve names a tab in three steps: ask the sources what they see, drop the
 // parts that only repeat something already on screen, and assemble the rest.
 func (d *Deterministic) Resolve(tab state.TabState) Decision {
-	return d.name(d.collect(d.contextPane(tab)), Parts{Context: tab.WorkspaceName})
+	return d.name(d.collect(tab.Context), Parts{Context: tab.WorkspaceName})
 }
 
 // ResolvePanes names each pane of a tab by what tells it from that tab. The row
@@ -185,7 +179,7 @@ func (d *Deterministic) Resolve(tab state.TabState) Decision {
 // docs/architecture/title-resolution.md.
 func (d *Deterministic) ResolvePanes(tab state.TabState) []Decision {
 	workspace := Parts{Context: tab.WorkspaceName}
-	above := d.collect(d.contextPane(tab)).parts
+	above := d.collect(tab.Context).parts
 
 	decisions := make([]Decision, len(tab.Panes))
 	for i, pane := range tab.Panes {
@@ -193,10 +187,6 @@ func (d *Deterministic) ResolvePanes(tab state.TabState) []Decision {
 	}
 
 	return decisions
-}
-
-func (d *Deterministic) contextPane(tab state.TabState) *state.PaneState {
-	return state.SelectContextPaneWith(tab, d.preferAgentPane)
 }
 
 // name assembles what the chain found into a title, dropping in turn what each

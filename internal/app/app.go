@@ -26,8 +26,7 @@ type App struct {
 	// panes names each pane of a tab as well as the tab itself, and is nil
 	// when the user turned that off.
 	panes resolver.PaneResolver
-	// preferAgent picks the pane a tab is named after as its resolver does, so
-	// the process read lands on that pane.
+	// preferAgent names a tab after its agent pane rather than its focused one.
 	preferAgent bool
 	changes     *state.Changes
 	manual      *state.Manual
@@ -69,10 +68,9 @@ func New(
 // is turned off.
 func Resolvers(cfg Config) (resolver.TitleResolver, resolver.PaneResolver) {
 	chain := resolver.Default(resolver.Options{
-		MaxLength:       cfg.MaxLength,
-		BranchMax:       cfg.BranchMax,
-		HideAgentName:   !cfg.ShowAgentName,
-		PreferAgentPane: cfg.PreferAgentPane,
+		MaxLength:     cfg.MaxLength,
+		BranchMax:     cfg.BranchMax,
+		HideAgentName: !cfg.ShowAgentName,
 	})
 
 	var titles resolver.TitleResolver = chain
@@ -207,9 +205,8 @@ func (a *App) nameTab(
 	}
 
 	// Read here rather than during assembly: the reads are what a poll
-	// spends, and only a tab that will be renamed is worth them. The
-	// resolver picks the same pane, because the choice is made from state.
-	reads.fill(ctx, client, state.SelectContextPaneWith(tab, a.preferAgent))
+	// spends, and only a tab that will be renamed is worth them.
+	reads.fill(ctx, client, tab.Context)
 
 	decision := a.titles.Resolve(tab)
 	a.apply(
@@ -233,7 +230,7 @@ func (a *App) namePanes(
 ) {
 	// Every pane is named against the tab's own pane, which is read even when
 	// the tab is claimed; a poll never spends the same read twice.
-	reads.fill(ctx, client, state.SelectContextPaneWith(tab, a.preferAgent))
+	reads.fill(ctx, client, tab.Context)
 
 	for _, pane := range tab.Panes {
 		if !a.manual.Panes.Locked(pane.ID) {
