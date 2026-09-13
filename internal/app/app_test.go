@@ -60,14 +60,19 @@ func testResolver(t *testing.T) *resolver.Deterministic {
 	})
 }
 
-// newTestApp builds an App on the shipped chain, which names a pane as well as
-// a tab. Whether it does is the configuration's to say, not the chain's.
+// newTestApp builds an App on the shipped chain, naming panes only when the
+// configuration asks for it.
 func newTestApp(t *testing.T, cfg Config) *App {
 	t.Helper()
 
 	chain := testResolver(t)
 
-	return New(cfg, discardLogger(), chain, chain)
+	var panes resolver.PaneResolver
+	if cfg.RenamePanes {
+		panes = chain
+	}
+
+	return New(cfg, discardLogger(), chain, panes)
 }
 
 // harness drives an App against a stubbed Herdr session one poll at a time, so

@@ -6,7 +6,6 @@ import (
 
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
 	"github.com/kryptamine/herdr-auto-title/internal/herdr/herdrtest"
-	"github.com/kryptamine/herdr-auto-title/internal/resolver"
 )
 
 // paneConfig is the configuration with pane naming asked for, which nothing
@@ -222,24 +221,15 @@ func TestNamingPanesCostsOneProcessReadPerPane(t *testing.T) {
 	}
 }
 
-// appFromConfig builds the App the way main.run does, which is the only place
-// that decides what reaches the pane path and what does not.
+// appFromConfig builds the App from the resolvers the configuration asks for,
+// which is what decides what reaches the pane path and what does not.
 func appFromConfig(t *testing.T, cfg Config) *App {
 	t.Helper()
 	setHome(t, filepath.Join(t.TempDir(), "home"))
 
-	chain := resolver.Default(resolver.Options{
-		MaxLength:     cfg.MaxLength,
-		BranchMax:     cfg.BranchMax,
-		HideAgentName: !cfg.ShowAgentName,
-	})
+	titles, panes := Resolvers(cfg)
 
-	var titles resolver.TitleResolver = chain
-	if cfg.ShowPosition {
-		titles = resolver.NewNumbered(chain, cfg.MaxLength)
-	}
-
-	return New(cfg, discardLogger(), titles, chain)
+	return New(cfg, discardLogger(), titles, panes)
 }
 
 func TestTheSettingsThatShapeATitleShapeAPaneLabel(t *testing.T) {
@@ -306,5 +296,24 @@ func TestTheSettingsThatShapeATitleShapeAPaneLabel(t *testing.T) {
 				t.Errorf("tab = %v, want %q", tabs, tc.wantTab)
 			}
 		})
+	}
+}
+
+func TestAPaneKeepsItsNameWhenItsTabIsClaimed(t *testing.T) {
+	// A pane is named against its tab's own pane, which a claimed tab does not
+	// read for itself. Unread, it has no branch, so a pane ordered before it
+	// would take the branch back the moment the user named the tab.
+	repo := repoAt(t, "feat/oauth")
+	h := startPanes(t, oneTab(), []herdr.PaneInfo{
+		{PaneID: "wE:p1", TabID: "wE:t1", CWD: repo, Agent: "claude"},
+		{PaneID: "wE:p2", TabID: "wE:t1", CWD: repo, Focused: true},
+	})
+	h.poll()
+
+	h.client.SetTab(herdr.TabInfo{TabID: "wE:t1", Label: "Important work"})
+	h.polls(2)
+
+	if got := labelsOf(h, "wE:p1"); len(got) != 1 || got[0] != "claude" {
+		t.Errorf("pane = %v, want it named once and kept when its tab was claimed", got)
 	}
 }

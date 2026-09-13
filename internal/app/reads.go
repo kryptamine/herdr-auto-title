@@ -90,9 +90,8 @@ type paneReads struct {
 	checkouts checkoutMemo
 }
 
-// fill supplies what the snapshot could not say about the one pane a tab is
-// named from. The other panes of that tab keep what the snapshot said, because
-// nothing reads any more of them.
+// fill supplies what the snapshot could not say about a pane. A pane nobody
+// fills keeps what the snapshot said, which is most of them.
 func (p *paneReads) fill(ctx context.Context, client herdr.Client, pane *state.PaneState) {
 	if pane == nil {
 		return

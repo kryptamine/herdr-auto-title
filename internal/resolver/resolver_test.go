@@ -323,7 +323,7 @@ func TestTheHomeDirectoryIsMatchedTheWayWindowsSpellsIt(t *testing.T) {
 	}
 }
 
-func TestResolvePaneNamesThePaneItIsGiven(t *testing.T) {
+func TestResolvePanesNamesThePaneItIsGiven(t *testing.T) {
 	// The point of naming panes: a tab speaks through one pane, and the goto
 	// panel lists them all. Each must be named from itself or the split reads
 	// as one row repeated.
@@ -340,12 +340,12 @@ func TestResolvePaneNamesThePaneItIsGiven(t *testing.T) {
 		t.Errorf("tab = %q, want the focused pane's directory", got)
 	}
 
-	if got := chain.ResolvePane(tab.Panes[1], tab).Name; got != "api" {
+	if got := chain.ResolvePanes(tab)[1].Name; got != "api" {
 		t.Errorf("pane = %q, want the unfocused pane's own directory", got)
 	}
 }
 
-func TestResolvePaneDropsWhatItsTabAlreadySays(t *testing.T) {
+func TestResolvePanesDropsWhatItsTabAlreadySays(t *testing.T) {
 	// The goto panel puts a pane's row under its tab's, so the directory both
 	// share is on screen once already and only the agent tells them apart.
 	chain := defaultChain()
@@ -357,7 +357,7 @@ func TestResolvePaneDropsWhatItsTabAlreadySays(t *testing.T) {
 		t.Fatalf("tab = %q, want the directory", got)
 	}
 
-	if got := chain.ResolvePane(pane, tab).Name; got != "claude" {
+	if got := chain.ResolvePanes(tab)[1].Name; got != "claude" {
 		t.Errorf("pane = %q, want the directory its tab carries dropped", got)
 	}
 }
@@ -377,7 +377,7 @@ func TestAPaneKeepsItsActivityAndDropsTheSharedContext(t *testing.T) {
 		t.Fatalf("tab = %q, want where and what", got)
 	}
 
-	if got := chain.ResolvePane(pane, tab).Name; got != "rewriting the pane label rules" {
+	if got := chain.ResolvePanes(tab)[0].Name; got != "rewriting the pane label rules" {
 		t.Errorf("pane = %q, want the what alone", got)
 	}
 }
@@ -390,7 +390,7 @@ func TestAPaneWithOnlyAContextStillGetsIt(t *testing.T) {
 	pane := &state.PaneState{ID: "wE:p1", Dir: dashboard, Focused: true}
 	tab := state.TabState{ID: "wE:t1", Panes: []*state.PaneState{pane}}
 
-	if got := chain.ResolvePane(pane, tab).Name; got != "dashboard" {
+	if got := chain.ResolvePanes(tab)[0].Name; got != "dashboard" {
 		t.Errorf("pane = %q, want the directory it has and nothing else", got)
 	}
 }

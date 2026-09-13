@@ -21,7 +21,7 @@ changed between two polls**. The whole design follows from that, and it lives in
 
 A tab is the user's work when its label moved to something Auto Title neither
 set nor would have set. Three things are compared on every poll
-(`Manual.Observe`):
+(`Claims.Observe`):
 
 - **Current** — the label the snapshot reports.
 - **Desired** — what the resolver would name the tab right now.
@@ -32,7 +32,7 @@ Title's own work, and it is harmless either way. A label equal to *Seen* has not
 moved, so nobody did anything. Anything else moved, and whoever moved it was not
 the plugin.
 
-`Manual.Applied` records each successful rename, so the plugin's own work never
+`Claims.Applied` records each successful rename, so the plugin's own work never
 reads as the user's on the next poll.
 
 ## Two traps this design walked into
@@ -92,7 +92,7 @@ a worse surprise than the plugin briefly stopping. Locks are therefore persisted
 
 But Herdr's tab ids belong to a session, so a stored `wE:t2` may be an unrelated
 tab by the time it is read back. **A lock records the label it was taken with**
-and is released if the tab no longer carries it (`Manual.Retain`, which also
+and is released if the tab no longer carries it (`Claims.Retain`, which also
 drops everything about tabs the session no longer holds).
 
 The cost of that guard is stated plainly: **a rename made while the plugin is
@@ -125,11 +125,10 @@ its own is specified and not built.
 
 Auto Title can name panes as well as tabs
 ([configuration](./configuration.md)), and a pane it names is a pane the user
-can rename back. The rule above is the same rule: `Manual` holds a set of
-claims per kind, and `ObservePane`, `AppliedPane`, `LockedPane` and
-`RetainPanes` are the tab methods over the pane set. Locks for both live in the
-same file, panes under `locked_panes`, so a store written by an older version
-reads back unchanged.
+can rename back. The rule above is the same rule: `Manual` holds one `Claims`
+per kind, `Manual.Tabs` and `Manual.Panes`, and each runs it over ids of its own.
+Locks for both live in the same file, panes under `locked_panes`, so a store
+written by an older version reads back unchanged.
 
 Two things differ, both because Herdr labels a pane differently from a tab.
 

@@ -39,8 +39,8 @@ type App struct {
 }
 
 // New builds the application. The client belongs to Run rather than to the
-// App, so one App can be driven by any connection. panes may be nil, and is
-// ignored unless the configuration asks for pane names.
+// App, so one App can be driven by any connection. A nil panes leaves every
+// pane's label alone.
 func New(
 	cfg Config,
 	log *slog.Logger,
@@ -49,20 +49,37 @@ func New(
 ) *App {
 	changes := state.NewChanges()
 
-	app := &App{
+	return &App{
 		pollEvery: cfg.Poll,
 		log:       log,
 		titles:    titles,
+		panes:     panes,
 		changes:   changes,
 		manual:    state.LoadManual(cfg.ManualPath),
 		reads:     newPaneReader(cfg, log, changes),
 	}
+}
 
-	if cfg.RenamePanes {
-		app.panes = panes
+// Resolvers builds what the configuration asks titles to be resolved by: the
+// shipped chain, its position in front when asked, and panes named only when
+// asked.
+func Resolvers(cfg Config) (resolver.TitleResolver, resolver.PaneResolver) {
+	chain := resolver.Default(resolver.Options{
+		MaxLength:     cfg.MaxLength,
+		BranchMax:     cfg.BranchMax,
+		HideAgentName: !cfg.ShowAgentName,
+	})
+
+	var titles resolver.TitleResolver = chain
+	if cfg.ShowPosition {
+		titles = resolver.NewNumbered(chain, cfg.MaxLength)
 	}
 
-	return app
+	if !cfg.RenamePanes {
+		return titles, nil
+	}
+
+	return titles, chain
 }
 
 // Run polls the session until the context is cancelled. Herdr's event stream is
@@ -148,11 +165,8 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 	a.changes.Observe(snapshot.Panes)
 	// Taken from the snapshot rather than from the tabs below, because this is
 	// what decides which of them are locked, and a locked tab is never read.
-	a.manual.Retain(labelsIn(snapshot.Tabs))
-
-	if a.panes != nil {
-		a.manual.RetainPanes(paneLabelsIn(snapshot.Panes))
-	}
+	a.manual.Tabs.Retain(labelsIn(snapshot.Tabs))
+	a.manual.Panes.Retain(paneLabelsIn(snapshot.Panes))
 
 	tabs := a.tabsIn(snapshot)
 	reads := a.reads.forPoll(snapshot.Panes)
@@ -163,7 +177,10 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 		}
 
 		a.nameTab(ctx, client, reads, tab)
-		a.namePanes(ctx, client, reads, tab)
+
+		if a.panes != nil {
+			a.namePanes(ctx, client, reads, tab)
+		}
 	}
 
 	// Reached only when every tab was seen. Deferring this would settle after a
@@ -180,7 +197,7 @@ func (a *App) nameTab(
 	reads *paneReads,
 	tab state.TabState,
 ) {
-	if a.manual.Locked(tab.ID) {
+	if a.manual.Tabs.Locked(tab.ID) {
 		return
 	}
 
@@ -190,16 +207,14 @@ func (a *App) nameTab(
 	reads.fill(ctx, client, state.SelectContextPane(tab))
 
 	decision := a.titles.Resolve(tab)
-	if a.manual.Observe(state.SightingFrom(tab, decision.Name)) {
-		a.log.Info("leaving a tab the user renamed", "tab_id", tab.ID, "name", tab.CurrentName)
-		return
-	}
-
-	if decision.Name == "" || decision.Name == tab.CurrentName {
-		return
-	}
-
-	a.rename(ctx, client, tab, decision)
+	a.apply(
+		ctx,
+		client,
+		tabLabels,
+		a.manual.Tabs,
+		state.SightingFrom(tab, decision.Name),
+		decision,
+	)
 }
 
 // namePanes labels every pane of a tab, which is what Herdr's goto panel lists
@@ -211,101 +226,98 @@ func (a *App) namePanes(
 	reads *paneReads,
 	tab state.TabState,
 ) {
-	if a.panes == nil {
-		return
-	}
+	// Every pane is named against the tab's own pane, which is read even when
+	// the tab is claimed; a poll never spends the same read twice.
+	reads.fill(ctx, client, state.SelectContextPane(tab))
 
 	for _, pane := range tab.Panes {
+		if !a.manual.Panes.Locked(pane.ID) {
+			reads.fill(ctx, client, pane)
+		}
+	}
+
+	for i, decision := range a.panes.ResolvePanes(tab) {
 		if ctx.Err() != nil {
 			return
 		}
 
-		if a.manual.LockedPane(pane.ID) {
+		pane := tab.Panes[i]
+		if a.manual.Panes.Locked(pane.ID) {
 			continue
 		}
 
-		// The context pane was filled by nameTab, and filling it again costs
-		// nothing: a poll remembers every read it has already spent.
-		reads.fill(ctx, client, pane)
-
-		decision := a.panes.ResolvePane(pane, tab)
-		if a.manual.ObservePane(state.PaneSightingFrom(pane, decision.Name)) {
-			a.log.Info(
-				"leaving a pane the user renamed",
-				"pane_id", pane.ID,
-				"name", pane.CurrentName,
-			)
-
-			continue
-		}
-
-		if decision.Name == "" || decision.Name == pane.CurrentName {
-			continue
-		}
-
-		a.renamePane(ctx, client, pane, decision)
+		a.apply(
+			ctx,
+			client,
+			paneLabels,
+			a.manual.Panes,
+			state.PaneSightingFrom(pane, decision.Name),
+			decision,
+		)
 	}
 }
 
-// rename gives the tab the name the resolver chose. Nothing that goes wrong
-// here is worth cutting the poll short: the next one decides again from state
-// it has read again.
-func (a *App) rename(
+// labelKind is what differs between the two things Auto Title names.
+type labelKind struct {
+	noun   string
+	rename func(ctx context.Context, c herdr.Client, id, label string) error
+	// gone is the error Herdr answers when the thing closed between the
+	// snapshot and the rename. The next poll will not see it at all.
+	gone string
+}
+
+var (
+	tabLabels = labelKind{
+		noun:   "tab",
+		rename: herdr.RenameTab,
+		gone:   herdr.CodeTabNotFound,
+	}
+	paneLabels = labelKind{
+		noun:   "pane",
+		rename: herdr.RenamePane,
+		gone:   herdr.CodePaneNotFound,
+	}
+)
+
+// apply gives a tab or a pane the name the resolver chose, unless the user put
+// the label it carries there. Nothing that goes wrong here is worth cutting the
+// poll short: the next one decides again from state it has read again.
+func (a *App) apply(
 	ctx context.Context,
 	client herdr.Client,
-	tab state.TabState,
+	kind labelKind,
+	claims *state.Claims,
+	seen state.Sighting,
 	decision resolver.Decision,
 ) {
-	if err := herdr.RenameTab(ctx, client, tab.ID, decision.Name); err != nil {
-		if herdr.ErrorCode(err) == herdr.CodeTabNotFound {
-			// The tab closed between the snapshot and the rename. The next
-			// poll will not see it at all.
-			a.log.Debug("tab closed before it could be renamed", "tab_id", tab.ID)
+	idKey := kind.noun + "_id"
+
+	if claims.Observe(seen) {
+		a.log.Info("leaving a "+kind.noun+" the user renamed", idKey, seen.ID, "name", seen.Current)
+		return
+	}
+
+	if decision.Name == "" || decision.Name == seen.Current {
+		return
+	}
+
+	if err := kind.rename(ctx, client, seen.ID, decision.Name); err != nil {
+		if herdr.ErrorCode(err) == kind.gone {
+			a.log.Debug(kind.noun+" closed before it could be renamed", idKey, seen.ID)
 			return
 		}
 
-		a.log.Warn("rename failed", "tab_id", tab.ID, "name", decision.Name, "error", err)
+		a.log.Warn(kind.noun+" rename failed", idKey, seen.ID, "name", decision.Name, "error", err)
 
 		return
 	}
 
 	// Recorded before the log line so the next poll cannot read this rename as
 	// the user's.
-	a.manual.Applied(tab.ID, decision.Name)
-	a.log.Info("tab renamed",
-		"tab_id", tab.ID,
-		"old", tab.CurrentName,
-		"new", decision.Name,
-		"reason", decision.Reason,
-		"confidence", decision.Confidence,
-	)
-}
-
-// renamePane gives the pane the name the resolver chose. Like a tab's rename,
-// nothing that goes wrong here is worth cutting the poll short.
-func (a *App) renamePane(
-	ctx context.Context,
-	client herdr.Client,
-	pane *state.PaneState,
-	decision resolver.Decision,
-) {
-	if err := herdr.RenamePane(ctx, client, pane.ID, decision.Name); err != nil {
-		if herdr.ErrorCode(err) == herdr.CodePaneNotFound {
-			a.log.Debug("pane closed before it could be renamed", "pane_id", pane.ID)
-			return
-		}
-
-		a.log.Warn("pane rename failed", "pane_id", pane.ID, "name", decision.Name, "error", err)
-
-		return
-	}
-
-	// Recorded before the log line so the next poll cannot read this rename as
-	// the user's.
-	a.manual.AppliedPane(pane.ID, decision.Name)
-	a.log.Info("pane renamed",
-		"pane_id", pane.ID,
-		"old", pane.CurrentName,
+	claims.Applied(seen.ID, decision.Name)
+	a.log.Info(kind.noun+" renamed",
+		idKey, seen.ID,
+		"old", seen.Current,
 		"new", decision.Name,
 		"reason", decision.Reason,
 		"confidence", decision.Confidence,

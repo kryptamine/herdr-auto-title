@@ -317,7 +317,10 @@ through one pane and the goto panel lists them all.
 The panel puts a pane's row **under** its tab's, so the rule of the section
 above applies again with the tab in the workspace's place: a part the tab's
 title was built from is worth less on the pane's row than a part that tells the
-two apart. A split of two agents in one repository reads
+two apart. It is the same rule in the code too (`withoutAbove`): a title drops
+what each row shown above it carries, the workspace for a tab and then the tab
+for a pane, and keeps everything when that would leave nothing. A split of two
+agents in one repository reads
 
 ```
 pane-rename › herdr-auto-title pane      the tab, truncated
@@ -328,7 +331,10 @@ pane-rename › herdr-auto-title pane      the tab, truncated
 The comparison is against what the tab was built from, **not** against the tab's
 finished title. Those differ whenever the tab dropped a part for repeating the
 workspace: the workspace is still on screen above them both, so a pane that
-picked it back up would put it there a third time.
+picked it back up would put it there a third time. What the tab is built from is
+read from the tab's own pane, so that pane is read even when the user has claimed
+the tab — unread, it would have no branch, and whether a pane kept the branch
+would depend on the order the panes happened to be named in.
 
 **The activity is never dropped, whatever the tab says.** Where a pane is has a
 row of its own above it; what it is doing is the whole of what a pane's row is

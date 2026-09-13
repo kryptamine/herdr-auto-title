@@ -104,12 +104,12 @@ type TitleResolver interface {
 	Resolve(tab state.TabState) Decision
 }
 
-// PaneResolver names one pane rather than a tab. Herdr's goto panel lists a
-// pane under its tab, so a pane is named for what tells it from that tab.
+// PaneResolver names the panes of a tab rather than the tab. Herdr's goto panel
+// lists a pane under its tab, so a pane is named for what tells it from that tab.
 type PaneResolver interface {
-	// ResolvePane names one pane of tab, or returns an empty decision when the
-	// pane has nothing to say that its tab does not. The pane is never nil.
-	ResolvePane(pane *state.PaneState, tab state.TabState) Decision
+	// ResolvePanes names every pane of tab, in the order tab.Panes holds them.
+	// The tab's own pane is read from too, so it must be filled first.
+	ResolvePanes(tab state.TabState) []Decision
 }
 
 // Options are the settings a title is assembled under, as opposed to the ones
@@ -171,86 +171,31 @@ func Default(opts Options) *Deterministic {
 // Resolve names a tab in three steps: ask the sources what they see, drop the
 // parts that only repeat something already on screen, and assemble the rest.
 func (d *Deterministic) Resolve(tab state.TabState) Decision {
-	return d.name(state.SelectContextPane(tab), tab.WorkspaceName)
+	return d.name(d.collect(state.SelectContextPane(tab)), Parts{Context: tab.WorkspaceName})
 }
 
-// ResolvePane names one pane of a tab by what tells it from that tab: the
-// panes of a tab share a directory and an agent, and the goto panel puts the
-// pane's row under the tab's, so repeating either says nothing twice over.
-func (d *Deterministic) ResolvePane(pane *state.PaneState, tab state.TabState) Decision {
-	found := d.collect(pane)
+// ResolvePanes names each pane of a tab by what tells it from that tab. The row
+// above a pane is the tab's parts, not its finished title, for the reason in
+// docs/architecture/title-resolution.md.
+func (d *Deterministic) ResolvePanes(tab state.TabState) []Decision {
+	workspace := Parts{Context: tab.WorkspaceName}
+	above := d.collect(state.SelectContextPane(tab)).parts
 
-	parts := found.parts
-	if d.hideAgentName {
-		parts.Agent = ""
+	decisions := make([]Decision, len(tab.Panes))
+	for i, pane := range tab.Panes {
+		decisions[i] = d.name(d.collect(pane), workspace, above)
 	}
 
-	parts = withoutRepetition(parts, tab.WorkspaceName)
-
-	// What tells this pane from its tab is the best name it can have. A pane
-	// left with nothing still gets one — Herdr would list it as the agent in
-	// it, which is the same word on every row and the reason this exists.
-	if name := Format(withoutTheTabs(parts, d.tabParts(tab)), d.maxLength); name != "" {
-		return Decision{Name: name, Confidence: found.confidence, Reason: found.reason}
-	}
-
-	name := Format(parts, d.maxLength)
-	if name == "" {
-		return Decision{
-			Name:       GenericFallback,
-			Confidence: ConfidenceFallback,
-			Reason:     "generic_fallback",
-		}
-	}
-
-	return Decision{Name: name, Confidence: found.confidence, Reason: found.reason}
+	return decisions
 }
 
-// tabParts is what the tab was built from, before the parts that only repeat
-// the workspace were dropped: a pane must not say again what the tab dropped
-// for want of width, because the workspace above them both still says it.
-func (d *Deterministic) tabParts(tab state.TabState) Parts {
-	parts := d.collect(state.SelectContextPane(tab)).parts
-	if d.hideAgentName {
-		parts.Agent = ""
+// name assembles what the chain found into a title, dropping in turn what each
+// row shown above it already carries.
+func (d *Deterministic) name(found collected, rows ...Parts) Decision {
+	parts := withoutRepetition(found.parts)
+	for _, row := range rows {
+		parts = withoutAbove(parts, row)
 	}
-
-	return parts
-}
-
-// withoutTheTabs drops the parts of a pane's title that its tab already carries.
-// Where the pane is stays on the tab's row above; what it is doing is the whole
-// of what a pane row is for, so the activity is kept whatever the tab says.
-func withoutTheTabs(parts, tab Parts) Parts {
-	if strings.EqualFold(parts.Context, tab.Context) {
-		parts.Context = ""
-	}
-
-	if strings.EqualFold(parts.Branch, tab.Branch) {
-		parts.Branch = ""
-	}
-
-	if strings.EqualFold(parts.Agent, tab.Agent) {
-		parts.Agent = ""
-	}
-
-	return parts
-}
-
-// name is the resolution both entry points share, given the pane to read and
-// the surrounding label a title must not merely repeat.
-func (d *Deterministic) name(pane *state.PaneState, context string) Decision {
-	found := d.collect(pane)
-
-	parts := found.parts
-	if d.hideAgentName {
-		// Dropped before the repetition check, so a tab left with nothing but
-		// its directory keeps it rather than losing it to a name it will not
-		// show.
-		parts.Agent = ""
-	}
-
-	parts = withoutRepetition(parts, context)
 
 	name := Format(parts, d.maxLength)
 	if name == "" {
@@ -295,6 +240,12 @@ func (d *Deterministic) collect(pane *state.PaneState) collected {
 		if found.complete() {
 			break
 		}
+	}
+
+	// Dropped before any repetition check, so a title left with nothing but its
+	// directory keeps it rather than losing it to a name it will not show.
+	if d.hideAgentName {
+		found.parts.Agent = ""
 	}
 
 	return found
@@ -344,9 +295,9 @@ func (c *collected) complete() bool {
 	return c.parts.Context != "" && (c.parts.Activity != "" || c.parts.Agent != "")
 }
 
-// withoutRepetition drops the parts of a title that only say again what the
-// reader can already see.
-func withoutRepetition(parts Parts, workspace string) Parts {
+// withoutRepetition drops the parts of a title that only say again what another
+// part of it says.
+func withoutRepetition(parts Parts) Parts {
 	// A shell that titles its window after its directory would otherwise
 	// produce `dashboard › dashboard`.
 	if strings.EqualFold(parts.Activity, parts.Context) {
@@ -366,13 +317,30 @@ func withoutRepetition(parts Parts, workspace string) Parts {
 		parts.Branch = ""
 	}
 
-	// Herdr shows the workspace above its tabs, so repeating it wastes half the
-	// width. Dropped only when something else remains: a branch counts, and so
-	// does an agent's name, which by here is gone if it is not to be shown.
-	if (parts.Activity != "" || parts.Branch != "" || parts.Agent != "") &&
-		strings.EqualFold(parts.Context, workspace) {
-		parts.Context = ""
+	return parts
+}
+
+// withoutAbove drops the parts a row shown above the title already carries: the
+// workspace above a tab, the tab above a pane. The activity is what a row is
+// for and always stays, and a title left with nothing keeps what it had.
+func withoutAbove(parts, above Parts) Parts {
+	kept := parts
+
+	if strings.EqualFold(kept.Context, above.Context) {
+		kept.Context = ""
 	}
 
-	return parts
+	if strings.EqualFold(kept.Branch, above.Branch) {
+		kept.Branch = ""
+	}
+
+	if strings.EqualFold(kept.Agent, above.Agent) {
+		kept.Agent = ""
+	}
+
+	if kept == (Parts{}) {
+		return parts
+	}
+
+	return kept
 }

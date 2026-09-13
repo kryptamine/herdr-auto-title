@@ -13,17 +13,20 @@ import (
 // Title stops naming them. A rename is not an event but a label that moved
 // between two polls; see docs/architecture/manual-rename-protection.md.
 type Manual struct {
+	Tabs  *Claims
+	Panes *Claims
+
 	mu   sync.Mutex
 	path string
 	// settled is false until the first poll has finished, while nothing can yet
 	// be judged. One poll looks at tabs and panes together, so they share it.
 	settled bool
-	tabs    claims
-	panes   claims
 }
 
-// claims is what is remembered about one kind of thing Herdr labels.
-type claims struct {
+// Claims is what is remembered about one kind of thing Herdr labels. Herdr
+// numbers tabs and panes apart, so each kind keeps claims of its own.
+type Claims struct {
+	manual *Manual
 	// seen is the label each thing carried when it was last looked at.
 	seen map[string]string
 	// locked is the label a thing carried when the user claimed it. The label,
@@ -31,8 +34,8 @@ type claims struct {
 	locked map[string]string
 }
 
-func newClaims() claims {
-	return claims{seen: make(map[string]string), locked: make(map[string]string)}
+func newClaims(m *Manual) *Claims {
+	return &Claims{manual: m, seen: make(map[string]string), locked: make(map[string]string)}
 }
 
 // manualFile is the on-disk form: locks outlive the process because Herdr can
@@ -45,11 +48,9 @@ type manualFile struct {
 // LoadManual reads persisted locks from path. Anything unreadable yields an
 // empty set: this is a convenience, not a reason to refuse to start.
 func LoadManual(path string) *Manual {
-	m := &Manual{
-		path:  path,
-		tabs:  newClaims(),
-		panes: newClaims(),
-	}
+	m := &Manual{path: path}
+	m.Tabs = newClaims(m)
+	m.Panes = newClaims(m)
 
 	raw, err := os.ReadFile(path) //nolint:gosec // the path is configured, never terminal-derived
 	if err != nil {
@@ -61,8 +62,8 @@ func LoadManual(path string) *Manual {
 		return m
 	}
 
-	maps.Copy(m.tabs.locked, stored.Locked)
-	maps.Copy(m.panes.locked, stored.LockedPanes)
+	maps.Copy(m.Tabs.locked, stored.Locked)
+	maps.Copy(m.Panes.locked, stored.LockedPanes)
 
 	return m
 }
@@ -77,19 +78,10 @@ func DefaultManualPath() string {
 	return filepath.Join(dir, "herdr-auto-title", "manual-names.json")
 }
 
-// Locked reports whether the user has claimed this tab.
-func (m *Manual) Locked(tabID string) bool {
-	return m.lockedIn(&m.tabs, tabID)
-}
-
-// LockedPane reports whether the user has claimed this pane.
-func (m *Manual) LockedPane(paneID string) bool {
-	return m.lockedIn(&m.panes, paneID)
-}
-
-func (m *Manual) lockedIn(c *claims, id string) bool {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+// Locked reports whether the user has claimed this one.
+func (c *Claims) Locked(id string) bool {
+	c.manual.mu.Lock()
+	defer c.manual.mu.Unlock()
 
 	_, locked := c.locked[id]
 
@@ -128,18 +120,11 @@ func PaneSightingFrom(pane *PaneState, desired string) Sighting {
 	}
 }
 
-// Observe records what a poll saw of a tab and reports whether the user put
-// that label there.
-func (m *Manual) Observe(s Sighting) bool {
-	return m.observeIn(&m.tabs, s)
-}
+// Observe records what a poll saw and reports whether the user put that label
+// there.
+func (c *Claims) Observe(s Sighting) bool {
+	m := c.manual
 
-// ObservePane is Observe for a pane, and judges it by the same three labels.
-func (m *Manual) ObservePane(s Sighting) bool {
-	return m.observeIn(&m.panes, s)
-}
-
-func (m *Manual) observeIn(c *claims, s Sighting) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -179,37 +164,21 @@ func (m *Manual) Settled() {
 	m.settled = true
 }
 
-// Applied records a label Auto Title has just set on a tab, so the next poll
-// does not read its own work as the user's.
-func (m *Manual) Applied(tabID, label string) {
-	m.appliedIn(&m.tabs, tabID, label)
-}
-
-// AppliedPane is Applied for a pane.
-func (m *Manual) AppliedPane(paneID, label string) {
-	m.appliedIn(&m.panes, paneID, label)
-}
-
-func (m *Manual) appliedIn(c *claims, id, label string) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+// Applied records a label Auto Title has just set, so the next poll does not
+// read its own work as the user's.
+func (c *Claims) Applied(id, label string) {
+	c.manual.mu.Lock()
+	defer c.manual.mu.Unlock()
 
 	c.seen[id] = label
 }
 
-// Retain drops everything about tabs the session no longer holds, and releases
-// a lock whose tab now carries a different label — which is what stops a
-// reloaded lock from claiming an unrelated tab that inherited its id.
-func (m *Manual) Retain(live map[string]string) {
-	m.retainIn(&m.tabs, live)
-}
+// Retain drops everything about what the session no longer holds, and releases
+// a lock whose owner now carries a different label — which is what stops a
+// reloaded lock from claiming an unrelated tab or pane that inherited its id.
+func (c *Claims) Retain(live map[string]string) {
+	m := c.manual
 
-// RetainPanes is Retain for panes, and guards a reloaded lock the same way.
-func (m *Manual) RetainPanes(live map[string]string) {
-	m.retainIn(&m.panes, live)
-}
-
-func (m *Manual) retainIn(c *claims, live map[string]string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -247,7 +216,7 @@ func (m *Manual) saveLocked() {
 
 	// encoding/json sorts map keys itself, so the file is diffable already.
 	raw, err := json.MarshalIndent(
-		manualFile{Locked: m.tabs.locked, LockedPanes: m.panes.locked},
+		manualFile{Locked: m.Tabs.locked, LockedPanes: m.Panes.locked},
 		"",
 		"  ",
 	)

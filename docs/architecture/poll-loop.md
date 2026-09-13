@@ -110,21 +110,23 @@ changes name at most once per poll however fast its pane is churning, so
 
 1. `session.snapshot` — the whole session in one request.
 2. `Changes.Observe` — note which panes' revisions advanced.
-3. `Manual.Retain` — drop bookkeeping for tabs the session no longer holds,
-   and release a lock whose tab has moved on. This runs off the snapshot's own
-   labels, because it is what decides which tabs the next step can skip.
+3. `Claims.Retain`, for tabs and for panes — drop bookkeeping for what the
+   session no longer holds, and release a lock whose owner has moved on. This
+   runs off the snapshot's own labels, because it is what decides which tabs and
+   panes the next steps can skip.
 4. `tabsIn` — assemble tabs with their panes from the snapshot alone. Nothing
    is read here: assembly is what says which pane will be asked about.
 5. Per tab (`nameTab`): skip it if locked, otherwise read the one pane the tab
-   is named from (`paneReads.fill`), resolve a title, check whether the label
-   moved under us, and rename when the result differs from the label the tab
-   already carries.
-6. Per tab again (`namePanes`), and only when pane naming is on: the same five
-   steps over every pane of it, against the pane's own label. A pane with
-   nothing its tab does not already say is left unnamed.
+   is named from (`paneReads.fill`), resolve a title, then check whether the
+   label moved under us and rename when the result differs from the label the
+   tab already carries (`apply`).
+6. Per tab again (`namePanes`), and only when pane naming is on: read the tab's
+   own pane even if the tab is locked, and every pane nobody has claimed; name
+   all of them at once against the tab (`ResolvePanes`); then `apply` each name
+   against the pane's own label, exactly as step 5 does for the tab.
 
-**Only the pane that names its tab is read**, and only while its tab is
-nobody's. `pane.process_info` is asked about the panes that moved since they
+**Without pane naming, only the pane that names its tab is read**, and only
+while its tab is nobody's. `pane.process_info` is asked about the panes that moved since they
 were last read, reusing the last answer for the rest; a pane whose processes
 cannot be read simply has none, and a failed read is not remembered as an
 answer. That pane's directory is read for the branch it has checked out, every
@@ -151,11 +153,12 @@ still, issues nothing beyond the snapshot itself.
 **Naming panes turns the per-tab read into a per-pane one.** With
 `HERDR_AUTO_TITLE_PANES` on, step 6 reads every pane of every tab rather than
 the one its tab speaks through, so the four-pane tab above costs four process
-requests instead of one. The reads a poll has already spent are not spent again
-— the pane that named the tab is filled once, the git checkouts are memoized by
-directory, and a pane holding still keeps its last process answer — but the
-floor is one read per pane, and that is the whole reason the setting exists and
-defaults to off ([configuration](./configuration.md)).
+requests instead of one, and a tab the user has claimed is read as well, because
+its panes are still named against it. The reads a poll has already spent are not
+spent again — the pane that named the tab is filled once, the git checkouts are
+memoized by directory, and a pane holding still keeps its last process answer —
+but the floor is one read per pane, and that is the whole reason the setting
+exists and defaults to off ([configuration](./configuration.md)).
 
 The whole poll is bounded by `pollTimeout` (5 s). A tab that closed between the
 snapshot and its rename answers `tab_not_found`, which is expected rather than an
