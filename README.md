@@ -10,96 +10,31 @@
   </p>
 </div>
 
-A [Herdr](https://herdr.dev) plugin that reads your session twice a second and
-keeps every tab's title in step with the work in it. Rename a tab yourself and
-it leaves that tab alone from then on.
-
-## Demo
+A [Herdr](https://herdr.dev) plugin that names your tabs and panes after the
+work in them. It reads the session twice a second, and it leaves alone any tab
+or pane you rename yourself.
 
 https://github.com/user-attachments/assets/606fde6a-dfd3-4010-b4f3-80c79d74ea63
 
-## Quick start
+## Install
 
-> [!NOTE]
-> Requires Herdr 0.8.2+ and Go 1.24+ on macOS, Linux or Windows. Herdr compiles
-> the plugin from source on your machine when it installs it.
+You need Herdr 0.8.2+ and Go 1.24+ on macOS, Linux or Windows. Herdr builds the
+plugin from source when it installs it.
 
 ```sh
 herdr plugin install kryptamine/herdr-auto-title
+herdr server stop   # closes the session; `herdr` brings it back
 ```
 
 > [!IMPORTANT]
-> Installing does not start the plugin. Plugins are started by the Herdr
-> **server**, and only when it restores a session, so run this once:
->
-> ```sh
-> herdr server stop   # closes the session; `herdr` brings it back
-> ```
->
-> Reopening your terminal will not do: that attaches a new client and leaves
-> the server, and your plugin, exactly as they were.
+> Herdr starts plugins only when its server starts, so nothing is renamed until
+> you stop the server. Reopening the terminal attaches a new client to the same
+> server and does not help.
 
-Herdr clones the repository, builds the binary and registers it. Until the
-server has restarted, nothing is renamed. `herdr plugin list` shows the plugin,
-`herdr plugin disable` turns it off. Every server start brings a fresh instance,
-and the one the previous server started leaves on its own.
+If you use Claude Code, also run `herdr integration install claude`. Without it,
+a session you opened with a slash command and never prompted stays `claude`.
 
-### Better names for agent tabs
-
-An agent usually says what it is working on through its terminal title, and that
-is where Auto Title reads it. Claude Code has one blind spot: a session you
-opened with a slash command and never typed a prompt into is never given a
-title, so its tab stays `claude`. One command closes it:
-
-```sh
-herdr integration install claude
-```
-
-That is Herdr's own hook, not this plugin's: it tells Herdr which session each
-pane holds, and Auto Title reads the topic from the session itself.
-
-Herdr ships the same hook for seventeen agents (`herdr integration status`) and
-Auto Title accepts a session from any of them, but every agent keeps its
-transcript in its own format, so **only Claude Code is read so far**. Any other
-agent's tab is named from its terminal title, exactly as before, and
-`HERDR_AUTO_TITLE_TRANSCRIPT=false` stops Auto Title reading transcripts at all.
-
-If your terminal already shows which agent holds a pane, the name in the tab is
-saying it twice: `HERDR_AUTO_TITLE_AGENT_NAME=false` leaves it out, and
-`dashboard › claude › Implement OAuth scopes` becomes
-`dashboard › Implement OAuth scopes`. It goes everywhere, including the tabs
-where the name was all there was — a pane whose agent has reported nothing then
-reads as its directory, `dashboard`, in place of `claude`.
-
-## Naming panes as well as tabs
-
-Herdr's goto panel (`prefix`+`g`) lists panes by their own label, falling back
-to the agent's name — so a session of Claude Code panes reads as a column of
-`claude` with nothing to pick between them. Auto Title names each pane from its
-own directory, branch, process and agent topic, preferring whatever tells it
-from its tab:
-
-```
-pane-rename › herdr-auto-title pane      the tab, truncated
-  herdr-auto-title pane 重命名            the pane the tab speaks through
-  herdr-reviewr                          the pane doing something else
-```
-
-Where a pane is stays on the tab's row, so a pane row spends its width on what
-the pane is doing. A pane whose only fact is its directory does repeat its tab —
-which still beats the `claude` Herdr shows for a pane with no label.
-
-`HERDR_AUTO_TITLE_PANES=false` turns it off, which gives back the panel Herdr
-draws on its own and a poll that reads one pane per tab rather than every pane.
-
-> [!WARNING]
-> The first start with pane naming on renames every pane, including one you
-> labelled by hand before. From then on a pane you rename is left alone.
-
-Renaming a pane by hand protects it exactly as renaming a tab does, and
-`herdr pane rename <PANE_ID>` with no name hands it back.
-
-## What your tabs will be called
+## What you get
 
 ```
 ~/work/dashboard                       →  1 · dashboard
@@ -110,36 +45,27 @@ ssh into prod-01                       →  5 · ssh › prod-01
 $HOME                                  →  6 · Shell
 ```
 
-Titles read `<position> · <context> › <activity>`, capped at 50 columns of the
-tab bar. The activity is the first of these that has something to say: what an
-agent reports it is working on, then the terminal title, then a lone program in
-the pane. The context is the directory you are in, or the machine you reached
-over `ssh`, and the branch you have checked out qualifies it.
+- The number in front is the tab's position, which is also the key that
+  switches to it.
+- The default branch is left out. Other branches are cut down to what
+  identifies them: `bugfix-asa-cpanel-uapi-mc-13675` becomes `MC-13675`.
+- A tab with several panes is named after the focused pane, a pane with a busy
+  agent, or the pane that changed last.
+- Each pane gets a name of its own, so Herdr's goto panel (`prefix`+`g`) no
+  longer lists every Claude Code pane as `claude`.
+- Rename a tab or a pane yourself and Auto Title stops touching it. Clear the
+  name to hand it back.
+- On Windows, Herdr reports only the shell or an agent running in a pane, so an
+  editor or an ssh session does not name its tab.
 
-These rules explain most surprises:
-
-- **The number in front is the tab's position in the workspace**, which is the
-  key that switches to it. It leads the title because the tab bar cuts the tail
-  of one too wide for it. `HERDR_AUTO_TITLE_POSITION=false` leaves it out.
-- **A branch shows when it distinguishes.** Your repository's default branch
-  says nothing, so it is left out; anything else is shown, shortened to what
-  identifies it (`bugfix-asa-cpanel-uapi-mc-13675` → `MC-13675`).
-- **A tab you renamed is yours** and Auto Title never touches it again. Clear
-  its name and it is handed back, on the next poll; renaming it to something
-  else keeps it yours under the new name.
-- Paths, shell prompts, bare program names and your workspace name are left out,
-  because they only repeat what the screen already shows.
-- A tab with several panes takes its name from one of them: the focused pane, a
-  pane running a busy agent, or the pane that changed last.
-- **On Windows, an editor or an ssh session does not name its tab.** Herdr
-  reports only the shell or an agent as what a pane there is running, so
-  `nvim › auth.provider.ts` and `ssh › prod-01` are titles other platforms get;
-  the directory, the branch and every agent title work the same.
+> [!WARNING]
+> The first start renames every pane, including panes you had already named by
+> hand. A pane you rename after that is left alone.
 
 ## Configuration
 
-Everything is optional; the defaults are what the section above describes.
-Settings live in a file Auto Title reads once, at startup:
+Every setting is optional. Copy [`config.env.example`](config.env.example) to
+the path for your platform and uncomment what you need:
 
 | Platform | File                                                        |
 | -------- | ----------------------------------------------------------- |
@@ -147,33 +73,25 @@ Settings live in a file Auto Title reads once, at startup:
 | Linux    | `~/.config/herdr-auto-title/config.env`                     |
 | Windows  | `%APPDATA%\herdr-auto-title\config.env`                     |
 
-Nothing creates it for you; [`config.env.example`](config.env.example) lists
-every setting commented out. **A change reaches the plugin only when it
-restarts**, with the same `herdr server stop` the install needs.
+Auto Title reads the file once at startup, so run `herdr server stop` after a
+change. It does not read the config directory that `herdr plugin list` prints.
 
-> [!NOTE]
-> The config directory `herdr plugin list` prints is Herdr's own. Auto Title
-> does not read it — a plugin you start by hand would never see it. Use the
-> path above.
-
-| Setting                        | Default                                   | What it does                                                               |
-| ------------------------------ | ----------------------------------------- | -------------------------------------------------------------------------- |
-| `HERDR_AUTO_TITLE_DEBUG`       | `false`                                   | Log at DEBUG rather than INFO                                              |
-| `HERDR_AUTO_TITLE_POLL_MS`     | `500`                                     | How often the session is read, in milliseconds                             |
-| `HERDR_AUTO_TITLE_MAX_LENGTH`  | `50`                                      | Longest title, in columns of the tab bar                                   |
-| `HERDR_AUTO_TITLE_BRANCH_MAX`  | `12`                                      | Longest branch a title may carry, in columns; `0` leaves branches out      |
-| `HERDR_AUTO_TITLE_POSITION`    | `true`                                    | Put each tab's position in front of its title                              |
-| `HERDR_AUTO_TITLE_MANUAL_FILE` | `manual-names.json`, next to `config.env` | Where tabs you renamed by hand are remembered; empty keeps them in memory  |
-| `HERDR_AUTO_TITLE_TRANSCRIPT`  | `true`                                    | Read an agent's own session transcript when it has not titled its terminal |
-| `HERDR_AUTO_TITLE_AGENT_NAME`  | `true`                                    | Put the agent's name in front of what an agent pane is doing               |
-| `HERDR_AUTO_TITLE_PANES`       | `true`                                    | Name each pane as well as its tab, which is what the goto panel lists      |
+| Setting                        | Default                                  | What it does                                                      |
+| ------------------------------ | ---------------------------------------- | ----------------------------------------------------------------- |
+| `HERDR_AUTO_TITLE_DEBUG`       | `false`                                  | Log at DEBUG instead of INFO                                      |
+| `HERDR_AUTO_TITLE_POLL_MS`     | `500`                                    | How often the session is read, in milliseconds                    |
+| `HERDR_AUTO_TITLE_MAX_LENGTH`  | `50`                                     | Longest title, in columns                                         |
+| `HERDR_AUTO_TITLE_BRANCH_MAX`  | `12`                                     | Longest branch in a title, in columns; `0` hides branches         |
+| `HERDR_AUTO_TITLE_POSITION`    | `true`                                   | Put the tab's position in front of its title                      |
+| `HERDR_AUTO_TITLE_MANUAL_FILE` | `manual-names.json` next to `config.env` | Where names you set by hand are kept; empty keeps them in memory  |
+| `HERDR_AUTO_TITLE_TRANSCRIPT`  | `true`                                   | Read Claude Code's transcript when it has not titled its terminal |
+| `HERDR_AUTO_TITLE_AGENT_NAME`  | `true`                                   | Put the agent's name in front of what it is doing                 |
+| `HERDR_AUTO_TITLE_PANES`       | `true`                                   | Name panes as well as tabs                                        |
 
 ## Documentation
 
-- [Architecture](docs/architecture/) — how it works and why: the poll loop, how
-  a tab becomes a name, where configuration comes from, and the measured facts
-  about the Herdr socket API.
-- [Development](docs/development.md) — working on it.
+- [Architecture](docs/architecture/): how the plugin works and why.
+- [Development](docs/development.md): working on the plugin.
 
 ## Contributors
 
