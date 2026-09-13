@@ -177,5 +177,6 @@ restarts**, with the same `herdr server stop` the install needs.
 
 ## Contributors
 
-<a href="https://github.com/recih"><img src="https://github.com/recih.png?size=64" width="64" alt="recih"></a>
-<a href="https://github.com/bartekbp"><img src="https://github.com/bartekbp.png?size=64" width="64" alt="Bartosz Polnik"></a>
+<a href="https://github.com/recih"><img src="https://images.weserv.nl/?url=github.com/recih.png&w=128&h=128&fit=cover&mask=circle&maxage=7d" width="64" alt="recih"></a>
+<a href="https://github.com/bartekbp"><img src="https://images.weserv.nl/?url=github.com/bartekbp.png&w=128&h=128&fit=cover&mask=circle&maxage=7d" width="64" alt="Bartosz Polnik"></a>
+<a href="https://github.com/xiaoyu2er"><img src="https://images.weserv.nl/?url=github.com/xiaoyu2er.png&w=128&h=128&fit=cover&mask=circle&maxage=7d" width="64" alt="Yanqi Zong"></a>
