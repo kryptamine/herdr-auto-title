@@ -12,7 +12,6 @@ import (
 
 	"github.com/kryptamine/herdr-auto-title/internal/app"
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
-	"github.com/kryptamine/herdr-auto-title/internal/resolver"
 )
 
 func main() {
@@ -47,18 +46,8 @@ func run() error {
 		return err
 	}
 
-	chain := resolver.Default(resolver.Options{
-		MaxLength:     cfg.MaxLength,
-		BranchMax:     cfg.BranchMax,
-		HideAgentName: !cfg.ShowAgentName,
-	})
-
-	var titles resolver.TitleResolver = chain
-	if cfg.ShowPosition {
-		titles = resolver.NewNumbered(chain, cfg.MaxLength)
-	}
-
-	app.New(cfg, log, titles, chain).Run(ctx, client)
+	titles, panes := app.Resolvers(cfg)
+	app.New(cfg, log, titles, panes).Run(ctx, client)
 
 	return nil
 }

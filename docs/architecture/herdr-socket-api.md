@@ -116,7 +116,6 @@ or does not get said.
 workspace only, never by tab. None of them is needed while the snapshot is one
 call.
 
-
 ## Why the event stream is not used
 
 Herdr does expose an event stream, and Auto Title deliberately ignores it.
