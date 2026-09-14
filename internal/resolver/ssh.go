@@ -63,6 +63,19 @@ func sshArgs(pane *state.PaneState) ([]string, bool) {
 	return process.Args, true
 }
 
+// echoesSSHCommand reports a title that is the command line of the ssh the pane
+// runs. It is matched by its first word, not the host: fish trims the command to
+// twenty columns, `ssh deploy@productio`.
+func echoesSSHCommand(pane *state.PaneState, title string) bool {
+	if _, running := sshArgs(pane); !running {
+		return false
+	}
+
+	command, _, _ := strings.Cut(strings.TrimSpace(title), " ")
+
+	return strings.EqualFold(command, sshKind)
+}
+
 // sshIsTunnel reports whether -N appears before the destination; -pN is a port.
 func sshIsTunnel(args []string) bool {
 	for i := 1; i < len(args); i++ {

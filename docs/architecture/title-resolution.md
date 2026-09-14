@@ -207,6 +207,13 @@ can reach GitHub, and ssh itself for a `-J` jump host. When any ssh in the list
 counted, an agent's tab read `ssh › github.com` while the check ran, and a jump
 named the tab after the bastion rather than the destination.
 
+While ssh connects, the terminal title is still the local shell's, and a shell
+that titles its window with the command it runs says `ssh root@prod-01` — which
+read `ssh › prod-01 › ssh root@prod-01` until the remote prompt replaced it. A
+title opening with the word `ssh` in a pane running ssh is therefore not an
+activity. It is recognized by that word rather than by the host because fish
+trims the command to twenty columns, leaving `ssh deploy@productio`.
+
 ### The git branch
 
 The branch checked out in the pane's directory, read from the files under

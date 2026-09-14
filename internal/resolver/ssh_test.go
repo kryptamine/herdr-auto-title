@@ -107,6 +107,26 @@ func TestAnUnreadableDestinationKeepsTheMarkUnderARemoteTitle(t *testing.T) {
 	}
 }
 
+func TestTheLocalShellsCommandTitleIsNotRepeatedWhileConnecting(t *testing.T) {
+	// Until the remote shell sets a title, the local one is still showing the
+	// command it ran, trimmed by fish to twenty columns, and the tab read
+	// `ssh › prod-01 › ssh root@prod-01` for as long as the handshake took.
+	for _, title := range []string{
+		"ssh root@prod-01 ~/W/dashboard",
+		"ssh deploy@productio ~/W/dashboard",
+		"ssh -p 2222 prod-01",
+		"SSH prod-01",
+	} {
+		pane := sshPane("ssh", "root@prod-01")
+		pane.TerminalTitle = title
+
+		got := defaultChain().Resolve(tabWithPane(pane))
+		if want := "ssh › prod-01"; got.Name != want {
+			t.Errorf("title %q → %q, want %q", title, got.Name, want)
+		}
+	}
+}
+
 func TestATunnelDoesNotMarkTheTabRemote(t *testing.T) {
 	for _, argv := range [][]string{
 		{"ssh", "-N", "-L", "5432:db:5432", "bastion"},

@@ -22,5 +22,11 @@ func (TerminalTitle) Resolve(pane *state.PaneState) (Parts, bool) {
 		title = pane.TerminalTitleRaw
 	}
 
+	// A shell titles its window with the command it runs, so until the remote
+	// shell sets a title this one only repeats the ssh the context already names.
+	if echoesSSHCommand(pane, title) {
+		return Parts{}, false
+	}
+
 	return activityFrom(pane, title)
 }
