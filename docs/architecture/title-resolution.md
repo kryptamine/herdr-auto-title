@@ -200,6 +200,13 @@ opposite — with no host to bind to, the mark went into the activity slot — a
 that put it back in the contested half, where the remote shell's own title
 outranked it and a remote tab read exactly like a local one.
 
+**Only the pane's foreground process marks it remote**, the last one
+`pane.process_info` lists. Everything before it is a descendant, and programs
+start ssh of their own: `git push` to a GitHub remote, Claude Code checking it
+can reach GitHub, and ssh itself for a `-J` jump host. When any ssh in the list
+counted, an agent's tab read `ssh › github.com` while the check ran, and a jump
+named the tab after the bastion rather than the destination.
+
 ### The git branch
 
 The branch checked out in the pane's directory, read from the files under

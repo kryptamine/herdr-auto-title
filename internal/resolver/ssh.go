@@ -51,16 +51,16 @@ func (SSH) Resolve(pane *state.PaneState) (Parts, bool) {
 	return Parts{Context: qualify(host, sshKind)}, true
 }
 
-// sshArgs finds an ssh process in the pane and returns its arguments. A
-// tunnel (`ssh -N`) runs no remote shell and is skipped.
+// sshArgs returns the arguments of the ssh the pane is running. Only the
+// foreground process counts: git and agents start ssh of their own, and so does
+// ssh for a jump host. A tunnel (`ssh -N`) runs no remote shell and is skipped.
 func sshArgs(pane *state.PaneState) ([]string, bool) {
-	for _, process := range pane.Processes {
-		if strings.EqualFold(process.Name, "ssh") && !sshIsTunnel(process.Args) {
-			return process.Args, true
-		}
+	process, ok := pane.Foreground()
+	if !ok || !strings.EqualFold(process.Name, "ssh") || sshIsTunnel(process.Args) {
+		return nil, false
 	}
 
-	return nil, false
+	return process.Args, true
 }
 
 // sshIsTunnel reports whether -N appears before the destination; -pN is a port.

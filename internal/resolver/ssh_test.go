@@ -7,15 +7,11 @@ import (
 	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
 
-// sshPane builds a pane running the given ssh command line, beside the shell
-// that started it — which is how Herdr reports a pane's processes.
+// sshPane builds a pane whose foreground process is the given ssh command line.
 func sshPane(argv ...string) *state.PaneState {
 	return &state.PaneState{
-		Dir: dashboard,
-		Processes: []state.Process{
-			{Name: "fish", Args: []string{"-fish"}},
-			{Name: "ssh", Args: argv},
-		},
+		Dir:       dashboard,
+		Processes: []state.Process{{Name: "ssh", Args: argv}},
 	}
 }
 
@@ -156,15 +152,41 @@ func TestAPaneWithoutSSHIsUnaffected(t *testing.T) {
 	}
 }
 
-func TestSSHIsFoundAmongOtherProcesses(t *testing.T) {
-	// Herdr lists the foreground process and its descendants, so ssh can be
-	// anywhere in the list.
+func TestAnSSHStartedByAnotherProgramDoesNotMarkThePaneRemote(t *testing.T) {
+	// Herdr lists a pane's foreground process last, after its descendants.
+	// Claude Code checks GitHub over ssh and git pushes through it, and either
+	// named its tab `ssh › github.com` for as long as the connection lived.
+	agent := &state.PaneState{
+		Dir:   dashboard,
+		Agent: "claude",
+		Processes: []state.Process{
+			{Name: "ssh", Args: strings.Fields("ssh -T -o BatchMode=yes git@github.com")},
+			{Name: "claude", Args: []string{"claude"}},
+		},
+	}
+	push := &state.PaneState{
+		Dir: dashboard,
+		Processes: []state.Process{
+			{Name: "ssh", Args: strings.Fields("ssh git@github.com git-receive-pack")},
+			{Name: "git", Args: strings.Fields("git push")},
+		},
+	}
+
+	for _, pane := range []*state.PaneState{agent, push} {
+		got := defaultChain().Resolve(tabWithPane(pane))
+		if strings.Contains(got.Name, "github.com") {
+			t.Errorf("name = %q, want nothing about github.com", got.Name)
+		}
+	}
+}
+
+func TestAJumpHostIsNotTheDestination(t *testing.T) {
+	// ProxyJump runs a second ssh to the bastion as a child of the first.
 	pane := &state.PaneState{
 		Dir: dashboard,
 		Processes: []state.Process{
-			{Name: "fish", Args: []string{"-fish"}},
-			{Name: "ssh", Args: []string{"ssh", "prod-01"}},
-			{Name: "tail", Args: []string{"tail", "-f", "/var/log/syslog"}},
+			{Name: "ssh", Args: strings.Fields("ssh -W [prod-01]:22 bastion")},
+			{Name: "ssh", Args: strings.Fields("ssh -J bastion prod-01")},
 		},
 	}
 

@@ -180,7 +180,9 @@ reads, so this section describes Herdr rather than those types.
   `foreground_process_group_id` and the pane's controlling terminal; a
   descendant started in a group of its own without a terminal — which is how
   Claude Code runs the commands it is asked to run — was absent from the list
-  while it ran. An agent's MCP servers are in it.
+  while it ran. An agent's MCP servers are in it, and so is what Claude Code
+  starts on its own: an `ssh -T git@github.com` check and a `git fetch` of a
+  plugin marketplace over ssh were both listed, before the agent itself.
 - **`pane.process_info` reports more per process than a name.** Each entry
   carries `pid`, `argv0`, `cmdline` and `cwd` beside `name` and `argv`, and the
   pane's entry carries `shell_pid` and `foreground_process_group_id`. Auto

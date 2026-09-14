@@ -144,6 +144,16 @@ func programName(name string) string {
 	return name
 }
 
+// Foreground is the process the pane is running rather than one it started:
+// Herdr lists descendants first, so it is the last.
+func (p *PaneState) Foreground() (Process, bool) {
+	if len(p.Processes) == 0 {
+		return Process{}, false
+	}
+
+	return p.Processes[len(p.Processes)-1], true
+}
+
 // HasAgent reports whether Herdr recognizes an agent in the pane.
 func (p *PaneState) HasAgent() bool {
 	return p != nil && p.Agent != ""
