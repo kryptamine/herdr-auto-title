@@ -309,6 +309,9 @@ func (a *App) apply(
 			return
 		}
 
+		// A call that timed out may still have reached Herdr, which applies it
+		// whenever it next gets to it: docs/architecture/manual-rename-protection.md.
+		claims.Sent(seen.ID, decision.Name)
 		a.log.Warn(kind.noun+" rename failed", idKey, seen.ID, "name", decision.Name, "error", err)
 
 		return

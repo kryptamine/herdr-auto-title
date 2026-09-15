@@ -183,6 +183,38 @@ func TestChangedContextRetitlesTheTab(t *testing.T) {
 	}
 }
 
+func TestARenameLandingAfterItsCallFailedIsRenamedOver(t *testing.T) {
+	// A stalled Herdr applies a rename after the call timed out, and the tab
+	// has moved on by then. Read as the user's, it kept a stale number forever.
+	h := start(
+		t,
+		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
+		[]herdr.PaneInfo{
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
+		},
+	)
+	h.poll()
+
+	h.client.SetRenameLost(errors.New("read tab.rename response: pipe closed"))
+	h.client.SetPane(herdr.PaneInfo{
+		PaneID: "wE:p1", TabID: "wE:t1", Focused: true, Revision: 2,
+		CWD: api,
+	})
+	h.poll()
+
+	h.client.SetRenameLost(nil)
+	h.client.SetPane(herdr.PaneInfo{
+		PaneID: "wE:p1", TabID: "wE:t1", Focused: true, Revision: 3,
+		CWD: billing,
+	})
+	h.poll()
+
+	renames := h.client.Renames()
+	if got := renames[len(renames)-1].Label; got != "billing" {
+		t.Errorf("last rename = %q, want billing", got)
+	}
+}
+
 func TestAnUnchangedSessionIsRenamedOnce(t *testing.T) {
 	// Polling would be unusable if every tick renamed. Deduplication against
 	// the label the snapshot reports is what keeps the loop quiet.

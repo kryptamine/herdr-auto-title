@@ -32,10 +32,18 @@ type Claims struct {
 	// locked is the label a thing carried when the user claimed it. The label,
 	// not the id, is what makes a reloaded lock safe: Herdr reuses ids.
 	locked map[string]string
+	// sent holds the labels of renames whose call failed. Herdr may apply one
+	// anyway, seconds later, and it is Auto Title's label all the same.
+	sent map[string]map[string]struct{}
 }
 
 func newClaims(m *Manual) *Claims {
-	return &Claims{manual: m, seen: make(map[string]string), locked: make(map[string]string)}
+	return &Claims{
+		manual: m,
+		seen:   make(map[string]string),
+		locked: make(map[string]string),
+		sent:   make(map[string]map[string]struct{}),
+	}
 }
 
 // manualFile is the on-disk form: locks outlive the process because Herdr can
@@ -131,6 +139,11 @@ func (c *Claims) Observe(s Sighting) bool {
 	previous, known := c.seen[s.ID]
 	c.seen[s.ID] = s.Current
 
+	if _, sent := c.sent[s.ID][s.Current]; sent {
+		delete(c.sent[s.ID], s.Current)
+		return false
+	}
+
 	switch {
 	case s.Current == s.Desired:
 		return false
@@ -173,6 +186,19 @@ func (c *Claims) Applied(id, label string) {
 	c.seen[id] = label
 }
 
+// Sent records the label of a rename whose call failed, which Herdr may still
+// apply once it answers again — by when the name wanted may have moved on.
+func (c *Claims) Sent(id, label string) {
+	c.manual.mu.Lock()
+	defer c.manual.mu.Unlock()
+
+	if c.sent[id] == nil {
+		c.sent[id] = make(map[string]struct{})
+	}
+
+	c.sent[id][label] = struct{}{}
+}
+
 // Retain drops everything about what the session no longer holds, and releases
 // a lock whose owner now carries a different label — which is what stops a
 // reloaded lock from claiming an unrelated tab or pane that inherited its id.
@@ -195,6 +221,12 @@ func (c *Claims) Retain(live map[string]string) {
 	for id := range c.seen {
 		if _, alive := live[id]; !alive {
 			delete(c.seen, id)
+		}
+	}
+
+	for id := range c.sent {
+		if _, alive := live[id]; !alive {
+			delete(c.sent, id)
 		}
 	}
 

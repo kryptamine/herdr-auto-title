@@ -34,6 +34,13 @@ See [the poll loop](./poll-loop.md).
 A malformed request is answered with an uncorrelated error frame, and the
 connection is then closed.
 
+**A call that gives up has not undone its request.** Once Herdr has read a
+request it carries it out, even if the caller has since closed the connection.
+A server stalled by a slow tab bar status command applied `tab.rename` requests
+3 to 18 seconds after receiving them, well past the poll's deadline. So a
+failed rename may still land, which is why
+[manual rename protection](./manual-rename-protection.md) keeps its label.
+
 **On Windows the socket is a named pipe.** `HERDR_SOCKET_PATH` still names a
 file, `%APPDATA%\herdr\herdr.sock`, but that file is 25 bytes of text —
 `<server pid>:<start time in ns>` — and not a socket: dialing it as a Unix

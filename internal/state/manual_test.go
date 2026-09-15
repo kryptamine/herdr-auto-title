@@ -132,6 +132,22 @@ func TestARenameByTheUserLocksTheTab(t *testing.T) {
 	}
 }
 
+func TestARenameLandingAfterItsCallFailedIsNotTheUsers(t *testing.T) {
+	// Herdr can apply a rename seconds after the call gave up on it, by when
+	// the name wanted has moved on. Read as the user's, it froze the tab.
+	m := newManual(t)
+	m.Tabs.Observe(sighting("1"))
+	m.Tabs.Sent("wE:t1", "api")
+
+	if m.Tabs.Observe(sighting("api")) {
+		t.Fatal("a label the plugin sent was read as the user's")
+	}
+
+	if m.Tabs.Locked("wE:t1") {
+		t.Error("the tab is locked")
+	}
+}
+
 func TestARenameByThePluginDoesNotLock(t *testing.T) {
 	m := newManual(t)
 	m.Tabs.Observe(sighting("1"))

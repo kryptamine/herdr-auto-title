@@ -84,6 +84,27 @@ the gesture a user reaches for to hand a tab back was the one that locked it for
 good. An empty label is therefore nobody's too, on the same line as the
 position.
 
+### A rename can land after its call has failed
+
+`Claims.Applied` runs only when `tab.rename` answers. A call can also give up —
+the poll's deadline passes while Herdr is stalled — after Herdr has already
+read the request, and Herdr then applies it whenever it gets to it. Measured, a
+stalled server applied renames 3 to 18 seconds after receiving them, while
+another plugin's tab bar command kept timing out.
+
+By then the name wanted has often moved on: a tab to the left closed and every
+position slid, or the poll that reads the late label was itself cut short. The
+tab carries a label that is neither *Seen* nor *Desired*, the rule reads it as
+the user's, and **the tab is locked on a stale number for good**. In the session
+where it was found, ten of twelve locked tabs had a late rename as their last
+one.
+
+So a failed rename's label is kept per tab (`Claims.Sent`), and a tab found
+wearing one is Auto Title's, like one wearing *Desired*, and is renamed on. The
+label is forgotten once it lands or the tab closes. Recording the label as
+*Seen* up front instead would be wrong the other way: a rename that never
+lands would leave the old label looking moved, and lock that.
+
 ## Locks outlive the process, guarded by the label
 
 Herdr can restart a plugin mid-session, and losing every manual name to that is
