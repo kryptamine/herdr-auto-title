@@ -32,6 +32,11 @@ const maxOpening = 200
 // so the search is repeated — just not twice a second for the pane's whole life.
 const locateRetry = 10 * time.Second
 
+// EnvExtraRoots names configuration directories to read besides the one
+// CLAUDE_CONFIG_DIR gives, separated by the platform's path-list separator. A
+// home the user's shell picks per directory cannot be discovered, so it is named.
+const EnvExtraRoots = "HERDR_AUTO_TITLE_CLAUDE_DIRS"
+
 // Topic is what a session says it is about.
 type Topic struct {
 	// Title is what Claude Code named the session, which it derives from the
@@ -59,8 +64,10 @@ func (t Topic) Text() string {
 // Transcripts are append-only, so a poll reads the bytes appended since the
 // last one rather than the file.
 type Reader struct {
-	mu       sync.Mutex
-	root     string
+	mu sync.Mutex
+	// roots are the configuration directories a transcript is looked for in,
+	// searched in order until one holds the session.
+	roots    []string
 	sessions map[string]*transcript
 	now      func() time.Time
 }
@@ -75,31 +82,57 @@ type transcript struct {
 	searchedAt time.Time
 }
 
-// NewReader builds a reader over Claude Code's configuration directory.
+// NewReader builds a reader over every Claude Code configuration directory
+// the environment names.
 func NewReader() *Reader {
-	return &Reader{root: root(), sessions: make(map[string]*transcript), now: time.Now}
+	// Nothing here can warn, so a home refused for its spelling is dropped and
+	// reported where configuration is read.
+	extra, _ := ExtraRoots()
+
+	return &Reader{
+		roots:    append(roots(), extra...),
+		sessions: make(map[string]*transcript),
+		now:      time.Now,
+	}
 }
 
-// root is where Claude Code keeps its state. The environment variable is what
-// a user who moved it sets.
-func root() string {
+// roots is the configuration directory Claude Code names itself, as a list,
+// and is empty when there is no home to read at all.
+func roots() []string {
 	if dir := os.Getenv("CLAUDE_CONFIG_DIR"); dir != "" {
-		return dir
+		return []string{dir}
 	}
 
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return ""
+		return nil
 	}
 
-	return filepath.Join(home, ".claude")
+	return []string{filepath.Join(home, ".claude")}
+}
+
+// ExtraRoots reads EnvExtraRoots: the configuration directories it names, and
+// the entries refused for not being absolute clean paths. One entry that
+// cannot be used costs itself and not the rest of the list.
+func ExtraRoots() (dirs, refused []string) {
+	for _, entry := range filepath.SplitList(os.Getenv(EnvExtraRoots)) {
+		switch entry = strings.TrimSpace(entry); {
+		case entry == "":
+		case !isConfigHome(entry):
+			refused = append(refused, entry)
+		default:
+			dirs = append(dirs, entry)
+		}
+	}
+
+	return dirs, refused
 }
 
 // Topic reports what the session is about, and the zero topic when nothing can
 // be read: no transcript, an unreadable one, or one that has said nothing yet.
 // dir is the pane's directory, where the transcript is looked for first.
 func (r *Reader) Topic(sessionID, dir string) Topic {
-	if r.root == "" || !isSessionID(sessionID) {
+	if len(r.roots) == 0 || !isSessionID(sessionID) {
 		return Topic{}
 	}
 
@@ -168,12 +201,25 @@ func isSessionID(value string) bool {
 	return sessionIDPattern.MatchString(value)
 }
 
-// locate finds the transcript. Claude Code files a session under the directory
-// it was started in, which is usually the pane's, so that is tried before the
-// scan across every project.
+// locate finds the transcript in the first configuration directory that holds
+// the session, so a session in the first costs no search of the ones after it.
 func (r *Reader) locate(sessionID, dir string) (string, bool) {
 	name := sessionID + ".jsonl"
-	projects := filepath.Join(r.root, "projects")
+
+	for _, root := range r.roots {
+		if path, found := locateUnder(root, name, dir); found {
+			return path, true
+		}
+	}
+
+	return "", false
+}
+
+// locateUnder finds the transcript in one configuration directory. Claude Code
+// files a session under the directory it was started in, which is usually the
+// pane's, so that is tried before the scan across every project.
+func locateUnder(root, name, dir string) (string, bool) {
+	projects := filepath.Join(root, "projects")
 
 	if dir != "" {
 		candidate := filepath.Join(projects, slugOf(dir), name)
@@ -319,6 +365,13 @@ func (t *transcript) absorb(lines string) {
 			t.topic.Opening = opening(read.Message.Content)
 		}
 	}
+}
+
+// isConfigHome accepts a configuration home as the setting spelled it. The
+// value becomes a directory that is searched, so anything but an absolute,
+// clean path is refused rather than repaired.
+func isConfigHome(dir string) bool {
+	return dir != "" && filepath.IsAbs(dir) && filepath.Clean(dir) == dir
 }
 
 // commandPattern matches the marker Claude Code wraps a slash command in.

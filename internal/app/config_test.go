@@ -27,6 +27,7 @@ func isolate(t *testing.T) {
 	names := []string{
 		EnvDebug, EnvPoll, EnvMaxLength, EnvBranchMax,
 		EnvPosition, EnvManual, EnvTranscript, EnvAgentName, EnvPanes,
+		EnvPreferAgent, EnvClaudeDirs,
 	}
 
 	for _, name := range names {
@@ -387,5 +388,33 @@ func TestAnUnsetManualFileKeepsTheDefault(t *testing.T) {
 	cfg, _ := LoadConfig()
 	if want := ownPath(manualFile); cfg.ManualPath != want {
 		t.Errorf("manual path = %q, want the default %q", cfg.ManualPath, want)
+	}
+}
+
+func TestLoadConfigWarnsAboutAConfigHomeItCannotUse(t *testing.T) {
+	// A home written as anything but an absolute clean path is skipped, and
+	// the homes named beside it are still read.
+	isolate(t)
+	t.Setenv(EnvClaudeDirs, strings.Join(
+		[]string{"relative/home", "/home/you/.claude-work"},
+		string(os.PathListSeparator),
+	))
+
+	_, warnings := LoadConfig()
+	if len(warnings) != 1 {
+		t.Fatalf("warnings = %v, want the unusable home alone reported", warnings)
+	}
+
+	if !strings.Contains(warnings[0], "relative/home") {
+		t.Errorf("warning = %q, want the home it refused named", warnings[0])
+	}
+}
+
+func TestLoadConfigAcceptsConfigHomesItCanUse(t *testing.T) {
+	isolate(t)
+	t.Setenv(EnvClaudeDirs, "/home/you/.claude-work")
+
+	if _, warnings := LoadConfig(); len(warnings) != 0 {
+		t.Errorf("warnings = %v, want none", warnings)
 	}
 }
