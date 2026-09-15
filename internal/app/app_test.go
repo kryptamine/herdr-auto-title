@@ -1471,6 +1471,24 @@ func TestAWorktreeTakenOffDiskFallsBackToTheRepositoryRoot(t *testing.T) {
 	}
 }
 
+func TestAWorktreeTakenOffDiskIsNotReadAtAll(t *testing.T) {
+	// The walk up from a removed worktree answers with the repository above it,
+	// whose branch is not the agent's, so the directory is refused for being
+	// gone rather than for what it would have said.
+	repo := repoAt(t, "main")
+	above := worktreeIn(t, repo, "above", "feat/oauth")
+	gone := filepath.Join(above, ".claude", "worktrees", "gone")
+
+	transcript(t, agentIn(gone))
+
+	pane := agentPaneAt("wE:p1", testSession, repo)
+	readOne(t, transcriptConfig(), pane)
+
+	if pane.Git.Branch != "main" {
+		t.Errorf("branch = %q, want the pane's own", pane.Git.Branch)
+	}
+}
+
 func TestAPaneOnAWorktreeKeepsItsBranchWhenItsAgentWalkedUp(t *testing.T) {
 	// The agent's directory is the repository root, whose trunk the branch
 	// source then suppresses, so taking it would delete a segment the pane
