@@ -261,6 +261,42 @@ func TestRenameTabSendsTabAndLabel(t *testing.T) {
 	}
 }
 
+func TestShowNotificationSendsTitleAndBodyAndReadsWhetherItShowed(t *testing.T) {
+	// Herdr answers a notice it did not show with success and a reason, which
+	// is not an error: a restart went fine whether or not anyone was told.
+	srv := newTestServer(t, func(req incoming) string {
+		return `{"id":"` + req.ID + `","result":{"type":"notification_show","shown":false,"reason":"no_foreground_client"}}`
+	})
+
+	res, err := ShowNotification(
+		context.Background(),
+		srv.client(),
+		"Auto Title restarted",
+		"pid 42 is naming the session",
+	)
+	if err != nil {
+		t.Fatalf("ShowNotification: %v", err)
+	}
+
+	if res.Shown || res.Reason != "no_foreground_client" {
+		t.Errorf("result = %+v, want not shown for no_foreground_client", res)
+	}
+
+	seen := srv.seen()
+	if len(seen) != 1 || seen[0].Method != MethodNotificationShow {
+		t.Fatalf("server saw %+v, want one notification.show", seen)
+	}
+
+	var params NotificationParams
+	if err := json.Unmarshal(seen[0].Params, &params); err != nil {
+		t.Fatalf("decode params: %v", err)
+	}
+
+	if params.Title != "Auto Title restarted" || params.Body != "pid 42 is naming the session" {
+		t.Errorf("params = %+v, want the title and body sent", params)
+	}
+}
+
 func TestNullFieldsDecodeAsEmpty(t *testing.T) {
 	// Herdr sends null for every optional field of a pane running a plain
 	// shell, and a snapshot is full of them.

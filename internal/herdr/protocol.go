@@ -58,12 +58,14 @@ func ErrorCode(err error) string {
 	return ""
 }
 
-// Method names used by Auto Title: two to read the session and two to act on it.
+// Method names used by Auto Title: two to read the session, two to act on it,
+// and one to tell the user how a restart went.
 const (
-	MethodSessionSnapshot = "session.snapshot"
-	MethodPaneProcessInfo = "pane.process_info"
-	MethodTabRename       = "tab.rename"
-	MethodPaneRename      = "pane.rename"
+	MethodSessionSnapshot  = "session.snapshot"
+	MethodPaneProcessInfo  = "pane.process_info"
+	MethodTabRename        = "tab.rename"
+	MethodPaneRename       = "pane.rename"
+	MethodNotificationShow = "notification.show"
 )
 
 type PaneTarget struct {
@@ -78,6 +80,20 @@ type TabRenameParams struct {
 type PaneRenameParams struct {
 	PaneID string `json:"pane_id"`
 	Label  string `json:"label"`
+}
+
+// NotificationParams is a notice for the user. Only the title is required;
+// Herdr also takes a position and a sound, which nothing here sets.
+type NotificationParams struct {
+	Title string `json:"title"`
+	Body  string `json:"body"`
+}
+
+// NotificationResult is what notification.show answers: whether the notice
+// was shown, and one of Herdr's reasons when it was not.
+type NotificationResult struct {
+	Shown  bool   `json:"shown"`
+	Reason string `json:"reason"`
 }
 
 type emptyParams struct{}

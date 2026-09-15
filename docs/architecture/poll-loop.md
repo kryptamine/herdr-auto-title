@@ -1,7 +1,7 @@
 ---
 type: doc
 title: 'The Poll Loop'
-description: 'Why Auto Title polls the Herdr session instead of subscribing to it, what one poll does, what little state survives between polls, and how the loop behaves when Herdr is unreachable.'
+description: 'Why Auto Title polls the Herdr session instead of subscribing to it, what one poll does, what little state survives between polls, how the loop behaves when Herdr is unreachable, and how a newer instance takes the session over.'
 tags: [architecture]
 created: 2026-08-25
 generated: { by: claude-code/opus-5, at: 2026-08-25T12:46:22+03:00 }
@@ -163,7 +163,7 @@ memoized by directory, and a pane holding still keeps its last process answer �
 but the floor is one read per pane, which is why it can be turned off
 ([configuration](./configuration.md)).
 
-The whole poll is bounded by `pollTimeout` (5 s). A tab that closed between the
+The whole poll is bounded by `PollTimeout` (5 s). A tab that closed between the
 snapshot and its rename answers `tab_not_found`, which is expected rather than an
 error; a pane that closed answers `pane_not_found` and is treated the same way.
 
@@ -223,11 +223,81 @@ can be a moment late at startup, and neither is a successor. The process exits
 with status 0, because the successor's own startup hook has already started the
 instance that replaces it.
 
+`App.successor` asks the claim first and the socket second, both in one place
+so a poll has one way out. The claim usually answers for a new server too,
+because that server's instance claims the same session; the socket is what is
+left to read when there was no configuration directory to claim in.
+
+## A successor on the claim
+
+The socket only changes when the server does, and a server restart closes the
+session. Herdr runs startup hooks at no other time — not on install, link,
+enable, a configuration reload or a client attaching — so without a way to
+restart the plugin alone, a new version, a changed `config.env` and a hung
+instance each cost the user their session. `herdr-auto-title restart` is that
+way, wired to the manifest's one action, and it rests on a claim
+(`internal/instance`).
+
+**The claim.** An instance starting writes its pid into a file of Auto Title's
+own, `instances/<hash of the socket path>.json` under the platform's
+configuration directory — the last of those the configuration note lists and
+never the first that holds a file, so every instance finds the same claim. The
+socket names the session, so a user running two sessions has two claims and
+the instances never displace each other; it is hashed because a path is not a
+file name. Herdr's own `HERDR_PLUGIN_STATE_DIR` is per plugin rather than per
+session, which is why it is not used. The file is written in one call rather
+than through a rename: it is one line, and a reader that catches it half
+written treats that as nothing said and looks again next poll. A claim that is
+gone altogether — the user emptied the directory — is nobody's, and no run
+ends over it.
+
+**Newest wins.** `App.poll` reads the claim before every poll and ends the run
+when another pid holds it, with nothing renamed that poll. `Take` waits for
+the pid it displaced to exit — `LeaveTimeout`, a poll past its deadline plus
+up to five seconds for the old instance's own interval, which the new one
+cannot know — and only then are the manual-name locks loaded and the session
+polled. It never kills: an instance old enough not to look at claims is left
+running, warned about, and the README says that upgrade needs one `herdr
+server stop`.
+
+**Nothing is removed on the way out.** A claim naming a pid that has gone
+displaces nobody, which is how a crashed instance is already handled, so
+deleting the file at exit would buy only the case of a pid the system reuses
+after a clean exit — and it would cost a race the run cannot afford: an
+instance told to leave would delete the claim its successor had just written.
+A wait that times out on a reused pid costs a warning, nothing worse.
+
+**Ready.** After its first poll that read a snapshot the instance writes its
+pid into a marker beside the claim, `<hash>.ready.json`. A file of its own,
+because that first poll can outlast a takeover: marking ready in the claim
+would write over the newer instance's pid with the old one's, and the wrong
+instance would survive. An instance is ready when it holds the claim and the
+marker names it, and that is what the restart waits for: `LeaveTimeout` plus
+`PollTimeout`, passed in from `main` so one deadline cannot drift from the
+other, for the new pid to hold the claim, be ready, and the old pid to be
+gone, watching the child as well so an instance that exits at once is reported
+with its status rather than waited for. The outcome goes to `notification.show`
+and to the action's log; a notice Herdr chose not to show is not a failure.
+Without that directory there is no claim, and the action refuses
+rather than start an instance nothing could wait for or displace.
+
+The new instance is started with stdio on the null device and detached — its
+own session on macOS and Linux, no console or process group on Windows. Herdr
+reads an action's output to its end, so a child holding the action's pipes
+would keep the action "running" and hold one of the thirty-two plugin
+command slots for as long as it lived. `os.StartProcess` rather than
+`os/exec`, which the linter forbids: the program is the binary's own path and
+the arguments are fixed, so nothing terminal-derived is run.
+
+`make run` takes part: it claims, displaces the instance Herdr started, and on
+Ctrl+C leaves, its claim behind it naming a pid that is gone and so displacing
+nothing.
+
 ## Shutdown
 
 `signal.NotifyContext` in `cmd/herdr-auto-title/main.go` cancels the context on
 `SIGINT` and `SIGTERM`; `Run` returns and the process exits, as it does when a
-successor takes the socket. There are no
+successor takes the socket or the claim. There are no
 debounce timers to cancel and no socket to close, because a connection never
 outlives the call that made it.
 

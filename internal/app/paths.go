@@ -38,6 +38,18 @@ func ownPath(name string) string {
 	return filepath.Join(dirs[len(dirs)-1], ownDir, name)
 }
 
+// StateDir is where Auto Title keeps what it writes for itself alone, or empty
+// when there is no platform directory. It is always the platform's, never the
+// first match ownPath would take, so every instance agrees on it.
+func StateDir() string {
+	dir, err := os.UserConfigDir()
+	if err != nil {
+		return ""
+	}
+
+	return filepath.Join(dir, ownDir)
+}
+
 // configDirs are the directories Auto Title's files are looked for in, in
 // order: XDG_CONFIG_HOME, ~/.config, and what the platform offers, which is
 // Application Support on macOS and %APPDATA% on Windows.

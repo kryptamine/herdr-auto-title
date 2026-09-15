@@ -23,16 +23,35 @@ plugin from source when it installs it.
 
 ```sh
 herdr plugin install kryptamine/herdr-auto-title
-herdr server stop   # closes the session; `herdr` brings it back
+herdr plugin action invoke herdr.auto-title.restart
 ```
 
 > [!IMPORTANT]
-> Herdr starts plugins only when its server starts, so nothing is renamed until
-> you stop the server. Reopening the terminal attaches a new client to the same
-> server and does not help.
+> Herdr starts plugins only when its server starts, so the second line starts
+> this one now. Reopening the terminal attaches a new client to the same server
+> and does not help; `herdr server stop` would work, at the cost of the session.
 
 If you use Claude Code, also run `herdr integration install claude`. Without it,
 a session you opened with a slash command and never prompted stays `claude`.
+
+## Restarting
+
+The same action starts a fresh Auto Title in place of the running one, and a
+notification says how it went. Use it after upgrading, after changing the
+configuration, or when the plugin has stopped naming tabs. To put it on a key,
+add to Herdr's `config.toml`:
+
+```toml
+[[keys.command]]
+key = "prefix+R"
+type = "plugin_action"
+command = "herdr.auto-title.restart"
+description = "restart auto title"
+```
+
+Two limits: the first upgrade from a version without this action still needs
+`herdr server stop`, because the instance already running does not know to
+leave, and on Windows the action needs Herdr 0.9.0 or newer.
 
 ## What you get
 
@@ -80,7 +99,7 @@ included, and one dotfiles repository serves every machine. A file already
 sitting in `~/Library/Application Support` or `%APPDATA%` keeps being read
 where it is.
 
-Auto Title reads the file once at startup, so run `herdr server stop` after a
+Auto Title reads the file once at startup, so [restart it](#restarting) after a
 change. It does not read the config directory that `herdr plugin list` prints.
 
 | Setting                         | Default                                  | What it does                                                       |
