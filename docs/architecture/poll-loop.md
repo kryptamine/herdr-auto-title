@@ -131,9 +131,12 @@ were last read, reusing the last answer for the rest; a pane whose processes
 cannot be read simply has none, and a failed read is not remembered as an
 answer. That pane's directory is read for the branch it has checked out, every
 poll and with nothing kept between polls: two small file reads at 0.038 ms are
-cheaper than the bookkeeping that would keep a stale answer. Inside the poll the
-read is memoized by directory, which is what stops the tabs of one project
-walking the same tree once each — see
+cheaper than the bookkeeping that would keep a stale answer. A pane holding an
+agent that is working in another directory of the same repository costs a second
+such read, because the branch is taken from where the agent is. Inside the poll
+the reads are memoized by directory, so a poll walks once per distinct directory
+rather than once per tab, which is what stops the tabs of one project — and two
+panes whose agents share a worktree — walking the same tree once each; see
 [title resolution](./title-resolution.md#the-git-branch).
 
 The reads are left out rather than made and discarded because a tab is named

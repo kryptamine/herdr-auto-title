@@ -216,20 +216,77 @@ trims the command to twenty columns, leaving `ssh deploy@productio`.
 
 ### The git branch
 
-The branch checked out in the pane's directory, read from the files under
-`.git` and never by running git: `git rev-parse` measured 12.37 ms against
-0.019 ms for reading `HEAD`, on a poll whose whole snapshot costs 0.47 ms. The
-reading is not cached between polls — at 0.038 ms including the walk up to the
-repository, a fresh answer costs less than remembering a stale one, and a
-checkout shows up in the tab within one poll. It is read for the pane the tab is
-named from and no other, so the cost is one walk per tab rather than one per
-pane.
+The branch a pane is on, read from the files under `.git` and never by running
+git: `git rev-parse` measured 12.37 ms against 0.019 ms for reading `HEAD`, on a
+poll whose whole snapshot costs 0.47 ms. The reading is not cached between polls
+— at 0.038 ms including the walk up to the repository, a fresh answer costs less
+than remembering a stale one, and a checkout shows up in the tab within one
+poll. It is read only for the panes the poll reads at all, which without pane
+naming is the one pane each tab is named from ([the poll loop](./poll-loop.md)).
+
+**Which directory the branch is read from is not the pane's alone.** A coding
+agent sent into a worktree never moves the pane's directory: it enters the
+worktree internally, so the branch came back from the repository root as the
+trunk, and the trunk contributes nothing — fourteen agent panes on fourteen
+feature branches read alike. The branch is therefore read from the agent's own
+directory when that directory belongs to the same repository and is not on its
+trunk, and from the pane's own directory otherwise. It is an override with a
+fallback rather than a replacement, so a pane never loses a branch it used to
+show: where the agent has nothing usable to say, the answer is the one this
+source always gave.
+
+Where the agent is working comes from the session transcript already opened for
+its topic, as `claude.Topic.Dir` (`internal/claude/transcript.go`), and is `""`
+when the transcript names none — no extra read, and nothing is opened that was
+not going to be read anyway. The transcript carries a `cwd` on its `user`,
+`assistant`, `system` and `attachment` lines but not on `ai-title`,
+`last-prompt`, `mode` and several other types, so the reader remembers the last
+line that carried one. It is taken as the transcript spelled it: anything but an
+absolute, clean path is refused rather than repaired, because the value becomes a
+directory a checkout is read from. It is cleared by the truncation reset and
+survives the lost-path reset, exactly as the topic does — a transcript that was
+replaced says nothing until it has been read again, and one whose file has gone
+missing still says what it last said.
+
+The gate is `overridesBranch` (`internal/app/reads.go`), and it refuses unless
+three things hold: the agent's checkout is non-zero, its `git.Checkout.CommonDir`
+equals the pane's, and its branch is either empty or not that repository's
+default. `CommonDir` is the directory holding the refs a repository shares with
+its worktrees, identical for a repository and every worktree of it, so two
+checkouts belong together exactly when it matches; it is set only on a non-zero
+`Checkout`, and a pane outside a repository therefore has none to match, which is
+the gate's boundary rather than a case to widen. An empty branch is a detached
+HEAD, which always has something to say. A trunk never does, and is refused here
+rather than left to the branch's own suppression, which would delete a segment
+the pane's own directory can still fill.
+
+**The two common directories are compared cleaned and not resolved.** Both sides
+come out of `git.discover` (`internal/git/git.go`), which already cleans the path
+it walks from, so the comparison is exact on two clean absolute paths. Where a
+checkout is reached through a symlink or an alias on one side only, the two
+spellings differ and the gate refuses: the pane keeps its own branch, which is
+today's behaviour and never a wrong label. Resolving symlinks instead would cost
+two extra stat-walks per pane per poll on the hot path, against a case where the
+feature merely does not activate. It is a deliberate trade, not an oversight.
+
+**The context does not follow the agent — only the branch does.** Two reasons,
+and the second is the sharper one. A worktree's directory names nothing worth
+leading a title with: `annotation-drift` says nothing about the project `vrms`,
+which is what the pane's own directory still says. And the rule below, that [a
+branch equal to its context is
+dropped](#a-worktree-does-not-say-its-branch-twice), would then delete the branch
+outright — a `.claude/worktrees/<branch>` directory's basename *is* the branch, so
+context and branch would arrive identical and the segment this source exists for
+would silently go.
 
 *Within* one poll the answer is memoized by directory (`checkoutMemo`,
 `internal/app/reads.go`), because the tabs of a project usually share one: six
 tabs of the same checkout walked the same tree six times, and a memo that is
 thrown away with the poll that filled it cannot hand back a stale answer, which
-is the only thing the paragraph above is refusing.
+is the only thing the refusal to cache between polls is about. A pane whose agent
+sits in a different directory costs a second walk, so a poll walks once per
+**distinct directory** rather than once per tab — and two panes whose agents
+share a worktree still collapse to one.
 
 A branch says which slice of a project a tab is on, so it qualifies the
 **context**: `dashboard › feat/oauth › nvim › auth.ts`. Three rules keep it from
@@ -252,8 +309,19 @@ saying anything it has not earned:
   of taking a new hash on every step.
 
 A worktree and a submodule are followed through the `gitdir:` file to their own
-HEAD, and to the shared refs their default branch lives in. Agents run in
-worktrees, and a worktree's directory is exactly the kind that names nothing.
+HEAD, and to the shared refs their default branch lives in.
+
+**Following the agent live makes the branch flicker.** Across the longest
+sampled session, 18 worktrees in one transcript, there were 90 transitions and
+89 branch segments: median life 423 s, p25 75 s, 14 under 30 seconds and two
+under 5. Almost all were worktree → root → worktree, so the reader watches a
+segment appear and disappear rather than one name change into another. Two
+things do not go wrong — the tab's position is a decorator in front of the title
+and does not move, and the rename rate is the poll interval, so nothing renames
+faster than a tab already could — but one does: a branch appearing re-truncates
+the activity tail at `MaxLength`, so the end of the title changes for a reason
+the reader cannot see. That is the honest cost of following the agent live, which
+is what was chosen over damping it.
 
 **This source was here before, and was removed** (2d90d74). It sat at the same
 confidence but filled the *activity* slot, where the terminal title outranked it
@@ -307,6 +375,11 @@ the same name, and the two are one fact rather than two: the title would read
 `feat-oauth › feat-oauth › nvim`. The branch is dropped when it matches the
 directory exactly, because the directory leads the title and the branch only
 qualifies it.
+
+The rule is about a pane whose *own* directory is a worktree — a user who moved
+into one and is working there themselves. A branch that came from an agent's
+directory never reaches it: the context stays the pane's, so the two halves are
+read from different directories and are two facts rather than one.
 
 Exactly, and no more than that — the rule below makes the same trade. A worktree
 whose directory spells its branch differently (`xl-knp-3` against `xl-knp.3`)
@@ -362,6 +435,23 @@ row of its own above it; what it is doing is the whole of what a pane's row is
 for. That is why the first row above keeps its activity and loses the directory
 — and why it ends up carrying more than the tab, which had to truncate the same
 words to fit the directory in front of them.
+
+**Two panes of one tab are therefore asymmetric, and it reads as a bug.** Two
+agents on two worktrees of one repository leave the tab named from the pane it
+speaks through, so that pane's row loses the branch the tab already carries
+while its sibling keeps its own:
+
+```text
+dashboard › feat/oauth › claude › Poll loop rework   the tab
+  Poll loop rework                                   the pane the tab speaks through
+  fix/token › Token refresh                          the pane doing something else
+```
+
+One row shows a branch and the other does not, which is the rule working rather
+than failing. It only bites where the speaking pane has an activity: with
+nothing but a context and a branch, everything it has is on the tab already, and
+the `kept == (Parts{})` guard hands it back, so the row reads `feat/oauth ›
+claude` instead of nothing.
 
 **A pane whose only fact is its directory keeps it**, and then does repeat its
 tab. There is nothing else known about such a pane, and the alternative is what

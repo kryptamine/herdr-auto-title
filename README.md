@@ -89,6 +89,10 @@ change. It does not read the config directory that `herdr plugin list` prints.
 | `HERDR_AUTO_TITLE_PANES`        | `true`                                   | Name panes as well as tabs                                         |
 | `HERDR_AUTO_TITLE_PREFER_AGENT` | `false`                                  | Name a tab after its agent pane even while another pane is focused |
 
+Turning `HERDR_AUTO_TITLE_TRANSCRIPT` off also drops the branch from a tab whose
+agent is working in a git worktree, because the transcript is what says which
+worktree that is.
+
 ## Documentation
 
 - [Architecture](docs/architecture/): how the plugin works and why.
