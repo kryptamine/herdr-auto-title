@@ -38,7 +38,7 @@ connection is then closed.
 request it carries it out, even if the caller has since closed the connection.
 A server stalled by a slow tab bar status command applied `tab.rename` requests
 3 to 18 seconds after receiving them, well past the poll's deadline. So a
-failed rename may still land, which is why
+rename that got no answer may still land, which is why
 [manual rename protection](./manual-rename-protection.md) keeps its label.
 
 **On Windows the socket is a named pipe.** `HERDR_SOCKET_PATH` still names a

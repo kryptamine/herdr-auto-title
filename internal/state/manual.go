@@ -34,8 +34,8 @@ type Claims struct {
 }
 
 // labels is what is known of one thing's label: the one it carried when last
-// looked at, and those of renames whose call failed. Herdr may apply one of
-// those seconds later, and it is Auto Title's label all the same.
+// looked at, and those of renames whose call got no answer. Herdr may apply one
+// of those seconds later, and it is Auto Title's label all the same.
 type labels struct {
 	current string
 	sent    map[string]struct{}
@@ -170,7 +170,7 @@ func (c *Claims) Observe(s Sighting) bool {
 }
 
 // ours reports whether Auto Title put this label there: it is the name wanted
-// now, or that of a rename whose call failed and which Herdr applied late.
+// now, or that of a rename whose call got no answer, which Herdr applied late.
 func (c *Claims) ours(s Sighting) bool {
 	_, sent := c.seen[s.ID].sent[s.Current]
 	return sent || s.Current == s.Desired
@@ -196,8 +196,9 @@ func (c *Claims) Applied(id, label string) {
 	c.seen[id] = seen
 }
 
-// Sent records the label of a rename whose call failed, which Herdr may still
-// apply once it answers again — by when the name wanted may have moved on.
+// Sent records the label of a rename whose call got no answer, which Herdr
+// may still apply once it answers again — by when the name wanted may have
+// moved on.
 func (c *Claims) Sent(id, label string) {
 	c.manual.mu.Lock()
 	defer c.manual.mu.Unlock()

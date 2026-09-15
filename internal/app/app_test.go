@@ -215,6 +215,38 @@ func TestARenameLandingAfterItsCallFailedIsRenamedOver(t *testing.T) {
 	}
 }
 
+func TestARenameHerdrRefusedIsNotTakenForItsOwn(t *testing.T) {
+	// A rename Herdr answered with an error never lands, so a tab later found
+	// wearing that label was named by someone else, and stays so.
+	h := start(
+		t,
+		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
+		[]herdr.PaneInfo{
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
+		},
+	)
+	h.poll()
+
+	h.client.SetRenameError(&herdr.APIError{Code: "invalid_params", Message: "refused"}, false)
+	h.client.SetPane(herdr.PaneInfo{
+		PaneID: "wE:p1", TabID: "wE:t1", Focused: true, Revision: 2,
+		CWD: api,
+	})
+	h.poll()
+
+	h.client.SetRenameError(nil, false)
+	h.client.SetTab(herdr.TabInfo{TabID: "wE:t1", Label: "api"})
+	h.client.SetPane(herdr.PaneInfo{
+		PaneID: "wE:p1", TabID: "wE:t1", Focused: true, Revision: 3,
+		CWD: billing,
+	})
+	h.poll()
+
+	if renames := h.client.Renames(); len(renames) != 1 {
+		t.Errorf("issued %v, want the tab left as the user named it", renames)
+	}
+}
+
 func TestAnUnchangedSessionIsRenamedOnce(t *testing.T) {
 	// Polling would be unusable if every tick renamed. Deduplication against
 	// the label the snapshot reports is what keeps the loop quiet.

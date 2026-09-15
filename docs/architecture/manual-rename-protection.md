@@ -99,9 +99,11 @@ the user's, and **the tab is locked on a stale number for good**. In the session
 where it was found, ten of twelve locked tabs had a late rename as their last
 one.
 
-So a failed rename's label is kept per tab (`Claims.Sent`), and a tab found
-wearing one is Auto Title's, like one wearing *Desired*, and is renamed on. The
-label is forgotten once it lands or the tab closes. Recording the label as
+So the label of a rename whose call got no answer is kept per tab
+(`Claims.Sent`), and a tab found wearing one is Auto Title's, like one wearing
+*Desired*, and is renamed on. A call Herdr answered with an error was refused,
+not deferred, and is not kept. The label is forgotten once it lands or the tab
+closes. Recording the label as
 *Seen* up front instead would be wrong the other way: a rename that never
 lands would leave the old label looking moved, and lock that.
 
