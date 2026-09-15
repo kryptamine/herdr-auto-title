@@ -6,6 +6,7 @@ package herdrtest
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -48,7 +49,6 @@ type Client struct {
 	renames     []RenameCall
 	paneRenames []PaneRenameCall
 	renameErr   error
-	renameLands bool
 	processErr  error
 	callErr     error
 	reads       int
@@ -133,15 +133,14 @@ func (s *Client) ClosePane(paneID string) {
 	delete(s.panes, paneID)
 }
 
-// SetRenameError makes every subsequent tab rename fail with err. With landed,
-// Herdr applies it all the same, as it does one whose caller stopped waiting
-// for the answer. Pane renames are unaffected.
-func (s *Client) SetRenameError(err error, landed bool) {
+// SetRenameError makes every subsequent tab rename fail with err. One wrapping
+// herdr.ErrUnanswered lands all the same, as a request Herdr read but did not
+// answer does. Pane renames are unaffected.
+func (s *Client) SetRenameError(err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	s.renameErr = err
-	s.renameLands = landed
 }
 
 func (s *Client) SetProcessError(err error) {
@@ -241,7 +240,7 @@ func (s *Client) processInfo(params any, result any) error {
 }
 
 func (s *Client) rename(params any) error {
-	if s.renameErr != nil && !s.renameLands {
+	if s.renameErr != nil && !errors.Is(s.renameErr, herdr.ErrUnanswered) {
 		return s.renameErr
 	}
 

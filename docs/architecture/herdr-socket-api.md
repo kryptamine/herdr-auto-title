@@ -40,6 +40,8 @@ A server stalled by a slow tab bar status command applied `tab.rename` requests
 3 to 18 seconds after receiving them, well past the poll's deadline. So a
 rename that got no answer may still land, which is why
 [manual rename protection](./manual-rename-protection.md) keeps its label.
+`Call` marks such a failure with `ErrUnanswered`, and only one that happened
+after the request was sent: a dial that failed carried nothing to Herdr.
 
 **On Windows the socket is a named pipe.** `HERDR_SOCKET_PATH` still names a
 file, `%APPDATA%\herdr\herdr.sock`, but that file is 25 bytes of text —

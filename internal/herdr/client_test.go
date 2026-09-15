@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"path/filepath"
 	"sync"
 	"testing"
 )
@@ -174,6 +175,28 @@ func TestCallReturnsAPIError(t *testing.T) {
 
 	if apiErr.Code != "not_found" {
 		t.Errorf("code = %q, want not_found", apiErr.Code)
+	}
+}
+
+func TestACallHerdrDidNotAnswerMayStillTakeEffect(t *testing.T) {
+	// Herdr read this request, so a rename it carries may land later, and
+	// manual rename protection must know that it may.
+	srv := newTestServer(t, func(incoming) string { return "" })
+
+	err := RenameTab(context.Background(), srv.client(), "wE:t1", "dashboard")
+	if !errors.Is(err, ErrUnanswered) {
+		t.Errorf("error %v is not ErrUnanswered", err)
+	}
+}
+
+func TestACallThatNeverReachedHerdrIsNotUnanswered(t *testing.T) {
+	// A request that was never sent cannot land, so its label must not pass
+	// for Auto Title's own.
+	client := newWithPath(filepath.Join(t.TempDir(), "gone.sock"))
+
+	err := RenameTab(context.Background(), client, "wE:t1", "dashboard")
+	if err == nil || errors.Is(err, ErrUnanswered) {
+		t.Errorf("error %v, want a failure that is not ErrUnanswered", err)
 	}
 }
 

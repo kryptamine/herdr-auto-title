@@ -5,6 +5,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"time"
 
@@ -304,13 +305,13 @@ func (a *App) apply(
 	}
 
 	if err := kind.rename(ctx, client, seen.ID, decision.Name); err != nil {
-		switch herdr.ErrorCode(err) {
-		case kind.gone:
+		if herdr.ErrorCode(err) == kind.gone {
 			a.log.Debug(kind.noun+" closed before it could be renamed", idKey, seen.ID)
 			return
-		case "":
-			// A call with no answer may still have reached Herdr, which applies it
-			// whenever it next gets to it: docs/architecture/manual-rename-protection.md.
+		}
+
+		if errors.Is(err, herdr.ErrUnanswered) {
+			// Herdr may still apply it: docs/architecture/manual-rename-protection.md.
 			claims.Sent(seen.ID, decision.Name)
 		}
 

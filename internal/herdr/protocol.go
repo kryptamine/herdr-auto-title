@@ -42,6 +42,11 @@ const (
 	CodePaneNotFound = "pane_not_found"
 )
 
+// ErrUnanswered marks a call that failed after its request was sent. Herdr
+// carries out a request it has read even once the caller hangs up, so such a
+// call may still take effect.
+var ErrUnanswered = errors.New("no answer from herdr")
+
 // ErrorCode returns the Herdr error code carried by err, or "" if err is not a
 // Herdr API error.
 func ErrorCode(err error) string {

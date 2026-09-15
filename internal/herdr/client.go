@@ -87,17 +87,17 @@ func (c *SocketClient) Call(ctx context.Context, method string, params any, resu
 		Params: params,
 	}
 	if err := json.NewEncoder(conn).Encode(req); err != nil {
-		return withContextErr(ctx, fmt.Errorf("send %s: %w", method, err))
+		return unanswered(ctx, fmt.Errorf("send %s: %w", method, err))
 	}
 
 	line, err := bufio.NewReader(conn).ReadBytes('\n')
 	if err != nil && len(line) == 0 {
-		return withContextErr(ctx, fmt.Errorf("read %s response: %w", method, err))
+		return unanswered(ctx, fmt.Errorf("read %s response: %w", method, err))
 	}
 
 	var f frame
 	if err := json.Unmarshal(line, &f); err != nil {
-		return fmt.Errorf("decode %s response: %w", method, err)
+		return unanswered(ctx, fmt.Errorf("decode %s response: %w", method, err))
 	}
 
 	if f.Error != nil {
@@ -113,14 +113,14 @@ func (c *SocketClient) Call(ctx context.Context, method string, params any, resu
 	return nil
 }
 
-// withContextErr reports cancellation as such rather than as the socket error
-// that closing the connection produced.
-func withContextErr(ctx context.Context, err error) error {
+// unanswered reports a call that failed once its request was sent, as the
+// cancellation that closed the connection when that is what happened.
+func unanswered(ctx context.Context, err error) error {
 	if ctxErr := ctx.Err(); ctxErr != nil {
-		return ctxErr
+		err = ctxErr
 	}
 
-	return err
+	return fmt.Errorf("%w: %w", ErrUnanswered, err)
 }
 
 // SessionSnapshot fetches the whole session: every tab with its label, every

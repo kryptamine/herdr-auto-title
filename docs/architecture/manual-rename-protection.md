@@ -99,13 +99,19 @@ the user's, and **the tab is locked on a stale number for good**. In the session
 where it was found, ten of twelve locked tabs had a late rename as their last
 one.
 
-So the label of a rename whose call got no answer is kept per tab
-(`Claims.Sent`), and a tab found wearing one is Auto Title's, like one wearing
-*Desired*, and is renamed on. A call Herdr answered with an error was refused,
-not deferred, and is not kept. The label is forgotten once it lands or the tab
-closes. Recording the label as
-*Seen* up front instead would be wrong the other way: a rename that never
-lands would leave the old label looking moved, and lock that.
+So the label of a rename whose request was sent but got no answer
+(`herdr.ErrUnanswered`) is kept per tab (`Claims.Sent`), and a tab found wearing
+one is Auto Title's, like one wearing *Desired*, and is renamed on. The label is
+forgotten once it lands or the tab closes. Recording the label as *Seen* up
+front instead would be wrong the other way: a rename that never lands would
+leave the old label looking moved, and lock that.
+
+Only a request that was sent is kept. A call Herdr answered with an error was
+refused, not deferred. A call that failed before its request was sent never
+reached Herdr: a dial refused, or one made once the poll's deadline had passed,
+as it has for a rename right after a process read that stalled.
+Kept all the same, its label would pass for Auto Title's, and a user who then
+chose that name would have it renamed away.
 
 ## Locks outlive the process, guarded by the label
 

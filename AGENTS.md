@@ -138,7 +138,8 @@ are only the facts that would otherwise mislead the code in silence.
 - **A call that gives up has not undone its request.** Herdr carries out a
   request it has read even after the caller hangs up, so a stalled server can
   apply a `tab.rename` seconds after the poll's deadline. That label is still
-  Auto Title's own when it lands, which is what `Claims.Sent` remembers.
+  Auto Title's own when it lands, so `Call` marks a failure after sending
+  `ErrUnanswered`, and `Claims.Sent` keeps that label.
 - **On Windows the socket is a named pipe**, `\\.\pipe\` followed by the whole
   of `HERDR_SOCKET_PATH`. The path itself names a small text file, and dialing
   it as a Unix socket is refused; `dial_windows.go` opens the pipe, and nothing

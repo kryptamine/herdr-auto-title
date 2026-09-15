@@ -195,14 +195,14 @@ func TestARenameLandingAfterItsCallFailedIsRenamedOver(t *testing.T) {
 	)
 	h.poll()
 
-	h.client.SetRenameError(errors.New("read tab.rename response: pipe closed"), true)
+	h.client.SetRenameError(herdr.ErrUnanswered)
 	h.client.SetPane(herdr.PaneInfo{
 		PaneID: "wE:p1", TabID: "wE:t1", Focused: true, Revision: 2,
 		CWD: api,
 	})
 	h.poll()
 
-	h.client.SetRenameError(nil, false)
+	h.client.SetRenameError(nil)
 	h.client.SetPane(herdr.PaneInfo{
 		PaneID: "wE:p1", TabID: "wE:t1", Focused: true, Revision: 3,
 		CWD: billing,
@@ -215,35 +215,42 @@ func TestARenameLandingAfterItsCallFailedIsRenamedOver(t *testing.T) {
 	}
 }
 
-func TestARenameHerdrRefusedIsNotTakenForItsOwn(t *testing.T) {
-	// A rename Herdr answered with an error never lands, so a tab later found
-	// wearing that label was named by someone else, and stays so.
-	h := start(
-		t,
-		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
-		[]herdr.PaneInfo{
-			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
-		},
-	)
-	h.poll()
+func TestARenameThatCannotHaveLandedIsNotTakenForItsOwn(t *testing.T) {
+	// Neither a rename Herdr refused nor one that never reached it can land, so
+	// a tab later found wearing that label was named by the user, and stays so.
+	for name, err := range map[string]error{
+		"refused":    &herdr.APIError{Code: "invalid_params", Message: "refused"},
+		"never sent": errors.New("connect to herdr socket: i/o timeout"),
+	} {
+		t.Run(name, func(t *testing.T) {
+			h := start(
+				t,
+				[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
+				[]herdr.PaneInfo{
+					{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
+				},
+			)
+			h.poll()
 
-	h.client.SetRenameError(&herdr.APIError{Code: "invalid_params", Message: "refused"}, false)
-	h.client.SetPane(herdr.PaneInfo{
-		PaneID: "wE:p1", TabID: "wE:t1", Focused: true, Revision: 2,
-		CWD: api,
-	})
-	h.poll()
+			h.client.SetRenameError(err)
+			h.client.SetPane(herdr.PaneInfo{
+				PaneID: "wE:p1", TabID: "wE:t1", Focused: true, Revision: 2,
+				CWD: api,
+			})
+			h.poll()
 
-	h.client.SetRenameError(nil, false)
-	h.client.SetTab(herdr.TabInfo{TabID: "wE:t1", Label: "api"})
-	h.client.SetPane(herdr.PaneInfo{
-		PaneID: "wE:p1", TabID: "wE:t1", Focused: true, Revision: 3,
-		CWD: billing,
-	})
-	h.poll()
+			h.client.SetRenameError(nil)
+			h.client.SetTab(herdr.TabInfo{TabID: "wE:t1", Label: "api"})
+			h.client.SetPane(herdr.PaneInfo{
+				PaneID: "wE:p1", TabID: "wE:t1", Focused: true, Revision: 3,
+				CWD: billing,
+			})
+			h.poll()
 
-	if renames := h.client.Renames(); len(renames) != 1 {
-		t.Errorf("issued %v, want the tab left as the user named it", renames)
+			if renames := h.client.Renames(); len(renames) != 1 {
+				t.Errorf("issued %v, want the tab left as the user named it", renames)
+			}
+		})
 	}
 }
 
@@ -325,14 +332,14 @@ func TestFailedRenameIsRetriedOnTheNextPoll(t *testing.T) {
 			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
 		},
 	)
-	h.client.SetRenameError(errors.New("herdr is busy"), false)
+	h.client.SetRenameError(errors.New("herdr is busy"))
 	h.polls(3)
 
 	if renames := h.client.Renames(); len(renames) != 0 {
 		t.Fatalf("issued %v while renaming was failing", renames)
 	}
 
-	h.client.SetRenameError(nil, false)
+	h.client.SetRenameError(nil)
 	h.poll()
 
 	if got := h.client.Renames()[0].Label; got != "dashboard" {
