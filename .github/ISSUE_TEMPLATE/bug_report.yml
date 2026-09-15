@@ -6,9 +6,11 @@ body:
     attributes:
       value: |
         Two things account for most reports: installing does not start the
-        plugin until the Herdr server has restarted (`herdr server stop`), and
-        a tab you renamed by hand is left alone from then on.
-        `herdr plugin list` shows whether the plugin is registered and running.
+        plugin until it is restarted (`herdr plugin action invoke
+        herdr.auto-title.restart`, or `herdr server stop` on the first upgrade
+        from a version without that action), and a tab you renamed by hand is
+        left alone from then on. `herdr plugin list` shows whether the plugin
+        is registered.
 
   - type: textarea
     id: what-happened
@@ -80,7 +82,7 @@ body:
     attributes:
       label: DEBUG logs
       description: >-
-        Set `HERDR_AUTO_TITLE_DEBUG=1` in your `config.env`, restart the server
+        Set `HERDR_AUTO_TITLE_DEBUG=1` in your `config.env`, restart the plugin
         and paste the lines around the bad rename. Logs carry tab titles,
         commands and paths — remove anything you would rather not publish.
       render: text

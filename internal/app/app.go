@@ -14,8 +14,21 @@ import (
 	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
 
-// pollTimeout bounds one poll: a snapshot and the renames it decides on.
-const pollTimeout = 5 * time.Second
+// PollTimeout bounds one poll: a snapshot and the renames it decides on.
+const PollTimeout = 5 * time.Second
+
+// LeaveTimeout is how long a displaced instance gets to leave: a poll past its
+// deadline, then the wait for its next one, which is its own interval — up to
+// five seconds of it, a slower instance being left with a warning.
+const LeaveTimeout = PollTimeout + 5*time.Second
+
+// Instance is this process's claim on the session: a newer claim ends the run,
+// and the first snapshot read is reported to whoever waits for it — see
+// docs/architecture/poll-loop.md.
+type Instance interface {
+	Taken() bool
+	Ready()
+}
 
 // App is one run of the Auto Title loop.
 type App struct {
@@ -38,7 +51,8 @@ type App struct {
 	// server identifies the Herdr this instance answers to, learned from the
 	// first poll that could read it. Another server on the socket has started
 	// an instance of its own, and this one leaves rather than double it.
-	server string
+	server   string
+	instance Instance
 }
 
 // New builds the application. The client belongs to Run rather than to the
@@ -49,6 +63,7 @@ func New(
 	log *slog.Logger,
 	titles resolver.TitleResolver,
 	panes resolver.PaneResolver,
+	instance Instance,
 ) *App {
 	changes := state.NewChanges()
 
@@ -61,6 +76,7 @@ func New(
 		changes:     changes,
 		manual:      state.LoadManual(cfg.ManualPath),
 		reads:       newPaneReader(cfg, log, changes),
+		instance:    instance,
 	}
 }
 
@@ -113,10 +129,15 @@ func (a *App) Run(ctx context.Context, client herdr.Client) {
 
 // poll is one turn of the loop, and reports whether there should be another.
 // No failure is fatal — Herdr's socket can lag the process it just launched —
-// but another server on the socket ends the run: docs/architecture/poll-loop.md.
+// but a successor ends the run, on the socket or on the claim: docs/architecture/poll-loop.md.
 func (a *App) poll(ctx context.Context, client herdr.Client) bool {
 	if a.superseded(client) {
 		a.log.Info("another server holds the socket and starts an auto title of its own, leaving")
+		return false
+	}
+
+	if a.instance.Taken() {
+		a.log.Info("a newer auto title has claimed the session, leaving")
 		return false
 	}
 
@@ -132,6 +153,8 @@ func (a *App) poll(ctx context.Context, client herdr.Client) bool {
 
 		return true
 	}
+
+	a.instance.Ready()
 
 	if run := a.failures.recovered(); run > 0 {
 		a.log.Info("the session is answering again", "polls missed", run)
@@ -158,7 +181,7 @@ func (a *App) superseded(client herdr.Client) bool {
 }
 
 func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
-	ctx, cancel := context.WithTimeout(ctx, pollTimeout)
+	ctx, cancel := context.WithTimeout(ctx, PollTimeout)
 	defer cancel()
 
 	snapshot, err := herdr.SessionSnapshot(ctx, client)

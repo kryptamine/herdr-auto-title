@@ -159,5 +159,5 @@ builds the resolver chain — `MAX_LENGTH` and `BRANCH_MAX` are baked into
 `resolver.Default`, `POSITION` decides whether the chain is wrapped at all — so
 rereading the file mid-run would apply some settings and quietly ignore others.
 An honest restart is better than a reload that works half the time, and the
-plugin restarts in the time it takes the server to start it again: `herdr server
-stop`, then `herdr`.
+plugin restarts in about a second without the server: the `restart` action,
+described in [the poll loop](./poll-loop.md#a-successor-on-the-claim).

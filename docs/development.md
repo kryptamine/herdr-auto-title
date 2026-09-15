@@ -136,12 +136,25 @@ it built. `herdr plugin list` shows which of the two you are running.
 
 Neither one starts anything. Herdr runs `[[startup]]` when the **server**
 restores a session, and has no hook for install or enable, so a freshly
-installed or linked plugin sits idle until `herdr server stop` and a fresh
-`herdr`. Opening a new terminal only attaches another client and starts
-nothing — `herdr status server` reports the uptime that gives it away.
+installed or linked plugin sits idle until it is started: the plugin's own
+`restart` action (`herdr plugin action invoke herdr.auto-title.restart`), or
+`herdr server stop` and a fresh `herdr`. Opening a new terminal only attaches
+another client and starts nothing — `herdr status server` reports the uptime
+that gives it away.
 
-That is why `make run` exists: it is the only way to see your working tree do
-something without taking the session down.
+`make run` is still the way to see your working tree do something: the action
+runs whatever the link or install holds, built when it was registered.
+
+## One instance per session
+
+Every instance claims the session in a file, and a newer claim tells the older
+instance to leave — see [the poll loop](architecture/poll-loop.md#a-successor-on-the-claim).
+`make run` and `make dev` take part: starting one displaces the instance Herdr
+started, which leaves within a poll, and Ctrl+C releases the claim and leaves
+nothing running until the next restart or server start. A restart from the
+action then starts the registered build, not your working tree. The claims and
+their ready markers are in `instances/` beside `config.env`; one naming a pid
+that is gone displaces nobody, so a crashed run costs nothing.
 
 ## Working through a change
 
@@ -169,6 +182,8 @@ evening goes into it — see [../CONTRIBUTING.md](../CONTRIBUTING.md).
 | Line | Meaning |
 |------|---------|
 | `starting auto title` | the poll interval and length limit actually in force |
+| `waiting for the instance this one replaces to leave` | another instance held the session; polling starts once it has gone, or after ten seconds with a warning |
+| `a newer auto title has claimed the session, leaving` | a restart or another `make run` took the session over; this instance exits |
 | `tab renamed` | the only line that means Herdr was asked to do something |
 | `poll failed` | a snapshot did not come back; the next tick retries, and a run of these is logged on a backoff rather than once per poll |
 | `the session is answering again` | polls are working after a run of failures, and how many were missed |

@@ -148,8 +148,9 @@ are only the facts that would otherwise mislead the code in silence.
   agent**, never an editor, a build or an ssh session running under the shell.
   Names arrive with `.exe` and a process's `cwd` with a trailing backslash; the
   state package strips both as they arrive, so no reader of a pane sees either.
-- Auto Title uses four methods and no others: `session.snapshot`,
-  `pane.process_info`, `tab.rename` and `pane.rename`.
+- Auto Title uses five methods and no others: `session.snapshot`,
+  `pane.process_info`, `tab.rename`, `pane.rename` and, from the restart
+  action alone, `notification.show`.
 - **A pane carries no label until it has one, and an empty one clears it.**
   Herdr omits `label` from a pane object entirely until the pane is named, and
   `pane.rename` clears rather than stores an empty label — the opposite of
@@ -190,6 +191,18 @@ are only the facts that would otherwise mislead the code in silence.
   `App.superseded` is what makes it leave instead; the loop must not survive
   a change of server (see
   [docs/architecture/poll-loop.md](docs/architecture/poll-loop.md)).
+- **Herdr starts a plugin at server start and at nothing else** — not on
+  install, link, enable or a configuration reload. Restarting Auto Title alone
+  is the `restart` action, which is a newer instance claiming the session in
+  `internal/instance` and the older one leaving; the poll loop note has it.
+- **A process an action leaves behind must not inherit the action's stdio.**
+  Herdr reads an action's output to EOF, so a child holding the pipes keeps
+  the action "running" and one of the thirty-two plugin command slots with it.
+  The restart starts the new instance on the null device, detached.
+- **One action id per manifest, whatever the platforms.** Herdr rejects a
+  duplicate id even when the two entries' `platforms` do not overlap, so
+  there is no Windows twin naming the `.exe`; Herdr 0.9.0 on Windows appends
+  it to `./herdr-auto-title` itself, and older Herdr there has no action.
 
 ## Working here
 

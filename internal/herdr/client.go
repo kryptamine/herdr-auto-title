@@ -64,6 +64,11 @@ func (c *SocketClient) Server() string {
 	return serverIdentity(c.path)
 }
 
+// Path is the socket the client dials, which is what names a session.
+func (c *SocketClient) Path() string {
+	return c.path
+}
+
 // Call sends one request on a connection of its own and reads the single
 // response Herdr answers with before closing.
 func (c *SocketClient) Call(ctx context.Context, method string, params any, result any) error {
@@ -154,4 +159,21 @@ func RenameTab(ctx context.Context, c Client, tabID, label string) error {
 // empty label clears the name rather than storing it, so nothing here sends one.
 func RenamePane(ctx context.Context, c Client, paneID, label string) error {
 	return c.Call(ctx, MethodPaneRename, PaneRenameParams{PaneID: paneID, Label: label}, nil)
+}
+
+// ShowNotification puts a notice in front of the user and reports whether it
+// was shown, with Herdr's reason when it was not: nothing is shown without a
+// client attached, and two within a second is one too many.
+func ShowNotification(ctx context.Context, c Client, title, body string) (bool, string, error) {
+	var res notificationResult
+	if err := c.Call(
+		ctx,
+		MethodNotificationShow,
+		NotificationParams{Title: title, Body: body},
+		&res,
+	); err != nil {
+		return false, "", err
+	}
+
+	return res.Shown, res.Reason, nil
 }
