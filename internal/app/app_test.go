@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -1070,10 +1071,15 @@ const testSession = "8852bfe0-8b24-4a23-a35e-7521d04da061"
 // the transcript reader's business, and its own tests cover that.
 func transcript(t *testing.T, lines ...string) {
 	t.Helper()
-	root := t.TempDir()
-	t.Setenv("CLAUDE_CONFIG_DIR", root)
+	writeTranscript(t, stateDir(t), testSession, lines...)
+}
 
-	path := filepath.Join(root, "projects", "any-project", testSession+".jsonl")
+// writeTranscript lays down one session's transcript in a state directory the
+// plugin is already pointed at.
+func writeTranscript(t *testing.T, root, sessionID string, lines ...string) {
+	t.Helper()
+
+	path := filepath.Join(root, "projects", "any-project", sessionID+".jsonl")
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -1263,5 +1269,438 @@ func TestAWindowsShellPaneIsNamedAfterItsDirectory(t *testing.T) {
 
 	if got := h.client.Renames()[0].Label; got != "dashboard" {
 		t.Errorf("rename = %q, want dashboard", got)
+	}
+}
+
+// worktreeIn builds a worktree of the repository at root out of files, the way
+// git records one: the branch in the worktree's own HEAD, and the refs it
+// shares with the repository a commondir away.
+func worktreeIn(t *testing.T, root, name, branch string) string {
+	t.Helper()
+
+	gitDir := filepath.Join(root, ".git", "worktrees", name)
+	tree := filepath.Join(root, ".claude", "worktrees", name)
+
+	for _, dir := range []string{gitDir, tree} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	write := func(path, content string) {
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write(filepath.Join(gitDir, "HEAD"), "ref: refs/heads/"+branch+"\n")
+	write(filepath.Join(gitDir, "commondir"), "../..\n")
+	write(filepath.Join(tree, ".git"), "gitdir: "+gitDir+"\n")
+
+	return tree
+}
+
+// stateDir points the plugin at a Claude Code state directory of the test's
+// own, so several sessions can be laid down in one.
+func stateDir(t *testing.T) string {
+	t.Helper()
+	root := t.TempDir()
+	t.Setenv("CLAUDE_CONFIG_DIR", root)
+
+	return root
+}
+
+// agentIn is a transcript line saying where the agent is working. Only the
+// directory is read out of it, and a Windows path is full of escapes.
+func agentIn(dir string) string {
+	return `{"type":"assistant","cwd":` + strconv.Quote(dir) + `}`
+}
+
+// agentPaneAt is a pane sitting in dir and holding a Claude Code session, so a
+// read of it goes to the transcript as well as to the directory.
+func agentPaneAt(paneID, sessionID, dir string) *state.PaneState {
+	return state.PaneFrom(herdr.PaneInfo{
+		PaneID: paneID, TabID: "wE:t1", CWD: dir, Agent: "claude",
+		AgentSession: &herdr.AgentSessionInfo{
+			Agent: "claude", Kind: herdr.SessionRefID, Value: sessionID,
+		},
+	}, time.Time{})
+}
+
+func transcriptConfig() Config {
+	cfg := testConfig()
+	cfg.ReadTranscripts = true
+
+	return cfg
+}
+
+// readOne fills one pane the way a poll does, on a configuration of its own.
+func readOne(t *testing.T, cfg Config, pane *state.PaneState) {
+	t.Helper()
+
+	app := newTestApp(t, cfg)
+	app.reads.forPoll(nil).fill(context.Background(), herdrtest.New(nil, nil), pane)
+}
+
+func TestATabIsNamedAfterTheBranchTheAgentIsWorkingOn(t *testing.T) {
+	// The pane sits at the repository root on the trunk while its agent works
+	// in a worktree, so the branch the user cares about is only the agent's.
+	repo := repoAt(t, "main")
+	worktree := worktreeIn(t, repo, "wt", "feat/oauth")
+
+	transcript(
+		t,
+		agentIn(worktree),
+		`{"type":"ai-title","aiTitle":"Poll loop rework","sessionId":"`+testSession+`"}`,
+	)
+
+	pane := agentPane()
+	pane.CWD = repo
+
+	h := startConfigured(t, herdrtest.New(
+		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
+		[]herdr.PaneInfo{pane},
+	), transcriptConfig())
+	h.poll()
+
+	got := h.client.Renames()[0].Label
+	if want := filepath.Base(repo) + " › feat/oauth › claude › Poll loop rework"; got != want {
+		t.Errorf("rename = %q, want %q", got, want)
+	}
+}
+
+// The second session, for the tests that give one repository two agents.
+const otherSession = "0c3a1d94-77b1-4f2e-8a6d-5e91b2c4d803"
+
+func TestTwoAgentsOnTwoWorktreesOfOneRepositoryShowDifferentBranches(t *testing.T) {
+	// The panes share a project and are told apart only by the worktree each
+	// agent was sent into, which is the whole point of reading it.
+	repo := repoAt(t, "main")
+	oauth := worktreeIn(t, repo, "oauth", "feat/oauth")
+	token := worktreeIn(t, repo, "token", "fix/token")
+
+	root := stateDir(t)
+	writeTranscript(t, root, testSession, agentIn(oauth))
+	writeTranscript(t, root, otherSession, agentIn(token))
+
+	app := newTestApp(t, transcriptConfig())
+	reads := app.reads.forPoll(nil)
+
+	first := agentPaneAt("wE:p1", testSession, repo)
+	second := agentPaneAt("wE:p2", otherSession, repo)
+
+	ctx, client := context.Background(), herdrtest.New(nil, nil)
+	reads.fill(ctx, client, first)
+	reads.fill(ctx, client, second)
+
+	if first.Git.Branch != "feat/oauth" {
+		t.Errorf("first branch = %q, want feat/oauth", first.Git.Branch)
+	}
+
+	if second.Git.Branch != "fix/token" {
+		t.Errorf("second branch = %q, want fix/token", second.Git.Branch)
+	}
+}
+
+func TestAnAgentInAnotherRepositoryIsIgnored(t *testing.T) {
+	// A branch from somewhere else beside this project's name is a wrong
+	// label, and worse than the pane having none.
+	repo := repoAt(t, "feat/oauth")
+	unrelated := repoAt(t, "fix/token")
+
+	transcript(t, agentIn(unrelated))
+
+	pane := agentPaneAt("wE:p1", testSession, repo)
+	readOne(t, transcriptConfig(), pane)
+
+	if pane.Git.Branch != "feat/oauth" {
+		t.Errorf("branch = %q, want the pane's own", pane.Git.Branch)
+	}
+}
+
+func TestAnAgentInNoRepositoryKeepsThePanesBranch(t *testing.T) {
+	// An agent that ended up in a home directory or a scratch directory must
+	// not cost the pane the branch it already had.
+	repo := repoAt(t, "feat/oauth")
+
+	transcript(t, agentIn(t.TempDir()))
+
+	pane := agentPaneAt("wE:p1", testSession, repo)
+	readOne(t, transcriptConfig(), pane)
+
+	if pane.Git.Branch != "feat/oauth" {
+		t.Errorf("branch = %q, want the pane's own", pane.Git.Branch)
+	}
+}
+
+func TestAnAgentInASubdirectoryReadsTheCheckoutAboveIt(t *testing.T) {
+	// A directory below a checkout is still that checkout, so an agent working
+	// in one names its branch — here a worktree's, where the pane's own
+	// directory is the trunk and says nothing.
+	repo := repoAt(t, "main")
+	worktree := worktreeIn(t, repo, "wt", "feat/oauth")
+
+	nested := filepath.Join(worktree, "internal", "app")
+	if err := os.MkdirAll(nested, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	transcript(t, agentIn(nested))
+
+	pane := agentPaneAt("wE:p1", testSession, repo)
+	readOne(t, transcriptConfig(), pane)
+
+	if pane.Git.Branch != "feat/oauth" {
+		t.Errorf("branch = %q, want the worktree the subdirectory sits in", pane.Git.Branch)
+	}
+}
+
+func TestAWorktreeTakenOffDiskFallsBackToTheRepositoryRoot(t *testing.T) {
+	// The directory the transcript names is gone, so the walk up reaches the
+	// repository root and answers with the trunk, which names nothing — and
+	// the pane keeps a branch of its own that the trunk would have replaced.
+	repo := repoAt(t, "main")
+	worktree := worktreeIn(t, repo, "wt", "feat/oauth")
+
+	transcript(t, agentIn(filepath.Join(repo, ".claude", "worktrees", "gone")))
+
+	pane := agentPaneAt("wE:p1", testSession, worktree)
+	readOne(t, transcriptConfig(), pane)
+
+	if pane.Git.Branch != "feat/oauth" {
+		t.Errorf("branch = %q, want the branch the pane sits on", pane.Git.Branch)
+	}
+}
+
+func TestAPaneOnAWorktreeKeepsItsBranchWhenItsAgentWalkedUp(t *testing.T) {
+	// The agent's directory is the repository root, whose trunk the branch
+	// source then suppresses, so taking it would delete a segment the pane
+	// shows today.
+	repo := repoAt(t, "main")
+	worktree := worktreeIn(t, repo, "wt", "feat/oauth")
+
+	transcript(t, agentIn(repo))
+
+	pane := agentPaneAt("wE:p1", testSession, worktree)
+	readOne(t, transcriptConfig(), pane)
+
+	if pane.Git.Branch != "feat/oauth" {
+		t.Errorf("branch = %q, want the pane's own worktree branch", pane.Git.Branch)
+	}
+}
+
+func TestAnAgentOnTheTrunkKeepsThePanesBranch(t *testing.T) {
+	repo := repoAt(t, "feat/oauth")
+	worktree := worktreeIn(t, repo, "wt", "main")
+
+	transcript(t, agentIn(worktree))
+
+	pane := agentPaneAt("wE:p1", testSession, repo)
+	readOne(t, transcriptConfig(), pane)
+
+	if pane.Git.Branch != "feat/oauth" {
+		t.Errorf("branch = %q, want the pane's own", pane.Git.Branch)
+	}
+}
+
+func TestADetachedAgentWorktreeShowsItsShortHash(t *testing.T) {
+	// A detached HEAD is where commits get lost, so it is worth the segment
+	// even in a repository that records no trunk to compare it against.
+	for _, remote := range []bool{true, false} {
+		repo := repoAt(t, "main")
+		worktree := worktreeIn(t, repo, "wt", "side")
+
+		head := filepath.Join(repo, ".git", "worktrees", "wt", "HEAD")
+		if err := os.WriteFile(
+			head,
+			[]byte("aaf1fd85f68047764760489dbfc3ecb5ab9d0cb8\n"),
+			0o644,
+		); err != nil {
+			t.Fatal(err)
+		}
+
+		if !remote {
+			origin := filepath.Join(repo, ".git", "refs", "remotes", "origin", "HEAD")
+			if err := os.Remove(origin); err != nil {
+				t.Fatal(err)
+			}
+		}
+
+		transcript(t, agentIn(worktree))
+
+		pane := agentPaneAt("wE:p1", testSession, repo)
+		readOne(t, transcriptConfig(), pane)
+
+		if pane.Git.Commit != "aaf1fd8" {
+			t.Errorf("remote %v: commit = %q, want aaf1fd8", remote, pane.Git.Commit)
+		}
+	}
+}
+
+func TestTranscriptsSwitchedOffLeaveTheBranchOnThePanesDirectory(t *testing.T) {
+	// The transcript is what says where the agent is, so a user who turned it
+	// off is named exactly as before the branch ever followed one.
+	repo := repoAt(t, "feat/oauth")
+	worktreeIn(t, repo, "wt", "fix/token")
+
+	transcript(t, agentIn(filepath.Join(repo, ".claude", "worktrees", "wt")))
+
+	pane := agentPaneAt("wE:p1", testSession, repo)
+	readOne(t, testConfig(), pane)
+
+	if pane.Git.Branch != "feat/oauth" {
+		t.Errorf("branch = %q, want the pane's own", pane.Git.Branch)
+	}
+}
+
+func TestBranchesSwitchedOffReadNeitherDirectory(t *testing.T) {
+	repo := repoAt(t, "main")
+	worktree := worktreeIn(t, repo, "wt", "feat/oauth")
+
+	transcript(t, agentIn(worktree))
+
+	cfg := transcriptConfig()
+	cfg.BranchMax = 0
+
+	pane := agentPaneAt("wE:p1", testSession, repo)
+	readOne(t, cfg, pane)
+
+	if pane.Git != (git.Checkout{}) {
+		t.Errorf("checkout = %+v, want nothing read", pane.Git)
+	}
+}
+
+func TestAPaneWhoseAgentHoldsNoSessionKeepsItsBranch(t *testing.T) {
+	// Herdr reports no session until that agent's integration hook is
+	// installed, and a pane with no agent at all never had one.
+	repo := repoAt(t, "feat/oauth")
+
+	transcript(t, agentIn(worktreeIn(t, repo, "wt", "fix/token")))
+
+	cfg := transcriptConfig()
+
+	for name, pane := range map[string]*state.PaneState{
+		"no agent": paneAt("wE:p1", repo),
+		"no session": state.PaneFrom(
+			herdr.PaneInfo{PaneID: "wE:p2", TabID: "wE:t1", CWD: repo, Agent: "claude"},
+			time.Time{},
+		),
+	} {
+		readOne(t, cfg, pane)
+
+		if pane.Git.Branch != "feat/oauth" {
+			t.Errorf("%s: branch = %q, want the pane's own", name, pane.Git.Branch)
+		}
+	}
+}
+
+func TestALongTopicAndAWorktreeBranchFitTheDefaultBounds(t *testing.T) {
+	// The branch takes width the topic used to have, so both bounds are pinned
+	// here: a later change to either must not reduce the topic to a fragment.
+	repo := repoAt(t, "main")
+	worktree := worktreeIn(t, repo, "wt", "feat/oauth")
+
+	transcript(
+		t,
+		agentIn(worktree),
+		`{"type":"ai-title","aiTitle":"Make the branch follow the agent worktree",`+
+			`"sessionId":"`+testSession+`"}`,
+	)
+
+	pane := agentPane()
+	pane.CWD = repo
+
+	h := startConfigured(t, herdrtest.New(
+		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
+		[]herdr.PaneInfo{pane},
+	), transcriptConfig())
+	h.poll()
+
+	got := h.client.Renames()[0].Label
+	want := filepath.Base(repo) + " › feat/oauth › claude › Make the branch follow"
+
+	if got != want {
+		t.Errorf("rename = %q, want %q", got, want)
+	}
+}
+
+func TestOneRepositorySpelledTwoWaysDoesNotFollowTheAgent(t *testing.T) {
+	// Both directories are the same repository, but the pane reaches it through
+	// a symlink and the worktree records the real path, so the two common
+	// directories do not match and the pane keeps its own branch.
+	repo := repoAt(t, "feat/oauth")
+	worktree := worktreeIn(t, repo, "wt", "fix/token")
+
+	alias := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(repo, alias); err != nil {
+		t.Skipf("symlinks are unavailable here: %v", err)
+	}
+
+	transcript(t, agentIn(worktree))
+
+	pane := agentPaneAt("wE:p1", testSession, alias)
+	readOne(t, transcriptConfig(), pane)
+
+	if pane.Git.Branch != "feat/oauth" {
+		t.Errorf("branch = %q, want the pane's own", pane.Git.Branch)
+	}
+}
+
+func TestAPaneOutsideARepositoryFollowsNoAgent(t *testing.T) {
+	// With no repository of its own the pane has no common directory to match,
+	// so an agent's branch could only be labelling someone else's project.
+	repo := repoAt(t, "main")
+
+	transcript(t, agentIn(worktreeIn(t, repo, "wt", "feat/oauth")))
+
+	pane := agentPaneAt("wE:p1", testSession, t.TempDir())
+	readOne(t, transcriptConfig(), pane)
+
+	if pane.Git != (git.Checkout{}) {
+		t.Errorf("checkout = %+v, want nothing", pane.Git)
+	}
+}
+
+func TestAHumanPaneOnAWorktreeStillSaysItsBranchOnce(t *testing.T) {
+	// A worktree is named after the branch checked out in it, so a pane sitting
+	// in one reads both facts from the same directory and is worth the width of
+	// only one of them.
+	repo := repoAt(t, "main")
+	worktree := worktreeIn(t, repo, "oauth", "oauth")
+
+	h := start(t,
+		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
+		[]herdr.PaneInfo{{
+			PaneID: "wE:p1", TabID: "wE:t1", CWD: worktree, Focused: true,
+			TerminalTitleStripped: "Fix OAuth redirect",
+		}},
+	)
+	h.poll()
+
+	if got := h.client.Renames()[0].Label; got != "oauth › Fix OAuth redirect" {
+		t.Errorf("rename = %q, want the branch its directory already says dropped", got)
+	}
+}
+
+func TestAnAgentsWorktreeBranchStandsBesideTheProject(t *testing.T) {
+	// The same worktree, read through the agent instead: the context names the
+	// project the pane sits in, so the branch repeats nothing and both segments
+	// are worth their width.
+	repo := repoAt(t, "main")
+	worktree := worktreeIn(t, repo, "oauth", "oauth")
+
+	transcript(t, agentIn(worktree))
+
+	pane := agentPane()
+	pane.CWD = repo
+
+	h := startConfigured(t, herdrtest.New(
+		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
+		[]herdr.PaneInfo{pane},
+	), transcriptConfig())
+	h.poll()
+
+	got := h.client.Renames()[0].Label
+	if want := filepath.Base(repo) + " › oauth › claude"; got != want {
+		t.Errorf("rename = %q, want %q", got, want)
 	}
 }

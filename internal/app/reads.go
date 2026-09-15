@@ -103,8 +103,12 @@ func (p *paneReads) fill(ctx context.Context, client herdr.Client, pane *state.P
 
 	pane.Processes = state.ProcessesFrom(processes)
 	pane.Dir = dir
-	pane.Git = p.checkout(ctx, dir)
-	pane.AgentTopic = p.topic(ctx, pane, dir)
+
+	// The transcript is read before the checkout because it says where the
+	// agent is working, and that is where the branch is read from.
+	topic := p.topic(ctx, pane, dir)
+	pane.AgentTopic = topic.Text()
+	pane.Git = p.checkout(ctx, dir, topic.Dir)
 }
 
 // processes reports what a pane is running, reusing the last read while the
@@ -137,10 +141,10 @@ func (p *paneReads) processes(
 	return processes
 }
 
-// checkout reports what the repository holding the pane has checked out.
-// Nothing is remembered past the poll, and why not is in
-// docs/architecture/title-resolution.md.
-func (p *paneReads) checkout(ctx context.Context, dir string) git.Checkout {
+// checkout reports what the pane has checked out: the repository holding dir,
+// except that agentDir speaks for the branch when the agent is working in
+// another view of the same repository. See docs/architecture/title-resolution.md.
+func (p *paneReads) checkout(ctx context.Context, dir, agentDir string) git.Checkout {
 	// A branch width of zero is how branches are turned off, and a read whose
 	// answer is thrown away is still a read on every pane twice a second.
 	if p.reader.branchMax <= 0 {
@@ -151,7 +155,36 @@ func (p *paneReads) checkout(ctx context.Context, dir string) git.Checkout {
 		return git.Checkout{}
 	}
 
-	return p.checkouts.read(dir)
+	checkout := p.checkouts.read(dir)
+	if agentDir == "" || agentDir == dir {
+		return checkout
+	}
+
+	if agent := p.checkouts.read(agentDir); overridesBranch(checkout, agent) {
+		return agent
+	}
+
+	return checkout
+}
+
+// overridesBranch reports that the agent's checkout speaks for the branch: it
+// is another view of the same repository, and it has something to name. Why the
+// common directories are not resolved is in docs/architecture/title-resolution.md.
+func overridesBranch(own, agent git.Checkout) bool {
+	// A pane outside a repository has no common directory to match, which is
+	// the gate's boundary rather than a case to widen.
+	if agent == (git.Checkout{}) || agent.CommonDir != own.CommonDir {
+		return false
+	}
+
+	// A detached HEAD always has something to say. A trunk never does, and nor
+	// does a branch in a repository recording no default, which cannot be told
+	// from that repository's trunk — so the pane's own answer stands instead.
+	if agent.Branch == "" {
+		return true
+	}
+
+	return agent.Branch != agent.Default && (agent.Default != "" || own.Branch == "")
 }
 
 // checkoutMemo holds the checkouts one poll has read. The tabs of a project
@@ -173,20 +206,24 @@ func (m checkoutMemo) read(dir string) git.Checkout {
 	return checkout
 }
 
-// topic reports what the session the pane's agent is holding says it is about.
-// Only Claude Code's transcripts are understood, and only Herdr's integration
-// hook says which session a pane holds.
-func (p *paneReads) topic(ctx context.Context, pane *state.PaneState, dir string) string {
+// topic reports what the session the pane's agent is holding says it is about,
+// and where that agent is working. Only Claude Code's transcripts are
+// understood, and only Herdr's integration hook says which session a pane holds.
+func (p *paneReads) topic(
+	ctx context.Context,
+	pane *state.PaneState,
+	dir string,
+) claude.Topic {
 	if !p.reader.readTranscripts || spentPoll(ctx) {
-		return ""
+		return claude.Topic{}
 	}
 
 	sessionID, ok := pane.AgentSession.IDFor(claude.Agent)
 	if !ok {
-		return ""
+		return claude.Topic{}
 	}
 
-	return p.reader.topics.Topic(sessionID, dir).Text()
+	return p.reader.topics.Topic(sessionID, dir)
 }
 
 // spentPoll reports that this poll is past its deadline. The reads it guards

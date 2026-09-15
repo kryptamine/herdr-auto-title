@@ -316,3 +316,54 @@ func TestAPaneKeepsItsNameWhenItsTabIsClaimed(t *testing.T) {
 		t.Errorf("pane = %v, want it named once and kept when its tab was claimed", got)
 	}
 }
+
+// agentPaneInfo is a pane holding a Claude Code session and no terminal title
+// of its own, so what it is about comes from the transcript.
+func agentPaneInfo(paneID, sessionID, dir string, focused bool) herdr.PaneInfo {
+	return herdr.PaneInfo{
+		PaneID: paneID, TabID: "wE:t1", CWD: dir, Focused: focused,
+		TerminalTitleStripped: "Claude Code",
+		Agent:                 "claude",
+		AgentStatus:           "idle",
+		AgentSession: &herdr.AgentSessionInfo{
+			Agent: "claude", Kind: herdr.SessionRefID, Value: sessionID,
+		},
+	}
+}
+
+func TestOnlyOnePaneOfATabCarriesTheBranchTheTabShows(t *testing.T) {
+	// Two agents on two worktrees of one project. The tab speaks through one
+	// of them, so that pane's branch is already on screen above it and its
+	// sibling's is not — the rows are asymmetric by design.
+	repo := repoAt(t, "main")
+	oauth := worktreeIn(t, repo, "oauth", "feat/oauth")
+	token := worktreeIn(t, repo, "token", "fix/token")
+
+	root := stateDir(t)
+	writeTranscript(t, root, testSession, agentIn(oauth),
+		`{"type":"ai-title","aiTitle":"Poll loop rework","sessionId":"`+testSession+`"}`)
+	writeTranscript(t, root, otherSession, agentIn(token),
+		`{"type":"ai-title","aiTitle":"Token refresh","sessionId":"`+otherSession+`"}`)
+
+	cfg := paneConfig()
+	cfg.ReadTranscripts = true
+
+	h := startConfigured(t, herdrtest.New(oneTab(), []herdr.PaneInfo{
+		agentPaneInfo("wE:p1", testSession, repo, true),
+		agentPaneInfo("wE:p2", otherSession, repo, false),
+	}), cfg)
+	h.poll()
+
+	tab := h.client.Renames()[0].Label
+	if want := filepath.Base(repo) + " › feat/oauth › claude › Poll loop rework"; tab != want {
+		t.Fatalf("tab = %q, want %q", tab, want)
+	}
+
+	if got := labelsOf(h, "wE:p1"); len(got) != 1 || got[0] != "Poll loop rework" {
+		t.Errorf("speaking pane = %v, want the branch its tab carries dropped", got)
+	}
+
+	if got := labelsOf(h, "wE:p2"); len(got) != 1 || got[0] != "fix/token › Token refresh" {
+		t.Errorf("sibling pane = %v, want its own branch kept", got)
+	}
+}

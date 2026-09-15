@@ -41,6 +41,9 @@ type Topic struct {
 	// not earned a title yet: one opened with a slash command and answered by
 	// the agent alone never gets one.
 	Opening string
+	// Dir is where the agent was last working, which is its own directory and
+	// not the pane's: an agent sent into a worktree stays there.
+	Dir string
 }
 
 // Text is what the topic contributes to a title, the generated name first.
@@ -274,6 +277,7 @@ func (r *Reader) readInto(session *transcript) {
 // the session is about.
 type entry struct {
 	Type    string `json:"type"`
+	CWD     string `json:"cwd"`
 	AITitle string `json:"aiTitle"`
 	Origin  *struct {
 		Kind string `json:"kind"`
@@ -301,6 +305,10 @@ func (t *transcript) absorb(lines string) {
 			continue
 		}
 
+		if isWorkingDir(read.CWD) {
+			t.topic.Dir = read.CWD
+		}
+
 		switch {
 		case read.Type == "ai-title" && read.AITitle != "":
 			t.topic.Title = read.AITitle
@@ -308,6 +316,13 @@ func (t *transcript) absorb(lines string) {
 			t.topic.Opening = opening(read.Message.Content)
 		}
 	}
+}
+
+// isWorkingDir accepts a directory as the transcript spelled it. The value
+// becomes the directory a checkout is read from, so anything but an absolute,
+// clean path is refused rather than repaired.
+func isWorkingDir(dir string) bool {
+	return dir != "" && filepath.IsAbs(dir) && filepath.Clean(dir) == dir
 }
 
 // commandPattern matches the marker Claude Code wraps a slash command in.

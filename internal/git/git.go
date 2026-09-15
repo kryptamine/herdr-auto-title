@@ -42,6 +42,10 @@ type Checkout struct {
 	Commit string
 	// Default is the repository's default branch, empty when it records none.
 	Default string
+	// CommonDir is where the repository keeps the refs its worktrees share. It
+	// is the same directory for a repository and every worktree of it, so two
+	// checkouts belong together exactly when it matches.
+	CommonDir string
 }
 
 // Read reports what the repository holding dir has checked out, and the zero
@@ -58,7 +62,7 @@ func Read(dir string) Checkout {
 		return Checkout{}
 	}
 
-	checkout := Checkout{Default: defaultBranch(commonDir)}
+	checkout := Checkout{Default: defaultBranch(commonDir), CommonDir: commonDir}
 
 	switch {
 	case strings.HasPrefix(head, branchPrefix):

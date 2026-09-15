@@ -244,3 +244,32 @@ func TestAHugeHeadIsNotReadWhole(t *testing.T) {
 		t.Error("an oversized HEAD reported a checkout")
 	}
 }
+
+func TestAWorktreeSharesItsRepositorysCommonDirectory(t *testing.T) {
+	// The common directory is what tells a worktree of this repository from a
+	// checkout of another one, so the two must read identically.
+	main := newRepo(t).originHead(t, "main")
+	worktreeGitDir := filepath.Join(main.gitDir, "worktrees", "wt")
+	main.write(t, filepath.Join(worktreeGitDir, "HEAD"), "ref: refs/heads/side\n")
+	main.write(t, filepath.Join(worktreeGitDir, "commondir"), "../..\n")
+
+	tree := t.TempDir()
+	main.write(t, filepath.Join(tree, ".git"), "gitdir: "+worktreeGitDir+"\n")
+
+	if got := mustRead(t, tree).CommonDir; got != main.gitDir {
+		t.Errorf("worktree common dir %q, want %q", got, main.gitDir)
+	}
+
+	if got := mustRead(t, main.root).CommonDir; got != main.gitDir {
+		t.Errorf("repository common dir %q, want %q", got, main.gitDir)
+	}
+}
+
+func TestANeighbouringRepositoryHasItsOwnCommonDirectory(t *testing.T) {
+	first := newRepo(t).head(t, "ref: refs/heads/side\n")
+	second := newRepo(t).head(t, "ref: refs/heads/side\n")
+
+	if mustRead(t, first.root).CommonDir == mustRead(t, second.root).CommonDir {
+		t.Error("two repositories share a common directory")
+	}
+}

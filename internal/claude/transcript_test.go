@@ -3,6 +3,7 @@ package claude
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -381,5 +382,147 @@ func TestATranscriptThatWentMissingIsLookedForAgain(t *testing.T) {
 
 	if got := reader.Topic(session, started); got.Text() != "Rework the poll loop" {
 		t.Errorf("topic = %+v, want the replacement transcript found and read", got)
+	}
+}
+
+// The transcript lines that carry the directory the agent is working in.
+func humanIn(text, dir string) string {
+	return `{"type":"user","origin":{"kind":"human"},"cwd":` + strconv.Quote(dir) +
+		`,"message":{"role":"user","content":"` + text + `"}}`
+}
+
+func agentIn(dir string) string {
+	return `{"type":"assistant","cwd":` + strconv.Quote(dir) + `}`
+}
+
+func TestTheDirectoryTheAgentIsWorkingInIsRead(t *testing.T) {
+	worktree := t.TempDir()
+
+	p := newProject(t)
+	p.write(humanIn("fix the redirect", started), agentIn(worktree))
+
+	if got := NewReader().Topic(session, started); got.Dir != worktree {
+		t.Errorf("dir = %q, want %q", got.Dir, worktree)
+	}
+}
+
+func TestALineCarryingNoDirectoryLeavesTheLastOneStanding(t *testing.T) {
+	// The lines that name a session — a title, a mode change — carry no
+	// directory at all, so the last one that did is still where the agent is.
+	worktree := t.TempDir()
+
+	p := newProject(t)
+	p.write(agentIn(worktree), aiTitle("OAuth redirect fix"))
+
+	got := NewReader().Topic(session, started)
+	switch {
+	case got.Dir != worktree:
+		t.Errorf("dir = %q, want %q", got.Dir, worktree)
+	case got.Text() != "OAuth redirect fix":
+		t.Errorf("text = %q, want the title", got.Text())
+	}
+}
+
+func TestADirectoryOutlivesTheReadThatCarriedIt(t *testing.T) {
+	// A poll is handed only the bytes appended since the last one, and a third
+	// of transcript lines carry no directory, so one slice can hold none.
+	worktree := t.TempDir()
+
+	p := newProject(t)
+	p.write(agentIn(worktree))
+
+	reader := NewReader()
+	if got := reader.Topic(session, started); got.Dir != worktree {
+		t.Fatalf("dir = %q, want %q", got.Dir, worktree)
+	}
+
+	p.appendLines(aiTitle("OAuth redirect fix"))
+
+	if got := reader.Topic(session, started); got.Dir != worktree {
+		t.Errorf("dir = %q, want the directory the earlier read carried", got.Dir)
+	}
+}
+
+func TestALaterReadFollowsTheAgentToItsNextDirectory(t *testing.T) {
+	// The branch follows the agent as it moves, with nothing damping it, so a
+	// directory appended after a read replaces the one held from before it.
+	first, second := t.TempDir(), t.TempDir()
+
+	p := newProject(t)
+	p.write(agentIn(first))
+
+	reader := NewReader()
+	if got := reader.Topic(session, started); got.Dir != first {
+		t.Fatalf("dir = %q, want %q", got.Dir, first)
+	}
+
+	p.appendLines(agentIn(second))
+
+	if got := reader.Topic(session, started); got.Dir != second {
+		t.Errorf("dir = %q, want the directory the agent moved to", got.Dir)
+	}
+}
+
+func TestATranscriptThatShrankForgetsTheDirectoryToo(t *testing.T) {
+	p := newProject(t)
+	p.write(agentIn(t.TempDir()))
+
+	reader := NewReader()
+	if got := reader.Topic(session, started); got.Dir == "" {
+		t.Fatal("dir is empty before the transcript was replaced")
+	}
+
+	// Only a file that is no longer the one that was read can be shorter than
+	// what has already been read out of it.
+	p.write(aiTitle("Something else"))
+
+	if got := reader.Topic(session, started); got.Dir != "" {
+		t.Errorf("dir = %q, want the replaced transcript's directory let go", got.Dir)
+	}
+}
+
+func TestATranscriptThatWentMissingKeepsItsDirectory(t *testing.T) {
+	worktree := t.TempDir()
+
+	p := newProject(t)
+	p.write(agentIn(worktree))
+
+	reader := NewReader()
+	if got := reader.Topic(session, started); got.Dir != worktree {
+		t.Fatalf("dir = %q, want %q", got.Dir, worktree)
+	}
+
+	if err := os.Remove(p.path()); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := reader.Topic(session, started); got.Dir != worktree {
+		t.Errorf("dir = %q, want the last known one kept", got.Dir)
+	}
+}
+
+func TestADirectoryThatIsNotAnAbsoluteCleanPathIsRefused(t *testing.T) {
+	// The value becomes the directory a checkout is read from, so it is refused
+	// rather than repaired.
+	for _, dir := range []string{"work/dashboard", "", "..", "/work/dashboard/"} {
+		p := newProject(t)
+		p.write(agentIn(dir))
+
+		if got := NewReader().Topic(session, started); got.Dir != "" {
+			t.Errorf("dir %q resolved to %q", dir, got.Dir)
+		}
+	}
+}
+
+func TestATranscriptNamingNoDirectorySaysNothingAboutOne(t *testing.T) {
+	p := newProject(t)
+	p.write(human("fix the redirect"), aiTitle("OAuth redirect fix"))
+
+	got := NewReader().Topic(session, started)
+	switch {
+	case got.Dir != "":
+		t.Errorf("dir = %q, want none", got.Dir)
+	case got.Text() != "OAuth redirect fix":
+		t.Errorf("text = %q, want the title", got.Text())
 	}
 }

@@ -46,8 +46,8 @@ type PaneState struct {
 	// Processes are the pane's foreground process and its descendants.
 	Processes []Process
 
-	// Git is what the repository holding the pane's directory has checked out,
-	// zero outside a repository.
+	// Git is what the pane is on: the repository holding its directory, or the
+	// agent's view of that same repository, and zero outside a repository.
 	Git git.Checkout
 
 	Focused bool
