@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.6.1](https://github.com/kryptamine/herdr-auto-title/compare/v0.6.0...v0.6.1) (2026-09-15)
+
+
+### Bug Fixes
+
+* **app:** keep only a rename that got no answer as possibly landed ([eb59f5d](https://github.com/kryptamine/herdr-auto-title/commit/eb59f5dfbd2fa25c0574e8af370f45057551c7c8))
+* **herdr:** keep only a rename that was sent as possibly landed ([cf62093](https://github.com/kryptamine/herdr-auto-title/commit/cf620931869a46a22288aa9b1c7cfafedcab556b))
+* **resolver:** drop the local ssh command title while connecting ([95a8de5](https://github.com/kryptamine/herdr-auto-title/commit/95a8de5e86b126491c440864c1743261fc3bd687))
+* **resolver:** mark a pane remote only when ssh is in the foreground ([219400c](https://github.com/kryptamine/herdr-auto-title/commit/219400c206ad920ded9fa4f54f16d6c026c91ba8))
+* stop a rename that lands after its call failed locking the tab ([8dd8fc2](https://github.com/kryptamine/herdr-auto-title/commit/8dd8fc226d50dc1a6a822b71e7ca478ae6cc05fa))
+
+
+### Refactoring
+
+* **state:** keep a failed rename's labels with the seen one ([33a88c6](https://github.com/kryptamine/herdr-auto-title/commit/33a88c6348ce975a503ada83db1e5a5e12910d41))
+
 ## [0.6.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.5.0...v0.6.0) (2026-09-13)
 
 
