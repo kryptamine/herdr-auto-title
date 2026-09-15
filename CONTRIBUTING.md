@@ -69,6 +69,9 @@ in [docs/architecture](docs/architecture/).
 - `make check` green locally. CI then runs `go vet`, `go build` and
   `go test -race` on Go 1.24 and stable, the formatters and `golangci-lint`
   once, and a build and test run on macOS and on Windows.
+- A PR needs the approval of a code owner, listed in
+  [.github/CODEOWNERS](.github/CODEOWNERS), to merge. Reviews from anyone else
+  are welcome and read, but they do not unblock the merge on their own.
 - **PRs are merged by rebase.** Merge commits are disabled on the repository:
   GitHub puts the PR title into the merge commit, and since the titles here are
   conventional, release-please counted every change twice. Squashing would
