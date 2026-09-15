@@ -84,7 +84,7 @@ change. It does not read the config directory that `herdr plugin list` prints.
 | `HERDR_AUTO_TITLE_BRANCH_MAX`   | `12`                                     | Longest branch in a title, in columns; `0` hides branches          |
 | `HERDR_AUTO_TITLE_POSITION`     | `true`                                   | Put the tab's position in front of its title                       |
 | `HERDR_AUTO_TITLE_MANUAL_FILE`  | `manual-names.json` next to `config.env` | Where names you set by hand are kept; empty keeps them in memory   |
-| `HERDR_AUTO_TITLE_TRANSCRIPT`   | `true`                                   | Read Claude Code's transcript when it has not titled its terminal  |
+| `HERDR_AUTO_TITLE_TRANSCRIPT`   | `true`                                   | Read Claude Code's transcript: what an agent is doing, and where     |
 | `HERDR_AUTO_TITLE_AGENT_NAME`   | `true`                                   | Put the agent's name in front of what it is doing                  |
 | `HERDR_AUTO_TITLE_PANES`        | `true`                                   | Name panes as well as tabs                                         |
 | `HERDR_AUTO_TITLE_PREFER_AGENT` | `false`                                  | Name a tab after its agent pane even while another pane is focused |

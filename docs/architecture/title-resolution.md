@@ -260,6 +260,13 @@ HEAD, which always has something to say. A trunk never does, and is refused here
 rather than left to the branch's own suppression, which would delete a segment
 the pane's own directory can still fill.
 
+**The directory has to still be there**, which is one `stat` before the read.
+A worktree is removed while the transcript that named it keeps saying so, and
+the walk up from a path that no longer exists lands on the repository above it
+— whose branch is a real one the gate would then take, in place of the pane's.
+Refusing a directory for being gone is cheaper than reasoning about whatever
+its parent happens to be on.
+
 **The two common directories are compared cleaned and not resolved.** Both sides
 come out of `git.discover` (`internal/git/git.go`), which already cleans the path
 it walks from, so the comparison is exact on two clean absolute paths. Where a
