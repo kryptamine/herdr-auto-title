@@ -11,6 +11,7 @@ import (
 
 	"github.com/joho/godotenv"
 
+	"github.com/kryptamine/herdr-auto-title/internal/claude"
 	"github.com/kryptamine/herdr-auto-title/internal/resolver"
 	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
@@ -28,6 +29,10 @@ const (
 	EnvAgentName   = "HERDR_AUTO_TITLE_AGENT_NAME"
 	EnvPanes       = "HERDR_AUTO_TITLE_PANES"
 	EnvPreferAgent = "HERDR_AUTO_TITLE_PREFER_AGENT"
+	// EnvClaudeDirs is declared in the claude package, where it is read: the
+	// transcript reader searches the configuration homes it names, in order,
+	// after the one Claude Code's own variable gives.
+	EnvClaudeDirs = claude.EnvExtraRoots
 )
 
 // ConfigFile is the configuration file, read from the same directory the
@@ -79,6 +84,19 @@ func LoadConfig() (Config, []string) {
 	var warnings []string
 	if warning := readConfigFile(); warning != "" {
 		warnings = append(warnings, warning)
+	}
+	// Only the homes that will be skipped need saying; opening the rest is the
+	// transcript reader's own business.
+	_, refused := claude.ExtraRoots()
+	for _, dir := range refused {
+		warnings = append(
+			warnings,
+			fmt.Sprintf(
+				"%s=%q is not an absolute clean path, so it is not read",
+				EnvClaudeDirs,
+				dir,
+			),
+		)
 	}
 
 	cfg := Config{
