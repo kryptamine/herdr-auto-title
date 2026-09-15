@@ -27,22 +27,25 @@ type Manual struct {
 // numbers tabs and panes apart, so each kind keeps claims of its own.
 type Claims struct {
 	manual *Manual
-	// seen is the label each thing carried when it was last looked at.
-	seen map[string]string
+	seen   map[string]labels
 	// locked is the label a thing carried when the user claimed it. The label,
 	// not the id, is what makes a reloaded lock safe: Herdr reuses ids.
 	locked map[string]string
-	// sent holds the labels of renames whose call failed. Herdr may apply one
-	// anyway, seconds later, and it is Auto Title's label all the same.
-	sent map[string]map[string]struct{}
+}
+
+// labels is what is known of one thing's label: the one it carried when last
+// looked at, and those of renames whose call failed. Herdr may apply one of
+// those seconds later, and it is Auto Title's label all the same.
+type labels struct {
+	current string
+	sent    map[string]struct{}
 }
 
 func newClaims(m *Manual) *Claims {
 	return &Claims{
 		manual: m,
-		seen:   make(map[string]string),
+		seen:   make(map[string]labels),
 		locked: make(map[string]string),
-		sent:   make(map[string]map[string]struct{}),
 	}
 }
 
@@ -137,15 +140,13 @@ func (c *Claims) Observe(s Sighting) bool {
 	defer m.mu.Unlock()
 
 	previous, known := c.seen[s.ID]
-	c.seen[s.ID] = s.Current
+	ours := c.ours(s)
 
-	if _, sent := c.sent[s.ID][s.Current]; sent {
-		delete(c.sent[s.ID], s.Current)
-		return false
-	}
+	delete(previous.sent, s.Current)
+	c.seen[s.ID] = labels{current: s.Current, sent: previous.sent}
 
 	switch {
-	case s.Current == s.Desired:
+	case ours:
 		return false
 	case s.Current == "", s.Current == s.Default:
 		// Nobody has named it. A tab can wear either spelling — clearing a name
@@ -153,7 +154,7 @@ func (c *Claims) Observe(s Sighting) bool {
 		// slides down when a tab to its left closes. A pane has only the empty.
 		return false
 	case known:
-		if s.Current == previous {
+		if s.Current == previous.current {
 			return false
 		}
 	case !m.settled:
@@ -166,6 +167,13 @@ func (c *Claims) Observe(s Sighting) bool {
 	m.saveLocked()
 
 	return true
+}
+
+// ours reports whether Auto Title put this label there: it is the name wanted
+// now, or that of a rename whose call failed and which Herdr applied late.
+func (c *Claims) ours(s Sighting) bool {
+	_, sent := c.seen[s.ID].sent[s.Current]
+	return sent || s.Current == s.Desired
 }
 
 // Settled marks the end of a poll. Only the first matters: after it, something
@@ -183,7 +191,9 @@ func (c *Claims) Applied(id, label string) {
 	c.manual.mu.Lock()
 	defer c.manual.mu.Unlock()
 
-	c.seen[id] = label
+	seen := c.seen[id]
+	seen.current = label
+	c.seen[id] = seen
 }
 
 // Sent records the label of a rename whose call failed, which Herdr may still
@@ -192,11 +202,13 @@ func (c *Claims) Sent(id, label string) {
 	c.manual.mu.Lock()
 	defer c.manual.mu.Unlock()
 
-	if c.sent[id] == nil {
-		c.sent[id] = make(map[string]struct{})
+	seen := c.seen[id]
+	if seen.sent == nil {
+		seen.sent = make(map[string]struct{})
 	}
 
-	c.sent[id][label] = struct{}{}
+	seen.sent[label] = struct{}{}
+	c.seen[id] = seen
 }
 
 // Retain drops everything about what the session no longer holds, and releases
@@ -221,12 +233,6 @@ func (c *Claims) Retain(live map[string]string) {
 	for id := range c.seen {
 		if _, alive := live[id]; !alive {
 			delete(c.seen, id)
-		}
-	}
-
-	for id := range c.sent {
-		if _, alive := live[id]; !alive {
-			delete(c.sent, id)
 		}
 	}
 
