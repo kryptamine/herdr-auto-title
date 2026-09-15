@@ -48,7 +48,7 @@ type Client struct {
 	renames     []RenameCall
 	paneRenames []PaneRenameCall
 	renameErr   error
-	renameLost  error
+	renameLands bool
 	processErr  error
 	callErr     error
 	reads       int
@@ -133,20 +133,15 @@ func (s *Client) ClosePane(paneID string) {
 	delete(s.panes, paneID)
 }
 
-func (s *Client) SetRenameError(err error) {
+// SetRenameError makes every subsequent tab rename fail with err. With landed,
+// Herdr applies it all the same, as it does one whose caller stopped waiting
+// for the answer. Pane renames are unaffected.
+func (s *Client) SetRenameError(err error, landed bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	s.renameErr = err
-}
-
-// SetRenameLost makes every subsequent tab rename land and still fail, as one
-// does when Herdr applies it after the caller stopped waiting for the answer.
-func (s *Client) SetRenameLost(err error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	s.renameLost = err
+	s.renameLands = landed
 }
 
 func (s *Client) SetProcessError(err error) {
@@ -246,7 +241,7 @@ func (s *Client) processInfo(params any, result any) error {
 }
 
 func (s *Client) rename(params any) error {
-	if s.renameErr != nil {
+	if s.renameErr != nil && !s.renameLands {
 		return s.renameErr
 	}
 
@@ -267,7 +262,7 @@ func (s *Client) rename(params any) error {
 	s.tabs[call.TabID] = tab
 	s.renames = append(s.renames, RenameCall(call))
 
-	return s.renameLost
+	return s.renameErr
 }
 
 func (s *Client) renamePane(params any) error {

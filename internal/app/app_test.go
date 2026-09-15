@@ -195,14 +195,14 @@ func TestARenameLandingAfterItsCallFailedIsRenamedOver(t *testing.T) {
 	)
 	h.poll()
 
-	h.client.SetRenameLost(errors.New("read tab.rename response: pipe closed"))
+	h.client.SetRenameError(errors.New("read tab.rename response: pipe closed"), true)
 	h.client.SetPane(herdr.PaneInfo{
 		PaneID: "wE:p1", TabID: "wE:t1", Focused: true, Revision: 2,
 		CWD: api,
 	})
 	h.poll()
 
-	h.client.SetRenameLost(nil)
+	h.client.SetRenameError(nil, false)
 	h.client.SetPane(herdr.PaneInfo{
 		PaneID: "wE:p1", TabID: "wE:t1", Focused: true, Revision: 3,
 		CWD: billing,
@@ -293,14 +293,14 @@ func TestFailedRenameIsRetriedOnTheNextPoll(t *testing.T) {
 			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
 		},
 	)
-	h.client.SetRenameError(errors.New("herdr is busy"))
+	h.client.SetRenameError(errors.New("herdr is busy"), false)
 	h.polls(3)
 
 	if renames := h.client.Renames(); len(renames) != 0 {
 		t.Fatalf("issued %v while renaming was failing", renames)
 	}
 
-	h.client.SetRenameError(nil)
+	h.client.SetRenameError(nil, false)
 	h.poll()
 
 	if got := h.client.Renames()[0].Label; got != "dashboard" {
