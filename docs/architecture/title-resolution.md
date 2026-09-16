@@ -266,13 +266,24 @@ labels non-empty and wins, taking the tab from the pane's own branch. The same
 mechanism is what finally shows the agent's branch in such a repository, which
 is what this source exists for, so the two arrive together.
 
+**Belonging is settled two ways** (`belongsToPane`), because a pane that holds a
+repository and a pane that holds none are answerable by different evidence.
 `SameRepository` compares `CommonDir`, the directory holding the refs a
 repository shares with its worktrees, identical for a repository and every
-worktree of it. A checkout outside any repository carries none, so a pane
-outside one has nothing to match and keeps its own answer — the boundary of this
-source rather than a case to widen. Two such checkouts do compare equal, and are
-stopped by the agent's label being empty rather than by a guard, which would be
-one that could never change an answer.
+worktree of it. Two checkouts outside any repository do compare equal there, and
+are stopped by the agent's label being empty rather than by a guard, which would
+be one that could never change an answer.
+
+A pane whose own directory holds no repository has no common directory to offer,
+and nothing of its own to lose, so containment decides instead: the agent's
+answer is taken when its directory lies under the pane's. That admits a pane
+sitting in a directory of checkouts — a shape one pane per project produces
+often — and still refuses an agent that has walked out of the pane's tree.
+Containment is tested with `filepath.Rel` and a refusal of any `..`, not with a
+prefix of the spelling, because `code-review` begins with `code` and is not
+inside it. It is offered only to a pane with no checkout: a pane that has one
+must not gain a nested clone's branch this way, which is a real shape wherever a
+vendored dependency carries its own `.git`.
 
 **A directory that is gone is refused where directories are read**, in
 `git.discover`, beside the empty and relative paths it already rejects. A
