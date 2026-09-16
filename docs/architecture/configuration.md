@@ -9,9 +9,13 @@ generated: { by: claude-code/opus-5, at: 2026-08-26T14:14:17+03:00 }
 
 # Configuration
 
-Every setting Auto Title has is one of nine `HERDR_AUTO_TITLE_*` variables,
-read in `internal/app/config.go`. They can be set in the environment, or written
-into a file that is loaded into the environment before anything reads it.
+Every setting Auto Title has is one of eleven `HERDR_AUTO_TITLE_*` variables,
+read in `internal/app/config.go` — except one, `HERDR_AUTO_TITLE_CLAUDE_DIRS`,
+which is declared and read in `internal/claude` because that is where it is
+used. A `Config` field for it would have had no reader.
+
+They can be set in the environment, or written into a file that is loaded into
+the environment before anything reads it.
 
 ## Why a file exists
 
