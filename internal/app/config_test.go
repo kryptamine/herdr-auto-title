@@ -395,8 +395,11 @@ func TestLoadConfigWarnsAboutAConfigHomeItCannotUse(t *testing.T) {
 	// A home written as anything but an absolute clean path is skipped, and
 	// the homes named beside it are still read.
 	isolate(t)
+	// A usable home comes from t.TempDir() rather than a literal: a POSIX path
+	// is not absolute on Windows, so a literal one would be refused there and
+	// the test would measure the platform instead of the rule.
 	t.Setenv(EnvClaudeDirs, strings.Join(
-		[]string{"relative/home", "/home/you/.claude-work"},
+		[]string{"relative/home", t.TempDir()},
 		string(os.PathListSeparator),
 	))
 
@@ -412,7 +415,7 @@ func TestLoadConfigWarnsAboutAConfigHomeItCannotUse(t *testing.T) {
 
 func TestLoadConfigAcceptsConfigHomesItCanUse(t *testing.T) {
 	isolate(t)
-	t.Setenv(EnvClaudeDirs, "/home/you/.claude-work")
+	t.Setenv(EnvClaudeDirs, t.TempDir())
 
 	if _, warnings := LoadConfig(); len(warnings) != 0 {
 		t.Errorf("warnings = %v, want none", warnings)
