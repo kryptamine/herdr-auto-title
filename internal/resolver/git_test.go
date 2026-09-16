@@ -120,12 +120,6 @@ func TestTheTrunkIsMatchedAsGitStoresIt(t *testing.T) {
 	}
 }
 
-func TestARepositoryWithNoRecordedTrunkAlwaysShowsItsBranch(t *testing.T) {
-	if got := resolveRepoPane(repoPane("main", "")); got != "dashboard › main" {
-		t.Errorf("title %q, want the branch", got)
-	}
-}
-
 func TestADetachedHeadShowsTheCommit(t *testing.T) {
 	pane := &state.PaneState{
 		Dir: dashboard,
@@ -244,5 +238,28 @@ func TestTheBranchIsCreditedLikeAContext(t *testing.T) {
 
 	if got := resolver.Resolve(tabWithPane(repoPane("feat/oauth", "main"))).Reason; got != "git" {
 		t.Errorf("reason %q, want git", got)
+	}
+}
+
+func TestARepositoryRecordingNoDefaultStillHasATrunk(t *testing.T) {
+	// A repository with no remote records no default, and every tab in it read
+	// `main` as though it were a branch worth the width.
+	for _, branch := range []string{"main", "master", "trunk"} {
+		if got := resolveRepoPane(repoPane(branch, "")); got != "dashboard" {
+			t.Errorf("%s with no default → %q, want just the directory", branch, got)
+		}
+	}
+}
+
+func TestABranchInARepositoryRecordingNoDefaultIsStillShown(t *testing.T) {
+	// The silence is for trunk names only: anything else is the work the tab
+	// exists to name, and no default was recorded to compare it against.
+	if got := resolveRepoPane(repoPane("feat/oauth", "")); got != "dashboard › feat/oauth" {
+		t.Errorf("title %q, want the branch", got)
+	}
+
+	// Refs are case-sensitive here too, so `Main` is another branch.
+	if got := resolveRepoPane(repoPane("Main", "")); got != "dashboard › Main" {
+		t.Errorf("title %q, want the branch", got)
 	}
 }
