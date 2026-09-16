@@ -282,6 +282,11 @@ whose branch is a real one, and would stand in for the pane's. That is not this
 source's problem alone: a shell left in a deleted directory reports its parent's
 branch the same way.
 
+It catches a path that is gone, and only that. A directory that outlived its own
+`.git` file still exists, so the walk up still answers with the repository above
+it — a shape no check here can tell from a legitimate subdirectory of a
+checkout, which this source deliberately resolves upward.
+
 **The two common directories are compared cleaned and not resolved.** Both sides
 come out of `git.discover` (`internal/git/git.go`), which already cleans the path
 it walks from, so the comparison is exact on two clean absolute paths. Where a

@@ -293,3 +293,18 @@ func TestAFileWhereADirectoryWasExpectedIsNoCheckout(t *testing.T) {
 		t.Errorf("checkout = %+v, want nothing found", got)
 	}
 }
+
+func TestTwoCheckoutsBelongTogetherWhenTheirRefsDo(t *testing.T) {
+	// Two checkouts outside any repository carry no common directory and do
+	// compare equal, which an empty label stops rather than a guard here.
+	repo := Checkout{CommonDir: "/work/dashboard/.git"}
+
+	switch {
+	case !repo.SameRepository(Checkout{CommonDir: "/work/dashboard/.git"}):
+		t.Error("a worktree of one repository read as another")
+	case repo.SameRepository(Checkout{CommonDir: "/work/api/.git"}):
+		t.Error("two repositories belonged together")
+	case !(Checkout{}).SameRepository(Checkout{}):
+		t.Error("two checkouts outside any repository stopped comparing equal")
+	}
+}

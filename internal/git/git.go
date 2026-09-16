@@ -48,9 +48,9 @@ type Checkout struct {
 	CommonDir string
 }
 
-// SameRepository reports that two checkouts belong to one repository, which is
-// exactly when they share the directory holding the refs. Compared cleaned and
-// not resolved — see docs/architecture/title-resolution.md.
+// SameRepository reports that two checkouts share the directory holding their
+// refs. Two outside any repository share none and so compare equal, which only
+// their empty labels tell apart — see docs/architecture/title-resolution.md.
 func (c Checkout) SameRepository(other Checkout) bool {
 	return c.CommonDir == other.CommonDir
 }
@@ -103,7 +103,7 @@ func discover(dir string) (gitDir, commonDir string, found bool) {
 	}
 
 	// A path that is gone would otherwise be answered by the first ancestor
-	// holding a repository, whose branch nobody is standing on.
+	// holding a repository. A directory that outlived its .git still is.
 	if info, err := os.Stat(dir); err != nil || !info.IsDir() {
 		return "", "", false
 	}

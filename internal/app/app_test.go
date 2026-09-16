@@ -1108,15 +1108,7 @@ func writeTranscript(t *testing.T, root, sessionID string, lines ...string) {
 // agentPane is a pane holding a Claude Code session that never titled its
 // terminal, which is the only pane shape these tests care about.
 func agentPane() herdr.PaneInfo {
-	return herdr.PaneInfo{
-		PaneID: "wE:p1", TabID: "wE:t1", Focused: true, CWD: dashboard,
-		TerminalTitleStripped: "Claude Code",
-		Agent:                 "claude",
-		AgentStatus:           "idle",
-		AgentSession: &herdr.AgentSessionInfo{
-			Agent: "claude", Kind: herdr.SessionRefID, Value: testSession,
-		},
-	}
+	return agentPaneInfo("wE:p1", testSession, dashboard, true)
 }
 
 func TestATabIsNamedFromTheAgentsOwnSession(t *testing.T) {
@@ -1557,8 +1549,12 @@ func TestAWorktreeTakenOffDiskIsNotReadAtAll(t *testing.T) {
 	pane := agentPaneAt("wE:p1", testSession, repo)
 	readOne(t, transcriptConfig(), pane)
 
-	if pane.Git.Branch != "main" {
-		t.Errorf("branch = %q, want the pane's own", pane.Git.Branch)
+	if pane.AgentGit != (git.Checkout{}) {
+		t.Errorf("agent checkout = %+v, want the gone directory refused", pane.AgentGit)
+	}
+
+	if got := branchFor(pane); got != "" {
+		t.Errorf("branch = %q, want none — feat/oauth is the worktree above the gone one", got)
 	}
 }
 
@@ -1685,8 +1681,12 @@ func TestAPaneWhoseAgentHoldsNoSessionKeepsItsBranch(t *testing.T) {
 	} {
 		readOne(t, cfg, pane)
 
-		if pane.Git.Branch != "feat/oauth" {
-			t.Errorf("%s: branch = %q, want the pane's own", name, pane.Git.Branch)
+		if pane.AgentGit != (git.Checkout{}) {
+			t.Errorf("%s: agent checkout = %+v, want none read", name, pane.AgentGit)
+		}
+
+		if got := branchFor(pane); got != "feat/oauth" {
+			t.Errorf("%s: branch = %q, want the pane's own", name, got)
 		}
 	}
 }
