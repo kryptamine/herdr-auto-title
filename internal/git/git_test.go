@@ -273,3 +273,23 @@ func TestANeighbouringRepositoryHasItsOwnCommonDirectory(t *testing.T) {
 		t.Error("two repositories share a common directory")
 	}
 }
+
+func TestADirectoryThatIsGoneIsNoCheckout(t *testing.T) {
+	// A worktree removed while something still names it sits inside a
+	// repository often enough that the walk up would answer with that
+	// repository's branch, which nobody is standing on.
+	r := newRepo(t).head(t, "ref: refs/heads/side\n")
+
+	if got := Read(filepath.Join(r.root, "worktrees", "gone")); got != (Checkout{}) {
+		t.Errorf("checkout = %+v, want nothing found", got)
+	}
+}
+
+func TestAFileWhereADirectoryWasExpectedIsNoCheckout(t *testing.T) {
+	r := newRepo(t).head(t, "ref: refs/heads/side\n")
+	r.write(t, filepath.Join(r.root, "README.md"), "not a directory\n")
+
+	if got := Read(filepath.Join(r.root, "README.md")); got != (Checkout{}) {
+		t.Errorf("checkout = %+v, want nothing found", got)
+	}
+}

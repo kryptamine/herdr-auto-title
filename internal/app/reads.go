@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"log/slog"
-	"os"
 
 	"github.com/kryptamine/herdr-auto-title/internal/claude"
 	"github.com/kryptamine/herdr-auto-title/internal/git"
@@ -157,7 +156,7 @@ func (p *paneReads) checkout(ctx context.Context, dir, agentDir string) git.Chec
 	}
 
 	checkout := p.checkouts.read(dir)
-	if agentDir == "" || agentDir == dir || !isDir(agentDir) {
+	if agentDir == "" || agentDir == dir {
 		return checkout
 	}
 
@@ -166,15 +165,6 @@ func (p *paneReads) checkout(ctx context.Context, dir, agentDir string) git.Chec
 	}
 
 	return checkout
-}
-
-// isDir reports whether dir is still there to be read. A worktree the agent
-// left behind is removed while the transcript still names it, and the walk up
-// would answer with the ancestor repository instead.
-func isDir(dir string) bool {
-	info, err := os.Stat(dir)
-
-	return err == nil && info.IsDir()
 }
 
 // overridesBranch reports that the agent's checkout speaks for the branch: it

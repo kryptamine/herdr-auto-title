@@ -95,6 +95,12 @@ func discover(dir string) (gitDir, commonDir string, found bool) {
 		return "", "", false
 	}
 
+	// A path that is gone would otherwise be answered by the first ancestor
+	// holding a repository, whose branch nobody is standing on.
+	if info, err := os.Stat(dir); err != nil || !info.IsDir() {
+		return "", "", false
+	}
+
 	for dir = filepath.Clean(dir); ; {
 		candidate := filepath.Join(dir, ".git")
 
