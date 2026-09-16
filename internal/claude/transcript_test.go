@@ -464,8 +464,11 @@ func TestALaterReadFollowsTheAgentToItsNextDirectory(t *testing.T) {
 }
 
 func TestATranscriptThatShrankForgetsTheDirectoryToo(t *testing.T) {
+	// A literal directory rather than t.TempDir(): the replacement below only
+	// counts as a shrink if it is shorter, and a temporary path is short
+	// enough where TMPDIR is /tmp to make the first transcript the shorter one.
 	p := newProject(t)
-	p.write(agentIn(t.TempDir()))
+	p.write(human("fix the redirect"), agentIn(started+"/.claude/worktrees/oauth"))
 
 	reader := NewReader()
 	if got := reader.Topic(session, started); got.Dir == "" {
