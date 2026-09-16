@@ -52,6 +52,9 @@ type PaneState struct {
 	// AgentGit is what the checkout the pane's agent is working in has checked
 	// out, zero when nothing said where that is.
 	AgentGit git.Checkout
+	// AgentDir is the directory that checkout was read from, which a pane
+	// holding no repository of its own has nothing else to judge by.
+	AgentDir string
 
 	Focused bool
 	// ChangedAt is when a poll last saw this pane's revision advance.

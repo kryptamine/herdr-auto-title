@@ -1,6 +1,7 @@
 package resolver
 
 import (
+	"path/filepath"
 	"regexp"
 	"strings"
 	"unicode/utf8"
@@ -54,7 +55,7 @@ func (g Git) Resolve(pane *state.PaneState) (Parts, bool) {
 
 	// Labelled before it is chosen, so a detached agent brings its hash and one
 	// standing on the trunk brings nothing, with no case here for either.
-	if pane.AgentGit.SameRepository(pane.Git) {
+	if belongsToPane(pane) {
 		if agent := g.label(pane.AgentGit); agent != "" {
 			branch = agent
 		}
@@ -82,6 +83,28 @@ func (g Git) label(checkout git.Checkout) string {
 	}
 
 	return shortenBranch(Sanitize(checkout.Branch, 0), g.maxLength)
+}
+
+// belongsToPane reports that the agent's checkout speaks for this pane: the
+// same repository, or a directory inside the pane's own where the pane holds no
+// repository to compare — see docs/architecture/title-resolution.md.
+func belongsToPane(pane *state.PaneState) bool {
+	if pane.AgentGit.SameRepository(pane.Git) {
+		return true
+	}
+
+	return pane.Git == (git.Checkout{}) && within(pane.Dir, pane.AgentDir)
+}
+
+// within reports that agentDir lies inside dir. A pane with no directory of its
+// own contains nothing, which is what the unresolvable relative path means.
+func within(dir, agentDir string) bool {
+	rel, err := filepath.Rel(dir, agentDir)
+	if err != nil {
+		return false
+	}
+
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
 // shortenBranch reduces an over-long branch name to the part worth a tab's
