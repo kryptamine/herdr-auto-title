@@ -108,7 +108,8 @@ func (p *paneReads) fill(ctx context.Context, client herdr.Client, pane *state.P
 	// agent is working, and that is where the branch is read from.
 	topic := p.topic(ctx, pane, dir)
 	pane.AgentTopic = topic.Text()
-	pane.Git = p.checkout(ctx, dir, topic.Dir)
+	pane.Git = p.checkout(ctx, dir)
+	pane.AgentGit = p.checkout(ctx, topic.Dir)
 }
 
 // processes reports what a pane is running, reusing the last read while the
@@ -141,10 +142,9 @@ func (p *paneReads) processes(
 	return processes
 }
 
-// checkout reports what the pane has checked out: the repository holding dir,
-// except that agentDir speaks for the branch when the agent is working in
-// another view of the same repository. See docs/architecture/title-resolution.md.
-func (p *paneReads) checkout(ctx context.Context, dir, agentDir string) git.Checkout {
+// checkout reports what the repository holding dir has checked out, and
+// nothing when a branch is worth no width or this poll is spent.
+func (p *paneReads) checkout(ctx context.Context, dir string) git.Checkout {
 	// A branch width of zero is how branches are turned off, and a read whose
 	// answer is thrown away is still a read on every pane twice a second.
 	if p.reader.branchMax <= 0 {
@@ -155,36 +155,7 @@ func (p *paneReads) checkout(ctx context.Context, dir, agentDir string) git.Chec
 		return git.Checkout{}
 	}
 
-	checkout := p.checkouts.read(dir)
-	if agentDir == "" || agentDir == dir {
-		return checkout
-	}
-
-	if agent := p.checkouts.read(agentDir); overridesBranch(checkout, agent) {
-		return agent
-	}
-
-	return checkout
-}
-
-// overridesBranch reports that the agent's checkout speaks for the branch: it
-// is another view of the same repository, and it has something to name. Why the
-// common directories are not resolved is in docs/architecture/title-resolution.md.
-func overridesBranch(own, agent git.Checkout) bool {
-	// A pane outside a repository has no common directory to match, which is
-	// the gate's boundary rather than a case to widen.
-	if agent == (git.Checkout{}) || agent.CommonDir != own.CommonDir {
-		return false
-	}
-
-	// A detached HEAD always has something to say. A trunk never does, and nor
-	// does a branch in a repository recording no default, which cannot be told
-	// from that repository's trunk — so the pane's own answer stands instead.
-	if agent.Branch == "" {
-		return true
-	}
-
-	return agent.Branch != agent.Default && (agent.Default != "" || own.Branch == "")
+	return p.checkouts.read(dir)
 }
 
 // checkoutMemo holds the checkouts one poll has read. The tabs of a project

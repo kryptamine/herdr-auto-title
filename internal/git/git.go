@@ -48,6 +48,13 @@ type Checkout struct {
 	CommonDir string
 }
 
+// SameRepository reports that two checkouts belong to one repository, which is
+// exactly when they share the directory holding the refs. Compared cleaned and
+// not resolved — see docs/architecture/title-resolution.md.
+func (c Checkout) SameRepository(other Checkout) bool {
+	return c.CommonDir == other.CommonDir
+}
+
 // Read reports what the repository holding dir has checked out, and the zero
 // Checkout when there is nothing to report: a directory outside a repository,
 // or one whose .git cannot be read, neither worth a log line twice a second.

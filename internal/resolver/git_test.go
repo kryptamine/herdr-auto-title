@@ -1,6 +1,7 @@
 package resolver
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -19,6 +20,66 @@ func repoPane(branch, defaultBranch string) *state.PaneState {
 
 func resolveRepoPane(pane *state.PaneState) string {
 	return defaultChain().Resolve(tabWithPane(pane)).Name
+}
+
+// agentWorktree gives the pane's agent a checkout of the pane's own
+// repository, as a worktree of it is: the two share the directory the refs
+// live in.
+func agentWorktree(pane *state.PaneState, branch string) *state.PaneState {
+	common := filepath.Join(dashboard, ".git")
+
+	pane.Git.CommonDir = common
+	pane.AgentGit = git.Checkout{
+		Branch:    branch,
+		Default:   pane.Git.Default,
+		CommonDir: common,
+	}
+
+	return pane
+}
+
+func TestTheAgentsBranchIsTheOneTheTabShows(t *testing.T) {
+	pane := agentWorktree(repoPane("main", "main"), "feat/oauth")
+
+	if got := resolveRepoPane(pane); got != "dashboard › feat/oauth" {
+		t.Errorf("title %q, want the branch the agent is working on", got)
+	}
+}
+
+func TestAnAgentOnTheTrunkLeavesThePanesBranchStanding(t *testing.T) {
+	// The trunk is what a tab named after its repository already says, so the
+	// pane's own branch is the only segment either checkout is worth.
+	pane := agentWorktree(repoPane("feat/oauth", "main"), "main")
+
+	if got := resolveRepoPane(pane); got != "dashboard › feat/oauth" {
+		t.Errorf("title %q, want the pane's own branch", got)
+	}
+}
+
+func TestAnAgentWithNoCheckoutLeavesThePanesBranchStanding(t *testing.T) {
+	// A pane whose agent is in no repository has nothing to compare against an
+	// empty common directory, so the empty label is what keeps its branch.
+	pane := repoPane("feat/oauth", "main")
+
+	if got := resolveRepoPane(pane); got != "dashboard › feat/oauth" {
+		t.Errorf("title %q, want the pane's own branch", got)
+	}
+}
+
+func TestAnAgentInAnotherRepositoryLeavesThePanesBranchStanding(t *testing.T) {
+	// A branch from another project beside this one's name labels the wrong
+	// work, which is worse than the tab carrying no branch at all.
+	pane := repoPane("feat/oauth", "main")
+	pane.Git.CommonDir = filepath.Join(dashboard, ".git")
+	pane.AgentGit = git.Checkout{
+		Branch:    "fix/token",
+		Default:   "main",
+		CommonDir: filepath.Join(api, ".git"),
+	}
+
+	if got := resolveRepoPane(pane); got != "dashboard › feat/oauth" {
+		t.Errorf("title %q, want the pane's own branch", got)
+	}
 }
 
 func TestTheBranchQualifiesTheDirectory(t *testing.T) {

@@ -23,9 +23,9 @@ var trackerKey = regexp.MustCompile(`(?i)\b[a-z]{2,6}-\d{2,6}\b`)
 // long branch at one of them ends it on a whole word.
 const branchSeparators = "-_./ "
 
-// Git names the branch the pane's repository has checked out. It qualifies the
-// context rather than the activity, and why that matters is in
-// docs/architecture/title-resolution.md.
+// Git names the branch the tab shows: the pane's own checkout, or the one its
+// agent is working in where that is the same repository. Why a branch qualifies
+// the context rather than the activity is in docs/architecture/title-resolution.md.
 type Git struct {
 	maxLength int
 }
@@ -51,6 +51,15 @@ func (g Git) Resolve(pane *state.PaneState) (Parts, bool) {
 	}
 
 	branch := g.label(pane.Git)
+
+	// Labelled before it is chosen, so a detached agent brings its hash and one
+	// standing on the trunk brings nothing, with no case here for either.
+	if pane.AgentGit.SameRepository(pane.Git) {
+		if agent := g.label(pane.AgentGit); agent != "" {
+			branch = agent
+		}
+	}
+
 	if branch == "" {
 		return Parts{}, false
 	}
