@@ -228,9 +228,9 @@ naming is the one pane each tab is named from ([the poll loop](./poll-loop.md)).
 agent sent into a worktree never moves the pane's directory: it enters the
 worktree internally, so the branch came back from the repository root as the
 trunk, and the trunk contributes nothing — fourteen agent panes on fourteen
-feature branches read alike. The branch is therefore read from the agent's own
-directory when that directory belongs to the same repository and is not on its
-trunk, and from the pane's own directory otherwise. It is an override with a
+feature branches read alike. Both checkouts are therefore read — the pane's own
+directory and the agent's — and the agent's answer is preferred when it belongs
+to the same repository and has something to say. It is an override with a
 fallback rather than a replacement, so a pane never loses a branch it used to
 show: where the agent has nothing usable to say, the answer is the one this
 source always gave.
@@ -241,40 +241,56 @@ when the transcript names none — no extra read, and nothing is opened that was
 not going to be read anyway. The transcript carries a `cwd` on its `user`,
 `assistant`, `system` and `attachment` lines but not on `ai-title`,
 `last-prompt`, `mode` and several other types, so the reader remembers the last
-line that carried one. It is taken as the transcript spelled it: anything but an
-absolute, clean path is refused rather than repaired, because the value becomes a
-directory a checkout is read from. It is cleared by the truncation reset and
+line that carried one. It is reported as the transcript spelled it, and only an
+empty value is refused, because that would erase the directory the session last
+named; whether a path can be a checkout at all is settled where one is read. It
+is cleared by the truncation reset and
 survives the lost-path reset, exactly as the topic does — a transcript that was
 replaced says nothing until it has been read again, and one whose file has gone
 missing still says what it last said.
 
-The gate is `overridesBranch` (`internal/app/reads.go`), and it refuses unless
-three things hold: the agent's checkout is non-zero, its `git.Checkout.CommonDir`
-equals the pane's, and its branch is either empty or not that repository's
-default. `CommonDir` is the directory holding the refs a repository shares with
-its worktrees, identical for a repository and every worktree of it, so two
-checkouts belong together exactly when it matches; it is set only on a non-zero
-`Checkout`, and a pane outside a repository therefore has none to match, which is
-the gate's boundary rather than a case to widen. An empty branch is a detached
-HEAD, which always has something to say. A trunk never does, and is refused here
-rather than left to the branch's own suppression, which would delete a segment
-the pane's own directory can still fill.
+**The choice happens after both are labelled**, in `Git.Resolve`
+(`internal/resolver/git.go`): the pane's checkout is labelled, and a non-empty
+label from the agent's checkout replaces it when
+`git.Checkout.SameRepository` holds. Labelling first is the whole reason there
+is no second set of rules. An agent on a trunk labels to `""` and loses without
+anything here testing for a trunk; a detached agent labels to its short hash and
+wins without anything here testing for detachment. An earlier version decided
+between the two *checkouts*, before either had a label, and had to re-derive
+both of those facts to do it.
 
-**The directory has to still be there**, which is one `stat` before the read.
-A worktree is removed while the transcript that named it keeps saying so, and
-the walk up from a path that no longer exists lands on the repository above it
-— whose branch is a real one the gate would then take, in place of the pane's.
-Refusing a directory for being gone is cheaper than reasoning about whatever
-its parent happens to be on.
+That equivalence has one limit worth stating: `label` suppresses a branch only
+when it equals the repository's recorded default, so where a repository records
+none — it has no remote, or none has been fetched — an agent standing on `main`
+labels non-empty and wins, taking the tab from the pane's own branch. The same
+mechanism is what finally shows the agent's branch in such a repository, which
+is what this source exists for, so the two arrive together.
+
+`SameRepository` compares `CommonDir`, the directory holding the refs a
+repository shares with its worktrees, identical for a repository and every
+worktree of it. A checkout outside any repository carries none, so a pane
+outside one has nothing to match and keeps its own answer — the boundary of this
+source rather than a case to widen. Two such checkouts do compare equal, and are
+stopped by the agent's label being empty rather than by a guard, which would be
+one that could never change an answer.
+
+**A directory that is gone is refused where directories are read**, in
+`git.discover`, beside the empty and relative paths it already rejects. A
+worktree is removed while a transcript that named it keeps saying so, and the
+walk up from a path that no longer exists lands on the repository above it —
+whose branch is a real one, and would stand in for the pane's. That is not this
+source's problem alone: a shell left in a deleted directory reports its parent's
+branch the same way.
 
 **The two common directories are compared cleaned and not resolved.** Both sides
 come out of `git.discover` (`internal/git/git.go`), which already cleans the path
 it walks from, so the comparison is exact on two clean absolute paths. Where a
 checkout is reached through a symlink or an alias on one side only, the two
-spellings differ and the gate refuses: the pane keeps its own branch, which is
-today's behaviour and never a wrong label. Resolving symlinks instead would cost
-two extra stat-walks per pane per poll on the hot path, against a case where the
-feature merely does not activate. It is a deliberate trade, not an oversight.
+spellings differ and `SameRepository` is false: the pane keeps its own branch,
+which is today's behaviour and never a wrong label. Resolving symlinks instead
+would cost two extra stat-walks per pane per poll on the hot path, against a
+case where the feature merely does not activate. It is a deliberate trade, not
+an oversight.
 
 **The context does not follow the agent — only the branch does.** Two reasons,
 and the second is the sharper one. A worktree's directory names nothing worth
