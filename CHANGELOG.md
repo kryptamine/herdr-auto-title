@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.6.2](https://github.com/kryptamine/herdr-auto-title/compare/v0.6.1...v0.6.2) (2026-09-16)
+
+
+### Bug Fixes
+
+* **app:** read the branch from the agent's own directory ([c26bd9c](https://github.com/kryptamine/herdr-auto-title/commit/c26bd9c14d34a2578628362c5290ef7db3a7e678))
+* **app:** refuse an agent directory that is no longer there ([f4bf2eb](https://github.com/kryptamine/herdr-auto-title/commit/f4bf2ebc6f7aba0dd2e579f3478bf696d2b25ddf))
+* **resolver:** pick the branch after labelling both checkouts ([cb04b32](https://github.com/kryptamine/herdr-auto-title/commit/cb04b32a2be750835bda6d9831b6340cc2ad53a1))
+* **review:** assert what two tests were named for ([e7b5356](https://github.com/kryptamine/herdr-auto-title/commit/e7b5356f780a2ee065a62896a6694cfc3f3578ef))
+
+
+### Refactoring
+
+* **claude:** report the cwd as the transcript spelled it ([a04e001](https://github.com/kryptamine/herdr-auto-title/commit/a04e00113d5b0d4a48b265d43f281c06df3dbb05))
+* **git:** refuse a directory that is gone where it is read ([0be2799](https://github.com/kryptamine/herdr-auto-title/commit/0be2799f5a889e1131d67ef7e4a36c391ba2fbaa))
+
 ## [0.6.1](https://github.com/kryptamine/herdr-auto-title/compare/v0.6.0...v0.6.1) (2026-09-15)
 
 
