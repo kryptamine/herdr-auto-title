@@ -501,16 +501,27 @@ func TestATranscriptThatWentMissingKeepsItsDirectory(t *testing.T) {
 	}
 }
 
-func TestADirectoryThatIsNotAnAbsoluteCleanPathIsRefused(t *testing.T) {
-	// The value becomes the directory a checkout is read from, so it is refused
-	// rather than repaired.
-	for _, dir := range []string{"work/dashboard", "", "..", "/work/dashboard/"} {
+func TestADirectoryIsReportedAsTheTranscriptSpelledIt(t *testing.T) {
+	// Whether a path can be a checkout is settled where one is read, so the
+	// reader repairs nothing and judges nothing.
+	for _, dir := range []string{"work/dashboard", "..", "/work/dashboard/"} {
 		p := newProject(t)
 		p.write(agentIn(dir))
 
-		if got := NewReader().Topic(session, started); got.Dir != "" {
-			t.Errorf("dir %q resolved to %q", dir, got.Dir)
+		if got := NewReader().Topic(session, started); got.Dir != dir {
+			t.Errorf("dir %q reported as %q", dir, got.Dir)
 		}
+	}
+}
+
+func TestALineCarryingAnEmptyDirectoryLeavesTheLastOneStanding(t *testing.T) {
+	// An empty value is the one the reader still refuses: it would erase the
+	// directory the session last named.
+	p := newProject(t)
+	p.write(agentIn("/work/dashboard"), agentIn(""))
+
+	if got := NewReader().Topic(session, started); got.Dir != "/work/dashboard" {
+		t.Errorf("dir = %q, want the last directory the transcript named", got.Dir)
 	}
 }
 

@@ -305,7 +305,10 @@ func (t *transcript) absorb(lines string) {
 			continue
 		}
 
-		if isWorkingDir(read.CWD) {
+		// Kept as the transcript spelled it: whether a path can be a checkout
+		// is settled where one is read. Only an empty value is refused, which
+		// would erase the directory the session last named.
+		if read.CWD != "" {
 			t.topic.Dir = read.CWD
 		}
 
@@ -316,13 +319,6 @@ func (t *transcript) absorb(lines string) {
 			t.topic.Opening = opening(read.Message.Content)
 		}
 	}
-}
-
-// isWorkingDir accepts a directory as the transcript spelled it. The value
-// becomes the directory a checkout is read from, so anything but an absolute,
-// clean path is refused rather than repaired.
-func isWorkingDir(dir string) bool {
-	return dir != "" && filepath.IsAbs(dir) && filepath.Clean(dir) == dir
 }
 
 // commandPattern matches the marker Claude Code wraps a slash command in.
