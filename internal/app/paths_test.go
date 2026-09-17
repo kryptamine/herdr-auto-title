@@ -3,7 +3,6 @@ package app
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -39,13 +38,9 @@ func pollFound(t *testing.T) time.Duration {
 	return cfg.Poll
 }
 
-// dotConfig is the home's ~/.config, which Windows has no equivalent of.
+// dotConfig is the home's ~/.config, %USERPROFILE%\.config on Windows.
 func dotConfig(t *testing.T) string {
 	t.Helper()
-
-	if runtime.GOOS == "windows" {
-		t.Skip("Windows keeps configuration in %AppData%, not in ~/.config")
-	}
 
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -105,8 +100,8 @@ func TestARelativeXDGConfigHomeIsIgnored(t *testing.T) {
 }
 
 func TestTheHomeConfigDirectoryIsLookedIn(t *testing.T) {
-	// The point of the ordering: on macOS too, so one dotfiles repository
-	// serves every machine.
+	// The point of the ordering: on macOS and Windows too, so one dotfiles
+	// repository serves every machine.
 	isolate(t)
 	writeOwnFile(t, dotConfig(t), ConfigFile, "HERDR_AUTO_TITLE_POLL_MS=800\n")
 

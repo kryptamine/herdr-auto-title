@@ -72,12 +72,13 @@ already holds the file:
 | Order | Directory                                                        |
 | ----- | ---------------------------------------------------------------- |
 | 1     | `$XDG_CONFIG_HOME` when it is set to an absolute path            |
-| 2     | `~/.config`, which Windows has no equivalent of                  |
+| 2     | `~/.config`, which is `%USERPROFILE%\.config` on Windows         |
 | 3     | `~/Library/Application Support` on macOS, `%APPDATA%` on Windows |
 
-So `~/.config/herdr-auto-title/config.env` works on every Unix, macOS included,
-and one dotfiles repository serves every machine. A file already sitting in
-`~/Library/Application Support` or `%APPDATA%` keeps being read where it is.
+So `~/.config/herdr-auto-title/config.env` works on every platform, Windows
+included, and one dotfiles repository serves every machine. A file already
+sitting in `~/Library/Application Support` or `%APPDATA%` keeps being read
+where it is.
 
 Auto Title reads the file once at startup, so run `herdr server stop` after a
 change. It does not read the config directory that `herdr plugin list` prints.

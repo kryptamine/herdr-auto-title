@@ -37,7 +37,7 @@ keeps is looked up through:
 | Order | Directory |
 |-------|-----------|
 | 1 | `$XDG_CONFIG_HOME`, when it is set to an absolute path |
-| 2 | `~/.config`, which Windows has no equivalent of |
+| 2 | `~/.config`, which is `%USERPROFILE%\.config` on Windows |
 | 3 | `os.UserConfigDir()`: `~/Library/Application Support` on macOS, `%APPDATA%` on Windows |
 
 **It was the third alone**, which made one setting two files. `~/.config` is
@@ -49,8 +49,11 @@ where configuration goes. A relative value is ignored, as the specification
 says: honoured, it would resolve against whatever directory the Herdr server
 was started in.
 
-Windows keeps `%APPDATA%` and gains nothing but the variable, because `~/.config`
-is a Unix convention and Herdr's own Windows paths are under `%APPDATA%` too.
+`~/.config` is looked in on Windows too, as `%USERPROFILE%\.config`, which is
+where cross-platform tools — git, mise, scoop, wezterm, opencode — already keep
+their configuration, and what a dotfiles repository serving Windows syncs.
+Herdr's own files being under `%APPDATA%\herdr` is Herdr's choice for its own
+directory; it does not decide where a user's dotfiles live.
 
 **The third entry is a fallback, not a legacy to migrate.** An install made
 before this ordering existed keeps reading the file where it is; nothing moves

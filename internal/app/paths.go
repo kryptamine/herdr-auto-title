@@ -3,7 +3,6 @@ package app
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 )
 
 // EnvXDGConfigHome names the directory a user following the XDG convention
@@ -50,12 +49,10 @@ func configDirs() []string {
 		dirs = append(dirs, xdg)
 	}
 
-	// ~/.config is the Unix convention macOS shares and Windows has no
-	// equivalent of, so only Windows is left with its platform directory.
-	if runtime.GOOS != "windows" {
-		if home, err := os.UserHomeDir(); err == nil {
-			dirs = append(dirs, filepath.Join(home, ".config"))
-		}
+	// ~/.config is where cross-platform tools keep configuration, Windows
+	// included, as %USERPROFILE%\.config.
+	if home, err := os.UserHomeDir(); err == nil {
+		dirs = append(dirs, filepath.Join(home, ".config"))
 	}
 
 	// On Linux this repeats one of the two above, which costs a stat and
