@@ -51,13 +51,16 @@ func setHome(t *testing.T, dir string) {
 // testResolver builds the shipped chain against a home directory of the test's
 // own, because CWD declines a pane sitting in the user's and the fixtures below
 // must not depend on whose machine they run on.
-func testResolver(t *testing.T) *resolver.Deterministic {
+func testResolver(t *testing.T, cfg Config) *resolver.Deterministic {
 	t.Helper()
 	setHome(t, filepath.Join(t.TempDir(), "home"))
 
 	return resolver.Default(resolver.Options{
 		MaxLength: resolver.DefaultMaxLength,
 		BranchMax: resolver.DefaultBranchMaxLength,
+		// A tab reads the row above it as parts only when this wrote that row,
+		// so the chain under test has to know what the configuration does.
+		NamesWorkspaces: cfg.RenameWorkspaces,
 	})
 }
 
@@ -66,14 +69,14 @@ func testResolver(t *testing.T) *resolver.Deterministic {
 func newTestApp(t *testing.T, cfg Config) *App {
 	t.Helper()
 
-	chain := testResolver(t)
+	chain := testResolver(t, cfg)
 
 	var panes resolver.PaneResolver
 	if cfg.RenamePanes {
 		panes = chain
 	}
 
-	return New(cfg, discardLogger(), chain, panes)
+	return New(cfg, discardLogger(), chain, panes, WorkspaceResolver(cfg))
 }
 
 // harness drives an App against a stubbed Herdr session one poll at a time, so

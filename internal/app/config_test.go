@@ -28,6 +28,7 @@ func isolate(t *testing.T) {
 	names := []string{
 		EnvDebug, EnvPoll, EnvMaxLength, EnvBranchMax,
 		EnvPosition, EnvManual, EnvTranscript, EnvAgentName, EnvPanes,
+		EnvPreferAgent, EnvWorkspaces, EnvWorkspaceMaxLength,
 	}
 
 	for _, name := range names {
@@ -388,5 +389,56 @@ func TestAnUnsetManualFileKeepsTheDefault(t *testing.T) {
 	cfg, _ := LoadConfig()
 	if cfg.ManualPath != state.DefaultManualPath() {
 		t.Errorf("manual path = %q, want the default", cfg.ManualPath)
+	}
+}
+
+// The row is bounded apart from the tab bar, so the two limits must not be the
+// same number by accident, and the row's must be readable on its own.
+func TestTheWorkspaceRowIsBoundedApartFromTheTabBar(t *testing.T) {
+	isolate(t)
+
+	cfg, warnings := LoadConfig()
+	if len(warnings) != 0 {
+		t.Fatalf("unexpected warnings: %v", warnings)
+	}
+
+	if cfg.RenameWorkspaces {
+		t.Error("the row is named without being asked for")
+	}
+
+	if cfg.WorkspaceMaxLength != resolver.DefaultWorkspaceMaxLength {
+		t.Errorf("WorkspaceMaxLength = %d, want %d",
+			cfg.WorkspaceMaxLength, resolver.DefaultWorkspaceMaxLength)
+	}
+
+	if cfg.WorkspaceMaxLength == cfg.MaxLength {
+		t.Errorf("both bounds are %d; the sidebar is not the tab bar", cfg.MaxLength)
+	}
+
+	t.Setenv(EnvWorkspaces, "true")
+	t.Setenv(EnvWorkspaceMaxLength, "26")
+
+	cfg, warnings = LoadConfig()
+	if len(warnings) != 0 {
+		t.Fatalf("unexpected warnings: %v", warnings)
+	}
+
+	if !cfg.RenameWorkspaces || cfg.WorkspaceMaxLength != 26 {
+		t.Errorf("the environment was not read: %+v", cfg)
+	}
+
+	if cfg.MaxLength != resolver.DefaultMaxLength {
+		t.Errorf("the row's bound moved the tab bar's to %d", cfg.MaxLength)
+	}
+
+	t.Setenv(EnvWorkspaceMaxLength, "0")
+
+	cfg, warnings = LoadConfig()
+	if len(warnings) == 0 {
+		t.Error("zero was accepted as a width")
+	}
+
+	if cfg.WorkspaceMaxLength != resolver.DefaultWorkspaceMaxLength {
+		t.Errorf("a rejected value was kept: %d", cfg.WorkspaceMaxLength)
 	}
 }

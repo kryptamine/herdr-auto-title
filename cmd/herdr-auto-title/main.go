@@ -46,8 +46,8 @@ func run() error {
 		return err
 	}
 
-	titles, panes := app.Resolvers(cfg)
-	app.New(cfg, log, titles, panes).Run(ctx, client)
+	titles, panes, workspaces := app.Resolvers(cfg)
+	app.New(cfg, log, titles, panes, workspaces).Run(ctx, client)
 
 	return nil
 }

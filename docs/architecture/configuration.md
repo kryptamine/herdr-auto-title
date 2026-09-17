@@ -9,9 +9,10 @@ generated: { by: claude-code/opus-5, at: 2026-08-26T14:14:17+03:00 }
 
 # Configuration
 
-Every setting Auto Title has is one of nine `HERDR_AUTO_TITLE_*` variables,
-read in `internal/app/config.go`. They can be set in the environment, or written
-into a file that is loaded into the environment before anything reads it.
+Every setting Auto Title has is a `HERDR_AUTO_TITLE_*` variable, read in
+`internal/app/config.go` and listed in the README. They can be set in the
+environment, or written into a file that is loaded into the environment before
+anything reads it.
 
 ## Why a file exists
 
@@ -119,8 +120,9 @@ has claimed it — is the same code either way.
 ## Why it is not reread
 
 The file is read once. Half the settings are consumed in `main.run` while it
-builds the resolver chain — `MAX_LENGTH` and `BRANCH_MAX` are baked into
-`resolver.Default`, `POSITION` decides whether the chain is wrapped at all — so
+builds the resolver chains — `MAX_LENGTH` and `BRANCH_MAX` are baked into
+`resolver.Default`, `WORKSPACE_MAX_LENGTH` into the workspace chain, `POSITION`
+decides whether the tab chain is wrapped at all — so
 rereading the file mid-run would apply some settings and quietly ignore others.
 An honest restart is better than a reload that works half the time, and the
 plugin restarts in the time it takes the server to start it again: `herdr server

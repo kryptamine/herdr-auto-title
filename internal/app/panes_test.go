@@ -226,9 +226,9 @@ func appFromConfig(t *testing.T, cfg Config) *App {
 	t.Helper()
 	setHome(t, filepath.Join(t.TempDir(), "home"))
 
-	titles, panes := Resolvers(cfg)
+	titles, panes, workspaces := Resolvers(cfg)
 
-	return New(cfg, discardLogger(), titles, panes)
+	return New(cfg, discardLogger(), titles, panes, workspaces)
 }
 
 func TestTheSettingsThatShapeATitleShapeAPaneLabel(t *testing.T) {

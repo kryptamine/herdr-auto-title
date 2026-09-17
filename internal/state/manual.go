@@ -9,25 +9,37 @@ import (
 	"sync"
 )
 
-// Manual remembers which tabs and panes the user renamed by hand, so Auto
-// Title stops naming them. A rename is not an event but a label that moved
-// between two polls; see docs/architecture/manual-rename-protection.md.
+// Manual remembers which tabs, panes and workspaces the user renamed by hand,
+// so Auto Title stops naming them. A rename is not an event but a label that
+// moved between two polls; see docs/architecture/manual-rename-protection.md.
 type Manual struct {
-	Tabs  *Claims
-	Panes *Claims
+	Tabs       *Claims
+	Panes      *Claims
+	Workspaces *Claims
 
 	mu   sync.Mutex
 	path string
 	// settled is false until the first poll has finished, while nothing can yet
-	// be judged. One poll looks at tabs and panes together, so they share it.
+	// be judged. One poll looks at every kind together, so they share it.
 	settled bool
 }
 
 // Claims is what is remembered about one kind of thing Herdr labels. Herdr
-// numbers tabs and panes apart, so each kind keeps claims of its own.
+// numbers each kind apart, so each keeps claims of its own.
 type Claims struct {
 	manual *Manual
-	seen   map[string]labels
+	// lockUnseen claims a label the first poll has never seen. Only a workspace
+	// carries it: Herdr labels an unnamed one after its directory, so anything
+	// else is a name its owner chose. See manual-rename-protection.md.
+	lockUnseen bool
+	seen       map[string]labels
+	// pending holds a workspace sighted with no default yet -- no pane, so no
+	// directory to compare against. It is judged on the first poll that has one.
+	pending map[string]struct{}
+	// written is the label this last wrote, kept on disk for the kind claimed
+	// on sight: a restarted plugin finds its own work wearing neither the
+	// default nor a name it remembers, and must not claim it as the owner's.
+	written map[string]string
 	// locked is the label a thing carried when the user claimed it. The label,
 	// not the id, is what makes a reloaded lock safe: Herdr reuses ids.
 	locked map[string]string
@@ -41,27 +53,35 @@ type labels struct {
 	sent    map[string]struct{}
 }
 
-func newClaims(m *Manual) *Claims {
+func newClaims(m *Manual, lockUnseen bool) *Claims {
 	return &Claims{
-		manual: m,
-		seen:   make(map[string]labels),
-		locked: make(map[string]string),
+		manual:     m,
+		lockUnseen: lockUnseen,
+		seen:       make(map[string]labels),
+		pending:    make(map[string]struct{}),
+		written:    make(map[string]string),
+		locked:     make(map[string]string),
 	}
 }
 
 // manualFile is the on-disk form: locks outlive the process because Herdr can
 // restart a plugin mid-session.
 type manualFile struct {
-	Locked      map[string]string `json:"locked_tabs"`
-	LockedPanes map[string]string `json:"locked_panes"`
+	Locked           map[string]string `json:"locked_tabs"`
+	LockedPanes      map[string]string `json:"locked_panes"`
+	LockedWorkspaces map[string]string `json:"locked_workspaces"`
+	// WrittenWorkspaces is what this last named each workspace, which a lock
+	// cannot say: it is the label a restart must not mistake for the owner's.
+	WrittenWorkspaces map[string]string `json:"written_workspaces"`
 }
 
 // LoadManual reads persisted locks from path. Anything unreadable yields an
 // empty set: this is a convenience, not a reason to refuse to start.
 func LoadManual(path string) *Manual {
 	m := &Manual{path: path}
-	m.Tabs = newClaims(m)
-	m.Panes = newClaims(m)
+	m.Tabs = newClaims(m, false)
+	m.Panes = newClaims(m, false)
+	m.Workspaces = newClaims(m, true)
 
 	raw, err := os.ReadFile(path) //nolint:gosec // the path is configured, never terminal-derived
 	if err != nil {
@@ -75,6 +95,8 @@ func LoadManual(path string) *Manual {
 
 	maps.Copy(m.Tabs.locked, stored.Locked)
 	maps.Copy(m.Panes.locked, stored.LockedPanes)
+	maps.Copy(m.Workspaces.locked, stored.LockedWorkspaces)
+	maps.Copy(m.Workspaces.written, stored.WrittenWorkspaces)
 
 	return m
 }
@@ -142,16 +164,66 @@ func (c *Claims) Observe(s Sighting) bool {
 	previous, known := c.seen[s.ID]
 	ours := c.ours(s)
 
+	// A rename that landed late is as much this plugin's work as one that
+	// answered, and a restart must find it recorded as such.
+	if _, landed := previous.sent[s.Current]; landed && c.lockUnseen {
+		c.written[s.ID] = s.Current
+
+		m.saveLocked()
+	}
+
 	delete(previous.sent, s.Current)
 	c.seen[s.ID] = labels{current: s.Current, sent: previous.sent}
 
+	// The poll a workspace is told apart on: the first, or for one that showed
+	// no default then, the first that does. Until then it stays unseen, so that
+	// poll still finds it new.
+	_, pending := c.pending[s.ID]
+	judging := c.lockUnseen && !known && (!m.settled || pending)
+
+	if judging {
+		// Its own work, found again after a restart: neither the default nor
+		// the owner's, and named on rather than claimed.
+		if written, ok := c.written[s.ID]; ok && written == s.Current {
+			delete(c.pending, s.ID)
+
+			return false
+		}
+
+		if s.Default == "" {
+			c.pending[s.ID] = struct{}{}
+			delete(c.seen, s.ID)
+
+			return false
+		}
+
+		delete(c.pending, s.ID)
+	}
+
+	// Nobody has named it. A tab can wear either spelling -- clearing a name
+	// empties the label rather than restoring the position. A pane has only
+	// the empty, and a workspace the basename Herdr derived for it.
+	if s.Current == "" || s.Current == s.Default {
+		return false
+	}
+
+	// Everything Herdr writes itself was let through above, so a workspace
+	// reaching here on its judging poll wears a name its owner wrote. One opened
+	// later is not claimed for being unseen: manual-rename-protection.md.
+	if c.lockUnseen && !known {
+		if !judging {
+			return false
+		}
+
+		c.locked[s.ID] = s.Current
+
+		m.saveLocked()
+
+		return true
+	}
+
 	switch {
 	case ours:
-		return false
-	case s.Current == "", s.Current == s.Default:
-		// Nobody has named it. A tab can wear either spelling — clearing a name
-		// empties the label rather than restoring the position, and a position
-		// slides down when a tab to its left closes. A pane has only the empty.
 		return false
 	case known:
 		if s.Current == previous.current {
@@ -176,6 +248,18 @@ func (c *Claims) ours(s Sighting) bool {
 	return sent || s.Current == s.Desired
 }
 
+// Pending reports whether this one is still waiting for a default to be judged
+// against. It has no basename yet, so nothing may be read into its label -- and
+// nothing written over it, or the judging poll would find the plugin's own work.
+func (c *Claims) Pending(id string) bool {
+	c.manual.mu.Lock()
+	defer c.manual.mu.Unlock()
+
+	_, pending := c.pending[id]
+
+	return pending
+}
+
 // Settled marks the end of a poll. Only the first matters: after it, something
 // unseen is something that did not exist before.
 func (m *Manual) Settled() {
@@ -194,6 +278,12 @@ func (c *Claims) Applied(id, label string) {
 	seen := c.seen[id]
 	seen.current = label
 	c.seen[id] = seen
+
+	if c.lockUnseen {
+		c.written[id] = label
+
+		c.manual.saveLocked()
+	}
 }
 
 // Sent records the label of a rename whose call got no answer, which Herdr
@@ -237,6 +327,20 @@ func (c *Claims) Retain(live map[string]string) {
 		}
 	}
 
+	for id := range c.pending {
+		if _, alive := live[id]; !alive {
+			delete(c.pending, id)
+		}
+	}
+
+	for id := range c.written {
+		if _, alive := live[id]; !alive {
+			delete(c.written, id)
+
+			changed = true
+		}
+	}
+
 	if changed {
 		m.saveLocked()
 	}
@@ -255,7 +359,12 @@ func (m *Manual) saveLocked() {
 
 	// encoding/json sorts map keys itself, so the file is diffable already.
 	raw, err := json.MarshalIndent(
-		manualFile{Locked: m.Tabs.locked, LockedPanes: m.Panes.locked},
+		manualFile{
+			Locked:            m.Tabs.locked,
+			LockedPanes:       m.Panes.locked,
+			LockedWorkspaces:  m.Workspaces.locked,
+			WrittenWorkspaces: m.Workspaces.written,
+		},
 		"",
 		"  ",
 	)

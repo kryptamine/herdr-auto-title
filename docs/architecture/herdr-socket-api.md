@@ -89,7 +89,8 @@ leaves when it changes.
 
 ## The methods Auto Title uses
 
-Four, and no others (`internal/herdr/session.go`):
+Five, and no others (the `Method*` constants in `internal/herdr/protocol.go`),
+the last of them only while the workspace row is being named:
 
 - **`session.snapshot`** returns the whole session — every tab with its label,
   every pane with its directory, terminal title, agent and agent status.
@@ -115,6 +116,11 @@ Four, and no others (`internal/herdr/session.go`):
   `pane N`, so a session of Claude Code panes reads as a column of `claude`
   until something sets a label. Auto Title uses it unless pane naming is turned
   off — see [configuration](./configuration.md).
+
+- **`workspace.rename`** takes `{workspace_id, label}`, the shape `tab.rename`
+  has. Auto Title sends it only when workspace naming is turned on. A workspace
+  closed between the snapshot and the rename answers `workspace_not_found`,
+  probed with an id no session holds.
 
 A label is **one line**. `tab.rename` accepts a newline and stores it verbatim,
 with no error and no stripping, but the tab bar renders a single line and Herdr
@@ -240,6 +246,16 @@ reads, so this section describes Herdr rather than those types.
   as well, aggregated over the tab's panes: with a single Claude Code pane
   working, its tab reported `working` while every other tab reported `unknown`.
   How it aggregates two agent panes in one tab has not been probed.
+- **A workspace nobody has renamed is labelled after its directory, not its
+  number.** Probed: `herdr workspace create --no-focus --cwd /tmp` answered
+  `label: "tmp"` with `number: 3`, while the tab created inside it answered
+  `label: "1"`. So the trap below is a tab's alone — a workspace never wears its
+  position, and its default label cannot move on its own the way a position
+  slides when a tab to its left closes. That is what `WorkspaceSightingFrom`
+  carries as its `Default`, and what the first poll tells a name its owner wrote
+  apart by. It is a basename read from the pane, not from the workspace: the
+  snapshot carries no creation directory, so a tab that has since moved out of
+  the directory its workspace was made in will report the wrong default.
 - **`TabInfo.number` is not the label an unnamed tab carries.** `number` counts
   every tab its workspace has ever held and never repeats — a workspace holding
   six tabs was seen numbering them 2, 9, 30, 33, 35, 36. The label Herdr puts on

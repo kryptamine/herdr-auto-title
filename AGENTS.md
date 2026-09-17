@@ -148,8 +148,10 @@ are only the facts that would otherwise mislead the code in silence.
   agent**, never an editor, a build or an ssh session running under the shell.
   Names arrive with `.exe` and a process's `cwd` with a trailing backslash; the
   state package strips both as they arrive, so no reader of a pane sees either.
-- Auto Title uses four methods and no others: `session.snapshot`,
-  `pane.process_info`, `tab.rename` and `pane.rename`.
+- Auto Title uses five methods and no others: `session.snapshot`,
+  `pane.process_info`, `tab.rename`, `pane.rename` and `workspace.rename`,
+  the last only while the workspace row is being named
+  (`HERDR_AUTO_TITLE_WORKSPACES=true`).
 - **A pane carries no label until it has one, and an empty one clears it.**
   Herdr omits `label` from a pane object entirely until the pane is named, and
   `pane.rename` clears rather than stores an empty label — the opposite of

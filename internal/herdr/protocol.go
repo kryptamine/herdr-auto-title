@@ -37,6 +37,9 @@ const (
 	// CodeTabNotFound is returned when a tab closed between the snapshot that
 	// named it and the rename that followed.
 	CodeTabNotFound = "tab_not_found"
+	// CodeWorkspaceNotFound is the same for a workspace, which can be closed
+	// between the snapshot and the rename it decided on.
+	CodeWorkspaceNotFound = "workspace_not_found"
 	// CodePaneNotFound is the same for a pane, which can close between the
 	// snapshot that listed it and the read of what is running in it.
 	CodePaneNotFound = "pane_not_found"
@@ -58,12 +61,14 @@ func ErrorCode(err error) string {
 	return ""
 }
 
-// Method names used by Auto Title: two to read the session and two to act on it.
+// Method names used by Auto Title: two to read the session and three to act on
+// it.
 const (
 	MethodSessionSnapshot = "session.snapshot"
 	MethodPaneProcessInfo = "pane.process_info"
 	MethodTabRename       = "tab.rename"
 	MethodPaneRename      = "pane.rename"
+	MethodWorkspaceRename = "workspace.rename"
 )
 
 type PaneTarget struct {
@@ -78,6 +83,11 @@ type TabRenameParams struct {
 type PaneRenameParams struct {
 	PaneID string `json:"pane_id"`
 	Label  string `json:"label"`
+}
+
+type WorkspaceRenameParams struct {
+	WorkspaceID string `json:"workspace_id"`
+	Label       string `json:"label"`
 }
 
 type emptyParams struct{}

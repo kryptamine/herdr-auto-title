@@ -50,6 +50,11 @@ type Parts struct {
 // the kind of program the pane is running. No limit is applied: truncation
 // belongs to the assembled name.
 func activityFrom(pane *state.PaneState, value string) (Parts, bool) {
+	return activityAs(pane, value, paneKind(pane))
+}
+
+// activityAs is activityFrom under a kind the caller chose, "" for none.
+func activityAs(pane *state.PaneState, value, kind string) (Parts, bool) {
 	activity, ok := Meaningful(Sanitize(value, 0))
 	if !ok {
 		return Parts{}, false
@@ -59,7 +64,7 @@ func activityFrom(pane *state.PaneState, value string) (Parts, bool) {
 		return Parts{}, false
 	}
 
-	return partsFrom(pane, paneKind(pane), activity), true
+	return partsFrom(pane, kind, activity), true
 }
 
 // partsFrom places a pane's kind: an agent's name is a field of its own, any
@@ -117,6 +122,10 @@ type PaneResolver interface {
 type Options struct {
 	MaxLength int
 	BranchMax int
+	// NamesWorkspaces says the workspace row is read as separator-split parts,
+	// the way this writes it. Nothing here tells a row the user wrote from its
+	// own, so every row is split; without it a row is matched whole as a context.
+	NamesWorkspaces bool
 	// HideAgentName leaves the agent's name out of a title. It is stated this
 	// way round so that the zero value keeps the name, which is what a resolver
 	// built without options wants.
@@ -125,9 +134,10 @@ type Options struct {
 
 // Deterministic resolves titles from a fixed priority list of sources.
 type Deterministic struct {
-	sources       []Source
-	maxLength     int
-	hideAgentName bool
+	sources         []Source
+	maxLength       int
+	hideAgentName   bool
+	namesWorkspaces bool
 }
 
 var (
@@ -148,9 +158,10 @@ func New(opts Options, sources ...Source) *Deterministic {
 	})
 
 	return &Deterministic{
-		sources:       ordered,
-		maxLength:     opts.MaxLength,
-		hideAgentName: opts.HideAgentName,
+		sources:         ordered,
+		maxLength:       opts.MaxLength,
+		hideAgentName:   opts.HideAgentName,
+		namesWorkspaces: opts.NamesWorkspaces,
 	}
 }
 
@@ -171,28 +182,37 @@ func Default(opts Options) *Deterministic {
 // Resolve names a tab in three steps: ask the sources what they see, drop the
 // parts that only repeat something already on screen, and assemble the rest.
 func (d *Deterministic) Resolve(tab state.TabState) Decision {
-	return d.name(d.collect(tab.Context), Parts{Context: tab.WorkspaceName})
+	return d.nameUnder(d.collect(tab.Context), tab.WorkspaceName)
 }
 
 // ResolvePanes names each pane of a tab by what tells it from that tab. The row
 // above a pane is the tab's parts, not its finished title, for the reason in
 // docs/architecture/title-resolution.md.
 func (d *Deterministic) ResolvePanes(tab state.TabState) []Decision {
-	workspace := Parts{Context: tab.WorkspaceName}
 	above := d.collect(tab.Context).parts
 
 	decisions := make([]Decision, len(tab.Panes))
 	for i, pane := range tab.Panes {
-		decisions[i] = d.name(d.collect(pane), workspace, above)
+		decisions[i] = d.nameUnder(d.collect(pane), tab.WorkspaceName, above)
 	}
 
 	return decisions
 }
 
-// name assembles what the chain found into a title, dropping in turn what each
-// row shown above it already carries.
-func (d *Deterministic) name(found collected, rows ...Parts) Decision {
+// nameUnder assembles what the chain found into a title, dropping what the
+// workspace row above it says and then what any nearer row does.
+func (d *Deterministic) nameUnder(found collected, workspace string, rows ...Parts) Decision {
 	parts := withoutRepetition(found.parts)
+
+	if d.namesWorkspaces {
+		parts = withoutRow(parts, rowParts(workspace))
+	} else {
+		// Left alone, a workspace label is whatever its owner typed: not parts,
+		// just where a tab is. So it is matched whole and against the context
+		// alone, as a tab did before the row was ever named.
+		parts = withoutAbove(parts, Parts{Context: workspace})
+	}
+
 	for _, row := range rows {
 		parts = withoutAbove(parts, row)
 	}
@@ -318,6 +338,71 @@ func withoutRepetition(parts Parts) Parts {
 	}
 
 	return parts
+}
+
+// rowParts is what the workspace row says, as the parts it was built from
+// rather than one string. Their positions are lost (an over-long row has parts
+// cut from its front), so a tab drops a part the row carries anywhere.
+func rowParts(label string) []string {
+	// A row the user wrote was never sanitized, so "group  ›  dashboard" would
+	// split into segments still wearing the spaces around the separator.
+	label = Sanitize(label, 0)
+	if label == "" {
+		return nil
+	}
+
+	return strings.Split(label, Separator)
+}
+
+// withoutRow drops the parts the workspace row above this title already
+// carries. The activity is what a row is for and always stays, and a title left
+// with nothing keeps what it had.
+func withoutRow(parts Parts, row []string) Parts {
+	if len(row) == 0 {
+		return parts
+	}
+
+	kept := parts
+	kept.Context = dropIfCarried(kept.Context, row)
+	kept.Branch = dropIfCarried(kept.Branch, row)
+	kept.Agent = dropIfCarried(kept.Agent, row)
+
+	if kept == (Parts{}) {
+		return parts
+	}
+
+	return kept
+}
+
+func dropIfCarried(value string, row []string) string {
+	if value == "" {
+		return ""
+	}
+
+	// The row is read sanitized, and these parts have not been yet, so a
+	// part carrying anything Sanitize rewrites -- a run of spaces in a
+	// directory name -- would miss its own segment and be said twice.
+	clean := strings.Split(Sanitize(value, 0), Separator)
+
+	// A part that carries the separator itself was written whole but reads back
+	// as several segments, so it is looked for as that run, at any offset.
+	for start := 0; start+len(clean) <= len(row); start++ {
+		if segmentsEqualFold(row[start:start+len(clean)], clean) {
+			return ""
+		}
+	}
+
+	return value
+}
+
+func segmentsEqualFold(a, b []string) bool {
+	for i := range a {
+		if !strings.EqualFold(a[i], b[i]) {
+			return false
+		}
+	}
+
+	return true
 }
 
 // withoutAbove drops the parts a row shown above the title already carries: the
