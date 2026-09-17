@@ -65,13 +65,19 @@ $HOME                                  →  6 · Shell
 ## Configuration
 
 Every setting is optional. Copy [`config.env.example`](config.env.example) to
-the path for your platform and uncomment what you need:
+`herdr-auto-title/config.env` in your configuration directory and uncomment
+what you need. Auto Title looks in these, in order, and uses the first that
+already holds the file:
 
-| Platform | File                                                        |
-| -------- | ----------------------------------------------------------- |
-| macOS    | `~/Library/Application Support/herdr-auto-title/config.env` |
-| Linux    | `~/.config/herdr-auto-title/config.env`                     |
-| Windows  | `%APPDATA%\herdr-auto-title\config.env`                     |
+| Order | Directory                                                        |
+| ----- | ---------------------------------------------------------------- |
+| 1     | `$XDG_CONFIG_HOME` when it is set to an absolute path            |
+| 2     | `~/.config`, which Windows has no equivalent of                  |
+| 3     | `~/Library/Application Support` on macOS, `%APPDATA%` on Windows |
+
+So `~/.config/herdr-auto-title/config.env` works on every Unix, macOS included,
+and one dotfiles repository serves every machine. A file already sitting in
+`~/Library/Application Support` or `%APPDATA%` keeps being read where it is.
 
 Auto Title reads the file once at startup, so run `herdr server stop` after a
 change. It does not read the config directory that `herdr plugin list` prints.
@@ -83,7 +89,7 @@ change. It does not read the config directory that `herdr plugin list` prints.
 | `HERDR_AUTO_TITLE_MAX_LENGTH`   | `50`                                     | Longest title, in columns                                          |
 | `HERDR_AUTO_TITLE_BRANCH_MAX`   | `12`                                     | Longest branch in a title, in columns; `0` hides branches          |
 | `HERDR_AUTO_TITLE_POSITION`     | `true`                                   | Put the tab's position in front of its title                       |
-| `HERDR_AUTO_TITLE_MANUAL_FILE`  | `manual-names.json` next to `config.env` | Where names you set by hand are kept; empty keeps them in memory   |
+| `HERDR_AUTO_TITLE_MANUAL_FILE`  | `manual-names.json`, found the same way  | Where names you set by hand are kept; empty keeps them in memory   |
 | `HERDR_AUTO_TITLE_TRANSCRIPT`   | `true`                                   | Read Claude Code's transcript: what an agent is doing, and where     |
 | `HERDR_AUTO_TITLE_AGENT_NAME`   | `true`                                   | Put the agent's name in front of what it is doing                  |
 | `HERDR_AUTO_TITLE_PANES`        | `true`                                   | Name panes as well as tabs                                         |

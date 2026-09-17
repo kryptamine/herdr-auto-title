@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/kryptamine/herdr-auto-title/internal/resolver"
-	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
 
 // isolate takes a test off the developer's machine: the home decides where
@@ -20,9 +19,9 @@ func isolate(t *testing.T) {
 
 	home := t.TempDir()
 	setHome(t, home)
-	// Where os.UserConfigDir looks first on Linux and on Windows, so the home
-	// alone does not isolate anything until both point elsewhere.
-	t.Setenv("XDG_CONFIG_HOME", "")
+	// Looked in before the home on every platform, so the home alone does not
+	// isolate anything until both point elsewhere.
+	t.Setenv(EnvXDGConfigHome, "")
 	t.Setenv("AppData", filepath.Join(home, "AppData", "Roaming"))
 
 	names := []string{
@@ -42,7 +41,7 @@ func isolate(t *testing.T) {
 func writeConfig(t *testing.T, contents string) {
 	t.Helper()
 
-	path := configPath()
+	path := ownPath(ConfigFile)
 	if path == "" {
 		t.Fatal("no configuration directory")
 	}
@@ -386,7 +385,13 @@ func TestAnUnsetManualFileKeepsTheDefault(t *testing.T) {
 	isolate(t)
 
 	cfg, _ := LoadConfig()
-	if cfg.ManualPath != state.DefaultManualPath() {
-		t.Errorf("manual path = %q, want the default", cfg.ManualPath)
+
+	want := filepath.Join(filepath.Dir(ownPath(ConfigFile)), manualFile)
+	if cfg.ManualPath != want {
+		t.Errorf(
+			"manual path = %q, want the %q beside the configuration file",
+			cfg.ManualPath,
+			want,
+		)
 	}
 }

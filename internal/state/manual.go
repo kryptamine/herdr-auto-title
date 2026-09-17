@@ -79,16 +79,6 @@ func LoadManual(path string) *Manual {
 	return m
 }
 
-// DefaultManualPath is where locks are kept when nothing says otherwise.
-func DefaultManualPath() string {
-	dir, err := os.UserConfigDir()
-	if err != nil {
-		return ""
-	}
-
-	return filepath.Join(dir, "herdr-auto-title", "manual-names.json")
-}
-
 // Locked reports whether the user has claimed this one.
 func (c *Claims) Locked(id string) bool {
 	c.manual.mu.Lock()

@@ -5,14 +5,12 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"path/filepath"
 	"strconv"
 	"time"
 
 	"github.com/joho/godotenv"
 
 	"github.com/kryptamine/herdr-auto-title/internal/resolver"
-	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
 
 // Environment variables Auto Title reads. The configuration file holds the
@@ -29,10 +27,6 @@ const (
 	EnvPanes       = "HERDR_AUTO_TITLE_PANES"
 	EnvPreferAgent = "HERDR_AUTO_TITLE_PREFER_AGENT"
 )
-
-// ConfigFile is the configuration file, read from the same directory the
-// manual-rename locks are kept in.
-const ConfigFile = "config.env"
 
 // DefaultPoll is how often the session is read. A six-pane snapshot measured
 // 0.47 ms and 6 KB, so twice a second costs about a thousandth of a core, and
@@ -86,7 +80,7 @@ func LoadConfig() (Config, []string) {
 		MaxLength:       resolver.DefaultMaxLength,
 		BranchMax:       resolver.DefaultBranchMaxLength,
 		ShowPosition:    true,
-		ManualPath:      state.DefaultManualPath(),
+		ManualPath:      ownPath(manualFile),
 		ReadTranscripts: true,
 		ShowAgentName:   true,
 		RenamePanes:     true,
@@ -116,7 +110,7 @@ func LoadConfig() (Config, []string) {
 // setting reaches a plugin the Herdr server starts: that process inherits the
 // server's environment, never the user's shell.
 func readConfigFile() string {
-	path := configPath()
+	path := ownPath(ConfigFile)
 	if path == "" {
 		return ""
 	}
@@ -128,17 +122,6 @@ func readConfigFile() string {
 	}
 	// One bad line costs the whole file: godotenv parses it or nothing.
 	return fmt.Sprintf("%s %s, so nothing in it is used", path, err)
-}
-
-// configPath is where the configuration file lives, or empty when the user has
-// no configuration directory at all.
-func configPath() string {
-	dir, err := os.UserConfigDir()
-	if err != nil {
-		return ""
-	}
-
-	return filepath.Join(dir, "herdr-auto-title", ConfigFile)
 }
 
 // fromEnv returns what the environment says name is, or fallback when it says

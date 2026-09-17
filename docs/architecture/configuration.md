@@ -9,7 +9,7 @@ generated: { by: claude-code/opus-5, at: 2026-08-26T14:14:17+03:00 }
 
 # Configuration
 
-Every setting Auto Title has is one of nine `HERDR_AUTO_TITLE_*` variables,
+Every setting Auto Title has is one of ten `HERDR_AUTO_TITLE_*` variables,
 read in `internal/app/config.go`. They can be set in the environment, or written
 into a file that is loaded into the environment before anything reads it.
 
@@ -30,19 +30,45 @@ it did before.
 
 ## Where the file lives
 
-`config.env`, in the directory that already holds the manual-rename locks:
+`herdr-auto-title/config.env`, in the first of these directories that already
+holds it — `ownPath` in `internal/app/paths.go`, which every file Auto Title
+keeps is looked up through:
 
-| Platform | Path |
-|----------|------|
-| macOS | `~/Library/Application Support/herdr-auto-title/config.env` |
-| Linux | `~/.config/herdr-auto-title/config.env` (`$XDG_CONFIG_HOME` if set) |
-| Windows | `%APPDATA%\herdr-auto-title\config.env` |
+| Order | Directory |
+|-------|-----------|
+| 1 | `$XDG_CONFIG_HOME`, when it is set to an absolute path |
+| 2 | `~/.config`, which Windows has no equivalent of |
+| 3 | `os.UserConfigDir()`: `~/Library/Application Support` on macOS, `%APPDATA%` on Windows |
 
-That is `os.UserConfigDir()`, the same call `state.DefaultManualPath` makes.
-One directory holds everything Auto Title owns, and a user who has found one
-file has found the other. The path is fixed: no variable and no flag moves it,
-because a configuration file whose location is itself configurable needs a
-configuration file to find it.
+**It was the third alone**, which made one setting two files. `~/.config` is
+what a dotfiles repository syncs; `~/Library/Application Support` is macOS-only
+and cannot go in one, so a user with a Mac and a Linux box kept the file twice
+and could version only one copy of it. Reading `XDG_CONFIG_HOME` first is one
+rule rather than a table per platform, and a user who set it has already said
+where configuration goes. A relative value is ignored, as the specification
+says: honoured, it would resolve against whatever directory the Herdr server
+was started in.
+
+Windows keeps `%APPDATA%` and gains nothing but the variable, because `~/.config`
+is a Unix convention and Herdr's own Windows paths are under `%APPDATA%` too.
+
+**The third entry is a fallback, not a legacy to migrate.** An install made
+before this ordering existed keeps reading the file where it is; nothing moves
+it, because moving a user's file to fix a preference they never stated is worse
+than looking in two places. Only a directory that already holds the file wins,
+so putting one in `~/.config` is how a user opts in, and deleting it is how they
+go back.
+
+**Each file is looked for on its own.** `config.env` and `manual-names.json`
+resolve separately, so a user who copies only the configuration into a dotfiles
+repository keeps the locks where they already are — which is right: locks are
+machine state, not configuration, and a user syncing dotfiles is not asking for
+a Mac's tab locks on a Linux box.
+
+The list itself is fixed: no variable and no flag adds a directory, because a
+configuration file whose location is itself configurable needs a configuration
+file to find it. `HERDR_AUTO_TITLE_MANUAL_FILE` moves the locks, but it is a
+setting read *from* `config.env`, not a way to find it.
 
 **Herdr offers a directory of its own and Auto Title does not use it.** Herdr
 creates `~/.config/herdr/plugins/config/<plugin id>/` (under `%APPDATA%\herdr`
