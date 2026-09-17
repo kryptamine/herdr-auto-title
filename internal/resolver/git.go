@@ -1,8 +1,8 @@
 package resolver
 
 import (
+	"path/filepath"
 	"regexp"
-	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -55,7 +55,7 @@ func (g Git) Resolve(pane *state.PaneState) (Parts, bool) {
 
 	// Labelled before it is chosen, so a detached agent brings its hash and one
 	// standing on the trunk brings nothing, with no case here for either.
-	if pane.AgentGit.SameRepository(pane.Git) {
+	if belongsToPane(pane) {
 		if agent := g.label(pane.AgentGit); agent != "" {
 			branch = agent
 		}
@@ -78,23 +78,33 @@ func (g Git) label(checkout git.Checkout) string {
 	}
 	// Compared exactly, because git refs are: a branch named `Main` beside a
 	// `main` trunk is a different branch and has something to say.
-	if checkout.Branch == checkout.Default || isConventionalTrunk(checkout) {
+	if checkout.Branch == checkout.Default {
 		return ""
 	}
 
 	return shortenBranch(Sanitize(checkout.Branch, 0), g.maxLength)
 }
 
-// conventionalTrunks are the names a repository that records no default is
-// taken to mean its trunk by. A repository with no remote records none, and
-// nothing else in it says which branch the others were cut from.
-var conventionalTrunks = []string{"main", "master", "trunk"}
+// belongsToPane reports that the agent's checkout speaks for this pane: the
+// same repository, or a directory inside the pane's own where the pane holds no
+// repository to compare — see docs/architecture/title-resolution.md.
+func belongsToPane(pane *state.PaneState) bool {
+	if pane.AgentGit.SameRepository(pane.Git) {
+		return true
+	}
 
-// isConventionalTrunk reports that a repository recording no default is
-// standing on a name only a trunk carries, which a tab already named after
-// that repository learns nothing from.
-func isConventionalTrunk(checkout git.Checkout) bool {
-	return checkout.Default == "" && slices.Contains(conventionalTrunks, checkout.Branch)
+	return pane.Git == (git.Checkout{}) && within(pane.Dir, pane.AgentDir)
+}
+
+// within reports that agentDir lies inside dir. A pane with no directory of its
+// own contains nothing, which is what the unresolvable relative path means.
+func within(dir, agentDir string) bool {
+	rel, err := filepath.Rel(dir, agentDir)
+	if err != nil {
+		return false
+	}
+
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
 // shortenBranch reduces an over-long branch name to the part worth a tab's

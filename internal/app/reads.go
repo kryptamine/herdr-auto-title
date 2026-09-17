@@ -110,6 +110,7 @@ func (p *paneReads) fill(ctx context.Context, client herdr.Client, pane *state.P
 	pane.AgentTopic = topic.Text()
 	pane.Git = p.checkout(ctx, dir)
 	pane.AgentGit = p.checkout(ctx, topic.Dir)
+	pane.AgentDir = topic.Dir
 }
 
 // processes reports what a pane is running, reusing the last read while the

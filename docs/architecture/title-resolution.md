@@ -259,10 +259,12 @@ wins without anything here testing for detachment. An earlier version decided
 between the two *checkouts*, before either had a label, and had to re-derive
 both of those facts to do it.
 
-The equivalence holds where a repository records no default too, but only
-because the trunk rule below reads a conventional name as one. Without that, an
-agent standing on `main` there would label non-empty and take the tab from the
-pane's own branch, since there is no recorded default for the label to match.
+That equivalence has one limit worth stating: `label` suppresses a branch only
+when it equals the repository's recorded default, so where a repository records
+none — it has no remote, or none has been fetched — an agent standing on `main`
+labels non-empty and wins, taking the tab from the pane's own branch. The same
+mechanism is what finally shows the agent's branch in such a repository, which
+is what this source exists for, so the two arrive together.
 
 `SameRepository` compares `CommonDir`, the directory holding the refs a
 repository shares with its worktrees, identical for a repository and every
@@ -321,11 +323,8 @@ saying anything it has not earned:
 - **The trunk contributes nothing.** Which branch that is comes from the
   repository itself, `refs/remotes/origin/HEAD`, rather than from a list of
   names: a team whose trunk is `develop` gets the same silence, and a branch
-  actually called `main` off a `develop` trunk still shows. A repository with
-  no remote records no default, and nothing else in it says which branch the
-  others were cut from, so there alone a name only a trunk carries — `main`,
-  `master`, `trunk` — is taken to be one. Compared exactly, so `Main` is still
-  a branch.
+  actually called `main` off a `develop` trunk still shows. A repository that
+  records no default shows its branch always.
 - **A name that fits is left whole.** `feat/oauth` keeps the namespace that
   tells it from `fix/oauth`. Only a name too wide for `BranchMax` is reduced,
   and then an issue key wins outright (`bugfix-asa-cpanel-uapi-mc-13675` →

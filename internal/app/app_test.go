@@ -1478,9 +1478,9 @@ func TestAnAgentsBranchIsNamedWhereNoTrunkIsRecorded(t *testing.T) {
 	}
 }
 
-func TestAnAgentOnATrunkNobodyRecordedLeavesThePanesBranch(t *testing.T) {
-	// A name only a trunk carries is taken to be one even where no trunk is
-	// recorded, so the pane keeps the worktree branch it is standing on.
+func TestAnAgentOnATrunkNobodyRecordedNamesItAnyway(t *testing.T) {
+	// Nothing tells `main` from any other branch in a repository recording no
+	// trunk, so the agent's directory speaks for the tab as it would anywhere.
 	repo := repoWithNoTrunkAt(t, "main")
 	worktree := worktreeIn(t, repo, "wt", "feat/oauth")
 
@@ -1496,7 +1496,7 @@ func TestAnAgentOnATrunkNobodyRecordedLeavesThePanesBranch(t *testing.T) {
 	h.poll()
 
 	got := h.client.Renames()[0].Label
-	if want := "wt › feat/oauth › claude"; got != want {
+	if want := "wt › main › claude"; got != want {
 		t.Errorf("rename = %q, want %q", got, want)
 	}
 }
@@ -1815,8 +1815,8 @@ func TestOneRepositorySpelledTwoWaysDoesNotFollowTheAgent(t *testing.T) {
 }
 
 func TestAPaneOutsideARepositoryFollowsNoAgent(t *testing.T) {
-	// With no repository of its own the pane has no common directory to match,
-	// so an agent's branch could only be labelling someone else's project.
+	// An agent's directory follows every cd it makes, and one outside the tree
+	// the pane sits in could only be labelling someone else's project.
 	repo := repoAt(t, "main")
 
 	transcript(t, agentIn(worktreeIn(t, repo, "wt", "feat/oauth")))
@@ -1871,5 +1871,105 @@ func TestAnAgentsWorktreeBranchStandsBesideTheProject(t *testing.T) {
 	got := h.client.Renames()[0].Label
 	if want := filepath.Base(repo) + " › oauth › claude"; got != want {
 		t.Errorf("rename = %q, want %q", got, want)
+	}
+}
+
+func TestAPaneHoldingSeveralRepositoriesFollowsItsAgentsWorktree(t *testing.T) {
+	// The pane sits in a parent directory holding several projects, so it has
+	// no checkout of its own and the only branch anyone could name is the one
+	// its agent is working on, inside one of them.
+	parent := t.TempDir()
+	repo := repoIn(t, filepath.Join(parent, "dashboard"), "main")
+	repoIn(t, filepath.Join(parent, "billing"), "main")
+	worktree := worktreeIn(t, repo, "node", "chore/node-24.21.0")
+
+	transcript(t, agentIn(worktree))
+
+	pane := agentPane()
+	pane.CWD = parent
+
+	h := startConfigured(t, herdrtest.New(
+		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
+		[]herdr.PaneInfo{pane},
+	), transcriptConfig())
+	h.poll()
+
+	got := h.client.Renames()[0].Label
+	if want := filepath.Base(parent) + " › NODE-24 › claude"; got != want {
+		t.Errorf("rename = %q, want %q", got, want)
+	}
+}
+
+func TestAnAgentOnATrunkNamesNoBranchForAPaneOutsideARepository(t *testing.T) {
+	// A trunk says nothing wherever it is read, and the pane has no branch of
+	// its own for it to replace either.
+	parent := t.TempDir()
+	repo := repoIn(t, filepath.Join(parent, "dashboard"), "feat/oauth")
+
+	transcript(t, agentIn(worktreeIn(t, repo, "wt", "main")))
+
+	pane := agentPaneAt("wE:p1", testSession, parent)
+	readOne(t, transcriptConfig(), pane)
+
+	if got := branchFor(pane); got != "" {
+		t.Errorf("branch = %q, want none", got)
+	}
+}
+
+func TestAPaneInARepositoryRefusesAnAgentInOneNestedUnderIt(t *testing.T) {
+	// Containment is what lets a pane with no checkout follow its agent, and a
+	// pane that has one must not gain a nested clone's branch through it.
+	repo := repoAt(t, "feat/oauth")
+	nested := repoIn(t, filepath.Join(repo, "vendor", "other"), "fix/token")
+
+	transcript(t, agentIn(nested))
+
+	pane := agentPaneAt("wE:p1", testSession, repo)
+	readOne(t, transcriptConfig(), pane)
+
+	if got := branchFor(pane); got != "feat/oauth" {
+		t.Errorf("branch = %q, want the pane's own", got)
+	}
+}
+
+func TestAPaneOutsideARepositoryRefusesAnAgentOutsideOneToo(t *testing.T) {
+	// Neither directory holds a repository, so there is no branch anywhere to
+	// name and the walk up must not answer with one from above the pane.
+	parent := t.TempDir()
+
+	scratch := filepath.Join(parent, "scratch")
+	if err := os.MkdirAll(scratch, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	transcript(t, agentIn(scratch))
+
+	pane := agentPaneAt("wE:p1", testSession, parent)
+	readOne(t, transcriptConfig(), pane)
+
+	if got := branchFor(pane); got != "" {
+		t.Errorf("branch = %q, want none", got)
+	}
+}
+
+func TestADirectoryNamedLikeThePanesIsNotInsideIt(t *testing.T) {
+	// A sibling whose name begins with the pane's own would pass a prefix test
+	// on the spelling, and its branch belongs to a tree the pane does not hold.
+	parent := t.TempDir()
+
+	own := filepath.Join(parent, "code")
+	if err := os.MkdirAll(own, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	sibling := repoIn(t, filepath.Join(parent, "code-review"), "feat/oauth")
+
+	transcript(t, agentIn(sibling))
+
+	pane := agentPaneAt("wE:p1", testSession, own)
+	readOne(t, transcriptConfig(), pane)
+
+	if got := branchFor(pane); got != "" {
+		t.Errorf("branch = %q, want none", got)
 	}
 }
