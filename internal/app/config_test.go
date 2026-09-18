@@ -385,13 +385,7 @@ func TestAnUnsetManualFileKeepsTheDefault(t *testing.T) {
 	isolate(t)
 
 	cfg, _ := LoadConfig()
-
-	want := filepath.Join(filepath.Dir(ownPath(ConfigFile)), manualFile)
-	if cfg.ManualPath != want {
-		t.Errorf(
-			"manual path = %q, want the %q beside the configuration file",
-			cfg.ManualPath,
-			want,
-		)
+	if want := ownPath(manualFile); cfg.ManualPath != want {
+		t.Errorf("manual path = %q, want the default %q", cfg.ManualPath, want)
 	}
 }

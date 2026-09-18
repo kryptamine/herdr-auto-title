@@ -68,6 +68,13 @@ repository keeps the locks where they already are — which is right: locks are
 machine state, not configuration, and a user syncing dotfiles is not asking for
 a Mac's tab locks on a Linux box.
 
+**A file none of them holds is created in the last one**, `os.UserConfigDir()`,
+not the first. Only `manual-names.json` is ever created, and for the same reason
+a fresh install must not put it in `~/.config`: that would start the directory
+a dotfiles repository syncs with a file that is machine state, and a user who
+later adopts `~/.config` for dotfiles would find their locks already in it. On
+Linux the last entry is `$XDG_CONFIG_HOME` or `~/.config` anyway.
+
 The list itself is fixed: no variable and no flag adds a directory, because a
 configuration file whose location is itself configurable needs a configuration
 file to find it. `HERDR_AUTO_TITLE_MANUAL_FILE` moves the locks, but it is a

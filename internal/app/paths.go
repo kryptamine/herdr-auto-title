@@ -18,28 +18,29 @@ const (
 )
 
 // ownPath is where Auto Title's file called name lives: the first directory
-// that already holds it, so a file is read where it is, and the preferred one
-// when none does. See docs/architecture/configuration.md for the ordering.
+// that already holds it, so a file is read where it is, and the last one when
+// none does. See docs/architecture/configuration.md for the ordering.
 func ownPath(name string) string {
-	var preferred string
+	dirs := configDirs()
+	if len(dirs) == 0 {
+		return ""
+	}
 
-	for _, dir := range configDirs() {
+	for _, dir := range dirs {
 		path := filepath.Join(dir, ownDir, name)
 		if _, err := os.Stat(path); err == nil {
 			return path
 		}
-
-		if preferred == "" {
-			preferred = path
-		}
 	}
 
-	return preferred
+	// A new file is machine state, so it goes where the platform keeps it and
+	// never starts a ~/.config that a dotfiles repository would then sync.
+	return filepath.Join(dirs[len(dirs)-1], ownDir, name)
 }
 
-// configDirs are the directories Auto Title's files are looked for in, the
-// preferred one first: XDG_CONFIG_HOME, ~/.config, and what the platform
-// offers, which is Application Support on macOS and %APPDATA% on Windows.
+// configDirs are the directories Auto Title's files are looked for in, in
+// order: XDG_CONFIG_HOME, ~/.config, and what the platform offers, which is
+// Application Support on macOS and %APPDATA% on Windows.
 func configDirs() []string {
 	var dirs []string
 
@@ -55,8 +56,8 @@ func configDirs() []string {
 		dirs = append(dirs, filepath.Join(home, ".config"))
 	}
 
-	// On Linux this repeats one of the two above, which costs a stat and
-	// decides nothing: the first directory holding the file still wins.
+	// Last, because a new file is created in the last directory. On Linux this
+	// repeats one of the two above, so a new file lands there as before.
 	if dir, err := os.UserConfigDir(); err == nil {
 		dirs = append(dirs, dir)
 	}

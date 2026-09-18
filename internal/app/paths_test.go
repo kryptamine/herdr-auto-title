@@ -60,12 +60,7 @@ func platformDir(t *testing.T) string {
 		t.Fatal(err)
 	}
 
-	home, err := os.UserHomeDir()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if dir == filepath.Join(home, ".config") {
+	if dir == dotConfig(t) {
 		t.Skip("the platform directory is ~/.config here, so there is no second place to look")
 	}
 
@@ -129,6 +124,18 @@ func TestTheHomeConfigDirectoryBeatsThePlatformOne(t *testing.T) {
 
 	if poll := pollFound(t); poll != 800*time.Millisecond {
 		t.Errorf("poll = %s, want the 800ms ~/.config asks for", poll)
+	}
+}
+
+func TestANewFileGoesToThePlatformDirectory(t *testing.T) {
+	// Locks are machine state: a fresh install must not start a ~/.config that
+	// a dotfiles repository would then sync.
+	isolate(t)
+	want := filepath.Join(platformDir(t), ownDir, manualFile)
+
+	cfg, _ := LoadConfig()
+	if cfg.ManualPath != want {
+		t.Errorf("manual path = %q, want %q in the platform directory", cfg.ManualPath, want)
 	}
 }
 
