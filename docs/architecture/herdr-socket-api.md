@@ -87,9 +87,47 @@ bind; on Windows the file's content, `<pid>:<unix nanoseconds>` written when
 the pipe is bound. `Client.Server` reads it, and [the poll loop](./poll-loop.md)
 leaves when it changes.
 
+**Startup hooks run at no other time.** Read from the 0.9.0 source: install,
+link, enable, a configuration reload and a client attaching run none of them,
+and enable/disable only flip a flag in the registry. Nothing Herdr does short of
+a server restart starts a plugin, which is what the restart action is for.
+
+## Plugin actions
+
+Read from the Herdr 0.9.0 source and confirmed on Windows 0.9.0 with a
+throwaway plugin (link, invoke, unlink):
+
+- **An action runs through `start_plugin_command`, like a startup hook,** with
+  the same environment (`HERDR_SOCKET_PATH`, `HERDR_BIN_PATH`, the
+  `HERDR_PLUGIN_*` set) plus `HERDR_PLUGIN_ACTION_ID`, in the plugin root.
+  `herdr plugin action invoke <plugin id>.<action id>` runs one, and so does a
+  keybinding of `type = "plugin_action"`; there is no command palette.
+- **Its stdout and stderr are piped and read to EOF**, capped at 64 KB, and
+  shown by `herdr plugin log list` once the command has finished. A process
+  the action leaves behind must not inherit those pipes: it would keep the
+  action "running" and hold one of the `MAX_PLUGIN_COMMANDS_IN_FLIGHT` (32)
+  slots shared by every plugin for as long as it lived. A detached grandchild
+  survives the action on every platform: Herdr keeps no process group of its
+  own on macOS and Linux, and on Windows no job object, `CREATE_NO_WINDOW`
+  being its only creation flag.
+- **Duplicate action ids are rejected even with disjoint `platforms`**, so a
+  Windows entry naming `herdr-auto-title.exe` beside a Unix one naming
+  `herdr-auto-title` is not an option. On Windows Herdr turns `./x` into
+  `<plugin root>\x` with no extension, and the Rust standard library's
+  `resolve_exe` appends `.exe`: a manifest saying `["./probe", "hello"]` ran
+  `probe.exe`, arriving as `argv[0]` `\\?\C:\...\probe`. That is why one
+  extensionless entry serves every platform, and why the README asks Windows
+  users for 0.9.0.
+- **Actions whose `platforms` leave the OS out are listed and refused**
+  (`platform_unsupported`), not hidden.
+- **`HERDR_PLUGIN_STATE_DIR` is per plugin, not per session**, while the socket
+  path is per session: `<config>/herdr.sock` for the default session and
+  `<config>/sessions/<name>/herdr.sock` for a named one. Anything kept per
+  session is therefore keyed by the socket path.
+
 ## The methods Auto Title uses
 
-Four, and no others (`internal/herdr/session.go`):
+Five, and no others (`internal/herdr/client.go`):
 
 - **`session.snapshot`** returns the whole session — every tab with its label,
   every pane with its directory, terminal title, agent and agent status.
@@ -115,6 +153,16 @@ Four, and no others (`internal/herdr/session.go`):
   `pane N`, so a session of Claude Code panes reads as a column of `claude`
   until something sets a label. Auto Title uses it unless pane naming is turned
   off — see [configuration](./configuration.md).
+- **`notification.show`** takes `{title, body, position, sound}`, `title`
+  required and the rest optional, and answers
+  `{type: "notification_show", shown, reason}` with `reason` one of `shown`,
+  `disabled`, `rate_limited`, `no_foreground_client` and `busy` — a notice
+  that was not shown is still a success. Sent over the pipe on Windows 0.9.0:
+  `{"title": "Auto Title probe", "body": "..."}` answered
+  `{"shown": true, "reason": "shown"}`. From the source: nothing is shown
+  without a client attached, two within a second is one too many, and the only
+  error is `invalid_params` for an empty title. Only the restart action uses
+  it, to say how the restart went.
 
 A label is **one line**. `tab.rename` accepts a newline and stores it verbatim,
 with no error and no stripping, but the tab bar renders a single line and Herdr

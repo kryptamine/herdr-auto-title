@@ -26,3 +26,13 @@ command = ["./herdr-auto-title"]
 [[startup]]
 platforms = ["windows"]
 command = ["./herdr-auto-title.exe"]
+
+# Starts a fresh instance in place of the running one, without a server stop.
+# One entry for every platform: Herdr rejects a second action with this id even
+# for another platform, and Herdr 0.9.0 on Windows finds the `.exe` itself.
+[[actions]]
+id = "restart"
+title = "Auto Title: restart"
+description = "Start a fresh Auto Title in place of the running one"
+contexts = ["global"]
+command = ["./herdr-auto-title", "restart"]

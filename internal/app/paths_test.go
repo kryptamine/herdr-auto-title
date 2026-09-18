@@ -127,6 +127,18 @@ func TestTheHomeConfigDirectoryBeatsThePlatformOne(t *testing.T) {
 	}
 }
 
+func TestTheStateDirectoryIgnoresTheHomeConfigDirectory(t *testing.T) {
+	// Two instances must find the same claim, whichever directory happens to
+	// hold a configuration file.
+	isolate(t)
+	platform := platformDir(t)
+	writeOwnFile(t, dotConfig(t), ConfigFile, "HERDR_AUTO_TITLE_POLL_MS=800\n")
+
+	if got, want := StateDir(), filepath.Join(platform, ownDir); got != want {
+		t.Errorf("state dir = %q, want %q in the platform directory", got, want)
+	}
+}
+
 func TestANewFileGoesToThePlatformDirectory(t *testing.T) {
 	// Locks are machine state: a fresh install must not start a ~/.config that
 	// a dotfiles repository would then sync.

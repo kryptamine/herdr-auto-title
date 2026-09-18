@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -61,9 +62,24 @@ func testResolver(t *testing.T) *resolver.Deterministic {
 	})
 }
 
+// fakeInstance is a claim on the session that a test can have taken over, and
+// that says whether the loop has reported the session read.
+type fakeInstance struct {
+	taken atomic.Bool
+	ready atomic.Bool
+}
+
+func (f *fakeInstance) Taken() bool { return f.taken.Load() }
+func (f *fakeInstance) Ready()      { f.ready.Store(true) }
+
 // newTestApp builds an App on the shipped chain, naming panes only when the
-// configuration asks for it.
+// configuration asks for it, holding a claim nobody takes over.
 func newTestApp(t *testing.T, cfg Config) *App {
+	t.Helper()
+	return newTestAppOn(t, cfg, &fakeInstance{})
+}
+
+func newTestAppOn(t *testing.T, cfg Config, instance Instance) *App {
 	t.Helper()
 
 	chain := testResolver(t)
@@ -73,15 +89,16 @@ func newTestApp(t *testing.T, cfg Config) *App {
 		panes = chain
 	}
 
-	return New(cfg, discardLogger(), chain, panes)
+	return New(cfg, discardLogger(), chain, panes, instance)
 }
 
 // harness drives an App against a stubbed Herdr session one poll at a time, so
 // a test arranges the session and then says when it is read.
 type harness struct {
-	t      *testing.T
-	app    *App
-	client *herdrtest.Client
+	t        *testing.T
+	app      *App
+	client   *herdrtest.Client
+	instance *fakeInstance
 }
 
 func start(t *testing.T, tabs []herdr.TabInfo, panes []herdr.PaneInfo) *harness {
@@ -93,7 +110,14 @@ func start(t *testing.T, tabs []herdr.TabInfo, panes []herdr.PaneInfo) *harness 
 func startConfigured(t *testing.T, client *herdrtest.Client, cfg Config) *harness {
 	t.Helper()
 
-	return &harness{t: t, app: newTestApp(t, cfg), client: client}
+	instance := &fakeInstance{}
+
+	return &harness{
+		t:        t,
+		app:      newTestAppOn(t, cfg, instance),
+		client:   client,
+		instance: instance,
+	}
 }
 
 // poll runs the step the ticker runs, its failure handling included, so a test
@@ -467,6 +491,96 @@ func TestRunReturnsWhenAnotherServerTakesTheSocket(t *testing.T) {
 	case <-done:
 	case <-time.After(2 * time.Second):
 		t.Fatal("Run did not return within two seconds of another server taking the socket")
+	}
+}
+
+func TestANewerInstanceClaimingTheSessionEndsTheRun(t *testing.T) {
+	// A restart is a newer instance claiming the session, and it waits for this
+	// one to leave before it names anything: two would lock every tab they
+	// named differently.
+	h := start(
+		t,
+		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
+		[]herdr.PaneInfo{
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
+		},
+	)
+	if !h.poll() {
+		t.Fatal("the first poll ended the run")
+	}
+
+	h.instance.taken.Store(true)
+	h.client.SetPane(herdr.PaneInfo{
+		PaneID: "wE:p1", TabID: "wE:t1", Focused: true, Revision: 2,
+		CWD: api,
+	})
+
+	if h.poll() {
+		t.Error("a poll after the takeover did not end the run")
+	}
+
+	if renames := h.client.Renames(); len(renames) != 1 {
+		t.Errorf("issued %v, want nothing named after the takeover", renames)
+	}
+}
+
+func TestTheSessionIsReportedReadOnceASnapshotCameBack(t *testing.T) {
+	// What a restart waits for is the new instance polling, and a poll that
+	// could not reach Herdr is not that.
+	h := start(
+		t,
+		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
+		[]herdr.PaneInfo{
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
+		},
+	)
+	h.client.SetCallError(errors.New("no such socket"))
+	h.polls(3)
+
+	if h.instance.ready.Load() {
+		t.Fatal("reported ready while the session could not be read")
+	}
+
+	h.client.SetCallError(nil)
+	h.poll()
+
+	if !h.instance.ready.Load() {
+		t.Error("not reported ready after a snapshot came back")
+	}
+}
+
+func TestRunReturnsWhenANewerInstanceClaimsTheSession(t *testing.T) {
+	client := herdrtest.New(
+		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
+		[]herdr.PaneInfo{
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
+		},
+	)
+
+	cfg := testConfig()
+	cfg.Poll = time.Millisecond
+	instance := &fakeInstance{}
+	app := newTestAppOn(t, cfg, instance)
+
+	done := make(chan struct{})
+
+	go func() { app.Run(t.Context(), client); close(done) }()
+
+	deadline := time.Now().Add(2 * time.Second)
+	for len(client.Renames()) == 0 {
+		if time.Now().After(deadline) {
+			t.Fatal("nothing was named in two seconds")
+		}
+
+		time.Sleep(time.Millisecond)
+	}
+
+	instance.taken.Store(true)
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("Run did not return within two seconds of a newer instance claiming the session")
 	}
 }
 
