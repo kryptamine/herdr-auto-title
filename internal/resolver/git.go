@@ -3,6 +3,7 @@ package resolver
 import (
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -78,7 +79,7 @@ func (g Git) label(checkout git.Checkout) string {
 	}
 	// Compared exactly, because git refs are: a branch named `Main` beside a
 	// `main` trunk is a different branch and has something to say.
-	if checkout.Branch == checkout.Default {
+	if checkout.Branch == checkout.Default || isConventionalTrunk(checkout) {
 		return ""
 	}
 
@@ -105,6 +106,18 @@ func within(dir, agentDir string) bool {
 	}
 
 	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
+
+// conventionalTrunks are the names a repository that records no default is
+// taken to mean its trunk by. A repository with no remote records none, and
+// nothing else in it says which branch the others were cut from.
+var conventionalTrunks = []string{"main", "master", "trunk"}
+
+// isConventionalTrunk reports that a repository recording no default is
+// standing on a name only a trunk carries, which a tab already named after
+// that repository learns nothing from.
+func isConventionalTrunk(checkout git.Checkout) bool {
+	return checkout.Default == "" && slices.Contains(conventionalTrunks, checkout.Branch)
 }
 
 // shortenBranch reduces an over-long branch name to the part worth a tab's

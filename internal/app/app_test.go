@@ -1478,9 +1478,9 @@ func TestAnAgentsBranchIsNamedWhereNoTrunkIsRecorded(t *testing.T) {
 	}
 }
 
-func TestAnAgentOnATrunkNobodyRecordedNamesItAnyway(t *testing.T) {
-	// Nothing tells `main` from any other branch in a repository recording no
-	// trunk, so the agent's directory speaks for the tab as it would anywhere.
+func TestAnAgentOnATrunkNobodyRecordedLeavesThePanesBranch(t *testing.T) {
+	// A name only a trunk carries is taken to be one even where no trunk is
+	// recorded, so the pane keeps the worktree branch it is standing on.
 	repo := repoWithNoTrunkAt(t, "main")
 	worktree := worktreeIn(t, repo, "wt", "feat/oauth")
 
@@ -1496,7 +1496,7 @@ func TestAnAgentOnATrunkNobodyRecordedNamesItAnyway(t *testing.T) {
 	h.poll()
 
 	got := h.client.Renames()[0].Label
-	if want := "wt › main › claude"; got != want {
+	if want := "wt › feat/oauth › claude"; got != want {
 		t.Errorf("rename = %q, want %q", got, want)
 	}
 }

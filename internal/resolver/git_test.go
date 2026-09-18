@@ -120,9 +120,13 @@ func TestTheTrunkIsMatchedAsGitStoresIt(t *testing.T) {
 	}
 }
 
-func TestARepositoryWithNoRecordedTrunkAlwaysShowsItsBranch(t *testing.T) {
-	if got := resolveRepoPane(repoPane("main", "")); got != "dashboard › main" {
-		t.Errorf("title %q, want the branch", got)
+func TestARepositoryRecordingNoDefaultStillHasATrunk(t *testing.T) {
+	// A repository with no remote records no default, and every tab in it read
+	// `main` as though it were a branch worth the width.
+	for _, branch := range []string{"main", "master", "trunk"} {
+		if got := resolveRepoPane(repoPane(branch, "")); got != "dashboard" {
+			t.Errorf("%s with no default → %q, want just the directory", branch, got)
+		}
 	}
 }
 
