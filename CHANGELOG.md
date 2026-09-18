@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.7.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.6.2...v0.7.0) (2026-09-18)
+
+
+### Features
+
+* **app:** honour XDG_CONFIG_HOME and ~/.config ([f7b27fb](https://github.com/kryptamine/herdr-auto-title/commit/f7b27fbb50556c43486c7c334ba232c9c8c47c3b))
+* **app:** look in ~/.config on Windows too ([4fc422a](https://github.com/kryptamine/herdr-auto-title/commit/4fc422a0f6ba37e737cc3048927fb16783221fdc))
+
+
+### Bug Fixes
+
+* **app:** create a new file in the platform directory ([0533572](https://github.com/kryptamine/herdr-auto-title/commit/05335722dbb53c2ea79cff7e8234149961db33d7))
+* **resolver:** follow the agent from a pane holding no repository ([5d8205d](https://github.com/kryptamine/herdr-auto-title/commit/5d8205d740880cec056a08b54d1592dc67d0b902))
+* **resolver:** restore the unrecorded-trunk suppression ([7bb7141](https://github.com/kryptamine/herdr-auto-title/commit/7bb7141da629d70413ce3b55b46189a3983bc95d))
+* **resolver:** suppress an unrecorded trunk ([960b64a](https://github.com/kryptamine/herdr-auto-title/commit/960b64ae2fdfe79dd43d3e63e16a34ffd25f70c5))
+
 ## [0.6.2](https://github.com/kryptamine/herdr-auto-title/compare/v0.6.1...v0.6.2) (2026-09-16)
 
 
