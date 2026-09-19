@@ -28,6 +28,8 @@ func newProject(t *testing.T) project {
 	t.Helper()
 	root := t.TempDir()
 	t.Setenv("CLAUDE_CONFIG_DIR", root)
+	// A developer's own second home would otherwise be searched as well.
+	t.Setenv(EnvExtraRoots, "")
 
 	return project{t: t, root: root, dir: started}
 }
@@ -538,5 +540,130 @@ func TestATranscriptNamingNoDirectorySaysNothingAboutOne(t *testing.T) {
 		t.Errorf("dir = %q, want none", got.Dir)
 	case got.Text() != "OAuth redirect fix":
 		t.Errorf("text = %q, want the title", got.Text())
+	}
+}
+
+// newProjectIn builds a state directory the reader was not given as its own
+// configuration home, so a test can name it through EnvExtraRoots instead.
+func newProjectIn(t *testing.T, root string) project {
+	t.Helper()
+
+	return project{t: t, root: root, dir: started}
+}
+
+func TestASessionInAnExtraConfigHomeIsFound(t *testing.T) {
+	// The home a shell picks per directory is not the one the server passes
+	// the plugin, so a session written there is only found by searching both.
+	worktree := t.TempDir()
+	newProject(t)
+
+	other := t.TempDir()
+	t.Setenv(EnvExtraRoots, other)
+	newProjectIn(t, other).write(agentIn(worktree), aiTitle("OAuth redirect fix"))
+
+	got := NewReader().Topic(session, started)
+	switch {
+	case got.Text() != "OAuth redirect fix":
+		t.Errorf("text = %q, want the title from the extra home", got.Text())
+	case got.Dir != worktree:
+		t.Errorf("dir = %q, want %q", got.Dir, worktree)
+	}
+}
+
+func TestTheFirstConfigHomeAnswersWhenBothHoldTheSession(t *testing.T) {
+	// The homes are searched in order and the search stops at the first hit,
+	// which is what keeps a one-home machine paying what it paid before.
+	p := newProject(t)
+	p.write(aiTitle("The home the server named"))
+
+	other := t.TempDir()
+	t.Setenv(EnvExtraRoots, other)
+	newProjectIn(t, other).write(aiTitle("The extra home"))
+
+	if got := NewReader().Topic(session, started); got.Text() != "The home the server named" {
+		t.Errorf("text = %q, want the first home's transcript", got.Text())
+	}
+}
+
+func TestAConfigHomeThatCannotBeUsedIsSkipped(t *testing.T) {
+	// A home that is gone, or spelled as anything but an absolute clean path,
+	// costs itself and not the homes named beside it.
+	newProject(t)
+
+	other := t.TempDir()
+	unusable := []string{
+		filepath.Join(t.TempDir(), "never-created"),
+		"relative/home",
+		"/home/you/.claude/",
+		"..",
+		"",
+	}
+	t.Setenv(EnvExtraRoots, strings.Join(append(unusable, other), string(os.PathListSeparator)))
+	newProjectIn(t, other).write(aiTitle("OAuth redirect fix"))
+
+	if got := NewReader().Topic(session, started); got.Text() != "OAuth redirect fix" {
+		t.Errorf("text = %q, want the usable home still read", got.Text())
+	}
+}
+
+func TestNoExtraConfigHomesLeavesTheSearchWhereItWas(t *testing.T) {
+	newProject(t)
+
+	elsewhere := t.TempDir()
+	newProjectIn(t, elsewhere).write(aiTitle("OAuth redirect fix"))
+
+	if got := NewReader().Topic(session, started); got.Text() != "" {
+		t.Errorf("text = %q, want a home nobody named left unread", got.Text())
+	}
+}
+
+func TestATranscriptInAnExtraConfigHomeKeepsBeingRead(t *testing.T) {
+	newProject(t)
+
+	other := t.TempDir()
+	t.Setenv(EnvExtraRoots, other)
+	q := newProjectIn(t, other)
+	q.write(human("fix the redirect"))
+
+	reader := NewReader()
+	if got := reader.Topic(session, started); got.Text() != "fix the redirect" {
+		t.Fatalf("text = %q, want the opening prompt", got.Text())
+	}
+
+	q.appendLines(aiTitle("OAuth redirect fix"))
+
+	if got := reader.Topic(session, started); got.Text() != "OAuth redirect fix" {
+		t.Errorf("text = %q, want the title that arrived since", got.Text())
+	}
+}
+
+func TestATranscriptThatMovedHomesIsFoundAgain(t *testing.T) {
+	// A path let go because the transcript went missing is searched for in
+	// every home again, not only in the one that answered before.
+	p := newProject(t)
+	p.write(aiTitle("OAuth redirect fix"))
+
+	other := t.TempDir()
+	t.Setenv(EnvExtraRoots, other)
+
+	reader := NewReader()
+	clock := time.Now()
+	reader.now = func() time.Time { return clock }
+
+	if got := reader.Topic(session, started); got.Text() != "OAuth redirect fix" {
+		t.Fatalf("text = %q, want the first home's transcript", got.Text())
+	}
+
+	if err := os.Remove(p.path()); err != nil {
+		t.Fatal(err)
+	}
+
+	newProjectIn(t, other).write(aiTitle("Rework the poll loop"))
+	reader.Topic(session, started)
+
+	clock = clock.Add(locateRetry)
+
+	if got := reader.Topic(session, started); got.Text() != "Rework the poll loop" {
+		t.Errorf("text = %q, want the transcript found in the other home", got.Text())
 	}
 }
