@@ -34,29 +34,6 @@ herdr plugin action invoke herdr.auto-title.restart
 If you use Claude Code, also run `herdr integration install claude`. Without it,
 a session you opened with a slash command and never prompted stays `claude`.
 
-## Restarting
-
-The same action starts a fresh Auto Title in place of the running one, and a
-notification says how it went. Use it after upgrading, after changing the
-configuration, or when the plugin has stopped naming tabs. To put it on a key,
-add to Herdr's `config.toml`:
-
-```toml
-[[keys.command]]
-key = "prefix+R"
-type = "plugin_action"
-command = "herdr.auto-title.restart"
-description = "restart auto title"
-```
-
-The notification needs Herdr's toasts to be on: with `[ui.toast] delivery =
-"off"` it is answered as shown and never appears, and `herdr plugin log list`
-is where the outcome can still be read.
-
-Two limits: the first upgrade from a version without this action still needs
-`herdr server stop`, because the instance already running does not know to
-leave, and on Windows the action needs Herdr 0.9.0 or newer.
-
 ## What you get
 
 ```
@@ -122,6 +99,33 @@ change. It does not read the config directory that `herdr plugin list` prints.
 Turning `HERDR_AUTO_TITLE_TRANSCRIPT` off also drops the branch from a tab whose
 agent is working in a git worktree, because the transcript is what says which
 worktree that is.
+
+## Restarting
+
+```sh
+herdr plugin action invoke herdr.auto-title.restart
+```
+
+This starts a fresh Auto Title in place of the running one, and a notification
+says how it went. Run it after upgrading, after changing the configuration, or
+when the plugin has stopped naming tabs. To put it on a key, add to Herdr's
+`config.toml`:
+
+```toml
+[[keys.command]]
+key = "prefix+R"
+type = "plugin_action"
+command = "herdr.auto-title.restart"
+description = "restart auto title"
+```
+
+That notification needs Herdr's toasts on. With `[ui.toast] delivery = "off"`
+Herdr answers that it showed the notice, nothing appears, and the outcome is
+left in `herdr plugin log list`.
+
+Two limits. The first upgrade from a version without this action still needs
+`herdr server stop`, because the instance already running does not know to
+leave. On Windows the action needs Herdr 0.9.0 or newer.
 
 ## Documentation
 
