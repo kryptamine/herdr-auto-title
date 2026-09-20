@@ -26,21 +26,46 @@ func TestMain(m *testing.M) {
 }
 
 // helper is what the test binary does when started as an instance: "daemon"
-// claims, reports ready and leaves when displaced; "stay" never leaves, like a
-// version that knew nothing of claims; "exit" fails before claiming anything.
+// claims, reports ready and leaves when displaced; "handover" leaves a newer
+// daemon in its place; "stay" never leaves; "exit" fails before claiming.
 func helper(mode string) int {
 	if mode == "exit" {
 		return 3
 	}
 
 	claim, _, _ := Take(context.Background(), os.Getenv(claimEnv), time.Second)
-	claim.Ready()
+
+	if mode == "handover" {
+		if handOver() != nil {
+			return 4
+		}
+	} else {
+		claim.Ready()
+	}
 
 	for mode == "stay" || !claim.Taken() {
 		time.Sleep(20 * time.Millisecond)
 	}
 
 	return 0
+}
+
+// handOver starts a daemon instance beside this one, which is what a second
+// restart does: it claims the session, and this one then leaves without ever
+// having read it.
+func handOver() error {
+	exe, err := os.Executable()
+	if err != nil {
+		return err
+	}
+
+	if err := os.Setenv(helperEnv, "daemon"); err != nil {
+		return err
+	}
+
+	_, err = start(exe)
+
+	return err
 }
 
 // take claims path for this process, which no test needs to see fail.

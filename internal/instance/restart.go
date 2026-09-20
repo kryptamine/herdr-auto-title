@@ -9,8 +9,8 @@ import (
 )
 
 // Restart starts exe as a fresh instance, detached from this process, and
-// returns its pid once it has read the session and the instance it displaced
-// has left. The caller sets timeout, which is the budget for both.
+// returns the pid naming the session once it is polling and the instance it
+// displaced has left: its own, or a newer restart's that took it over.
 func Restart(ctx context.Context, path, exe string, timeout time.Duration) (int, error) {
 	if err := ctx.Err(); err != nil {
 		return 0, err
@@ -51,6 +51,12 @@ func Restart(ctx context.Context, path, exe string, timeout time.Duration) (int,
 
 	switch {
 	case state != nil:
+		// An instance started a moment later claims the session and this one
+		// leaves for it, which is a restart that happened, not one that failed.
+		if newer := holder(path); newer != 0 && newer != old {
+			return newer, nil
+		}
+
 		return 0, fmt.Errorf(
 			"the new instance %d exited before it read the session: %v",
 			proc.Pid,

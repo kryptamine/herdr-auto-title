@@ -65,6 +65,24 @@ func TestRestartReportsAnInstanceThatExitsBeforePolling(t *testing.T) {
 	}
 }
 
+func TestRestartReportsTheInstanceThatTookOverFromItsOwn(t *testing.T) {
+	// Two restarts within the same moment: the second one's instance claims
+	// the session, the first one's leaves for it, and neither action failed.
+	path := claimFile(t)
+	asInstance(t, "handover", path)
+
+	pid, err := Restart(context.Background(), path, executable(t), 10*time.Second)
+	if err != nil {
+		t.Fatalf("restart: %v", err)
+	}
+
+	t.Cleanup(func() { end(t, pid) })
+
+	if holder(path) != pid {
+		t.Errorf("the reported instance %d is not the one holding the claim", pid)
+	}
+}
+
 func TestRestartReportsAnOldInstanceThatStays(t *testing.T) {
 	// The first upgrade from a version that knew nothing of claims: the new
 	// instance polls, but the old one is still there naming tabs beside it.

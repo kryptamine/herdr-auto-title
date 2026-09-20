@@ -276,8 +276,11 @@ marker names it, and that is what the restart waits for: `LeaveTimeout` plus
 `PollTimeout`, passed in from `main` so one deadline cannot drift from the
 other, for the new pid to hold the claim, be ready, and the old pid to be
 gone, watching the child as well so an instance that exits at once is reported
-with its status rather than waited for. The outcome goes to `notification.show`
-and to the action's log; a notice Herdr chose not to show is not a failure.
+with its status rather than waited for. An exit is only a failure while nobody
+newer holds the claim: two restarts a moment apart end with the second one's
+instance naming the session, which is what both actions then report. The
+outcome goes to `notification.show` and to the action's log; a notice Herdr
+chose not to show is not a failure.
 Without that directory there is no claim, and the action refuses
 rather than start an instance nothing could wait for or displace.
 
