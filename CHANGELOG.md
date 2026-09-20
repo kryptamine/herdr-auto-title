@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.8.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.7.0...v0.8.0) (2026-09-20)
+
+
+### Features
+
+* restart the plugin without a server stop ([50c74d4](https://github.com/kryptamine/herdr-auto-title/commit/50c74d412f0482b7e04ec57909887a077a32d9a7))
+
+
+### Bug Fixes
+
+* **instance:** accept an instance a newer restart displaced ([c731966](https://github.com/kryptamine/herdr-auto-title/commit/c73196613f7452d22993769fe46193f7d6bb276b))
+* **instance:** pass a restart that finished as its deadline fired ([5d5aaac](https://github.com/kryptamine/herdr-auto-title/commit/5d5aaac259709bfa663ff79d83c7a46f9081735c))
+
 ## [0.7.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.6.2...v0.7.0) (2026-09-18)
 
 
