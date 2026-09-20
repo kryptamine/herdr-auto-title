@@ -150,11 +150,13 @@ runs whatever the link or install holds, built when it was registered.
 Every instance claims the session in a file, and a newer claim tells the older
 instance to leave — see [the poll loop](architecture/poll-loop.md#a-successor-on-the-claim).
 `make run` and `make dev` take part: starting one displaces the instance Herdr
-started, which leaves within a poll, and Ctrl+C releases the claim and leaves
-nothing running until the next restart or server start. A restart from the
-action then starts the registered build, not your working tree. The claims and
-their ready markers are in `instances/` beside `config.env`; one naming a pid
-that is gone displaces nobody, so a crashed run costs nothing.
+started, which leaves within a poll, and Ctrl+C leaves nothing running until
+the next restart or server start. A restart from the action then starts the
+registered build, not your working tree. The claims and their ready markers
+are in `instances/` under the platform's configuration directory, which is the
+last of the three the configuration note lists and so not always the one
+`config.env` was read from. Nothing is deleted on the way out, and a claim
+naming a pid that is gone displaces nobody, so a crashed run costs nothing.
 
 ## Working through a change
 
@@ -182,7 +184,8 @@ evening goes into it — see [../CONTRIBUTING.md](../CONTRIBUTING.md).
 | Line | Meaning |
 |------|---------|
 | `starting auto title` | the poll interval and length limit actually in force |
-| `waiting for the instance this one replaces to leave` | another instance held the session; polling starts once it has gone, or after ten seconds with a warning |
+| `the session could not be claimed, so a restart will not end this instance` | the claim file could not be written; the loop runs, and the restart action cannot displace it |
+| `the instance this one replaces is still running` | ten seconds passed and the older instance has not left; both are naming tabs until it does |
 | `a newer auto title has claimed the session, leaving` | a restart or another `make run` took the session over; this instance exits |
 | `tab renamed` | the only line that means Herdr was asked to do something |
 | `poll failed` | a snapshot did not come back; the next tick retries, and a run of these is logged on a backoff rather than once per poll |
