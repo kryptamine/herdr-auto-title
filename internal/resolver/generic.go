@@ -10,9 +10,10 @@ import (
 // shellNames holds them, and two lists would disagree. Keys are lower-cased.
 var genericValues = map[string]struct{}{
 	// Terminals and runtimes.
-	"shell":    {},
-	"terminal": {},
-	"node":     {},
+	"shell":              {},
+	"terminal":           {},
+	"node":               {},
+	"windows powershell": {},
 	// Agents naming themselves instead of their work.
 	"claude":       {},
 	"claude code":  {},

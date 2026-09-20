@@ -29,6 +29,7 @@ func TestMeaningful(t *testing.T) {
 		{"the login shell", "login", "", false},
 		{"the windows shells", "pwsh", "", false},
 		{"the older windows shell", "PowerShell", "", false},
+		{"the older windows shell with its platform", "Windows PowerShell", "", false},
 		{"the oldest windows shell", "cmd", "", false},
 		{"multi-word program name", "Claude Code", "", false},
 		{"runtime name", "node", "", false},
