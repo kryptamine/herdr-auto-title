@@ -162,7 +162,11 @@ Five, and no others (`internal/herdr/client.go`):
   `{"shown": true, "reason": "shown"}`. From the source: nothing is shown
   without a client attached, two within a second is one too many, and the only
   error is `invalid_params` for an empty title. Only the restart action uses
-  it, to say how the restart went.
+  it, to say how the restart went. **`shown` is not delivery.** With
+  `[ui.toast] delivery = "off"` in `config.toml` — one of `off`, `herdr`,
+  `terminal`, `system` — Herdr 0.9.0 still answers `{"shown": true, "reason":
+  "shown"}` and the user sees nothing, so the action's log is the only place
+  its outcome can be read.
 
 A label is **one line**. `tab.rename` accepts a newline and stores it verbatim,
 with no error and no stripping, but the tab bar renders a single line and Herdr

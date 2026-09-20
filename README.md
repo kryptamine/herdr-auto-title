@@ -49,6 +49,10 @@ command = "herdr.auto-title.restart"
 description = "restart auto title"
 ```
 
+The notification needs Herdr's toasts to be on: with `[ui.toast] delivery =
+"off"` it is answered as shown and never appears, and `herdr plugin log list`
+is where the outcome can still be read.
+
 Two limits: the first upgrade from a version without this action still needs
 `herdr server stop`, because the instance already running does not know to
 leave, and on Windows the action needs Herdr 0.9.0 or newer.
