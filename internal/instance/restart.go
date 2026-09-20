@@ -71,7 +71,15 @@ func Restart(ctx context.Context, path, exe string, timeout time.Duration) (int,
 			proc.Pid,
 		)
 	default:
-		return 0, fmt.Errorf("gave up after %s: %w", timeout, pending(path, proc.Pid, old))
+		// The deadline can fire on an instance that became ready since the
+		// last look, which is a restart that made it rather than one that
+		// ran out of time.
+		left := pending(path, proc.Pid, old)
+		if left == nil {
+			return proc.Pid, nil
+		}
+
+		return 0, fmt.Errorf("gave up after %s: %w", timeout, left)
 	}
 }
 
