@@ -328,9 +328,14 @@ func (a *App) apply(
 ) {
 	idKey := kind.noun + "_id"
 
-	if claims.Observe(seen) {
+	switch claims.Observe(seen) {
+	case state.VerdictClaimed:
 		a.log.Info("leaving a "+kind.noun+" the user renamed", idKey, seen.ID, "name", seen.Current)
 		return
+	case state.VerdictUnjudged:
+		a.log.Debug("leaving a "+kind.noun+" not yet judged", idKey, seen.ID, "name", seen.Current)
+		return
+	case state.VerdictName:
 	}
 
 	if decision.Name == "" || decision.Name == seen.Current {

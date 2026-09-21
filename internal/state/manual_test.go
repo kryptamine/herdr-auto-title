@@ -52,7 +52,7 @@ func TestTheFirstPollNeverLocks(t *testing.T) {
 		{ID: "wE:t2", Current: "Important work", Desired: "api", Default: "2"},
 		{ID: "wE:t3", Current: "nvim › stale.go", Desired: "nvim › fresh.go", Default: "3"},
 	} {
-		if m.Tabs.Observe(s) {
+		if m.Tabs.Observe(s) == VerdictClaimed {
 			t.Errorf("tab %s was locked on the first poll", s.ID)
 		}
 	}
@@ -64,9 +64,9 @@ func TestATabTurningUpAlreadyNamedIsTheUsers(t *testing.T) {
 	// the name it carries is not Auto Title's.
 	m := newManual(t)
 
-	if !m.Tabs.Observe(
+	if m.Tabs.Observe(
 		Sighting{ID: "wE:t9", Current: "My thing", Desired: "dashboard", Default: "9"},
-	) {
+	) != VerdictClaimed {
 		t.Fatal("a tab that appeared already named was not read as the user's")
 	}
 
@@ -79,7 +79,9 @@ func TestATabTurningUpUnnamedIsNotTheUsers(t *testing.T) {
 	// Herdr names a new tab after its position. Nobody has claimed this one.
 	m := newManual(t)
 
-	if m.Tabs.Observe(Sighting{ID: "wE:t9", Current: "9", Desired: "dashboard", Default: "9"}) {
+	if m.Tabs.Observe(
+		Sighting{ID: "wE:t9", Current: "9", Desired: "dashboard", Default: "9"},
+	) == VerdictClaimed {
 		t.Error("an unnamed new tab was locked")
 	}
 }
@@ -92,7 +94,7 @@ func TestATabFallingBackToItsDefaultLabelIsNotTheUsers(t *testing.T) {
 	m.Tabs.Observe(sighting("1"))
 	m.Tabs.Applied("wE:t1", "dashboard")
 
-	if m.Tabs.Observe(sighting("1")) {
+	if m.Tabs.Observe(sighting("1")) == VerdictClaimed {
 		t.Fatal("a tab back on its default label was read as the user's")
 	}
 
@@ -109,7 +111,7 @@ func TestATabWhoseNameWasClearedIsNotTheUsers(t *testing.T) {
 	m.Tabs.Observe(sighting("1"))
 	m.Tabs.Applied("wE:t1", "dashboard")
 
-	if m.Tabs.Observe(sighting("")) {
+	if m.Tabs.Observe(sighting("")) == VerdictClaimed {
 		t.Fatal("a tab whose name was cleared was read as the user's")
 	}
 
@@ -123,7 +125,7 @@ func TestARenameByTheUserLocksTheTab(t *testing.T) {
 	m.Tabs.Observe(sighting("1"))
 	m.Tabs.Applied("wE:t1", "dashboard")
 
-	if !m.Tabs.Observe(sighting("Important work")) {
+	if m.Tabs.Observe(sighting("Important work")) != VerdictClaimed {
 		t.Fatal("a label the plugin neither set nor wanted was not read as the user's")
 	}
 
@@ -139,7 +141,7 @@ func TestARenameLandingAfterItsCallFailedIsNotTheUsers(t *testing.T) {
 	m.Tabs.Observe(sighting("1"))
 	m.Tabs.Sent("wE:t1", "api")
 
-	if m.Tabs.Observe(sighting("api")) {
+	if m.Tabs.Observe(sighting("api")) == VerdictClaimed {
 		t.Fatal("a label the plugin sent was read as the user's")
 	}
 
@@ -153,7 +155,7 @@ func TestARenameByThePluginDoesNotLock(t *testing.T) {
 	m.Tabs.Observe(sighting("1"))
 	m.Tabs.Applied("wE:t1", "dashboard")
 
-	if m.Tabs.Observe(sighting("dashboard")) {
+	if m.Tabs.Observe(sighting("dashboard")) == VerdictClaimed {
 		t.Error("the plugin's own rename was read as the user's")
 	}
 }
@@ -163,7 +165,7 @@ func TestALabelThatHasNotMovedIsNobodysDoing(t *testing.T) {
 	m.Tabs.Observe(sighting("Important work"))
 
 	// Same label on the next poll: nothing happened, whatever it says.
-	if m.Tabs.Observe(sighting("Important work")) {
+	if m.Tabs.Observe(sighting("Important work")) == VerdictClaimed {
 		t.Error("an unchanged label was read as a rename")
 	}
 }
@@ -173,7 +175,7 @@ func TestALabelMatchingWhatWeWouldSetDoesNotLock(t *testing.T) {
 	m := newManual(t)
 	m.Tabs.Observe(sighting("1"))
 
-	if m.Tabs.Observe(sighting("dashboard")) {
+	if m.Tabs.Observe(sighting("dashboard")) == VerdictClaimed {
 		t.Error("a label matching the resolved one locked the tab")
 	}
 }
@@ -184,7 +186,7 @@ func TestLocksSurviveAReload(t *testing.T) {
 	m := LoadManual(path)
 	m.Tabs.Observe(sighting("1"))
 
-	if !m.Tabs.Observe(sighting("Important work")) {
+	if m.Tabs.Observe(sighting("Important work")) != VerdictClaimed {
 		t.Fatal("the tab was not locked")
 	}
 
@@ -228,7 +230,9 @@ func TestRetainDropsTabsTheSessionNoLongerHolds(t *testing.T) {
 
 	// Its baseline went too, so a tab reusing the id starts clean and is
 	// judged on what it carries rather than on what the old tab did.
-	if m.Tabs.Observe(Sighting{ID: "wE:t1", Current: "1", Desired: "dashboard", Default: "1"}) {
+	if m.Tabs.Observe(
+		Sighting{ID: "wE:t1", Current: "1", Desired: "dashboard", Default: "1"},
+	) == VerdictClaimed {
 		t.Error("an unnamed tab reusing the id was locked")
 	}
 }
@@ -248,7 +252,7 @@ func TestAnUnreadableStoreIsNotFatal(t *testing.T) {
 	// And it still works from there.
 	m.Tabs.Observe(sighting("1"))
 
-	if !m.Tabs.Observe(sighting("Important work")) {
+	if m.Tabs.Observe(sighting("Important work")) != VerdictClaimed {
 		t.Error("locking stopped working after a corrupt store")
 	}
 }
@@ -257,7 +261,7 @@ func TestWithoutAPathLocksStayInMemory(t *testing.T) {
 	m := LoadManual("")
 	m.Tabs.Observe(sighting("1"))
 
-	if !m.Tabs.Observe(sighting("Important work")) {
+	if m.Tabs.Observe(sighting("Important work")) != VerdictClaimed {
 		t.Error("locking needs a file")
 	}
 
@@ -288,7 +292,7 @@ func TestAPaneTheUserRenamedIsLocked(t *testing.T) {
 	m := LoadManual("")
 	m.Settled()
 
-	if !m.Panes.Observe(paneSighting("Important work")) {
+	if m.Panes.Observe(paneSighting("Important work")) != VerdictClaimed {
 		t.Fatal("a pane carrying a name nobody set was not claimed")
 	}
 
@@ -307,7 +311,7 @@ func TestAPaneAutoTitleNamedIsNotTheUsers(t *testing.T) {
 	m.Settled()
 	m.Panes.Applied("wE:p1", "dashboard")
 
-	if m.Panes.Observe(paneSighting("dashboard")) {
+	if m.Panes.Observe(paneSighting("dashboard")) == VerdictClaimed {
 		t.Error("the plugin's own pane rename read as the user's")
 	}
 }
