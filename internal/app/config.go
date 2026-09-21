@@ -26,6 +26,9 @@ const (
 	EnvAgentName   = "HERDR_AUTO_TITLE_AGENT_NAME"
 	EnvPanes       = "HERDR_AUTO_TITLE_PANES"
 	EnvPreferAgent = "HERDR_AUTO_TITLE_PREFER_AGENT"
+
+	EnvWorkspaces         = "HERDR_AUTO_TITLE_WORKSPACES"
+	EnvWorkspaceMaxLength = "HERDR_AUTO_TITLE_WORKSPACE_MAX_LENGTH"
 )
 
 // DefaultPoll is how often the session is read. A six-pane snapshot measured
@@ -64,6 +67,13 @@ type Config struct {
 	// PreferAgentPane names a tab after its agent pane even when another pane
 	// is focused, so opening an editor beside the agent leaves the title alone.
 	PreferAgentPane bool
+	// RenameWorkspaces names the row above a workspace holding exactly one
+	// tab, after that tab. Herdr sets that row once, from the directory the
+	// workspace was created in, and never revisits it. Inert without ManualPath.
+	RenameWorkspaces bool
+	// WorkspaceMaxLength bounds a workspace label, in columns. It is separate
+	// from MaxLength because the workspace row is not the tab bar.
+	WorkspaceMaxLength int
 }
 
 // LoadConfig reads configuration from the configuration file and the
@@ -84,6 +94,10 @@ func LoadConfig() (Config, []string) {
 		ReadTranscripts: true,
 		ShowAgentName:   true,
 		RenamePanes:     true,
+		// RenameWorkspaces stays at its zero value: the workspace row is shared
+		// with whatever else the user reads the sidebar by, so it is asked for
+		// rather than assumed.
+		WorkspaceMaxLength: resolver.DefaultWorkspaceMaxLength,
 	}
 
 	cfg.Debug = fromEnv(&warnings, EnvDebug, cfg.Debug, boolean)
@@ -96,6 +110,13 @@ func LoadConfig() (Config, []string) {
 	cfg.ShowAgentName = fromEnv(&warnings, EnvAgentName, cfg.ShowAgentName, boolean)
 	cfg.RenamePanes = fromEnv(&warnings, EnvPanes, cfg.RenamePanes, boolean)
 	cfg.PreferAgentPane = fromEnv(&warnings, EnvPreferAgent, cfg.PreferAgentPane, boolean)
+	cfg.RenameWorkspaces = fromEnv(&warnings, EnvWorkspaces, cfg.RenameWorkspaces, boolean)
+	cfg.WorkspaceMaxLength = fromEnv(
+		&warnings,
+		EnvWorkspaceMaxLength,
+		cfg.WorkspaceMaxLength,
+		count,
+	)
 	// A path needs neither parsing nor checking, so it does not go through
 	// fromEnv: any string the user set is the path they meant, and an empty
 	// one asks for locks that do not outlive the process.
@@ -103,7 +124,20 @@ func LoadConfig() (Config, []string) {
 		cfg.ManualPath = raw
 	}
 
+	if cfg.RenameWorkspaces && !cfg.namesWorkspaces() {
+		warnings = append(warnings, EnvWorkspaces+"=true needs "+EnvManual+
+			" to name a file: without one a restart cannot tell a row this named from one you did,"+
+			" so workspaces are left alone")
+	}
+
 	return cfg, warnings
+}
+
+// namesWorkspaces says the row is named: asked for, and with a file to keep
+// the labels this wrote in, since memory alone cannot tell a row this named
+// from one the user did after a restart (manual-rename-protection.md).
+func (cfg Config) namesWorkspaces() bool {
+	return cfg.RenameWorkspaces && cfg.ManualPath != ""
 }
 
 // readConfigFile puts the file's settings into the environment, which is how a

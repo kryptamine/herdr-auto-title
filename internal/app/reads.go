@@ -14,11 +14,7 @@ import (
 // what a pane is running, has checked out and is talking about each costs a
 // request or a file, and paneReads spends that on the panes that earn it.
 func (a *App) tabsIn(snapshot herdr.Snapshot) []state.TabState {
-	workspaces := make(map[string]string, len(snapshot.Workspaces))
-
-	for _, workspace := range snapshot.Workspaces {
-		workspaces[workspace.WorkspaceID] = workspace.Label
-	}
+	workspaces := workspaceLabelsIn(snapshot.Workspaces)
 
 	byTab := make(map[string][]*state.PaneState, len(snapshot.Tabs))
 
