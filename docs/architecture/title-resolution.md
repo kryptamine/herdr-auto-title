@@ -164,6 +164,12 @@ the same thing twice. A kind with nothing left to add stands alone:
 that is not bound here — only stripped — because it is a field of its own, which
 the user can switch off.
 
+The workspace row (`HERDR_AUTO_TITLE_WORKSPACES`) is named by a chain without
+this source, and reads the terminal title without binding a kind either, so a
+row says `auth.ts` where the tab says `nvim › auth.ts`. A workspace outlives
+every command typed in it, and a row that followed the process would rewrite
+itself at every prompt — which is what the tab under it is already for.
+
 A mapping from command lines to friendlier names (`yarn dev` → `Dev`) was
 specified and is deliberately not built: the commands it would map are invisible
 in the process table, visible only in the terminal title, and a source below the
@@ -425,6 +431,31 @@ Exactly, and no more than that — the rule below makes the same trade. A worktr
 whose directory spells its branch differently (`xl-knp-3` against `xl-knp.3`)
 keeps both, because nothing here can tell a near-miss from two real facts.
 
+## The workspace row keeps its end
+
+With `HERDR_AUTO_TITLE_WORKSPACES` on (and a manual file to write to, or the
+row is left alone), a workspace holding exactly one tab is named after that tab (`ResolveWorkspace`). One is the only count with an answer:
+with one tab there is no cross-tab rule to settle and no active tab to pick, and
+with several there is nothing a single row could say for all of them, so any
+other count is left alone. The chain is the shipped one without the foreground
+process, for the reason given [under that source](#foreground-process).
+
+The row is bounded by `HERDR_AUTO_TITLE_WORKSPACE_MAX_LENGTH`, twenty by
+default (`DefaultWorkspaceMaxLength`), rather than by the tab's fifty: the row
+renders in the sidebar, the narrower of the two strips, and twenty columns is
+what a default-width sidebar was measured to hold.
+
+An over-long row is not cut as a tab is. `Format` cuts from the tail, which is
+right for a tab bar full of titles that start differently and wrong for a
+sidebar column of rows that start the same: a screenful of workspaces in one
+repository would all read as that repository, cut at the same column.
+`FormatTail` keeps the end instead -- whole parts are dropped from the front,
+the context first and then the branch, and only what is left is cut, from the
+end, by `Sanitize`. The width is measured on what would actually be written, not
+on the raw parts: `Sanitize` collapses runs of whitespace, so a part counted too
+wide on its own can turn out to fit, and a row would otherwise lose its context
+to a space.
+
 ## The workspace is not repeated
 
 Herdr shows the workspace above its tabs, so a tab in the workspace it is named
@@ -432,14 +463,38 @@ after spends half its width repeating what is already on screen. That half is
 dropped: in a workspace called `dashboard`, a tab reads `nvim › auth.ts` rather
 than `dashboard › nvim › auth.ts`.
 
+Herdr stores that row as one string, and workspace naming can put a branch on
+it (`HERDR_AUTO_TITLE_WORKSPACES`). A tab handed the whole label would match
+neither half of it and repeat both, so the row is read back as segments
+(`rowParts`), split on the parts separator. Their positions are lost: an
+over-long row has whole parts cut from its front, so the segment that leads it
+may be a context, a branch or neither. A tab therefore drops its context, its
+branch and its agent's name when any segment equals it (`withoutRow`), compared
+in the sanitized shape the row was written in — a row the user wrote is read
+back through `Sanitize` first, so the spaces they put around a separator do not
+hide a segment; the activity is what a row is for and always stays. A part that
+itself carries the separator — a directory named `a › b` — was written whole
+but reads back as several segments, so it is matched as that run of segments,
+at any offset. A row Herdr labelled with its directory's basename has no
+separator either, but nothing tells it from a row this wrote and cut down to one
+part, so its one segment is matched the same way, against the context, the
+branch and the agent alike. A tab on a branch spelled like the directory such a
+row names loses that branch: the price of not guessing where a segment stood.
+
+With workspace naming off, the label is whatever its owner typed: opaque text
+that says where a tab is and nothing else. It is matched whole and against the
+context alone, exactly as before the row was ever named.
+
 It is dropped only when something else remains — a tab reduced to nothing has
 lost more than it saved — and only on an exact match, so a tab whose directory
 has left its workspace behind is exactly the one that keeps saying where it is.
-A branch counts as something remaining, and the match is against the directory
-alone, so a tab in the workspace of the repository it is in reads `feat/oauth ›
-nvim`: the half that repeats goes, the half that distinguishes stays. An agent's
-name counts too, but only while it is going to be shown — which is why it is
-dropped before this runs rather than after.
+A branch counts as something remaining, and with naming off the match is against
+the directory alone, so a tab in the workspace of the repository it is in reads
+`feat/oauth › nvim`: the half that repeats goes, the half that distinguishes
+stays. With naming on the row is a set of parts, and that tab reads the same
+until its branch is spelled like a segment of the row. An agent's name counts
+too, but only while it is going to be shown — which is why it is dropped before
+this runs rather than after.
 
 ## A pane is named for what tells it from its tab
 

@@ -110,10 +110,12 @@ changes name at most once per poll however fast its pane is churning, so
 
 1. `session.snapshot` — the whole session in one request.
 2. `Changes.Observe` — note which panes' revisions advanced.
-3. `Claims.Retain`, for tabs and for panes — drop bookkeeping for what the
-   session no longer holds, and release a lock whose owner has moved on. This
-   runs off the snapshot's own labels, because it is what decides which tabs and
-   panes the next steps can skip.
+3. `Claims.Retain`, for tabs, panes and workspaces alike — drop bookkeeping
+   for what the session no longer holds, and release a lock whose owner has
+   moved on. The workspace set is pruned whether or not the row is being named,
+   so a lock an earlier run left behind does not outlive its workspace. This runs off the snapshot's own labels,
+   because it is what decides which tabs, panes and rows the next steps can
+   skip.
 4. `tabsIn` — assemble tabs with their panes from the snapshot alone. Nothing
    is read here: assembly is what says which pane will be asked about.
 5. Per tab (`nameTab`): skip it if locked, otherwise read the one pane the tab
@@ -306,3 +308,23 @@ outlives the call that made it.
 
 Every source resolves synchronously inside the poll, so when `Run` returns there
 is nothing left running.
+
+## The workspace row
+
+With `HERDR_AUTO_TITLE_WORKSPACES` on and a manual file to write to, a poll
+ends by naming each workspace that holds exactly one tab. Going last matters only to a poll cut short: the row is
+what such a poll gives up, not a tab. A tab drops the row's parts from its own
+title, but it deduplicates against the row label in the snapshot, so a rename
+issued here reaches the tabs on the next poll whichever order runs.
+
+A workspace holding any other number of tabs is not named, but it is still
+judged on the first poll (see manual-rename-protection.md), through the pane of
+its first tab. That judgement, like naming, reads the pane before it looks: the
+snapshot's directory is a descendant's guess, and a row compared against that
+basename could be claimed for a label it never wore. The reads ask for nothing
+of their own in the ordinary case: the pane a row is judged or named through is
+the pane its tab was already named through, and a poll never spends the same
+read twice. The exception is a tab the user has claimed, which is not read for
+its own sake: with pane naming off, a row above one costs the pane read that
+tab did not; with it on, as it ships, that pane is already read for the panes
+it names, so the row still costs nothing.

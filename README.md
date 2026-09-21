@@ -55,6 +55,11 @@ $HOME                                  →  6 · Shell
   longer lists every Claude Code pane as `claude`.
 - Rename a tab or a pane yourself and Auto Title stops touching it. Clear the
   name to hand it back.
+- With `HERDR_AUTO_TITLE_WORKSPACES=true` a workspace holding exactly one tab
+  is named after that tab, under a length of its own. Herdr names a workspace
+  after the directory it was created in and never revisits it, so the row above
+  the tabs is otherwise the one thing that stays where the work started. A
+  workspace you named yourself, or one holding more than one tab, is left alone.
 - On Windows, Herdr reports only the shell or an agent running in a pane, so an
   editor or an ssh session does not name its tab.
 
@@ -95,6 +100,8 @@ change. It does not read the config directory that `herdr plugin list` prints.
 | `HERDR_AUTO_TITLE_AGENT_NAME`   | `true`                                   | Put the agent's name in front of what it is doing                  |
 | `HERDR_AUTO_TITLE_PANES`        | `true`                                   | Name panes as well as tabs                                         |
 | `HERDR_AUTO_TITLE_PREFER_AGENT` | `false`                                  | Name a tab after its agent pane even while another pane is focused |
+| `HERDR_AUTO_TITLE_WORKSPACES`   | `false`                                  | Name a one-tab workspace's row after that tab; needs the manual file |
+| `HERDR_AUTO_TITLE_WORKSPACE_MAX_LENGTH` | `20`                             | Longest workspace label, in columns of the sidebar                 |
 
 Turning `HERDR_AUTO_TITLE_TRANSCRIPT` off also drops the branch from a tab whose
 agent is working in a git worktree, because the transcript is what says which
