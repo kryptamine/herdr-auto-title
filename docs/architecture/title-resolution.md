@@ -119,8 +119,22 @@ session id through `pane.report_agent_session`, and it arrives in the snapshot
 as `PaneInfo.agent_session` — no extra request. Without the hook the field is
 null, this source declines, and every other rung works as it always did.
 
-The transcript is then read from disk (`internal/claude/transcript.go`), and two
-lines in it can name a session:
+The transcript is then read from disk (`internal/claude/transcript.go`). Claude
+Code files its sessions under the configuration home `CLAUDE_CONFIG_DIR` names,
+and a user may have more than one — a second home for work under one client,
+say, whose sessions are invisible to a plugin reading only the first.
+`HERDR_AUTO_TITLE_CLAUDE_DIRS` names the others, and `locate` tries each home in
+order, `locateUnder` doing one home's own two-step lookup, so a session found in
+the first costs what it cost before the setting existed. The homes are named
+rather than discovered: a scan for anything shaped like a configuration home
+would read directories the user never pointed the plugin at, which is the one
+thing this source does not do. The setting is read in `internal/app/config.go`
+with every other one and reaches the reader as `Config.ClaudeDirs`, so nothing
+here goes to the environment on its own. An entry that is not a directory when
+the plugin starts is reported and searched anyway: a home can be created a
+minute later, and a miss costs one glob.
+
+Two lines in a transcript can name a session:
 
 - `ai-title`, the title Claude Code generates and puts in its terminal title.
   The last one wins — a session is renamed as it goes.
