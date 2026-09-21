@@ -211,7 +211,11 @@ func TestWorkspaceFromCarriesTheDirectoryAsItsDefault(t *testing.T) {
 		want    string
 	}{
 		{name: "an ordinary directory", dir: filepath.Join(root, "work", "api"), want: "api"},
-		{name: "a trailing separator", dir: filepath.Join(root, "work", "api") + root, want: "api"},
+		{
+			name: "a trailing separator",
+			dir:  filepath.Join(root, "work", "api") + string(filepath.Separator),
+			want: "api",
+		},
 		{name: "the filesystem root", dir: root, want: ""},
 		{name: "a relative path", dir: filepath.Join("work", "api"), want: ""},
 		{name: "no directory at all", dir: "", want: ""},

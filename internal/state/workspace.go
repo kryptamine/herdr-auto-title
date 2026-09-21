@@ -40,11 +40,13 @@ func WorkspaceFrom(info herdr.WorkspaceInfo, context *PaneState) WorkspaceState 
 }
 
 // dirBase is the basename Herdr derives a workspace label from. A relative path
-// or the filesystem root yields nothing, which reads as "no default to compare
-// against" rather than as a label.
+// or a root -- `/`, or a drive's `C:\` -- yields nothing, which reads as "no
+// default to compare against" rather than as a label.
 func dirBase(dir string) string {
 	clean := cleanDir(dir)
-	if clean == "" || !filepath.IsAbs(clean) || clean == string(filepath.Separator) {
+	root := filepath.VolumeName(clean) + string(filepath.Separator)
+
+	if clean == "" || !filepath.IsAbs(clean) || clean == root {
 		return ""
 	}
 
