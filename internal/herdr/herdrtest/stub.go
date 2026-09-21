@@ -38,21 +38,27 @@ type PaneRenameCall struct {
 	Label  string
 }
 
+type WorkspaceRenameCall struct {
+	WorkspaceID string
+	Label       string
+}
+
 // Client is an in-memory herdr.Client. Tests change the session it describes
 // and inspect the renames it received.
 type Client struct {
-	mu          sync.Mutex
-	workspaces  []herdr.WorkspaceInfo
-	tabs        map[string]herdr.TabInfo
-	panes       map[string]herdr.PaneInfo
-	processes   map[string][]herdr.PaneProcessInfoProcess
-	renames     []RenameCall
-	paneRenames []PaneRenameCall
-	renameErr   error
-	processErr  error
-	callErr     error
-	reads       int
-	server      string
+	mu               sync.Mutex
+	workspaces       []herdr.WorkspaceInfo
+	tabs             map[string]herdr.TabInfo
+	panes            map[string]herdr.PaneInfo
+	processes        map[string][]herdr.PaneProcessInfoProcess
+	renames          []RenameCall
+	paneRenames      []PaneRenameCall
+	workspaceRenames []WorkspaceRenameCall
+	renameErr        error
+	processErr       error
+	callErr          error
+	reads            int
+	server           string
 }
 
 var _ herdr.Client = (*Client)(nil)
@@ -133,9 +139,9 @@ func (s *Client) ClosePane(paneID string) {
 	delete(s.panes, paneID)
 }
 
-// SetRenameError makes every subsequent tab rename fail with err. One wrapping
-// herdr.ErrUnanswered lands all the same, as a request Herdr read but did not
-// answer does. Pane renames are unaffected.
+// SetRenameError makes every subsequent tab or workspace rename fail with err.
+// One wrapping herdr.ErrUnanswered lands all the same, as a request Herdr read
+// but did not answer does. Pane renames are unaffected.
 func (s *Client) SetRenameError(err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -170,6 +176,13 @@ func (s *Client) PaneRenames() []PaneRenameCall {
 	defer s.mu.Unlock()
 
 	return slices.Clone(s.paneRenames)
+}
+
+func (s *Client) WorkspaceRenames() []WorkspaceRenameCall {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return slices.Clone(s.workspaceRenames)
 }
 
 // ProcessReads counts the pane.process_info calls received so far, which is how
@@ -209,6 +222,9 @@ func (s *Client) Call(ctx context.Context, method string, params any, result any
 
 	case herdr.MethodPaneRename:
 		return s.renamePane(params)
+
+	case herdr.MethodWorkspaceRename:
+		return s.renameWorkspace(params)
 
 	default:
 		return fmt.Errorf("stub client: unsupported method %s", method)
@@ -283,6 +299,33 @@ func (s *Client) renamePane(params any) error {
 	s.paneRenames = append(s.paneRenames, PaneRenameCall(call))
 
 	return nil
+}
+
+func (s *Client) renameWorkspace(params any) error {
+	if s.renameErr != nil && !errors.Is(s.renameErr, herdr.ErrUnanswered) {
+		return s.renameErr
+	}
+
+	var call herdr.WorkspaceRenameParams
+	if err := decode(params, &call); err != nil {
+		return err
+	}
+
+	for i, workspace := range s.workspaces {
+		if workspace.WorkspaceID != call.WorkspaceID {
+			continue
+		}
+		// Herdr's label really does change, so the next poll must agree.
+		s.workspaces[i].Label = call.Label
+		s.workspaceRenames = append(s.workspaceRenames, WorkspaceRenameCall(call))
+
+		return s.renameErr
+	}
+
+	return &herdr.APIError{
+		Code:    herdr.CodeWorkspaceNotFound,
+		Message: "workspace " + call.WorkspaceID + " not found",
+	}
 }
 
 // answer encodes the stub's reply and decodes it into result the way the socket

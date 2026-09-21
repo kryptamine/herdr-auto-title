@@ -175,3 +175,12 @@ func ShowNotification(
 
 	return res, err
 }
+
+// RenameWorkspace names the row Herdr shows above a workspace's tabs. Herdr
+// labels an unnamed workspace after its directory and never revisits that, so
+// the row stays put when the work moves on until someone renames it.
+func RenameWorkspace(ctx context.Context, c Client, workspaceID, label string) error {
+	params := WorkspaceRenameParams{WorkspaceID: workspaceID, Label: label}
+
+	return c.Call(ctx, MethodWorkspaceRename, params, nil)
+}
