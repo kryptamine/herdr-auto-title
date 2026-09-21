@@ -1572,6 +1572,34 @@ func TestATabIsNamedAfterTheBranchTheAgentIsWorkingOn(t *testing.T) {
 	}
 }
 
+// The homes travel from configuration to the transcript reader as a value. A
+// session in one of them is named, which is what says the wiring is connected:
+// nothing reads the setting out of the environment on the reader's behalf.
+func TestASessionInAnExtraConfigHomeIsNamed(t *testing.T) {
+	stateDir(t)
+
+	other := t.TempDir()
+	writeTranscript(
+		t,
+		other,
+		testSession,
+		`{"type":"ai-title","aiTitle":"Poll loop rework","sessionId":"`+testSession+`"}`,
+	)
+
+	cfg := transcriptConfig()
+	cfg.ClaudeDirs = []string{other}
+
+	h := startConfigured(t, herdrtest.New(
+		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
+		[]herdr.PaneInfo{agentPane()},
+	), cfg)
+	h.poll()
+
+	if got := h.client.Renames()[0].Label; !strings.Contains(got, "Poll loop rework") {
+		t.Errorf("rename = %q, want the extra home's title in it", got)
+	}
+}
+
 func TestAnAgentsBranchIsNamedWhereNoTrunkIsRecorded(t *testing.T) {
 	// A repository with no origin records no trunk, and the pane standing on a
 	// branch of its own must still be named after the worktree its agent is in.

@@ -28,6 +28,7 @@ func isolate(t *testing.T) {
 		EnvDebug, EnvPoll, EnvMaxLength, EnvBranchMax,
 		EnvPosition, EnvManual, EnvTranscript, EnvAgentName, EnvPanes,
 		EnvPreferAgent, EnvWorkspaces, EnvWorkspaceMaxLength,
+		EnvClaudeDirs,
 	}
 
 	for _, name := range names {
@@ -457,5 +458,63 @@ func TestNamingWorkspacesWithoutAManualFileIsRefusedWithAWarning(t *testing.T) {
 
 	if WorkspaceResolver(cfg) != nil {
 		t.Error("a workspace resolver was built with nowhere to keep what it writes")
+	}
+}
+
+func TestLoadConfigWarnsAboutAConfigHomeItCannotUse(t *testing.T) {
+	// A home that is not a directory is reported, and the homes named beside
+	// it are still read.
+	isolate(t)
+	// A usable home comes from t.TempDir() rather than a literal: a POSIX path
+	// is not absolute on Windows, so a literal one would name nothing there and
+	// the test would measure the platform instead of the rule.
+	usable := t.TempDir()
+	missing := filepath.Join(t.TempDir(), "never-created")
+	t.Setenv(EnvClaudeDirs, strings.Join(
+		[]string{missing, usable},
+		string(os.PathListSeparator),
+	))
+
+	cfg, warnings := LoadConfig()
+	if len(warnings) != 1 {
+		t.Fatalf("warnings = %v, want the unusable home alone reported", warnings)
+	}
+
+	// The warning quotes the path, which escapes a Windows separator, so the
+	// quoted spelling is what to look for.
+	if !strings.Contains(warnings[0], strconv.Quote(missing)) {
+		t.Errorf("warning = %q, want the home it cannot read named", warnings[0])
+	}
+
+	// The warning is advisory: the home is still searched, because the user can
+	// create it a minute after the plugin started.
+	if len(cfg.ClaudeDirs) != 2 || cfg.ClaudeDirs[0] != missing || cfg.ClaudeDirs[1] != usable {
+		t.Errorf("ClaudeDirs = %q, want both homes kept in the order written", cfg.ClaudeDirs)
+	}
+}
+
+// A trailing separator is what both tab completion and $PWD produce, and it
+// names the same directory, so it is cleaned rather than complained about.
+func TestAConfigHomeWrittenWithATrailingSeparatorIsRead(t *testing.T) {
+	isolate(t)
+	home := t.TempDir()
+	t.Setenv(EnvClaudeDirs, home+string(os.PathSeparator))
+
+	cfg, warnings := LoadConfig()
+	if len(warnings) != 0 {
+		t.Fatalf("warnings = %v, want none for a home that exists", warnings)
+	}
+
+	if len(cfg.ClaudeDirs) != 1 || cfg.ClaudeDirs[0] != home {
+		t.Errorf("ClaudeDirs = %q, want the cleaned home %q", cfg.ClaudeDirs, home)
+	}
+}
+
+func TestLoadConfigAcceptsConfigHomesItCanUse(t *testing.T) {
+	isolate(t)
+	t.Setenv(EnvClaudeDirs, t.TempDir())
+
+	if _, warnings := LoadConfig(); len(warnings) != 0 {
+		t.Errorf("warnings = %v, want none", warnings)
 	}
 }

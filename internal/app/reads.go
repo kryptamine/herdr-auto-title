@@ -64,7 +64,7 @@ type paneReader struct {
 func newPaneReader(cfg Config, log *slog.Logger, changes *state.Changes) *paneReader {
 	return &paneReader{
 		changes:         changes,
-		topics:          claude.NewReader(),
+		topics:          claude.NewReader(cfg.ClaudeDirs...),
 		log:             log,
 		branchMax:       cfg.BranchMax,
 		readTranscripts: cfg.ReadTranscripts,

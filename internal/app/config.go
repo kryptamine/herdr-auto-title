@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -29,6 +31,8 @@ const (
 
 	EnvWorkspaces         = "HERDR_AUTO_TITLE_WORKSPACES"
 	EnvWorkspaceMaxLength = "HERDR_AUTO_TITLE_WORKSPACE_MAX_LENGTH"
+
+	EnvClaudeDirs = "HERDR_AUTO_TITLE_CLAUDE_DIRS"
 )
 
 // DefaultPoll is how often the session is read. A six-pane snapshot measured
@@ -74,6 +78,10 @@ type Config struct {
 	// WorkspaceMaxLength bounds a workspace label, in columns. It is separate
 	// from MaxLength because the workspace row is not the tab bar.
 	WorkspaceMaxLength int
+	// ClaudeDirs are configuration homes to read transcripts from besides the
+	// one CLAUDE_CONFIG_DIR gives, searched in the order written. A home the
+	// user's shell picks per directory cannot be discovered, so it is named.
+	ClaudeDirs []string
 }
 
 // LoadConfig reads configuration from the configuration file and the
@@ -83,6 +91,15 @@ func LoadConfig() (Config, []string) {
 	var warnings []string
 	if warning := readConfigFile(); warning != "" {
 		warnings = append(warnings, warning)
+	}
+
+	homes, unreadable := configHomes()
+	for _, dir := range unreadable {
+		warnings = append(
+			warnings,
+			fmt.Sprintf("%s=%q is not a directory, so there is nothing to read in it yet",
+				EnvClaudeDirs, dir),
+		)
 	}
 
 	cfg := Config{
@@ -98,6 +115,7 @@ func LoadConfig() (Config, []string) {
 		// with whatever else the user reads the sidebar by, so it is asked for
 		// rather than assumed.
 		WorkspaceMaxLength: resolver.DefaultWorkspaceMaxLength,
+		ClaudeDirs:         homes,
 	}
 
 	cfg.Debug = fromEnv(&warnings, EnvDebug, cfg.Debug, boolean)
@@ -156,6 +174,29 @@ func readConfigFile() string {
 	}
 	// One bad line costs the whole file: godotenv parses it or nothing.
 	return fmt.Sprintf("%s %s, so nothing in it is used", path, err)
+}
+
+// configHomes reads EnvClaudeDirs: the configuration directories it names,
+// cleaned, and those of them that are not directories right now. An entry is
+// kept either way — a home can be created after the plugin starts, and the
+// search costs one miss until it is — so the second list only feeds a warning.
+func configHomes() (dirs, unreadable []string) {
+	for _, entry := range filepath.SplitList(os.Getenv(EnvClaudeDirs)) {
+		entry = strings.TrimSpace(entry)
+		if entry == "" {
+			continue
+		}
+		// Cleaning rather than refusing: a trailing slash is what both tab
+		// completion and $PWD produce, and it names the same directory.
+		entry = filepath.Clean(entry)
+		if info, err := os.Stat(entry); err != nil || !info.IsDir() {
+			unreadable = append(unreadable, entry)
+		}
+
+		dirs = append(dirs, entry)
+	}
+
+	return dirs, unreadable
 }
 
 // fromEnv returns what the environment says name is, or fallback when it says
