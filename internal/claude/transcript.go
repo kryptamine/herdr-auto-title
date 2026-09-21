@@ -59,8 +59,10 @@ func (t Topic) Text() string {
 // Transcripts are append-only, so a poll reads the bytes appended since the
 // last one rather than the file.
 type Reader struct {
-	mu       sync.Mutex
-	root     string
+	mu sync.Mutex
+	// roots are the configuration directories a transcript is looked for in,
+	// searched in order until one holds the session.
+	roots    []string
 	sessions map[string]*transcript
 	now      func() time.Time
 }
@@ -75,31 +77,36 @@ type transcript struct {
 	searchedAt time.Time
 }
 
-// NewReader builds a reader over Claude Code's configuration directory.
-func NewReader() *Reader {
-	return &Reader{root: root(), sessions: make(map[string]*transcript), now: time.Now}
+// NewReader builds a reader over the configuration directory Claude Code names
+// itself, then over extra, which is searched in the order given.
+func NewReader(extra ...string) *Reader {
+	return &Reader{
+		roots:    append(roots(), extra...),
+		sessions: make(map[string]*transcript),
+		now:      time.Now,
+	}
 }
 
-// root is where Claude Code keeps its state. The environment variable is what
-// a user who moved it sets.
-func root() string {
+// roots is the configuration directory Claude Code names itself, as a list,
+// and is empty when there is no home to read at all.
+func roots() []string {
 	if dir := os.Getenv("CLAUDE_CONFIG_DIR"); dir != "" {
-		return dir
+		return []string{dir}
 	}
 
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return ""
+		return nil
 	}
 
-	return filepath.Join(home, ".claude")
+	return []string{filepath.Join(home, ".claude")}
 }
 
 // Topic reports what the session is about, and the zero topic when nothing can
 // be read: no transcript, an unreadable one, or one that has said nothing yet.
 // dir is the pane's directory, where the transcript is looked for first.
 func (r *Reader) Topic(sessionID, dir string) Topic {
-	if r.root == "" || !isSessionID(sessionID) {
+	if len(r.roots) == 0 || !isSessionID(sessionID) {
 		return Topic{}
 	}
 
@@ -168,12 +175,25 @@ func isSessionID(value string) bool {
 	return sessionIDPattern.MatchString(value)
 }
 
-// locate finds the transcript. Claude Code files a session under the directory
-// it was started in, which is usually the pane's, so that is tried before the
-// scan across every project.
+// locate finds the transcript in the first configuration directory that holds
+// the session, so a session in the first costs no search of the ones after it.
 func (r *Reader) locate(sessionID, dir string) (string, bool) {
 	name := sessionID + ".jsonl"
-	projects := filepath.Join(r.root, "projects")
+
+	for _, root := range r.roots {
+		if path, found := locateUnder(root, name, dir); found {
+			return path, true
+		}
+	}
+
+	return "", false
+}
+
+// locateUnder finds the transcript in one configuration directory. Claude Code
+// files a session under the directory it was started in, which is usually the
+// pane's, so that is tried before the scan across every project.
+func locateUnder(root, name, dir string) (string, bool) {
+	projects := filepath.Join(root, "projects")
 
 	if dir != "" {
 		candidate := filepath.Join(projects, slugOf(dir), name)
