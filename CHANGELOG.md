@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.9.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.8.0...v0.9.0) (2026-09-22)
+
+
+### Features
+
+* **app:** name the workspace row when asked ([c3c08bc](https://github.com/kryptamine/herdr-auto-title/commit/c3c08bc662a89bc345668c836a599aefe429c066))
+* **claude:** search every configured Claude config home ([f306002](https://github.com/kryptamine/herdr-auto-title/commit/f306002aa72c879533840ca13689be840e212d04))
+* **herdr:** add workspace.rename to the client ([3669825](https://github.com/kryptamine/herdr-auto-title/commit/36698258e86df25694829107828b5d31948b6fff))
+* **resolver:** name a workspace after the tab it holds ([c24c8c8](https://github.com/kryptamine/herdr-auto-title/commit/c24c8c842e044f47ee3d8f2abd1416a02286830c))
+* **state:** claim a workspace the user named, on sight ([2a27dea](https://github.com/kryptamine/herdr-auto-title/commit/2a27dea62c100138f14fa6e76d26161e5200bee8))
+
+
+### Bug Fixes
+
+* **resolver:** treat "Windows PowerShell" as a generic title ([666f7bc](https://github.com/kryptamine/herdr-auto-title/commit/666f7bc4bd2a9dfb0704c361369f421148bd05a3))
+* **state:** read a drive's root as no directory at all ([7d07b90](https://github.com/kryptamine/herdr-auto-title/commit/7d07b90fa27062cc4a5ebbff16906400be572368))
+
 ## [0.8.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.7.0...v0.8.0) (2026-09-20)
 
 
