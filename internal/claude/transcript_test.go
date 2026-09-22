@@ -26,10 +26,15 @@ type project struct {
 
 func newProject(t *testing.T) project {
 	t.Helper()
-	root := t.TempDir()
-	t.Setenv("CLAUDE_CONFIG_DIR", root)
 
-	return project{t: t, root: root, dir: started}
+	return project{t: t, root: t.TempDir(), dir: started}
+}
+
+// reader builds a reader over this project's home, and over extra homes when
+// the test names them. The homes are passed rather than set in the
+// environment: nothing in this package reads one.
+func (p project) reader(extra ...string) *Reader {
+	return NewReader(append([]string{p.root}, extra...)...)
 }
 
 func (p project) path() string {
@@ -94,7 +99,7 @@ func TestTitleNamesASession(t *testing.T) {
 	p := newProject(t)
 	p.write(human("fix the redirect"), aiTitle("OAuth redirect fix"))
 
-	if got := NewReader().Topic(session, started); got.Text() != "OAuth redirect fix" {
+	if got := p.reader().Topic(session, started); got.Text() != "OAuth redirect fix" {
 		t.Errorf("topic = %+v, want the generated title", got)
 	}
 }
@@ -103,7 +108,7 @@ func TestTheLastTitleWins(t *testing.T) {
 	p := newProject(t)
 	p.write(aiTitle("First guess"), aiTitle("What it turned into"))
 
-	if got := NewReader().Topic(session, started); got.Text() != "What it turned into" {
+	if got := p.reader().Topic(session, started); got.Text() != "What it turned into" {
 		t.Errorf("topic = %+v, want the last title", got)
 	}
 }
@@ -120,7 +125,7 @@ func TestASlashCommandNamesASessionWithNoTitle(t *testing.T) {
 		toolResult(),
 	)
 
-	got := NewReader().Topic(session, started)
+	got := p.reader().Topic(session, started)
 	if got.Text() != "grill-me" {
 		t.Errorf("topic = %+v, want the command it opened with", got)
 	}
@@ -134,7 +139,7 @@ func TestASlashCommandKeepsWhatItWasCalledWith(t *testing.T) {
 		),
 	)
 
-	if got := NewReader().Topic(session, started); got.Text() != "code-review spec.md" {
+	if got := p.reader().Topic(session, started); got.Text() != "code-review spec.md" {
 		t.Errorf("topic = %+v, want the command and its argument", got)
 	}
 }
@@ -147,7 +152,7 @@ func TestACommandCalledWithNothingStandsAlone(t *testing.T) {
 		),
 	)
 
-	if got := NewReader().Topic(session, started); got.Text() != "grill-me" {
+	if got := p.reader().Topic(session, started); got.Text() != "grill-me" {
 		t.Errorf("topic = %+v, want the command alone", got)
 	}
 }
@@ -156,7 +161,7 @@ func TestATitleOutranksTheOpening(t *testing.T) {
 	p := newProject(t)
 	p.write(human("rework the poll loop"), aiTitle("Poll loop rework"))
 
-	got := NewReader().Topic(session, started)
+	got := p.reader().Topic(session, started)
 	switch {
 	case got.Text() != "Poll loop rework":
 		t.Errorf("text = %q, want the title", got.Text())
@@ -171,7 +176,7 @@ func TestOnlyTheUsersOwnPromptOpensASession(t *testing.T) {
 	p := newProject(t)
 	p.write(expanded("Base directory for this skill: /skills/grilling"), toolResult())
 
-	if got := NewReader().Topic(session, started); got.Text() != "" {
+	if got := p.reader().Topic(session, started); got.Text() != "" {
 		t.Errorf("topic = %+v, want nothing from an expansion", got)
 	}
 }
@@ -184,7 +189,7 @@ func TestAResumedSessionsCaveatIsNotItsOpening(t *testing.T) {
 		),
 	)
 
-	if got := NewReader().Topic(session, started); got.Text() != "" {
+	if got := p.reader().Topic(session, started); got.Text() != "" {
 		t.Errorf("topic = %+v, want nothing from a caveat", got)
 	}
 }
@@ -193,7 +198,7 @@ func TestOnlyTheFirstLineOfAPromptOpensASession(t *testing.T) {
 	p := newProject(t)
 	p.write(human(`rework the poll loop\nand say why in the commit`))
 
-	if got := NewReader().Topic(session, started); got.Text() != "rework the poll loop" {
+	if got := p.reader().Topic(session, started); got.Text() != "rework the poll loop" {
 		t.Errorf("topic = %+v, want the first line alone", got)
 	}
 }
@@ -202,7 +207,7 @@ func TestAppendedLinesAreReadOnTheNextPoll(t *testing.T) {
 	p := newProject(t)
 	p.write(human("fix the redirect"))
 
-	reader := NewReader()
+	reader := p.reader()
 
 	if got := reader.Topic(session, started); got.Text() != "fix the redirect" {
 		t.Fatalf("topic = %+v, want the opening prompt", got)
@@ -231,7 +236,7 @@ func TestAHalfWrittenLineIsReadWhenItIsWhole(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	reader := NewReader()
+	reader := p.reader()
 	if got := reader.Topic(session, started); got.Text() != "fix the redirect" {
 		t.Fatalf("topic = %+v, want the fragment ignored", got)
 	}
@@ -253,7 +258,7 @@ func TestATranscriptThatShrankIsReadAgain(t *testing.T) {
 	p := newProject(t)
 	p.write(human("fix the redirect"), aiTitle("OAuth redirect fix"))
 
-	reader := NewReader()
+	reader := p.reader()
 	if got := reader.Topic(session, started); got.Text() != "OAuth redirect fix" {
 		t.Fatalf("topic = %+v", got)
 	}
@@ -273,16 +278,16 @@ func TestASessionFiledUnderAnotherDirectoryIsStillFound(t *testing.T) {
 	p := newProject(t)
 	p.write(aiTitle("OAuth redirect fix"))
 
-	if got := NewReader().Topic(session, "/somewhere/else"); got.Text() != "OAuth redirect fix" {
+	if got := p.reader().Topic(session, "/somewhere/else"); got.Text() != "OAuth redirect fix" {
 		t.Errorf("topic = %+v, want the transcript found by scanning", got)
 	}
 }
 
 func TestAnIdThatIsNotASessionIsRefused(t *testing.T) {
 	// The id arrives over the socket and becomes part of a path.
-	newProject(t)
+	p := newProject(t)
 
-	reader := NewReader()
+	reader := p.reader()
 
 	for _, id := range []string{"", "../../../etc/passwd", "8852bfe0", strings.Repeat("a", 36)} {
 		if got := reader.Topic(id, started); got.Text() != "" {
@@ -292,9 +297,9 @@ func TestAnIdThatIsNotASessionIsRefused(t *testing.T) {
 }
 
 func TestASessionWithNoTranscriptSaysNothing(t *testing.T) {
-	newProject(t)
+	p := newProject(t)
 
-	if got := NewReader().Topic(session, started); got.Text() != "" {
+	if got := p.reader().Topic(session, started); got.Text() != "" {
 		t.Errorf("topic = %+v, want nothing", got)
 	}
 }
@@ -304,7 +309,7 @@ func TestATranscriptThatWasNotThereYetIsLookedForAgain(t *testing.T) {
 	// search that found nothing has to be repeated — but not every poll: it
 	// walks every project directory the user has.
 	p := newProject(t)
-	reader := NewReader()
+	reader := p.reader()
 	clock := time.Now()
 	reader.now = func() time.Time { return clock }
 
@@ -329,7 +334,7 @@ func TestRetainForgetsTheSessionsARunOutlived(t *testing.T) {
 	p := newProject(t)
 	p.write(aiTitle("OAuth redirect fix"))
 
-	reader := NewReader()
+	reader := p.reader()
 	reader.Topic(session, started)
 
 	if len(reader.sessions) != 1 {
@@ -354,7 +359,7 @@ func TestATranscriptThatWentMissingIsLookedForAgain(t *testing.T) {
 	// transcript that was rotated away froze the topic on whatever it last
 	// said. locateRetry exists for exactly this and could never apply.
 	p := newProject(t)
-	reader := NewReader()
+	reader := p.reader()
 	clock := time.Now()
 	reader.now = func() time.Time { return clock }
 
@@ -401,7 +406,7 @@ func TestTheDirectoryTheAgentIsWorkingInIsRead(t *testing.T) {
 	p := newProject(t)
 	p.write(humanIn("fix the redirect", started), agentIn(worktree))
 
-	if got := NewReader().Topic(session, started); got.Dir != worktree {
+	if got := p.reader().Topic(session, started); got.Dir != worktree {
 		t.Errorf("dir = %q, want %q", got.Dir, worktree)
 	}
 }
@@ -414,7 +419,7 @@ func TestALineCarryingNoDirectoryLeavesTheLastOneStanding(t *testing.T) {
 	p := newProject(t)
 	p.write(agentIn(worktree), aiTitle("OAuth redirect fix"))
 
-	got := NewReader().Topic(session, started)
+	got := p.reader().Topic(session, started)
 	switch {
 	case got.Dir != worktree:
 		t.Errorf("dir = %q, want %q", got.Dir, worktree)
@@ -431,7 +436,7 @@ func TestADirectoryOutlivesTheReadThatCarriedIt(t *testing.T) {
 	p := newProject(t)
 	p.write(agentIn(worktree))
 
-	reader := NewReader()
+	reader := p.reader()
 	if got := reader.Topic(session, started); got.Dir != worktree {
 		t.Fatalf("dir = %q, want %q", got.Dir, worktree)
 	}
@@ -451,7 +456,7 @@ func TestALaterReadFollowsTheAgentToItsNextDirectory(t *testing.T) {
 	p := newProject(t)
 	p.write(agentIn(first))
 
-	reader := NewReader()
+	reader := p.reader()
 	if got := reader.Topic(session, started); got.Dir != first {
 		t.Fatalf("dir = %q, want %q", got.Dir, first)
 	}
@@ -470,7 +475,7 @@ func TestATranscriptThatShrankForgetsTheDirectoryToo(t *testing.T) {
 	p := newProject(t)
 	p.write(human("fix the redirect"), agentIn(started+"/.claude/worktrees/oauth"))
 
-	reader := NewReader()
+	reader := p.reader()
 	if got := reader.Topic(session, started); got.Dir == "" {
 		t.Fatal("dir is empty before the transcript was replaced")
 	}
@@ -490,7 +495,7 @@ func TestATranscriptThatWentMissingKeepsItsDirectory(t *testing.T) {
 	p := newProject(t)
 	p.write(agentIn(worktree))
 
-	reader := NewReader()
+	reader := p.reader()
 	if got := reader.Topic(session, started); got.Dir != worktree {
 		t.Fatalf("dir = %q, want %q", got.Dir, worktree)
 	}
@@ -511,7 +516,7 @@ func TestADirectoryIsReportedAsTheTranscriptSpelledIt(t *testing.T) {
 		p := newProject(t)
 		p.write(agentIn(dir))
 
-		if got := NewReader().Topic(session, started); got.Dir != dir {
+		if got := p.reader().Topic(session, started); got.Dir != dir {
 			t.Errorf("dir %q reported as %q", dir, got.Dir)
 		}
 	}
@@ -523,7 +528,7 @@ func TestALineCarryingAnEmptyDirectoryLeavesTheLastOneStanding(t *testing.T) {
 	p := newProject(t)
 	p.write(agentIn("/work/dashboard"), agentIn(""))
 
-	if got := NewReader().Topic(session, started); got.Dir != "/work/dashboard" {
+	if got := p.reader().Topic(session, started); got.Dir != "/work/dashboard" {
 		t.Errorf("dir = %q, want the last directory the transcript named", got.Dir)
 	}
 }
@@ -532,7 +537,7 @@ func TestATranscriptNamingNoDirectorySaysNothingAboutOne(t *testing.T) {
 	p := newProject(t)
 	p.write(human("fix the redirect"), aiTitle("OAuth redirect fix"))
 
-	got := NewReader().Topic(session, started)
+	got := p.reader().Topic(session, started)
 	switch {
 	case got.Dir != "":
 		t.Errorf("dir = %q, want none", got.Dir)
@@ -553,12 +558,12 @@ func TestASessionInAnExtraConfigHomeIsFound(t *testing.T) {
 	// The home a shell picks per directory is not the one the server passes
 	// the plugin, so a session written there is only found by searching both.
 	worktree := t.TempDir()
-	newProject(t)
+	p := newProject(t)
 
 	other := t.TempDir()
 	newProjectIn(t, other).write(agentIn(worktree), aiTitle("OAuth redirect fix"))
 
-	got := NewReader(other).Topic(session, started)
+	got := p.reader(other).Topic(session, started)
 	switch {
 	case got.Text() != "OAuth redirect fix":
 		t.Errorf("text = %q, want the title from the extra home", got.Text())
@@ -576,7 +581,7 @@ func TestTheFirstConfigHomeAnswersWhenBothHoldTheSession(t *testing.T) {
 	other := t.TempDir()
 	newProjectIn(t, other).write(aiTitle("The extra home"))
 
-	if got := NewReader(other).Topic(session, started); got.Text() != "The home the server named" {
+	if got := p.reader(other).Topic(session, started); got.Text() != "The home the server named" {
 		t.Errorf("text = %q, want the first home's transcript", got.Text())
 	}
 }
@@ -586,7 +591,7 @@ func TestAConfigHomeThatCannotBeUsedIsSkipped(t *testing.T) {
 	// not the homes named beside it. Nothing here refuses a home for how it is
 	// spelled: the search simply misses, which is why configuration can warn
 	// about a home and still hand it over.
-	newProject(t)
+	p := newProject(t)
 
 	file := filepath.Join(t.TempDir(), "not-a-directory")
 	if err := os.WriteFile(file, nil, 0o600); err != nil {
@@ -597,31 +602,31 @@ func TestAConfigHomeThatCannotBeUsedIsSkipped(t *testing.T) {
 	unusable := []string{filepath.Join(t.TempDir(), "never-created"), file, "relative/home"}
 	newProjectIn(t, other).write(aiTitle("OAuth redirect fix"))
 
-	got := NewReader(append(unusable, other)...).Topic(session, started)
+	got := p.reader(append(unusable, other)...).Topic(session, started)
 	if got.Text() != "OAuth redirect fix" {
 		t.Errorf("text = %q, want the usable home still read", got.Text())
 	}
 }
 
 func TestNoExtraConfigHomesLeavesTheSearchWhereItWas(t *testing.T) {
-	newProject(t)
+	p := newProject(t)
 
 	elsewhere := t.TempDir()
 	newProjectIn(t, elsewhere).write(aiTitle("OAuth redirect fix"))
 
-	if got := NewReader().Topic(session, started); got.Text() != "" {
+	if got := p.reader().Topic(session, started); got.Text() != "" {
 		t.Errorf("text = %q, want a home nobody named left unread", got.Text())
 	}
 }
 
 func TestATranscriptInAnExtraConfigHomeKeepsBeingRead(t *testing.T) {
-	newProject(t)
+	p := newProject(t)
 
 	other := t.TempDir()
 	q := newProjectIn(t, other)
 	q.write(human("fix the redirect"))
 
-	reader := NewReader(other)
+	reader := p.reader(other)
 	if got := reader.Topic(session, started); got.Text() != "fix the redirect" {
 		t.Fatalf("text = %q, want the opening prompt", got.Text())
 	}
@@ -641,7 +646,7 @@ func TestATranscriptThatMovedHomesIsFoundAgain(t *testing.T) {
 
 	other := t.TempDir()
 
-	reader := NewReader(other)
+	reader := p.reader(other)
 	clock := time.Now()
 	reader.now = func() time.Time { return clock }
 

@@ -30,10 +30,16 @@ var (
 )
 
 func testConfig() Config {
+	// The homes come from the environment the way LoadConfig would read them,
+	// so a fixture that points CLAUDE_CONFIG_DIR at its own directory reaches
+	// the transcript reader without also naming the home twice.
+	homes, _ := configHomes()
+
 	return Config{
-		Poll:      testPoll,
-		MaxLength: resolver.DefaultMaxLength,
-		BranchMax: resolver.DefaultBranchMaxLength,
+		Poll:       testPoll,
+		MaxLength:  resolver.DefaultMaxLength,
+		BranchMax:  resolver.DefaultBranchMaxLength,
+		ClaudeDirs: homes,
 	}
 }
 
@@ -1500,7 +1506,7 @@ func worktreeIn(t *testing.T, root, name, branch string) string {
 func stateDir(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
-	t.Setenv("CLAUDE_CONFIG_DIR", root)
+	t.Setenv(EnvClaudeConfigDir, root)
 
 	return root
 }

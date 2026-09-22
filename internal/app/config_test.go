@@ -3,6 +3,7 @@ package app
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -28,7 +29,9 @@ func isolate(t *testing.T) {
 		EnvDebug, EnvPoll, EnvMaxLength, EnvBranchMax,
 		EnvPosition, EnvManual, EnvTranscript, EnvAgentName, EnvPanes,
 		EnvPreferAgent, EnvWorkspaces, EnvWorkspaceMaxLength,
-		EnvClaudeDirs,
+		// Claude Code's own variable is cleared with ours: it now decides a
+		// Config field, so a developer's real home would otherwise be read.
+		EnvClaudeDirs, EnvClaudeConfigDir,
 	}
 
 	for _, name := range names {
@@ -488,8 +491,9 @@ func TestLoadConfigWarnsAboutAConfigHomeItCannotUse(t *testing.T) {
 
 	// The warning is advisory: the home is still searched, because the user can
 	// create it a minute after the plugin started.
-	if len(cfg.ClaudeDirs) != 2 || cfg.ClaudeDirs[0] != missing || cfg.ClaudeDirs[1] != usable {
-		t.Errorf("ClaudeDirs = %q, want both homes kept in the order written", cfg.ClaudeDirs)
+	// The home Claude Code names itself comes first, then the entries added.
+	if want := []string{claudeHome(), missing, usable}; !slices.Equal(cfg.ClaudeDirs, want) {
+		t.Errorf("ClaudeDirs = %q, want %q", cfg.ClaudeDirs, want)
 	}
 }
 
@@ -505,8 +509,8 @@ func TestAConfigHomeWrittenWithATrailingSeparatorIsRead(t *testing.T) {
 		t.Fatalf("warnings = %v, want none for a home that exists", warnings)
 	}
 
-	if len(cfg.ClaudeDirs) != 1 || cfg.ClaudeDirs[0] != home {
-		t.Errorf("ClaudeDirs = %q, want the cleaned home %q", cfg.ClaudeDirs, home)
+	if want := []string{claudeHome(), home}; !slices.Equal(cfg.ClaudeDirs, want) {
+		t.Errorf("ClaudeDirs = %q, want the cleaned home in %q", cfg.ClaudeDirs, want)
 	}
 }
 

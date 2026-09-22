@@ -77,29 +77,16 @@ type transcript struct {
 	searchedAt time.Time
 }
 
-// NewReader builds a reader over the configuration directory Claude Code names
-// itself, then over extra, which is searched in the order given.
-func NewReader(extra ...string) *Reader {
+// NewReader builds a reader over homes, the Claude Code configuration
+// directories a transcript is looked for in, searched in the order given. No
+// home at all is a reader that answers nothing, which is what a machine with
+// no Claude Code on it should get.
+func NewReader(homes ...string) *Reader {
 	return &Reader{
-		roots:    append(roots(), extra...),
+		roots:    homes,
 		sessions: make(map[string]*transcript),
 		now:      time.Now,
 	}
-}
-
-// roots is the configuration directory Claude Code names itself, as a list,
-// and is empty when there is no home to read at all.
-func roots() []string {
-	if dir := os.Getenv("CLAUDE_CONFIG_DIR"); dir != "" {
-		return []string{dir}
-	}
-
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return nil
-	}
-
-	return []string{filepath.Join(home, ".claude")}
 }
 
 // Topic reports what the session is about, and the zero topic when nothing can
