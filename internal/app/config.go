@@ -35,6 +35,12 @@ const (
 	EnvClaudeDirs = "HERDR_AUTO_TITLE_CLAUDE_DIRS"
 )
 
+// EnvClaudeConfigDir is Claude Code's own variable, not one of ours: it names
+// the configuration home Claude Code files its sessions under, and Herdr's
+// server passes it through to the plugin. It is read here with every other
+// setting so that nothing downstream goes to the environment on its own.
+const EnvClaudeConfigDir = "CLAUDE_CONFIG_DIR"
+
 // DefaultPoll is how often the session is read. A six-pane snapshot measured
 // 0.47 ms and 6 KB, so twice a second costs about a thousandth of a core, and
 // a rename lands while the user is still looking at the tab.
@@ -78,9 +84,10 @@ type Config struct {
 	// WorkspaceMaxLength bounds a workspace label, in columns. It is separate
 	// from MaxLength because the workspace row is not the tab bar.
 	WorkspaceMaxLength int
-	// ClaudeDirs are configuration homes to read transcripts from besides the
-	// one CLAUDE_CONFIG_DIR gives, searched in the order written. A home the
-	// user's shell picks per directory cannot be discovered, so it is named.
+	// ClaudeDirs are the configuration homes to read transcripts from, in
+	// search order: the one CLAUDE_CONFIG_DIR gives, then any EnvClaudeDirs
+	// adds. A home the user's shell picks per directory cannot be discovered,
+	// so it is named.
 	ClaudeDirs []string
 }
 
@@ -176,11 +183,18 @@ func readConfigFile() string {
 	return fmt.Sprintf("%s %s, so nothing in it is used", path, err)
 }
 
-// configHomes reads EnvClaudeDirs: the configuration directories it names,
-// cleaned, and those of them that are not directories right now. An entry is
-// kept either way — a home can be created after the plugin starts, and the
-// search costs one miss until it is — so the second list only feeds a warning.
+// configHomes is every configuration home to look for a transcript in, in
+// search order: the one Claude Code names itself first, then the entries
+// EnvClaudeDirs adds, cleaned. unreadable are those added entries that are not
+// directories right now. An entry is kept either way — a home can be created
+// after the plugin starts, and the search costs one miss until it is — so the
+// second list only feeds a warning. The first home is never warned about: an
+// installation with no sessions yet is ordinary, not a typo.
 func configHomes() (dirs, unreadable []string) {
+	if base := claudeHome(); base != "" {
+		dirs = append(dirs, base)
+	}
+
 	for _, entry := range filepath.SplitList(os.Getenv(EnvClaudeDirs)) {
 		entry = strings.TrimSpace(entry)
 		if entry == "" {
@@ -197,6 +211,22 @@ func configHomes() (dirs, unreadable []string) {
 	}
 
 	return dirs, unreadable
+}
+
+// claudeHome is the configuration directory Claude Code names itself, and the
+// default it uses when the variable says nothing. It is empty only when there
+// is no home directory to fall back to, which leaves nothing to read.
+func claudeHome() string {
+	if dir := os.Getenv(EnvClaudeConfigDir); dir != "" {
+		return dir
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+
+	return filepath.Join(home, ".claude")
 }
 
 // fromEnv returns what the environment says name is, or fallback when it says
