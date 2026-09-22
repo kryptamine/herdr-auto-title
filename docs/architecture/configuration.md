@@ -14,6 +14,12 @@ Every setting Auto Title has is a `HERDR_AUTO_TITLE_*` variable, read in
 environment, or written into a file that is loaded into the environment before
 anything reads it.
 
+One variable read there is not ours. `CLAUDE_CONFIG_DIR` is Claude Code's own,
+and Herdr's server passes it through to the plugin; it is read here so that the
+transcript reader is handed the homes to search rather than going to the
+environment for them, which is what makes the order the file is loaded in stop
+mattering.
+
 ## Why a file exists
 
 Auto Title is started by the Herdr **server**, through the `[[startup]]` entry

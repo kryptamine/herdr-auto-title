@@ -128,9 +128,11 @@ order, `locateUnder` doing one home's own two-step lookup, so a session found in
 the first costs what it cost before the setting existed. The homes are named
 rather than discovered: a scan for anything shaped like a configuration home
 would read directories the user never pointed the plugin at, which is the one
-thing this source does not do. The setting is read in `internal/app/config.go`
-with every other one and reaches the reader as `Config.ClaudeDirs`, so nothing
-here goes to the environment on its own. An entry that is not a directory when
+thing this source does not do. Both settings are read in
+`internal/app/config.go` with every other one and reach the reader as
+`Config.ClaudeDirs`, already in search order, so `internal/claude` reads no
+environment at all: a reader is built over the homes it is handed, and no home
+at all answers nothing. An entry that is not a directory when
 the plugin starts is reported and searched anyway: a home can be created a
 minute later, and a miss costs one glob.
 
