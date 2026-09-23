@@ -38,7 +38,10 @@ func isolate(t *testing.T) {
 		// Setenv first for its cleanup, which then also undoes what the
 		// configuration file sets; an empty variable is not an absent one.
 		t.Setenv(name, "")
-		os.Unsetenv(name)
+
+		if err := os.Unsetenv(name); err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 

@@ -118,8 +118,11 @@ future reset action will touch that state from outside the loop.
 
 The linter lives in `tools/go.mod`, a module of its own, so its dependency tree
 stays out of the plugin's: the main module keeps two dependencies and still
-builds on Go 1.24, which is what Herdr needs at install time. `errcheck` is off
-— the places that swallow an error say why they do.
+builds on Go 1.24, which is what Herdr needs at install time. An error
+swallowed on purpose is dropped with `_ =`, which is what `errcheck` asks
+for; only a `Close` made through `io.Closer` or on a `net.Listener` is
+exempt, which is how connections and listeners are held here, and a file's
+is not.
 
 ## Herdr socket API — the traps
 

@@ -110,7 +110,7 @@ func start(exe string) (*os.Process, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer null.Close()
+	defer func() { _ = null.Close() }() // the child holds its own copies
 
 	// The program is this binary's own path and the arguments are fixed, so
 	// nothing terminal-derived is run here.
