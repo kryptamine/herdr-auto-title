@@ -602,10 +602,12 @@ func TestAConfigHomeThatCannotBeUsedIsSkipped(t *testing.T) {
 	}
 
 	other := t.TempDir()
-	unusable := []string{filepath.Join(t.TempDir(), "never-created"), file, "relative/home"}
 	newProjectIn(t, other).write(aiTitle("OAuth redirect fix"))
 
-	got := p.reader(append(unusable, other)...).Topic(session, started)
+	// The usable home comes last, so reaching it means every other was skipped.
+	homes := []string{filepath.Join(t.TempDir(), "never-created"), file, "relative/home", other}
+
+	got := p.reader(homes...).Topic(session, started)
 	if got.Text() != "OAuth redirect fix" {
 		t.Errorf("text = %q, want the usable home still read", got.Text())
 	}
