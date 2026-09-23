@@ -88,22 +88,33 @@ func sshIsTunnel(args []string) bool {
 			return false
 		}
 
-		for j := 1; j < len(arg); j++ {
-			if _, takesValue := sshFlagsWithValue[arg[j]]; takesValue {
-				if j == len(arg)-1 {
-					i++
-				}
+		tunnel, consumesNext := sshFlagGroup(arg)
+		if tunnel {
+			return true
+		}
 
-				break
-			}
-
-			if arg[j] == 'N' {
-				return true
-			}
+		if consumesNext {
+			i++
 		}
 	}
 
 	return false
+}
+
+// sshFlagGroup reads one cluster of short flags such as -fNp: whether it holds
+// -N, and whether its last flag takes its value from the next argument.
+func sshFlagGroup(arg string) (tunnel, consumesNext bool) {
+	for j := 1; j < len(arg); j++ {
+		if _, takesValue := sshFlagsWithValue[arg[j]]; takesValue {
+			return false, j == len(arg)-1
+		}
+
+		if arg[j] == 'N' {
+			return true, false
+		}
+	}
+
+	return false, false
 }
 
 // sshHost extracts the destination: the first argument that is not an option or

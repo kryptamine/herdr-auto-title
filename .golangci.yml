@@ -30,6 +30,7 @@ linters:
     - funlen          # a function longer than it can be read in one screen
     - gocheckcompilerdirectives # a //go: directive the compiler will not read
     - gochecknoinits  # an init() doing work nobody can see the call to
+    - gocognit        # a function harder to follow than its branch count says
     - goconst         # a literal repeated often enough to deserve a name
     - gocritic        # a grab-bag of correctness and style checks
     - godoclint       # a doc comment that does not open with its name
@@ -98,6 +99,10 @@ linters:
       forbid:
         - pattern: ^exec\.Command(Context)?$
           msg: a terminal-derived value must never reach a shell
+    gocognit:
+      # Below gocognit's own 30: every `if err != nil` counts, so this is
+      # already stricter than the number suggests.
+      min-complexity: 15
     godoclint:
       default: all
       disable:
@@ -115,11 +120,12 @@ linters:
         linters:
           - gosec
           - noctx
-      # A table test is long because of its rows, and a literal repeated in
-      # expectations reads better than a constant the reader has to look up.
+      # A table test is long because of its rows and deep because t.Run nests
+      # each, and a literal repeated in expectations reads better than a name.
       - path: _test\.go
         linters:
           - funlen
+          - gocognit
           - goconst
 
 formatters:
