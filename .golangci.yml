@@ -48,6 +48,7 @@ linters:
     - makezero        # a slice made with a length and then appended to
     - mirror          # a string converted to bytes to call the bytes twin
     - misspell        # typos, in a repository that is mostly prose
+    - mnd             # a number in the code that should be a named constant
     - modernize       # idioms superseded by newer Go versions
     - musttag         # a struct reaching encoding/json without tags
     - nakedret        # naked returns far from their signature
@@ -111,6 +112,13 @@ linters:
         - require-doc
         - require-stdlib-doclink
         - max-len
+    mnd:
+      # A file mode is read as a mode, not as a number, and a factor of two
+      # says doubling or halving by itself.
+      ignored-numbers:
+        - "2"
+      ignored-functions:
+        - ^os\.(Chmod|Mkdir|MkdirAll|OpenFile|WriteFile)$
 
   exclusions:
     rules:

@@ -3,6 +3,7 @@ package resolver
 import (
 	"regexp"
 	"strings"
+	"unicode"
 )
 
 // genericValues name a program or a place rather than what the user is doing
@@ -120,7 +121,7 @@ func isDrivePath(word string) bool {
 		return false
 	}
 
-	letter := word[0] | 0x20
+	letter := unicode.ToLower(rune(word[0]))
 
 	return letter >= 'a' && letter <= 'z'
 }
