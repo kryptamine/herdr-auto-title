@@ -96,6 +96,7 @@ func Resolvers(
 		BranchMax:       cfg.BranchMax,
 		HideAgentName:   !cfg.ShowAgentName,
 		NamesWorkspaces: cfg.namesWorkspaces(),
+		Home:            cfg.Home,
 	})
 
 	var titles resolver.TitleResolver = chain
@@ -124,6 +125,7 @@ func WorkspaceResolver(cfg Config) resolver.WorkspaceResolver {
 		MaxLength:     cfg.WorkspaceMaxLength,
 		BranchMax:     cfg.BranchMax,
 		HideAgentName: !cfg.ShowAgentName,
+		Home:          cfg.Home,
 	})
 }
 

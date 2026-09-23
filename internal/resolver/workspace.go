@@ -30,7 +30,7 @@ func Places(opts Options) *Deterministic {
 		NewTranscript(),
 		NewSSH(),
 		NewGit(opts.BranchMax),
-		NewCWD(),
+		NewCWD(opts.Home),
 	)
 }
 

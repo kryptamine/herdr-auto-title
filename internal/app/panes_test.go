@@ -224,8 +224,8 @@ func TestNamingPanesCostsOneProcessReadPerPane(t *testing.T) {
 // which is what decides what reaches the pane path and what does not.
 func appFromConfig(t *testing.T, cfg Config) *App {
 	t.Helper()
-	setHome(t, filepath.Join(t.TempDir(), "home"))
 
+	cfg.Home = testHome(t)
 	titles, panes, workspaces := Resolvers(cfg)
 
 	return New(cfg, discardLogger(), titles, panes, workspaces, &fakeInstance{})
@@ -347,6 +347,7 @@ func TestOnlyOnePaneOfATabCarriesTheBranchTheTabShows(t *testing.T) {
 
 	cfg := paneConfig()
 	cfg.ReadTranscripts = true
+	cfg.ClaudeDirs = []string{root}
 
 	h := startConfigured(t, herdrtest.New(oneTab(), []herdr.PaneInfo{
 		agentPaneInfo("wE:p1", testSession, repo, true),
