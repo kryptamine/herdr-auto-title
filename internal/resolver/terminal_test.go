@@ -17,6 +17,8 @@ func tabWithPane(pane *state.PaneState) state.TabState {
 }
 
 func TestTerminalTitleBeatsTheWorkingDirectory(t *testing.T) {
+	t.Parallel()
+
 	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
 		Dir:           dashboard,
 		TerminalTitle: "Fix OAuth redirect",
@@ -36,9 +38,13 @@ func TestTerminalTitleBeatsTheWorkingDirectory(t *testing.T) {
 }
 
 func TestGenericTerminalTitleFallsThrough(t *testing.T) {
+	t.Parallel()
+
 	// Every one of these was observed on a live Herdr session.
 	for _, title := range []string{"zsh", "Claude Code", "node", "~", "~/W/dashboard", ""} {
 		t.Run(title, func(t *testing.T) {
+			t.Parallel()
+
 			got := defaultChain().Resolve(tabWithPane(&state.PaneState{
 				Dir:           dashboard,
 				TerminalTitle: title,
@@ -56,6 +62,8 @@ func TestGenericTerminalTitleFallsThrough(t *testing.T) {
 }
 
 func TestTerminalTitleFallsBackToTheRawField(t *testing.T) {
+	t.Parallel()
+
 	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
 		Dir:              dashboard,
 		TerminalTitleRaw: "\x1b[32m✳ Fix OAuth redirect\x1b[0m",
@@ -68,6 +76,8 @@ func TestTerminalTitleFallsBackToTheRawField(t *testing.T) {
 }
 
 func TestStrippedTerminalTitleWinsOverTheRawOne(t *testing.T) {
+	t.Parallel()
+
 	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
 		Dir:              dashboard,
 		TerminalTitle:    "Fix OAuth redirect",
@@ -80,6 +90,8 @@ func TestStrippedTerminalTitleWinsOverTheRawOne(t *testing.T) {
 }
 
 func TestTerminalTitleIsSanitized(t *testing.T) {
+	t.Parallel()
+
 	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
 		Dir:           dashboard,
 		TerminalTitle: "\x1b[31mFix OAuth\nredirect\x1b[0m\t",
@@ -91,6 +103,8 @@ func TestTerminalTitleIsSanitized(t *testing.T) {
 }
 
 func TestLongTerminalTitleIsTruncatedAsAWhole(t *testing.T) {
+	t.Parallel()
+
 	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
 		Dir:           dashboard,
 		TerminalTitle: strings.Repeat("long ", 40),
@@ -106,6 +120,8 @@ func TestLongTerminalTitleIsTruncatedAsAWhole(t *testing.T) {
 }
 
 func TestTerminalTitleWithoutAWorkingDirectory(t *testing.T) {
+	t.Parallel()
+
 	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
 		TerminalTitle: "Fix OAuth redirect",
 	}))
@@ -117,6 +133,8 @@ func TestTerminalTitleWithoutAWorkingDirectory(t *testing.T) {
 }
 
 func TestTerminalTitleRepeatingTheContextIsDropped(t *testing.T) {
+	t.Parallel()
+
 	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
 		Dir:           dashboard,
 		TerminalTitle: "Dashboard",
@@ -128,6 +146,8 @@ func TestTerminalTitleRepeatingTheContextIsDropped(t *testing.T) {
 }
 
 func TestTerminalTitleWithNothingElse(t *testing.T) {
+	t.Parallel()
+
 	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
 		TerminalTitle: "zsh",
 	}))
@@ -138,6 +158,8 @@ func TestTerminalTitleWithNothingElse(t *testing.T) {
 }
 
 func TestEditorTitleKeepsTheFileAndDropsThePath(t *testing.T) {
+	t.Parallel()
+
 	// All three were observed on a live session.
 	tests := []struct {
 		title string
@@ -163,6 +185,8 @@ func TestEditorTitleKeepsTheFileAndDropsThePath(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.title, func(t *testing.T) {
+			t.Parallel()
+
 			got := Default(
 				Options{MaxLength: wide, BranchMax: DefaultBranchMaxLength},
 			).Resolve(tabWithPane(&state.PaneState{

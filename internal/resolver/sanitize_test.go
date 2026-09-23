@@ -3,6 +3,8 @@ package resolver
 import "testing"
 
 func TestSanitize(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name   string
 		in     string
@@ -45,6 +47,8 @@ func TestSanitize(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			if got := Sanitize(tc.in, tc.maxLen); got != tc.want {
 				t.Errorf("Sanitize(%q, %d) = %q, want %q", tc.in, tc.maxLen, got, tc.want)
 			}
@@ -53,6 +57,8 @@ func TestSanitize(t *testing.T) {
 }
 
 func TestSanitizeRemovesFormatCharacters(t *testing.T) {
+	t.Parallel()
+
 	// Invisible by definition, so each case names what it would forge.
 	tests := []struct {
 		name string
@@ -74,6 +80,8 @@ func TestSanitizeRemovesFormatCharacters(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			if got := Sanitize(tc.in, 64); got != tc.want {
 				t.Errorf("Sanitize(%q) = %q, want %q", tc.in, got, tc.want)
 			}
@@ -82,6 +90,8 @@ func TestSanitizeRemovesFormatCharacters(t *testing.T) {
 }
 
 func TestSanitizeKeepsTheZeroWidthJoiner(t *testing.T) {
+	t.Parallel()
+
 	// The one format character a title may carry: without it the family emoji
 	// truncation is careful to keep whole falls apart into four people.
 	family := "work \U0001F468\u200D\U0001F469\u200D\U0001F467\u200D\U0001F466"
@@ -91,6 +101,8 @@ func TestSanitizeKeepsTheZeroWidthJoiner(t *testing.T) {
 }
 
 func TestSanitizeIsIdempotent(t *testing.T) {
+	t.Parallel()
+
 	in := "\x1b[31mdashboard\x1b[0m ›  › tests\n"
 
 	once := Sanitize(in, 64)
@@ -100,6 +112,8 @@ func TestSanitizeIsIdempotent(t *testing.T) {
 }
 
 func TestFormat(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name  string
 		parts Parts
@@ -134,6 +148,8 @@ func TestFormat(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			if got := Format(tc.parts, 64); got != tc.want {
 				t.Errorf("Format(%+v) = %q, want %q", tc.parts, got, tc.want)
 			}
@@ -142,6 +158,8 @@ func TestFormat(t *testing.T) {
 }
 
 func TestTruncationNeverCutsAGraphemeClusterOpen(t *testing.T) {
+	t.Parallel()
+
 	// Several code points can make the one character a reader sees: a family
 	// emoji is four joined by zero-width joiners. Cutting inside one leaves
 	// half a character, ending on an invisible joiner.
@@ -168,6 +186,8 @@ func TestTruncationNeverCutsAGraphemeClusterOpen(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			if got := Sanitize(tc.in, tc.maxWidth); got != tc.want {
 				t.Errorf("Sanitize(%q, %d) = %q, want %q", tc.in, tc.maxWidth, got, tc.want)
 			}
@@ -176,6 +196,8 @@ func TestTruncationNeverCutsAGraphemeClusterOpen(t *testing.T) {
 }
 
 func TestFormatTruncatesAssembledTitle(t *testing.T) {
+	t.Parallel()
+
 	got := Format(Parts{Context: "dashboard", Activity: "OAuth scopes"}, 12)
 	if got != "dashboard" {
 		t.Errorf("Format truncated to %q, want %q", got, "dashboard")

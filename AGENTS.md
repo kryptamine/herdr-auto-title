@@ -114,7 +114,10 @@ make probe-snapshot # the session snapshot the plugin polls
 
 `go test -race` is the gate, not `go test`: the state a poll carries between
 polls is shared, two tests still run the loop in a goroutine of its own, and a
-future reset action will touch that state from outside the loop.
+future reset action will touch that state from outside the loop. Tests run in
+parallel so the detector has something to catch, and a test therefore takes
+its settings from the `Config` it builds, never from the environment; the few
+that exercise reading the environment itself say so in a `//nolint`.
 
 The linter lives in `tools/go.mod`, a module of its own, so its dependency tree
 stays out of the plugin's: the main module keeps two dependencies and still

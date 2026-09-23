@@ -72,6 +72,8 @@ func mustRead(t *testing.T, dir string) Checkout {
 }
 
 func TestTheCheckedOutBranchIsRead(t *testing.T) {
+	t.Parallel()
+
 	r := newRepo(t).head(t, "ref: refs/heads/feature/MC-13675\n")
 
 	if got := mustRead(t, r.root).Branch; got != "feature/MC-13675" {
@@ -80,6 +82,8 @@ func TestTheCheckedOutBranchIsRead(t *testing.T) {
 }
 
 func TestTheRepositoryIsFoundFromASubdirectory(t *testing.T) {
+	t.Parallel()
+
 	r := newRepo(t).head(t, "ref: refs/heads/side\n")
 
 	if got := mustRead(t, r.subdir(t, "internal/app")).Branch; got != "side" {
@@ -88,12 +92,16 @@ func TestTheRepositoryIsFoundFromASubdirectory(t *testing.T) {
 }
 
 func TestADirectoryOutsideARepositoryIsNotOne(t *testing.T) {
+	t.Parallel()
+
 	if Read(t.TempDir()) != (Checkout{}) {
 		t.Error("a directory with no .git reported a checkout")
 	}
 }
 
 func TestOnlyAnAbsolutePathIsRead(t *testing.T) {
+	t.Parallel()
+
 	// A relative path would be resolved against the plugin's own directory,
 	// naming a tab after a repository nobody is looking at.
 	if Read("relative/path") != (Checkout{}) {
@@ -102,6 +110,8 @@ func TestOnlyAnAbsolutePathIsRead(t *testing.T) {
 }
 
 func TestTheDefaultBranchIsReadFromTheRepository(t *testing.T) {
+	t.Parallel()
+
 	r := newRepo(t).head(t, "ref: refs/heads/side\n").originHead(t, "develop")
 
 	if got := mustRead(t, r.root).Default; got != "develop" {
@@ -110,12 +120,16 @@ func TestTheDefaultBranchIsReadFromTheRepository(t *testing.T) {
 }
 
 func TestARepositoryWithoutARemoteRecordsNoDefault(t *testing.T) {
+	t.Parallel()
+
 	if got := mustRead(t, newRepo(t).root).Default; got != "" {
 		t.Errorf("default %q, want none", got)
 	}
 }
 
 func TestADetachedHeadIsAbbreviated(t *testing.T) {
+	t.Parallel()
+
 	r := newRepo(t).head(t, "aaf1fd85f68047764760489dbfc3ecb5ab9d0cb8\n")
 
 	checkout := mustRead(t, r.root)
@@ -129,6 +143,8 @@ func TestADetachedHeadIsAbbreviated(t *testing.T) {
 }
 
 func TestASha256HeadIsAbbreviatedToo(t *testing.T) {
+	t.Parallel()
+
 	r := newRepo(t).head(t, "9c8f2b1a0123456789abcdef0123456789abcdef0123456789abcdef08b1cd2e\n")
 
 	if got := mustRead(t, r.root).Commit; got != "9c8f2b1" {
@@ -137,6 +153,8 @@ func TestASha256HeadIsAbbreviatedToo(t *testing.T) {
 }
 
 func TestAHeadHoldingSomethingElseIsNoCheckout(t *testing.T) {
+	t.Parallel()
+
 	// A HEAD that is neither a ref nor a hash must not reach a tab label. A
 	// hash of the wrong length is not one: that is what bounds the read.
 	for _, content := range []string{
@@ -151,6 +169,8 @@ func TestAHeadHoldingSomethingElseIsNoCheckout(t *testing.T) {
 }
 
 func TestARebaseNamesTheBranchItSetAside(t *testing.T) {
+	t.Parallel()
+
 	// Both backends: the merge backend is the default, the apply backend is
 	// what `--apply` and `git am` use.
 	for _, state := range []string{"rebase-merge", "rebase-apply"} {
@@ -169,6 +189,8 @@ func TestARebaseNamesTheBranchItSetAside(t *testing.T) {
 }
 
 func TestAWorktreeIsFollowedToItsOwnHead(t *testing.T) {
+	t.Parallel()
+
 	main := newRepo(t).originHead(t, "main")
 	worktreeGitDir := filepath.Join(main.gitDir, "worktrees", "wt")
 	main.write(t, filepath.Join(worktreeGitDir, "HEAD"), "ref: refs/heads/side\n")
@@ -188,6 +210,8 @@ func TestAWorktreeIsFollowedToItsOwnHead(t *testing.T) {
 }
 
 func TestARelativeGitdirIsResolvedAgainstTheFileHoldingIt(t *testing.T) {
+	t.Parallel()
+
 	// A submodule records its git directory relative to its own working tree.
 	parent := newRepo(t)
 	moduleGitDir := filepath.Join(parent.gitDir, "modules", "vendor")
@@ -202,6 +226,8 @@ func TestARelativeGitdirIsResolvedAgainstTheFileHoldingIt(t *testing.T) {
 }
 
 func TestAnUnreadableGitFileIsNoRepository(t *testing.T) {
+	t.Parallel()
+
 	root := t.TempDir()
 	r := repo{root: root, gitDir: filepath.Join(root, ".git")}
 	r.write(t, filepath.Join(root, ".git"), "not a gitdir line\n")
@@ -212,6 +238,8 @@ func TestAnUnreadableGitFileIsNoRepository(t *testing.T) {
 }
 
 func TestATrunkNobodyIsOnIsNoCheckout(t *testing.T) {
+	t.Parallel()
+
 	// The zero Checkout is how Read says it found nothing, so a repository that
 	// records a default branch but holds no readable HEAD must answer with one:
 	// a Default on its own would read as a checkout.
@@ -223,6 +251,8 @@ func TestATrunkNobodyIsOnIsNoCheckout(t *testing.T) {
 }
 
 func TestOnlyTheFirstLineOfARefIsRead(t *testing.T) {
+	t.Parallel()
+
 	// Nothing writes a second line, but a tab label is one line either way.
 	r := newRepo(t).head(t, "ref: refs/heads/side\nrubbish\n")
 
@@ -232,6 +262,8 @@ func TestOnlyTheFirstLineOfARefIsRead(t *testing.T) {
 }
 
 func TestAHugeHeadIsNotReadWhole(t *testing.T) {
+	t.Parallel()
+
 	r := newRepo(t)
 
 	huge := make([]byte, 2*maxRefFileSize)
@@ -248,6 +280,8 @@ func TestAHugeHeadIsNotReadWhole(t *testing.T) {
 }
 
 func TestAWorktreeSharesItsRepositorysCommonDirectory(t *testing.T) {
+	t.Parallel()
+
 	// The common directory is what tells a worktree of this repository from a
 	// checkout of another one, so the two must read identically.
 	main := newRepo(t).originHead(t, "main")
@@ -268,6 +302,8 @@ func TestAWorktreeSharesItsRepositorysCommonDirectory(t *testing.T) {
 }
 
 func TestANeighbouringRepositoryHasItsOwnCommonDirectory(t *testing.T) {
+	t.Parallel()
+
 	first := newRepo(t).head(t, "ref: refs/heads/side\n")
 	second := newRepo(t).head(t, "ref: refs/heads/side\n")
 
@@ -277,6 +313,8 @@ func TestANeighbouringRepositoryHasItsOwnCommonDirectory(t *testing.T) {
 }
 
 func TestADirectoryThatIsGoneIsNoCheckout(t *testing.T) {
+	t.Parallel()
+
 	// A worktree removed while something still names it sits inside a
 	// repository often enough that the walk up would answer with that
 	// repository's branch, which nobody is standing on.
@@ -288,6 +326,8 @@ func TestADirectoryThatIsGoneIsNoCheckout(t *testing.T) {
 }
 
 func TestAFileWhereADirectoryWasExpectedIsNoCheckout(t *testing.T) {
+	t.Parallel()
+
 	r := newRepo(t).head(t, "ref: refs/heads/side\n")
 	r.write(t, filepath.Join(r.root, "README.md"), "not a directory\n")
 
@@ -297,6 +337,8 @@ func TestAFileWhereADirectoryWasExpectedIsNoCheckout(t *testing.T) {
 }
 
 func TestTwoCheckoutsBelongTogetherWhenTheirRefsDo(t *testing.T) {
+	t.Parallel()
+
 	// Two checkouts outside any repository carry no common directory and do
 	// compare equal, which an empty label stops rather than a guard here.
 	repo := Checkout{CommonDir: "/work/dashboard/.git"}

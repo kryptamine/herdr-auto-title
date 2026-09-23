@@ -11,6 +11,8 @@ import (
 // splits into "group " and " dashboard", and the tab under it says dashboard
 // again.
 func TestATabDoesNotRepeatARowTheUserSpacedLoosely(t *testing.T) {
+	t.Parallel()
+
 	tab := tabWithPane(&state.PaneState{Dir: dashboard, TerminalTitle: "auth.ts"})
 	tab.WorkspaceName = "group  ›  dashboard"
 

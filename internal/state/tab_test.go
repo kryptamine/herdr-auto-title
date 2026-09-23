@@ -10,6 +10,8 @@ import (
 )
 
 func TestTabContextPrefersFocused(t *testing.T) {
+	t.Parallel()
+
 	now := time.Now()
 	tab := tabOf([]*PaneState{
 		{ID: "wE:p1", ChangedAt: now},
@@ -23,6 +25,8 @@ func TestTabContextPrefersFocused(t *testing.T) {
 }
 
 func TestTabContextFallsBackToMostRecent(t *testing.T) {
+	t.Parallel()
+
 	now := time.Now()
 	tab := tabOf([]*PaneState{
 		{ID: "wE:p1", ChangedAt: now},
@@ -36,6 +40,8 @@ func TestTabContextFallsBackToMostRecent(t *testing.T) {
 }
 
 func TestTabFromKeepsItsLabel(t *testing.T) {
+	t.Parallel()
+
 	tab := TabFrom(
 		herdr.TabInfo{TabID: "wE:t1", Label: "dashboard"},
 		"dashboard",
@@ -62,6 +68,8 @@ func TestTabFromKeepsItsLabel(t *testing.T) {
 }
 
 func TestPaneFromReadsAgentContext(t *testing.T) {
+	t.Parallel()
+
 	stamp := time.Now()
 	pane := PaneFrom(herdr.PaneInfo{
 		PaneID:                "wE:p1",
@@ -92,6 +100,8 @@ func TestPaneFromReadsAgentContext(t *testing.T) {
 }
 
 func TestPaneWithoutAnAgent(t *testing.T) {
+	t.Parallel()
+
 	pane := PaneFrom(
 		herdr.PaneInfo{PaneID: "wE:p1", AgentStatus: "unknown"},
 		time.Time{},
@@ -102,6 +112,8 @@ func TestPaneWithoutAnAgent(t *testing.T) {
 }
 
 func TestTabContextBreaksTiesOnID(t *testing.T) {
+	t.Parallel()
+
 	stamp := time.Now()
 	// Built through TabFrom, because that is where the order is imposed: the
 	// snapshot lists panes in whatever order it pleases.
@@ -117,12 +129,16 @@ func TestTabContextBreaksTiesOnID(t *testing.T) {
 }
 
 func TestTabContextWithoutPanes(t *testing.T) {
+	t.Parallel()
+
 	if got := tabOf(nil).Context; got != nil {
 		t.Fatalf("selected %v, want nil", got)
 	}
 }
 
 func TestTabContextPrefersAnActiveAgent(t *testing.T) {
+	t.Parallel()
+
 	now := time.Now()
 	tab := tabOf([]*PaneState{
 		// The agent runs in a split the user is not typing in, so a build
@@ -137,10 +153,14 @@ func TestTabContextPrefersAnActiveAgent(t *testing.T) {
 }
 
 func TestTabContextIgnoresAnIdleAgent(t *testing.T) {
+	t.Parallel()
+
 	now := time.Now()
 
 	for _, status := range []string{"idle", "done", "unknown"} {
 		t.Run(status, func(t *testing.T) {
+			t.Parallel()
+
 			tab := tabOf([]*PaneState{
 				{ID: "wE:p1", ChangedAt: now, Agent: "claude", AgentStatus: status},
 				{ID: "wE:p2", ChangedAt: now.Add(time.Hour)},
@@ -154,6 +174,8 @@ func TestTabContextIgnoresAnIdleAgent(t *testing.T) {
 }
 
 func TestTabContextPrefersTheFocusedPaneOverAnAgent(t *testing.T) {
+	t.Parallel()
+
 	now := time.Now()
 	tab := tabOf([]*PaneState{
 		{ID: "wE:p1", ChangedAt: now, Agent: "claude", AgentStatus: herdr.AgentStatusWorking},
@@ -166,6 +188,8 @@ func TestTabContextPrefersTheFocusedPaneOverAnAgent(t *testing.T) {
 }
 
 func TestTabContextAmongSeveralAgents(t *testing.T) {
+	t.Parallel()
+
 	now := time.Now()
 	tab := tabOf([]*PaneState{
 		{ID: "wE:p1", ChangedAt: now, Agent: "claude", AgentStatus: herdr.AgentStatusWorking},
@@ -184,6 +208,8 @@ func TestTabContextAmongSeveralAgents(t *testing.T) {
 }
 
 func TestAgentIsActiveOnANilPane(t *testing.T) {
+	t.Parallel()
+
 	var pane *PaneState
 	if pane.HasAgent() || pane.AgentIsActive() {
 		t.Fatal("a nil pane reported an agent")
@@ -191,6 +217,8 @@ func TestAgentIsActiveOnANilPane(t *testing.T) {
 }
 
 func TestPaneFromPrefersTheForegroundDirectory(t *testing.T) {
+	t.Parallel()
+
 	// A subshell — `chezmoi cd`, `nix develop` — moves the foreground process
 	// and leaves the pane's own shell where it was started.
 	dashboard, chezmoi := herdrtest.Dir("work", "dashboard"), herdrtest.Dir("work", "chezmoi")
@@ -211,6 +239,8 @@ func TestPaneFromPrefersTheForegroundDirectory(t *testing.T) {
 }
 
 func TestPaneDirTakesTheForegroundProcessesOwnDirectory(t *testing.T) {
+	t.Parallel()
+
 	// A snapshot reports the deepest descendant's directory, which for an agent
 	// is a server it spawned. The process list is deepest first.
 	server, portal := herdrtest.Dir("opt", "gimp-mcp"), herdrtest.Dir("work", "self-care-portal")
@@ -236,6 +266,8 @@ func TestPaneDirTakesTheForegroundProcessesOwnDirectory(t *testing.T) {
 }
 
 func TestAProcessIsNamedWithoutItsWindowsExtension(t *testing.T) {
+	t.Parallel()
+
 	// Windows reports `pwsh.exe` where every other platform reports `pwsh`,
 	// and the extension would keep a shell from being read as one.
 	processes := ProcessesFrom([]herdr.PaneProcessInfoProcess{
@@ -250,6 +282,8 @@ func TestAProcessIsNamedWithoutItsWindowsExtension(t *testing.T) {
 }
 
 func TestAPaneDirectoryIsCleanedAsItArrives(t *testing.T) {
+	t.Parallel()
+
 	// Windows reports a directory with a trailing separator, which no reader
 	// of Dir should have to know; a pane without one keeps "" rather than the
 	// "." filepath.Clean would make of it.
@@ -272,6 +306,8 @@ func TestAPaneDirectoryIsCleanedAsItArrives(t *testing.T) {
 }
 
 func TestPaneDirKeepsTheSnapshotsGuessWhenItLearnsNone(t *testing.T) {
+	t.Parallel()
+
 	if dir := PaneDir(nil, "/work/api"); dir != "/work/api" {
 		t.Errorf("dir = %q for an unread pane, want the snapshot's", dir)
 	}
@@ -283,6 +319,8 @@ func TestPaneDirKeepsTheSnapshotsGuessWhenItLearnsNone(t *testing.T) {
 }
 
 func TestAPreferredAgentOutranksFocusInAnyState(t *testing.T) {
+	t.Parallel()
+
 	// An editor focused beside the agent must not take the tab over, even from
 	// an agent that has finished, which the default rules pass over.
 	panes := []*PaneState{

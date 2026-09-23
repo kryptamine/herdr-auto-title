@@ -18,6 +18,8 @@ func running(names ...string) []state.Process {
 }
 
 func TestTheKindQualifiesTheTitle(t *testing.T) {
+	t.Parallel()
+
 	// The editor names itself in its own title; under the kind that is noise.
 	pane := &state.PaneState{
 		Dir:           dashboard,
@@ -32,6 +34,8 @@ func TestTheKindQualifiesTheTitle(t *testing.T) {
 }
 
 func TestAKindWithNothingToAddStandsAlone(t *testing.T) {
+	t.Parallel()
+
 	// Neovim showing a file manager titles the window after itself alone.
 	pane := &state.PaneState{
 		Dir:           dashboard,
@@ -46,6 +50,8 @@ func TestAKindWithNothingToAddStandsAlone(t *testing.T) {
 }
 
 func TestAKindWithNoTitleAtAllStillNamesThePane(t *testing.T) {
+	t.Parallel()
+
 	pane := &state.PaneState{Dir: dashboard, Processes: running("htop")}
 
 	got := defaultChain().Resolve(tabWithPane(pane))
@@ -63,6 +69,8 @@ func TestAKindWithNoTitleAtAllStillNamesThePane(t *testing.T) {
 }
 
 func TestOnlyALoneProcessNamesAPane(t *testing.T) {
+	t.Parallel()
+
 	// Every process list here was taken from a live session.
 	cases := []struct {
 		names []string
@@ -89,6 +97,8 @@ func TestOnlyALoneProcessNamesAPane(t *testing.T) {
 }
 
 func TestARemoteSessionIsNotNamedTwice(t *testing.T) {
+	t.Parallel()
+
 	// ssh is marked on the host, where the mark cannot be outranked. Repeating
 	// it in the activity would read `ssh › prod-01 › ssh`.
 	pane := &state.PaneState{
@@ -106,6 +116,8 @@ func TestARemoteSessionIsNotNamedTwice(t *testing.T) {
 }
 
 func TestStripKind(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct{ detail, kind, want string }{
 		{"auth.provider.ts - Nvim", "nvim", "auth.provider.ts"},
 		{"Nvim", "nvim", ""},
@@ -123,6 +135,8 @@ func TestStripKind(t *testing.T) {
 }
 
 func TestAProjectNeverTakesAColon(t *testing.T) {
+	t.Parallel()
+
 	// The rule the format rests on: a colon binds a kind to its detail, and a
 	// project is a place rather than a kind.
 	pane := &state.PaneState{
@@ -138,6 +152,8 @@ func TestAProjectNeverTakesAColon(t *testing.T) {
 }
 
 func TestAnAgentIsItsOwnKind(t *testing.T) {
+	t.Parallel()
+
 	// Herdr recognizes the agent directly. Its process list does not: a coding
 	// agent shows up as a caffeinate, several nodes and an MCP helper, with its
 	// own name nowhere among them.
@@ -159,6 +175,8 @@ func TestAnAgentIsItsOwnKind(t *testing.T) {
 }
 
 func TestAStartingAgentIsNamedByItsKindAlone(t *testing.T) {
+	t.Parallel()
+
 	// Claude Code titles its window after itself until the conversation has a
 	// subject. That is generic as an activity, and exactly right as a kind.
 	pane := &state.PaneState{
@@ -174,6 +192,8 @@ func TestAStartingAgentIsNamedByItsKindAlone(t *testing.T) {
 }
 
 func TestAPaneWithoutAnAgentIsNotNamedAfterOne(t *testing.T) {
+	t.Parallel()
+
 	pane := &state.PaneState{Dir: dashboard, TerminalTitle: "Claude Code"}
 
 	if got := defaultChain().Resolve(tabWithPane(pane)); got.Name != "dashboard" {
@@ -182,6 +202,8 @@ func TestAPaneWithoutAnAgentIsNotNamedAfterOne(t *testing.T) {
 }
 
 func TestAWindowsShellIsNotWhatAPaneIsFor(t *testing.T) {
+	t.Parallel()
+
 	// The shells Windows panes run, spelled as they arrive once the extension
 	// is gone: a pane running one is described by its directory, like any
 	// other shell's.

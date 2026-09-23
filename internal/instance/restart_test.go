@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+//nolint:paralleltest // the instance started inherits the environment
 func TestRestartHandsTheSessionToAFreshInstance(t *testing.T) {
 	path := claimFile(t)
 	old := instance(t, "daemon", path)
@@ -34,6 +35,7 @@ func TestRestartHandsTheSessionToAFreshInstance(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // the instance started inherits the environment
 func TestRestartStartsAnInstanceWhereNoneWasRunning(t *testing.T) {
 	// The first start after an install or a link, which Herdr does not do.
 	path := claimFile(t)
@@ -51,6 +53,7 @@ func TestRestartStartsAnInstanceWhereNoneWasRunning(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // the instance started inherits the environment
 func TestRestartReportsAnInstanceThatExitsBeforePolling(t *testing.T) {
 	path := claimFile(t)
 	asInstance(t, "exit", path)
@@ -65,6 +68,7 @@ func TestRestartReportsAnInstanceThatExitsBeforePolling(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // the instance started inherits the environment
 func TestRestartReportsTheInstanceThatTookOverFromItsOwn(t *testing.T) {
 	// Two restarts within the same moment: the second one's instance claims
 	// the session, the first one's leaves for it, and neither action failed.
@@ -83,6 +87,7 @@ func TestRestartReportsTheInstanceThatTookOverFromItsOwn(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // the instance started inherits the environment
 func TestRestartReportsAnOldInstanceThatStays(t *testing.T) {
 	// The first upgrade from a version that knew nothing of claims: the new
 	// instance polls, but the old one is still there naming tabs beside it.
@@ -107,6 +112,7 @@ func TestRestartReportsAnOldInstanceThatStays(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // the instance started inherits the environment
 func TestRestartRefusesToStartAnInstanceItCannotWaitFor(t *testing.T) {
 	// No configuration directory means no claim: the running instance would
 	// never leave, and nothing would say when the new one is polling.
@@ -117,6 +123,7 @@ func TestRestartRefusesToStartAnInstanceItCannotWaitFor(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // the instance started inherits the environment
 func TestRestartRespectsItsContext(t *testing.T) {
 	path := claimFile(t)
 	asInstance(t, "stay", path)

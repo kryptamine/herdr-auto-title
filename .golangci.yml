@@ -58,6 +58,7 @@ linters:
     - nilnil          # a nil result and a nil error together
     - noctx           # a call made without the context it could take
     - nolintlint      # a //nolint must name its linter and say why
+    - paralleltest    # a test that could run in parallel and does not
     - perfsprint      # fmt.Sprintf where a cheaper call says the same
     - prealloc        # a slice grown in a loop whose length is known
     - predeclared     # a shadowed predeclared identifier
@@ -65,6 +66,7 @@ linters:
     - recvcheck       # a type mixing pointer and value receivers
     - sloglint        # log/slog used the way it is meant to be
     - thelper         # test helpers that forget t.Helper()
+    - tparallel       # a parallel test whose parent does not wait
     - unconvert       # conversions that convert nothing
     - unparam         # parameters and results that are always the same
     - usestdlibvars   # a literal where the standard library has the constant

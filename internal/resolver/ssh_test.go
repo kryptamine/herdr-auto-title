@@ -16,6 +16,8 @@ func sshPane(argv ...string) *state.PaneState {
 }
 
 func TestTheHostBecomesTheContext(t *testing.T) {
+	t.Parallel()
+
 	// Every destination form ssh accepts, and the flags that must not be
 	// mistaken for one.
 	cases := map[string]string{
@@ -55,6 +57,8 @@ func TestTheHostBecomesTheContext(t *testing.T) {
 }
 
 func TestTheTabIsNamedAfterTheMarkedHost(t *testing.T) {
+	t.Parallel()
+
 	pane := sshPane("ssh", "root@prod-01")
 
 	got := defaultChain().Resolve(tabWithPane(pane))
@@ -72,6 +76,8 @@ func TestTheTabIsNamedAfterTheMarkedHost(t *testing.T) {
 }
 
 func TestTheHostOutranksTheWorkingDirectory(t *testing.T) {
+	t.Parallel()
+
 	// The local directory of a pane running ssh describes the wrong machine.
 	pane := sshPane("ssh", "prod-01")
 
@@ -81,6 +87,8 @@ func TestTheHostOutranksTheWorkingDirectory(t *testing.T) {
 }
 
 func TestAnUnreadableDestinationStillMarksTheTabRemote(t *testing.T) {
+	t.Parallel()
+
 	// Herdr could not read argv, or ssh was invoked with no destination at all.
 	// The mark stands alone rather than letting the working directory claim the
 	// context, which would name a remote tab after a local directory.
@@ -95,6 +103,8 @@ func TestAnUnreadableDestinationStillMarksTheTabRemote(t *testing.T) {
 }
 
 func TestAnUnreadableDestinationKeepsTheMarkUnderARemoteTitle(t *testing.T) {
+	t.Parallel()
+
 	// The case the activity slot lost: with no host to bind the mark to it used
 	// to go into the activity, where the remote shell's own title outranked it
 	// and the tab read exactly like a local one.
@@ -108,6 +118,8 @@ func TestAnUnreadableDestinationKeepsTheMarkUnderARemoteTitle(t *testing.T) {
 }
 
 func TestTheLocalShellsCommandTitleIsNotRepeatedWhileConnecting(t *testing.T) {
+	t.Parallel()
+
 	// Until the remote shell sets a title, the local one is still showing the
 	// command it ran, trimmed by fish to twenty columns, and the tab read
 	// `ssh › prod-01 › ssh root@prod-01` for as long as the handshake took.
@@ -128,6 +140,8 @@ func TestTheLocalShellsCommandTitleIsNotRepeatedWhileConnecting(t *testing.T) {
 }
 
 func TestATunnelDoesNotMarkTheTabRemote(t *testing.T) {
+	t.Parallel()
+
 	for _, argv := range [][]string{
 		{"ssh", "-N", "-L", "5432:db:5432", "bastion"},
 		{"ssh", "-N", "-T", "-o", "BatchMode=yes", "-L", "5432:db:5432", "bastion"},
@@ -145,6 +159,8 @@ func TestATunnelDoesNotMarkTheTabRemote(t *testing.T) {
 }
 
 func TestAValueSpelledNIsNotTheTunnelSwitch(t *testing.T) {
+	t.Parallel()
+
 	for _, argv := range [][]string{
 		{"ssh", "-pN", "prod-01"},
 		{"ssh", "-o", "N=1", "prod-01"},
@@ -158,6 +174,8 @@ func TestAValueSpelledNIsNotTheTunnelSwitch(t *testing.T) {
 }
 
 func TestAPaneWithoutSSHIsUnaffected(t *testing.T) {
+	t.Parallel()
+
 	pane := &state.PaneState{
 		Dir: dashboard,
 		Processes: []state.Process{
@@ -173,6 +191,8 @@ func TestAPaneWithoutSSHIsUnaffected(t *testing.T) {
 }
 
 func TestAnSSHStartedByAnotherProgramDoesNotMarkThePaneRemote(t *testing.T) {
+	t.Parallel()
+
 	// Herdr lists a pane's foreground process last, after its descendants.
 	// Claude Code checks GitHub over ssh and git pushes through it, and either
 	// named its tab `ssh › github.com` for as long as the connection lived.
@@ -201,6 +221,8 @@ func TestAnSSHStartedByAnotherProgramDoesNotMarkThePaneRemote(t *testing.T) {
 }
 
 func TestAJumpHostIsNotTheDestination(t *testing.T) {
+	t.Parallel()
+
 	// ProxyJump runs a second ssh to the bastion as a child of the first.
 	pane := &state.PaneState{
 		Dir: dashboard,
@@ -216,6 +238,8 @@ func TestAJumpHostIsNotTheDestination(t *testing.T) {
 }
 
 func TestTheMarkSurvivesARemoteTitle(t *testing.T) {
+	t.Parallel()
+
 	// The reason the mark is on the host: a remote shell's title outranks
 	// anything this source could put in the activity slot, and a tab must not
 	// stop saying it is remote at the moment it has most to say.
@@ -229,6 +253,8 @@ func TestTheMarkSurvivesARemoteTitle(t *testing.T) {
 }
 
 func TestHostsFromArgvAreSanitized(t *testing.T) {
+	t.Parallel()
+
 	// argv is terminal-derived input like any other.
 	pane := sshPane("ssh", "root@prod\x1b[31m-01")
 

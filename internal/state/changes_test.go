@@ -13,6 +13,8 @@ func pane(paneID string, revision uint64) herdr.PaneInfo {
 }
 
 func TestAFirstSightingCountsAsAChange(t *testing.T) {
+	t.Parallel()
+
 	c := NewChanges()
 	c.Observe([]herdr.PaneInfo{pane("wE:p1", 7)})
 
@@ -26,6 +28,8 @@ func TestAFirstSightingCountsAsAChange(t *testing.T) {
 }
 
 func TestOnlyAnAdvancedRevisionIsAChange(t *testing.T) {
+	t.Parallel()
+
 	c := NewChanges()
 	c.Observe([]herdr.PaneInfo{pane("wE:p1", 7)})
 	first := c.ChangedAt("wE:p1")
@@ -47,6 +51,8 @@ func TestOnlyAnAdvancedRevisionIsAChange(t *testing.T) {
 }
 
 func TestPanesTheSessionDroppedAreForgotten(t *testing.T) {
+	t.Parallel()
+
 	c := NewChanges()
 	c.Observe([]herdr.PaneInfo{pane("wE:p1", 1), pane("wE:p2", 1)})
 	c.Observe([]herdr.PaneInfo{pane("wE:p1", 1)})
@@ -61,6 +67,8 @@ func TestPanesTheSessionDroppedAreForgotten(t *testing.T) {
 }
 
 func TestAReadSurvivesAPollThatChangedNothing(t *testing.T) {
+	t.Parallel()
+
 	c := NewChanges()
 	c.Observe([]herdr.PaneInfo{pane("wE:p1", 7)})
 	c.Ran("wE:p1", []herdr.PaneProcessInfoProcess{{Name: "nvim"}})
@@ -74,6 +82,8 @@ func TestAReadSurvivesAPollThatChangedNothing(t *testing.T) {
 }
 
 func TestAMovedRevisionForgetsWhatWasRunning(t *testing.T) {
+	t.Parallel()
+
 	c := NewChanges()
 	c.Observe([]herdr.PaneInfo{pane("wE:p1", 7)})
 	c.Ran("wE:p1", []herdr.PaneProcessInfoProcess{{Name: "nvim"}})
@@ -86,6 +96,8 @@ func TestAMovedRevisionForgetsWhatWasRunning(t *testing.T) {
 }
 
 func TestARevisionThatWentBackwardsIsANewPane(t *testing.T) {
+	t.Parallel()
+
 	// Revisions are monotonic per pane, so a lower one means Herdr handed the
 	// id to a pane that is not the one that was read.
 	c := NewChanges()
@@ -100,6 +112,8 @@ func TestARevisionThatWentBackwardsIsANewPane(t *testing.T) {
 }
 
 func TestAnOldReadIsMadeAgain(t *testing.T) {
+	t.Parallel()
+
 	// A command starting just after a read moves no revision until the pane
 	// draws, so a remembered read is not trusted forever.
 	c := NewChanges()
@@ -119,6 +133,8 @@ func TestAnOldReadIsMadeAgain(t *testing.T) {
 }
 
 func TestAPaneTheSessionDroppedCannotBeRecorded(t *testing.T) {
+	t.Parallel()
+
 	c := NewChanges()
 	c.Ran("wE:p1", []herdr.PaneProcessInfoProcess{{Name: "nvim"}})
 
@@ -128,6 +144,8 @@ func TestAPaneTheSessionDroppedCannotBeRecorded(t *testing.T) {
 }
 
 func TestChangesAreSafeUnderConcurrentUse(t *testing.T) {
+	t.Parallel()
+
 	c := NewChanges()
 
 	var wg sync.WaitGroup

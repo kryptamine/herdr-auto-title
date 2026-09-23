@@ -13,6 +13,8 @@ import (
 // the pane before the row is judged; the snapshot's foreground_cwd is a
 // descendant's directory, and the pane's own is only known once read.
 func TestARowIsJudgedByItsPaneDirectoryNotTheSnapshotGuess(t *testing.T) {
+	t.Parallel()
+
 	repo := repoAt(t, "feat/oauth")
 
 	cfg := workspaceConfig(t)
@@ -51,6 +53,8 @@ func TestARowIsJudgedByItsPaneDirectoryNotTheSnapshotGuess(t *testing.T) {
 // can be locked from the file too. Judged on the guess, a two-tab row would be
 // claimed on the first poll and never named once it shrinks to one tab.
 func TestAMultiTabRowIsJudgedByItsPaneDirectoryNotTheSnapshotGuess(t *testing.T) {
+	t.Parallel()
+
 	repo := repoAt(t, "feat/oauth")
 
 	cfg := workspaceConfig(t)

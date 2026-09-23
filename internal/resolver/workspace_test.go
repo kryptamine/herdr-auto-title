@@ -13,6 +13,8 @@ import (
 // end would leave a screenful of the same repository name. Whole parts go from
 // the front instead, and only what survives is cut.
 func TestFormatTailDropsWholePartsFromTheFront(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name   string
 		parts  Parts
@@ -78,6 +80,8 @@ func TestFormatTailDropsWholePartsFromTheFront(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
 			if got := FormatTail(test.parts, test.maxLen); got != test.want {
 				t.Errorf("FormatTail() = %q, want %q", got, test.want)
 			}
@@ -88,6 +92,8 @@ func TestFormatTailDropsWholePartsFromTheFront(t *testing.T) {
 // Format is what a tab keeps: the front matters there, because a tab bar holds
 // titles that differ from their first column.
 func TestFormatStillCutsFromTheEnd(t *testing.T) {
+	t.Parallel()
+
 	parts := Parts{Context: "demo-repo", Branch: "feat/billing", Activity: "Fix invoice totals"}
 
 	tail := FormatTail(parts, 20)
@@ -106,6 +112,8 @@ func TestFormatStillCutsFromTheEnd(t *testing.T) {
 // giving a pane only what that source reads, and the process is checked by
 // giving it one and finding it unused.
 func TestPlacesKeepsEverySourceButTheProcess(t *testing.T) {
+	t.Parallel()
+
 	places := Places(Options{MaxLength: 60, BranchMax: DefaultBranchMaxLength})
 
 	tests := []struct {
@@ -200,6 +208,8 @@ func TestPlacesKeepsEverySourceButTheProcess(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
 			got := places.ResolveWorkspace(state.WorkspaceState{Context: test.pane})
 			if got.Reason == "process" || strings.Contains(got.Name, "npm") {
 				t.Errorf("the row took the foreground process: %+v", got)
@@ -212,6 +222,8 @@ func TestPlacesKeepsEverySourceButTheProcess(t *testing.T) {
 // The row reads the same title without the kind: a program is the one thing a
 // row must not be named after, however the name reaches it.
 func TestTheRowDoesNotCarryTheForegroundProcessThroughTheTerminalTitle(t *testing.T) {
+	t.Parallel()
+
 	places := Places(Options{MaxLength: 60, BranchMax: DefaultBranchMaxLength})
 
 	pane := &state.PaneState{
@@ -240,6 +252,8 @@ func TestTheRowDoesNotCarryTheForegroundProcessThroughTheTerminalTitle(t *testin
 // The tab's chain is untouched by that: a tab under the same pane still reads
 // the program the title came from.
 func TestATabStillCarriesTheForegroundProcessThroughTheTerminalTitle(t *testing.T) {
+	t.Parallel()
+
 	pane := &state.PaneState{
 		Dir:           herdrtest.Dir("work", "dashboard"),
 		TerminalTitle: "auth.ts",
@@ -255,6 +269,8 @@ func TestATabStillCarriesTheForegroundProcessThroughTheTerminalTitle(t *testing.
 // A workspace whose tab holds no pane, and one whose pane says nothing, are
 // both left alone rather than named the generic fallback a tab would take.
 func TestResolveWorkspaceSaysNothingRatherThanShell(t *testing.T) {
+	t.Parallel()
+
 	places := Places(Options{MaxLength: 20})
 
 	for _, test := range []struct {
@@ -265,6 +281,8 @@ func TestResolveWorkspaceSaysNothingRatherThanShell(t *testing.T) {
 		{name: "a pane with nothing to read", ws: state.WorkspaceState{Context: &state.PaneState{}}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
 			if got := places.ResolveWorkspace(test.ws); got.Name != "" {
 				t.Errorf("named %q, want the empty decision", got.Name)
 			}
@@ -275,6 +293,8 @@ func TestResolveWorkspaceSaysNothingRatherThanShell(t *testing.T) {
 // A part counted wide before sanitizing can turn out to fit after it, and a row
 // that fits must not lose its context to a run of spaces.
 func TestFormatTailMeasuresWhatItWouldWrite(t *testing.T) {
+	t.Parallel()
+
 	got := FormatTail(Parts{Context: "a     b", Activity: "x"}, 10)
 	if want := "a b › x"; got != want {
 		t.Errorf("FormatTail() = %q, want %q", got, want)
@@ -285,6 +305,8 @@ func TestFormatTailMeasuresWhatItWouldWrite(t *testing.T) {
 // anything Sanitize rewrites has to be compared in the same shape or it misses
 // its own segment and is said twice.
 func TestATabDropsAPartTheRowSanitized(t *testing.T) {
+	t.Parallel()
+
 	row := FormatTail(Parts{Context: "api     service"}, 20)
 	if row != "api service" {
 		t.Fatalf("the row sanitized to %q, which is not what this case needs", row)
@@ -301,6 +323,8 @@ func TestATabDropsAPartTheRowSanitized(t *testing.T) {
 // back as two segments, it matches neither and the tab repeats the row. The
 // activity is repeated by design; the context is what must go.
 func TestATabDoesNotRepeatARowWhoseDirectoryCarriesTheSeparator(t *testing.T) {
+	t.Parallel()
+
 	dir := herdrtest.Dir("work", "a › b")
 	pane := &state.PaneState{Dir: dir, TerminalTitle: "nvim"}
 
@@ -322,6 +346,8 @@ func TestATabDoesNotRepeatARowWhoseDirectoryCarriesTheSeparator(t *testing.T) {
 // its context and its branch, against any segment. Left alone, the label is
 // matched whole and against the context only, as before the row was ever named.
 func TestATabDropsItsAgentAgainstAnySegmentOfTheRowOnlyWhenNamingWorkspaces(t *testing.T) {
+	t.Parallel()
+
 	pane := &state.PaneState{Dir: api, Agent: "claude", AgentTitle: "Fix totals"}
 
 	on := tabWithPane(pane)
@@ -352,6 +378,8 @@ func namingChain() *Deterministic {
 // and cut down to its branch, and nothing tells the two apart. The one segment
 // is matched against every part, so a branch spelled like the directory goes.
 func TestARowWithOneSegmentIsMatchedAgainstEveryPart(t *testing.T) {
+	t.Parallel()
+
 	pane := &state.PaneState{
 		Dir:           api,
 		Git:           git.Checkout{Branch: "release", Default: "main"},
@@ -374,6 +402,8 @@ func TestARowWithOneSegmentIsMatchedAgainstEveryPart(t *testing.T) {
 // such a row must not say it again. The row here is too long for its context,
 // so the agent is the one part left for the tab to repeat.
 func TestATabDoesNotRepeatTheAgentTheRowCarries(t *testing.T) {
+	t.Parallel()
+
 	pane := &state.PaneState{
 		ID:         "wE:p1",
 		Dir:        herdrtest.Dir("work", "dashboard"),
@@ -406,6 +436,8 @@ func TestATabDoesNotRepeatTheAgentTheRowCarries(t *testing.T) {
 // after it. Dropping both would leave the tab the generic fallback under a row
 // that is its own title, which loses more than it saves.
 func TestATabSaidWhollyByTheRowKeepsItsTitle(t *testing.T) {
+	t.Parallel()
+
 	tab := tabWithPane(&state.PaneState{Dir: dashboard})
 	tab.WorkspaceName = "dashboard"
 
