@@ -114,7 +114,7 @@ func TestResolveIsDeterministic(t *testing.T) {
 	// The same panes in whichever order a snapshot listed them must name the
 	// tab the same way, which is what TabFrom's ordering is for.
 	want := r.Resolve(state.TabFrom(herdr.TabInfo{TabID: "wE:t1"}, "", 1, panes, false))
-	for i := range len(panes) {
+	for i := range panes {
 		rotated := append(slices.Clone(panes[i:]), panes[:i]...)
 
 		got := r.Resolve(state.TabFrom(herdr.TabInfo{TabID: "wE:t1"}, "", 1, rotated, false))
