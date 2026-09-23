@@ -8,33 +8,62 @@ run:
 linters:
   default: standard
   enable:
+    - asciicheck      # an identifier spelled with a rune that only looks Latin
     - bidichk         # bidirectional runes that make source read as it is not
     - containedctx    # a context.Context smuggled inside a struct
     - contextcheck    # a function that drops the context it was handed
     - copyloopvar     # loop-variable copies made redundant by Go 1.22
+    - decorder        # declarations in a settled order
     - depguard        # the dependency floor, below
+    - dupl            # a block copied instead of extracted
+    - dupword         # the the repeated word
     - durationcheck   # a duration multiplied by a duration
+    - embeddedstructfieldcheck # an embedded field mixed in among named ones
+    - errchkjson      # a json.Marshal whose error cannot happen, and one that can
+    - errname         # error values and types named the way Go names them
     - errorlint       # errors compared with == and formatted with %v
+    - exhaustive      # a switch over a closed set that forgets a member
     - fatcontext      # a context rebuilt on every turn of a loop
     - forbidigo       # the calls named below
     - forcetypeassert # a type assertion that panics instead of reporting
+    - funlen          # a function longer than it can be read in one screen
+    - gocheckcompilerdirectives # a //go: directive the compiler will not read
+    - gochecknoinits  # an init() doing work nobody can see the call to
+    - goconst         # a literal repeated often enough to deserve a name
     - gocritic        # a grab-bag of correctness and style checks
+    - godoclint       # a doc comment that does not open with its name
     - godot           # a comment that stops without a full stop
+    - godox           # a TODO left where an issue should carry it
+    - gomoddirectives # a replace or retract that would break an install
     - gosec           # the usual security mistakes
+    - iface           # an interface declared where it is not needed
+    - inamedparam     # an interface method whose parameters have no names
+    - interfacebloat  # an interface with more methods than a seam wants
+    - iotamixing      # iota sharing a const block with unrelated values
+    - maintidx        # a function whose maintainability index has gone
+    - makezero        # a slice made with a length and then appended to
+    - mirror          # a string converted to bytes to call the bytes twin
     - misspell        # typos, in a repository that is mostly prose
     - modernize       # idioms superseded by newer Go versions
     - musttag         # a struct reaching encoding/json without tags
     - nakedret        # naked returns far from their signature
+    - nestif          # an if nested deeper than it can be followed
     - nilerr          # nil returned although the error was not
+    - nilnesserr      # a nil error returned where one was not nil
     - nilnil          # a nil result and a nil error together
     - noctx           # a call made without the context it could take
     - nolintlint      # a //nolint must name its linter and say why
+    - perfsprint      # fmt.Sprintf where a cheaper call says the same
+    - predeclared     # a shadowed predeclared identifier
+    - reassign        # a package variable of somebody else's reassigned
     - recvcheck       # a type mixing pointer and value receivers
     - sloglint        # log/slog used the way it is meant to be
     - thelper         # test helpers that forget t.Helper()
     - unconvert       # conversions that convert nothing
     - unparam         # parameters and results that are always the same
+    - usestdlibvars   # a literal where the standard library has the constant
     - usetesting      # what the testing package now does itself
+    - wastedassign    # a value assigned and then overwritten unread
     - wsl_v5          # statements that belong together cuddled, the rest spaced
   disable:
     # Silence is a decision here, not an oversight: writing the manual-name
@@ -57,11 +86,21 @@ linters:
           deny:
             - pkg: os/exec
               desc: renames go over the socket API, never through a shell
+    exhaustive:
+      # A default that says what the rest mean is as good as naming each.
+      default-signifies-exhaustive: true
     forbidigo:
       analyze-types: true
       forbid:
         - pattern: ^exec\.Command(Context)?$
           msg: a terminal-derived value must never reach a shell
+    godoclint:
+      default: all
+      disable:
+        # Obvious code gets no comment, exported or not: .claude/rules/comments.md.
+        - require-doc
+        - require-stdlib-doclink
+        - max-len
 
   exclusions:
     rules:
@@ -72,6 +111,12 @@ linters:
         linters:
           - gosec
           - noctx
+      # A table test is long because of its rows, and a literal repeated in
+      # expectations reads better than a constant the reader has to look up.
+      - path: _test\.go
+        linters:
+          - funlen
+          - goconst
 
 formatters:
   enable:
