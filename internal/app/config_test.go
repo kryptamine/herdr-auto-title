@@ -71,6 +71,7 @@ func writeConfig(t *testing.T, contents string) {
 	}
 }
 
+//nolint:paralleltest // configuration is read from the environment
 func TestLoadConfigDefaults(t *testing.T) {
 	isolate(t)
 
@@ -260,6 +261,7 @@ func TestAnUnusableValueIsReportedInFull(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // configuration is read from the environment
 func TestLoadConfigReadsTheFile(t *testing.T) {
 	isolate(t)
 	writeConfig(t, `# every setting the file can carry
@@ -328,6 +330,7 @@ func TestTheEnvironmentBeatsTheFile(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // configuration is read from the environment
 func TestAMissingConfigFileIsSilent(t *testing.T) {
 	isolate(t)
 
@@ -341,6 +344,7 @@ func TestAMissingConfigFileIsSilent(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // configuration is read from the environment
 func TestABrokenConfigFileCostsTheWholeFile(t *testing.T) {
 	// godotenv parses the file or nothing, so a good line next to a bad one is
 	// lost with it. The warning is all the user gets.
@@ -365,6 +369,7 @@ func TestABrokenConfigFileCostsTheWholeFile(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // configuration is read from the environment
 func TestAKeyOfSomeoneElsesIsIgnored(t *testing.T) {
 	// godotenv puts every key in the file into the environment; only the ones
 	// Auto Title reads mean anything to it.
@@ -397,6 +402,7 @@ func TestAnEmptyManualFileKeepsLocksInMemory(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // configuration is read from the environment
 func TestAnUnsetManualFileKeepsTheDefault(t *testing.T) {
 	isolate(t)
 

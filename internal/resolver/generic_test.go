@@ -3,6 +3,8 @@ package resolver
 import "testing"
 
 func TestMeaningful(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name  string
 		value string
@@ -86,6 +88,8 @@ func TestMeaningful(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, ok := Meaningful(tc.value)
 			if ok != tc.ok {
 				t.Fatalf("Meaningful(%q) ok = %v, want %v", tc.value, ok, tc.ok)
@@ -99,6 +103,8 @@ func TestMeaningful(t *testing.T) {
 }
 
 func TestAShellPromptIsNotAnActivity(t *testing.T) {
+	t.Parallel()
+
 	// A shell titling its window after its prompt says who and where, which the
 	// context already says, and never says what the user is doing. Remote
 	// shells do it most, which is how it reaches a tab named after a host.
@@ -115,6 +121,8 @@ func TestAShellPromptIsNotAnActivity(t *testing.T) {
 }
 
 func TestValuesThatOnlyLookLikePromptsSurvive(t *testing.T) {
+	t.Parallel()
+
 	// The pattern must not swallow real work that happens to contain an @.
 	for _, title := range []string{
 		"Fix auth@v2: rewrite the guard",

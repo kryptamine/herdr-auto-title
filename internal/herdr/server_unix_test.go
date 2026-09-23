@@ -9,6 +9,8 @@ import (
 )
 
 func TestAServerIsToldByTheSocketFileItBound(t *testing.T) {
+	t.Parallel()
+
 	ln, path := listen(t)
 
 	before := serverIdentity(path)

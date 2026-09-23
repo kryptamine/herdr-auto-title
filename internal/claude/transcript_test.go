@@ -99,6 +99,8 @@ func toolResult() string {
 }
 
 func TestTitleNamesASession(t *testing.T) {
+	t.Parallel()
+
 	p := newProject(t)
 	p.write(human("fix the redirect"), aiTitle("OAuth redirect fix"))
 
@@ -108,6 +110,8 @@ func TestTitleNamesASession(t *testing.T) {
 }
 
 func TestTheLastTitleWins(t *testing.T) {
+	t.Parallel()
+
 	p := newProject(t)
 	p.write(aiTitle("First guess"), aiTitle("What it turned into"))
 
@@ -117,6 +121,8 @@ func TestTheLastTitleWins(t *testing.T) {
 }
 
 func TestASlashCommandNamesASessionWithNoTitle(t *testing.T) {
+	t.Parallel()
+
 	// The session this whole source exists for: opened with a command and
 	// answered by the agent alone, so Claude Code never titles it.
 	p := newProject(t)
@@ -135,6 +141,8 @@ func TestASlashCommandNamesASessionWithNoTitle(t *testing.T) {
 }
 
 func TestASlashCommandKeepsWhatItWasCalledWith(t *testing.T) {
+	t.Parallel()
+
 	p := newProject(t)
 	p.write(
 		human(
@@ -148,6 +156,8 @@ func TestASlashCommandKeepsWhatItWasCalledWith(t *testing.T) {
 }
 
 func TestACommandCalledWithNothingStandsAlone(t *testing.T) {
+	t.Parallel()
+
 	p := newProject(t)
 	p.write(
 		human(
@@ -161,6 +171,8 @@ func TestACommandCalledWithNothingStandsAlone(t *testing.T) {
 }
 
 func TestATitleOutranksTheOpening(t *testing.T) {
+	t.Parallel()
+
 	p := newProject(t)
 	p.write(human("rework the poll loop"), aiTitle("Poll loop rework"))
 
@@ -174,6 +186,8 @@ func TestATitleOutranksTheOpening(t *testing.T) {
 }
 
 func TestOnlyTheUsersOwnPromptOpensASession(t *testing.T) {
+	t.Parallel()
+
 	// A slash command expands into the conversation as another user message.
 	// Only the one the user typed says what the session is about.
 	p := newProject(t)
@@ -185,6 +199,8 @@ func TestOnlyTheUsersOwnPromptOpensASession(t *testing.T) {
 }
 
 func TestAResumedSessionsCaveatIsNotItsOpening(t *testing.T) {
+	t.Parallel()
+
 	p := newProject(t)
 	p.write(
 		human(
@@ -198,6 +214,8 @@ func TestAResumedSessionsCaveatIsNotItsOpening(t *testing.T) {
 }
 
 func TestOnlyTheFirstLineOfAPromptOpensASession(t *testing.T) {
+	t.Parallel()
+
 	p := newProject(t)
 	p.write(human(`rework the poll loop\nand say why in the commit`))
 
@@ -207,6 +225,8 @@ func TestOnlyTheFirstLineOfAPromptOpensASession(t *testing.T) {
 }
 
 func TestAppendedLinesAreReadOnTheNextPoll(t *testing.T) {
+	t.Parallel()
+
 	p := newProject(t)
 	p.write(human("fix the redirect"))
 
@@ -224,6 +244,8 @@ func TestAppendedLinesAreReadOnTheNextPoll(t *testing.T) {
 }
 
 func TestAHalfWrittenLineIsReadWhenItIsWhole(t *testing.T) {
+	t.Parallel()
+
 	// The agent may be mid-write when a poll reads. The fragment must not be
 	// parsed, and must not be skipped once the rest of it lands either.
 	p := newProject(t)
@@ -258,6 +280,8 @@ func TestAHalfWrittenLineIsReadWhenItIsWhole(t *testing.T) {
 }
 
 func TestATranscriptThatShrankIsReadAgain(t *testing.T) {
+	t.Parallel()
+
 	p := newProject(t)
 	p.write(human("fix the redirect"), aiTitle("OAuth redirect fix"))
 
@@ -276,6 +300,8 @@ func TestATranscriptThatShrankIsReadAgain(t *testing.T) {
 }
 
 func TestASessionFiledUnderAnotherDirectoryIsStillFound(t *testing.T) {
+	t.Parallel()
+
 	// The pane has changed directory since the session started, so the slug
 	// does not lead to it and only the scan does.
 	p := newProject(t)
@@ -287,6 +313,8 @@ func TestASessionFiledUnderAnotherDirectoryIsStillFound(t *testing.T) {
 }
 
 func TestAnIdThatIsNotASessionIsRefused(t *testing.T) {
+	t.Parallel()
+
 	// The id arrives over the socket and becomes part of a path.
 	p := newProject(t)
 
@@ -300,6 +328,8 @@ func TestAnIdThatIsNotASessionIsRefused(t *testing.T) {
 }
 
 func TestASessionWithNoTranscriptSaysNothing(t *testing.T) {
+	t.Parallel()
+
 	p := newProject(t)
 
 	if got := p.reader().Topic(session, started); got.Text() != "" {
@@ -308,6 +338,8 @@ func TestASessionWithNoTranscriptSaysNothing(t *testing.T) {
 }
 
 func TestATranscriptThatWasNotThereYetIsLookedForAgain(t *testing.T) {
+	t.Parallel()
+
 	// Herdr can name a session before the agent has written a line of it, so a
 	// search that found nothing has to be repeated — but not every poll: it
 	// walks every project directory the user has.
@@ -334,6 +366,8 @@ func TestATranscriptThatWasNotThereYetIsLookedForAgain(t *testing.T) {
 }
 
 func TestRetainForgetsTheSessionsARunOutlived(t *testing.T) {
+	t.Parallel()
+
 	p := newProject(t)
 	p.write(aiTitle("OAuth redirect fix"))
 
@@ -352,12 +386,16 @@ func TestRetainForgetsTheSessionsARunOutlived(t *testing.T) {
 }
 
 func TestSlugMatchesHowClaudeCodeNamesAProject(t *testing.T) {
+	t.Parallel()
+
 	if got := slugOf("/Users/dev/.claude/skills"); got != "-Users-dev--claude-skills" {
 		t.Errorf("slug = %q", got)
 	}
 }
 
 func TestATranscriptThatWentMissingIsLookedForAgain(t *testing.T) {
+	t.Parallel()
+
 	// The path was found once and then kept for the pane's whole life, so a
 	// transcript that was rotated away froze the topic on whatever it last
 	// said. locateRetry exists for exactly this and could never apply.
@@ -404,6 +442,8 @@ func agentIn(dir string) string {
 }
 
 func TestTheDirectoryTheAgentIsWorkingInIsRead(t *testing.T) {
+	t.Parallel()
+
 	worktree := t.TempDir()
 
 	p := newProject(t)
@@ -415,6 +455,8 @@ func TestTheDirectoryTheAgentIsWorkingInIsRead(t *testing.T) {
 }
 
 func TestALineCarryingNoDirectoryLeavesTheLastOneStanding(t *testing.T) {
+	t.Parallel()
+
 	// The lines that name a session — a title, a mode change — carry no
 	// directory at all, so the last one that did is still where the agent is.
 	worktree := t.TempDir()
@@ -432,6 +474,8 @@ func TestALineCarryingNoDirectoryLeavesTheLastOneStanding(t *testing.T) {
 }
 
 func TestADirectoryOutlivesTheReadThatCarriedIt(t *testing.T) {
+	t.Parallel()
+
 	// A poll is handed only the bytes appended since the last one, and a third
 	// of transcript lines carry no directory, so one slice can hold none.
 	worktree := t.TempDir()
@@ -452,6 +496,8 @@ func TestADirectoryOutlivesTheReadThatCarriedIt(t *testing.T) {
 }
 
 func TestALaterReadFollowsTheAgentToItsNextDirectory(t *testing.T) {
+	t.Parallel()
+
 	// The branch follows the agent as it moves, with nothing damping it, so a
 	// directory appended after a read replaces the one held from before it.
 	first, second := t.TempDir(), t.TempDir()
@@ -472,6 +518,8 @@ func TestALaterReadFollowsTheAgentToItsNextDirectory(t *testing.T) {
 }
 
 func TestATranscriptThatShrankForgetsTheDirectoryToo(t *testing.T) {
+	t.Parallel()
+
 	// A literal directory rather than t.TempDir(): the replacement below only
 	// counts as a shrink if it is shorter, and a temporary path is short
 	// enough where TMPDIR is /tmp to make the first transcript the shorter one.
@@ -493,6 +541,8 @@ func TestATranscriptThatShrankForgetsTheDirectoryToo(t *testing.T) {
 }
 
 func TestATranscriptThatWentMissingKeepsItsDirectory(t *testing.T) {
+	t.Parallel()
+
 	worktree := t.TempDir()
 
 	p := newProject(t)
@@ -513,6 +563,8 @@ func TestATranscriptThatWentMissingKeepsItsDirectory(t *testing.T) {
 }
 
 func TestADirectoryIsReportedAsTheTranscriptSpelledIt(t *testing.T) {
+	t.Parallel()
+
 	// Whether a path can be a checkout is settled where one is read, so the
 	// reader repairs nothing and judges nothing.
 	for _, dir := range []string{"work/dashboard", "..", "/work/dashboard/"} {
@@ -526,6 +578,8 @@ func TestADirectoryIsReportedAsTheTranscriptSpelledIt(t *testing.T) {
 }
 
 func TestALineCarryingAnEmptyDirectoryLeavesTheLastOneStanding(t *testing.T) {
+	t.Parallel()
+
 	// An empty value is the one the reader still refuses: it would erase the
 	// directory the session last named.
 	p := newProject(t)
@@ -537,6 +591,8 @@ func TestALineCarryingAnEmptyDirectoryLeavesTheLastOneStanding(t *testing.T) {
 }
 
 func TestATranscriptNamingNoDirectorySaysNothingAboutOne(t *testing.T) {
+	t.Parallel()
+
 	p := newProject(t)
 	p.write(human("fix the redirect"), aiTitle("OAuth redirect fix"))
 
@@ -558,6 +614,8 @@ func newProjectIn(t *testing.T, root string) project {
 }
 
 func TestASessionInAnExtraConfigHomeIsFound(t *testing.T) {
+	t.Parallel()
+
 	// The home a shell picks per directory is not the one the server passes
 	// the plugin, so a session written there is only found by searching both.
 	worktree := t.TempDir()
@@ -576,6 +634,8 @@ func TestASessionInAnExtraConfigHomeIsFound(t *testing.T) {
 }
 
 func TestTheFirstConfigHomeAnswersWhenBothHoldTheSession(t *testing.T) {
+	t.Parallel()
+
 	// The homes are searched in order and the search stops at the first hit,
 	// which is what keeps a one-home machine paying what it paid before.
 	p := newProject(t)
@@ -590,6 +650,8 @@ func TestTheFirstConfigHomeAnswersWhenBothHoldTheSession(t *testing.T) {
 }
 
 func TestAConfigHomeThatCannotBeUsedIsSkipped(t *testing.T) {
+	t.Parallel()
+
 	// A home that is not there, or is not a directory at all, costs itself and
 	// not the homes named beside it. Nothing here refuses a home for how it is
 	// spelled: the search simply misses, which is why configuration can warn
@@ -614,6 +676,8 @@ func TestAConfigHomeThatCannotBeUsedIsSkipped(t *testing.T) {
 }
 
 func TestNoExtraConfigHomesLeavesTheSearchWhereItWas(t *testing.T) {
+	t.Parallel()
+
 	p := newProject(t)
 
 	elsewhere := t.TempDir()
@@ -625,6 +689,8 @@ func TestNoExtraConfigHomesLeavesTheSearchWhereItWas(t *testing.T) {
 }
 
 func TestATranscriptInAnExtraConfigHomeKeepsBeingRead(t *testing.T) {
+	t.Parallel()
+
 	p := newProject(t)
 
 	other := t.TempDir()
@@ -644,6 +710,8 @@ func TestATranscriptInAnExtraConfigHomeKeepsBeingRead(t *testing.T) {
 }
 
 func TestATranscriptThatMovedHomesIsFoundAgain(t *testing.T) {
+	t.Parallel()
+
 	// A path let go because the transcript went missing is searched for in
 	// every home again, not only in the one that answered before.
 	p := newProject(t)

@@ -12,6 +12,8 @@ import (
 // A workspace lock outlives the setting that took it, and is pruned on every
 // poll the way a pane's is, whether or not the row is being named.
 func TestAStaleWorkspaceLockIsReleasedWhenTheRowIsNotNamed(t *testing.T) {
+	t.Parallel()
+
 	cfg := testConfig()
 	cfg.ManualPath = filepath.Join(t.TempDir(), "manual-names.json")
 

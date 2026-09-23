@@ -39,6 +39,8 @@ func agentWorktree(pane *state.PaneState, branch string) *state.PaneState {
 }
 
 func TestTheAgentsBranchIsTheOneTheTabShows(t *testing.T) {
+	t.Parallel()
+
 	pane := agentWorktree(repoPane("main", "main"), "feat/oauth")
 
 	if got := resolveRepoPane(pane); got != "dashboard › feat/oauth" {
@@ -47,6 +49,8 @@ func TestTheAgentsBranchIsTheOneTheTabShows(t *testing.T) {
 }
 
 func TestAnAgentOnTheTrunkLeavesThePanesBranchStanding(t *testing.T) {
+	t.Parallel()
+
 	// The trunk is what a tab named after its repository already says, so the
 	// pane's own branch is the only segment either checkout is worth.
 	pane := agentWorktree(repoPane("feat/oauth", "main"), "main")
@@ -57,6 +61,8 @@ func TestAnAgentOnTheTrunkLeavesThePanesBranchStanding(t *testing.T) {
 }
 
 func TestAnAgentWithNoCheckoutLeavesThePanesBranchStanding(t *testing.T) {
+	t.Parallel()
+
 	// A pane whose agent is in no repository has nothing to compare against an
 	// empty common directory, so the empty label is what keeps its branch.
 	pane := repoPane("feat/oauth", "main")
@@ -67,6 +73,8 @@ func TestAnAgentWithNoCheckoutLeavesThePanesBranchStanding(t *testing.T) {
 }
 
 func TestAnAgentInAnotherRepositoryLeavesThePanesBranchStanding(t *testing.T) {
+	t.Parallel()
+
 	// A branch from another project beside this one's name labels the wrong
 	// work, which is worse than the tab carrying no branch at all.
 	pane := repoPane("feat/oauth", "main")
@@ -83,6 +91,8 @@ func TestAnAgentInAnotherRepositoryLeavesThePanesBranchStanding(t *testing.T) {
 }
 
 func TestTheBranchQualifiesTheDirectory(t *testing.T) {
+	t.Parallel()
+
 	pane := repoPane("feat/oauth", "main")
 	pane.TerminalTitle = "auth.ts - Nvim"
 	pane.Processes = []state.Process{{Name: "nvim"}}
@@ -93,6 +103,8 @@ func TestTheBranchQualifiesTheDirectory(t *testing.T) {
 }
 
 func TestTheDefaultBranchSaysNothing(t *testing.T) {
+	t.Parallel()
+
 	// A tab in a repository it is already named after learns nothing from
 	// being told it is on that repository's trunk.
 	if got := resolveRepoPane(repoPane("main", "main")); got != "dashboard" {
@@ -101,6 +113,8 @@ func TestTheDefaultBranchSaysNothing(t *testing.T) {
 }
 
 func TestTheDefaultBranchIsTheRepositorysOwn(t *testing.T) {
+	t.Parallel()
+
 	// A team whose trunk is `develop` gets the same silence, and one that works
 	// on a branch named `main` off a `develop` trunk still sees it.
 	if got := resolveRepoPane(repoPane("develop", "develop")); got != "dashboard" {
@@ -113,6 +127,8 @@ func TestTheDefaultBranchIsTheRepositorysOwn(t *testing.T) {
 }
 
 func TestTheTrunkIsMatchedAsGitStoresIt(t *testing.T) {
+	t.Parallel()
+
 	// Git refs are case-sensitive, so `Main` beside a `main` trunk is another
 	// branch and has something to say.
 	if got := resolveRepoPane(repoPane("Main", "main")); got != "dashboard › Main" {
@@ -121,6 +137,8 @@ func TestTheTrunkIsMatchedAsGitStoresIt(t *testing.T) {
 }
 
 func TestARepositoryRecordingNoDefaultStillHasATrunk(t *testing.T) {
+	t.Parallel()
+
 	// A repository with no remote records no default, and every tab in it read
 	// `main` as though it were a branch worth the width.
 	for _, branch := range []string{"main", "master", "trunk"} {
@@ -131,6 +149,8 @@ func TestARepositoryRecordingNoDefaultStillHasATrunk(t *testing.T) {
 }
 
 func TestADetachedHeadShowsTheCommit(t *testing.T) {
+	t.Parallel()
+
 	pane := &state.PaneState{
 		Dir: dashboard,
 		Git: git.Checkout{Commit: "a1b2c3d", Default: "main"},
@@ -142,6 +162,8 @@ func TestADetachedHeadShowsTheCommit(t *testing.T) {
 }
 
 func TestABranchIsReducedToWhatIdentifiesIt(t *testing.T) {
+	t.Parallel()
+
 	cases := map[string]string{
 		// An issue key identifies the work whatever wraps it.
 		"bugfix-asatretdinov-cpanel-uapi-mc-13675": "MC-13675",
@@ -168,6 +190,8 @@ func TestABranchIsReducedToWhatIdentifiesIt(t *testing.T) {
 }
 
 func TestABranchIsNotShownForARemoteMachine(t *testing.T) {
+	t.Parallel()
+
 	// The branch is read from the directory ssh was launched in, which says
 	// nothing about the machine on the other end.
 	pane := repoPane("feat/oauth", "main")
@@ -182,6 +206,8 @@ func TestABranchIsNotShownForARemoteMachine(t *testing.T) {
 }
 
 func TestAWorktreeNamedAfterItsBranchSaysItOnce(t *testing.T) {
+	t.Parallel()
+
 	// `git worktree add ../dashboard dashboard` makes a directory and a branch
 	// of the same name, and the two are one fact rather than two.
 	pane := repoPane("dashboard", "main")
@@ -194,6 +220,8 @@ func TestAWorktreeNamedAfterItsBranchSaysItOnce(t *testing.T) {
 }
 
 func TestTheBranchSurvivesTheWorkspaceItRepeats(t *testing.T) {
+	t.Parallel()
+
 	// Herdr shows the workspace above the tabs, so the directory goes — but
 	// the branch is exactly what tells two tabs of that workspace apart.
 	tab := tabWithPane(repoPane("feat/oauth", "main"))
@@ -206,6 +234,8 @@ func TestTheBranchSurvivesTheWorkspaceItRepeats(t *testing.T) {
 }
 
 func TestABranchWidthOfZeroLeavesBranchesOut(t *testing.T) {
+	t.Parallel()
+
 	got := Default(
 		Options{MaxLength: DefaultMaxLength},
 	).Resolve(tabWithPane(repoPane("feat/oauth", "main"))).
@@ -216,6 +246,8 @@ func TestABranchWidthOfZeroLeavesBranchesOut(t *testing.T) {
 }
 
 func TestAPromptCarryingTheBranchDoesNotSayItTwice(t *testing.T) {
+	t.Parallel()
+
 	pane := repoPane("feat/oauth", "main")
 	pane.TerminalTitle = "feat/oauth"
 
@@ -225,6 +257,8 @@ func TestAPromptCarryingTheBranchDoesNotSayItTwice(t *testing.T) {
 }
 
 func TestABranchStandsWhereTheDirectorySaysNothing(t *testing.T) {
+	t.Parallel()
+
 	// A home directory contributes no context, but a repository checked out in
 	// it — dotfiles — still says where the user is.
 	pane := &state.PaneState{Git: git.Checkout{Branch: "feat/oauth", Default: "main"}}
@@ -235,6 +269,8 @@ func TestABranchStandsWhereTheDirectorySaysNothing(t *testing.T) {
 }
 
 func TestTheBranchIsCreditedLikeAContext(t *testing.T) {
+	t.Parallel()
+
 	// The reason a tab carries a name is the source that named the work, and a
 	// branch is not work: it answers for the title only when nothing else does.
 	resolver := defaultChain()

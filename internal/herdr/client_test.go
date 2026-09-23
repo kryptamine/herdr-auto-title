@@ -115,6 +115,8 @@ func respondOK(req incoming) string {
 }
 
 func TestCallDecodesResult(t *testing.T) {
+	t.Parallel()
+
 	srv := newTestServer(t, func(req incoming) string {
 		return `{"id":"` + req.ID + `","result":{"version":"0.8.2"}}`
 	})
@@ -142,6 +144,8 @@ func TestCallDecodesResult(t *testing.T) {
 }
 
 func TestEachCallUsesItsOwnConnection(t *testing.T) {
+	t.Parallel()
+
 	srv := newTestServer(t, respondOK)
 	client := srv.client()
 
@@ -159,6 +163,8 @@ func TestEachCallUsesItsOwnConnection(t *testing.T) {
 }
 
 func TestCallReturnsAPIError(t *testing.T) {
+	t.Parallel()
+
 	srv := newTestServer(t, func(req incoming) string {
 		return `{"id":"` + req.ID + `","error":{"code":"not_found","message":"no such tab"}}`
 	})
@@ -179,6 +185,8 @@ func TestCallReturnsAPIError(t *testing.T) {
 }
 
 func TestACallHerdrDidNotAnswerMayStillTakeEffect(t *testing.T) {
+	t.Parallel()
+
 	// Herdr read this request, so a rename it carries may land later, and
 	// manual rename protection must know that it may.
 	srv := newTestServer(t, func(incoming) string { return "" })
@@ -190,6 +198,8 @@ func TestACallHerdrDidNotAnswerMayStillTakeEffect(t *testing.T) {
 }
 
 func TestACallThatNeverReachedHerdrIsNotUnanswered(t *testing.T) {
+	t.Parallel()
+
 	// A request that was never sent cannot land, so its label must not pass
 	// for Auto Title's own.
 	client := newWithPath(filepath.Join(t.TempDir(), "gone.sock"))
@@ -201,6 +211,8 @@ func TestACallThatNeverReachedHerdrIsNotUnanswered(t *testing.T) {
 }
 
 func TestCallReportsAnUncorrelatedError(t *testing.T) {
+	t.Parallel()
+
 	// Herdr answers a malformed request with an error frame carrying no id and
 	// then drops the connection.
 	srv := newTestServer(t, func(incoming) string {
@@ -213,6 +225,8 @@ func TestCallReportsAnUncorrelatedError(t *testing.T) {
 }
 
 func TestSessionSnapshotDecodesTheWrapper(t *testing.T) {
+	t.Parallel()
+
 	srv := newTestServer(t, func(req incoming) string {
 		return `{"id":"` + req.ID + `","result":{"snapshot":{"version":"0.8.2","protocol":20,` +
 			`"tabs":[{"tab_id":"wE:t1","workspace_id":"wE","label":"1","number":1}],` +
@@ -235,6 +249,8 @@ func TestSessionSnapshotDecodesTheWrapper(t *testing.T) {
 }
 
 func TestRenameTabSendsTabAndLabel(t *testing.T) {
+	t.Parallel()
+
 	srv := newTestServer(t, respondOK)
 
 	if err := RenameTab(
@@ -262,6 +278,8 @@ func TestRenameTabSendsTabAndLabel(t *testing.T) {
 }
 
 func TestShowNotificationSendsTitleAndBodyAndReadsWhetherItShowed(t *testing.T) {
+	t.Parallel()
+
 	// Herdr answers a notice it did not show with success and a reason, which
 	// is not an error: a restart went fine whether or not anyone was told.
 	srv := newTestServer(t, func(req incoming) string {
@@ -298,6 +316,8 @@ func TestShowNotificationSendsTitleAndBodyAndReadsWhetherItShowed(t *testing.T) 
 }
 
 func TestNullFieldsDecodeAsEmpty(t *testing.T) {
+	t.Parallel()
+
 	// Herdr sends null for every optional field of a pane running a plain
 	// shell, and a snapshot is full of them.
 	var got snapshotResult
@@ -340,6 +360,8 @@ func TestSocketPathRequiresTheEnvironment(t *testing.T) {
 }
 
 func TestErrorCode(t *testing.T) {
+	t.Parallel()
+
 	srv := newTestServer(t, func(req incoming) string {
 		return `{"id":"` + req.ID + `","error":{"code":"tab_not_found","message":"tab wE:t1 not found"}}`
 	})

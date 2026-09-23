@@ -8,6 +8,8 @@ import (
 )
 
 func TestAgentTitleBeatsEverySourceBelowIt(t *testing.T) {
+	t.Parallel()
+
 	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
 		Dir:           dashboard,
 		TerminalTitle: "Claude Code",
@@ -30,6 +32,8 @@ func TestAgentTitleBeatsEverySourceBelowIt(t *testing.T) {
 }
 
 func TestAgentTitleOutranksAMeaningfulTerminalTitle(t *testing.T) {
+	t.Parallel()
+
 	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
 		Dir:           dashboard,
 		TerminalTitle: "Fix OAuth redirect",
@@ -44,10 +48,14 @@ func TestAgentTitleOutranksAMeaningfulTerminalTitle(t *testing.T) {
 }
 
 func TestGenericAgentNameFallsThrough(t *testing.T) {
+	t.Parallel()
+
 	// An agent that has nothing to report titles itself. In a live session the
 	// topic then arrives through the terminal title instead.
 	for _, title := range []string{"Claude", "Claude Code", "Agent", "Coding Agent", ""} {
 		t.Run(title, func(t *testing.T) {
+			t.Parallel()
+
 			got := defaultChain().Resolve(tabWithPane(&state.PaneState{
 				Dir:           dashboard,
 				TerminalTitle: "Fix OAuth redirect",
@@ -68,6 +76,8 @@ func TestGenericAgentNameFallsThrough(t *testing.T) {
 }
 
 func TestAgentEchoingItsOwnNameIsNotAgentContext(t *testing.T) {
+	t.Parallel()
+
 	// Agents the generic table has never heard of must not pass their own name
 	// off as a report of their work. The name still reaches the tab, but as the
 	// kind of program running there rather than as what it is doing.
@@ -94,6 +104,8 @@ func TestAgentEchoingItsOwnNameIsNotAgentContext(t *testing.T) {
 }
 
 func TestAnEchoedAgentNameIsDeclinedWhateverReportsIt(t *testing.T) {
+	t.Parallel()
+
 	// A terminal title and a transcript topic carry the echo as readily as the
 	// agent title does, and it says no more about the work there.
 	pane := &state.PaneState{
@@ -120,6 +132,8 @@ func TestAnEchoedAgentNameIsDeclinedWhateverReportsIt(t *testing.T) {
 }
 
 func TestAgentTitleWithoutAnAgentIsIgnored(t *testing.T) {
+	t.Parallel()
+
 	// Herdr leaves the title on a pane whose agent it no longer recognizes;
 	// without an agent it is not agent context.
 	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
@@ -133,6 +147,8 @@ func TestAgentTitleWithoutAnAgentIsIgnored(t *testing.T) {
 }
 
 func TestAgentTitleWithNoDirectoryStandsAlone(t *testing.T) {
+	t.Parallel()
+
 	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
 		Agent:       "claude",
 		AgentStatus: herdr.AgentStatusWorking,
@@ -145,6 +161,8 @@ func TestAgentTitleWithNoDirectoryStandsAlone(t *testing.T) {
 }
 
 func TestContextAndActivityComeFromTheSamePane(t *testing.T) {
+	t.Parallel()
+
 	// The agent pane wins the selection; the other pane's directory must not
 	// leak into the name and describe neither of them.
 	tab := tabOf([]*state.PaneState{
@@ -169,6 +187,8 @@ func TestContextAndActivityComeFromTheSamePane(t *testing.T) {
 }
 
 func TestAnAgentTabDoesNotRepeatItsOwnDirectory(t *testing.T) {
+	t.Parallel()
+
 	// Claude Code titles its terminal after the project it was started in, so
 	// the activity says what the context already does. The agent's name in
 	// front of it must not hide that.
@@ -193,6 +213,8 @@ func hiddenAgentChain() *Deterministic {
 }
 
 func TestAHiddenAgentNameLeavesTheWorkAlone(t *testing.T) {
+	t.Parallel()
+
 	got := hiddenAgentChain().Resolve(tabWithPane(&state.PaneState{
 		Dir:         dashboard,
 		Agent:       "claude",
@@ -206,6 +228,8 @@ func TestAHiddenAgentNameLeavesTheWorkAlone(t *testing.T) {
 }
 
 func TestAHiddenAgentNameIsAlsoStrippedFromTheWork(t *testing.T) {
+	t.Parallel()
+
 	// An agent that signs its terminal title must not smuggle its name back in
 	// as text once the name itself is turned off.
 	got := hiddenAgentChain().Resolve(tabWithPane(&state.PaneState{
@@ -221,6 +245,8 @@ func TestAHiddenAgentNameIsAlsoStrippedFromTheWork(t *testing.T) {
 }
 
 func TestASilentAgentHiddenLeavesTheTabToItsDirectory(t *testing.T) {
+	t.Parallel()
+
 	// The name is the whole title of a pane whose agent has reported nothing,
 	// so turning it off has to leave that tab named like any other.
 	pane := &state.PaneState{
@@ -239,6 +265,8 @@ func TestASilentAgentHiddenLeavesTheTabToItsDirectory(t *testing.T) {
 }
 
 func TestASilentAgentHiddenWithNoDirectoryFallsBack(t *testing.T) {
+	t.Parallel()
+
 	got := hiddenAgentChain().Resolve(tabWithPane(&state.PaneState{
 		Agent:       "claude",
 		AgentStatus: herdr.AgentStatusWorking,
@@ -250,6 +278,8 @@ func TestASilentAgentHiddenWithNoDirectoryFallsBack(t *testing.T) {
 }
 
 func TestAHiddenAgentNameKeepsAWorkspaceDirectory(t *testing.T) {
+	t.Parallel()
+
 	// The workspace is dropped only when something else is left to read, and a
 	// name that is about to be hidden is not something else.
 	tab := tabWithPane(&state.PaneState{

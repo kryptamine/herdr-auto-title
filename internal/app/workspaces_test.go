@@ -97,6 +97,8 @@ func wantRowUntouched(t *testing.T, h *harness, why string) {
 }
 
 func TestAWorkspaceWithOneTabIsNamedAfterIt(t *testing.T) {
+	t.Parallel()
+
 	repo := repoAt(t, "feat/oauth")
 
 	h := soleTabWorkspace(t, workspaceConfig(t), repo, herdr.PaneInfo{})
@@ -108,6 +110,8 @@ func TestAWorkspaceWithOneTabIsNamedAfterIt(t *testing.T) {
 // The rule is exactly one tab: there is no cross-tab answer to give, so a
 // workspace that has grown a second tab is left where it is.
 func TestAWorkspaceWithSeveralTabsIsLeftAlone(t *testing.T) {
+	t.Parallel()
+
 	repo := repoAt(t, "feat/oauth")
 
 	h := startWorkspaces(t, workspaceConfig(t),
@@ -129,6 +133,8 @@ func TestAWorkspaceWithSeveralTabsIsLeftAlone(t *testing.T) {
 // Herdr labels an unnamed workspace after its directory, so any other label on
 // the first poll is one its owner wrote, and this never takes it back.
 func TestALabelThatIsNotTheDirectoryIsTreatedAsTheUsers(t *testing.T) {
+	t.Parallel()
+
 	repo := repoAt(t, "feat/oauth")
 
 	h := startWorkspaces(t, workspaceConfig(t),
@@ -145,6 +151,8 @@ func TestALabelThatIsNotTheDirectoryIsTreatedAsTheUsers(t *testing.T) {
 // directory's own name back on the row and it is nobody's again. The claim is
 // released by Retain, which sees the label the lock was taken under move on.
 func TestClearingAClaimedRowHandsItBack(t *testing.T) {
+	t.Parallel()
+
 	repo := repoAt(t, "feat/oauth")
 
 	h := startWorkspaces(t, workspaceConfig(t),
@@ -163,6 +171,8 @@ func TestClearingAClaimedRowHandsItBack(t *testing.T) {
 
 // A row the plugin named and the user then took is handed back the same way.
 func TestARowTakenAfterItWasNamedIsHandedBackWhenCleared(t *testing.T) {
+	t.Parallel()
+
 	repo := repoAt(t, "feat/oauth")
 	want := filepath.Base(repo) + " › feat/oauth"
 
@@ -189,6 +199,8 @@ func TestARowTakenAfterItWasNamedIsHandedBackWhenCleared(t *testing.T) {
 // rows would leave the sidebar unable to tell them apart. Only the one still
 // wearing the directory's own name is taken.
 func TestOnlyTheRowStillWearingItsDirectoryIsTaken(t *testing.T) {
+	t.Parallel()
+
 	h := startWorkspaces(t, workspaceConfig(t),
 		[]herdr.WorkspaceInfo{
 			{WorkspaceID: "wE", Label: "reviewing"},
@@ -238,6 +250,8 @@ func TestOnlyTheRowStillWearingItsDirectoryIsTaken(t *testing.T) {
 // A workspace opened after startup carries its directory's name, so it is taken
 // like any other rather than counted as something the user wrote.
 func TestAWorkspaceOpenedAfterStartupIsStillTaken(t *testing.T) {
+	t.Parallel()
+
 	repo := repoAt(t, "feat/oauth")
 
 	h := startWorkspaces(t, workspaceConfig(t), nil, nil, nil)
@@ -255,6 +269,8 @@ func TestAWorkspaceOpenedAfterStartupIsStillTaken(t *testing.T) {
 // the one source the row's chain leaves out. The tab beside it still takes the
 // process, which is what keeps the row steady while the tab moves.
 func TestTheRowDoesNotFollowTheForegroundProcess(t *testing.T) {
+	t.Parallel()
+
 	repo := repoAt(t, "feat/oauth")
 
 	h := soleTabWorkspace(t, workspaceConfig(t), repo, herdr.PaneInfo{})
@@ -283,6 +299,8 @@ func TestTheRowDoesNotFollowTheForegroundProcess(t *testing.T) {
 // not bring the process back as a kind: a row is not rewritten from
 // `nvim › auth.ts` to `less › auth.ts` when only the foreground process moves.
 func TestTheRowDoesNotFollowTheForegroundProcessBehindATerminalTitle(t *testing.T) {
+	t.Parallel()
+
 	h := soleTabWorkspace(t, workspaceConfig(t), dashboard,
 		herdr.PaneInfo{TerminalTitleStripped: "auth.ts"})
 	h.client.SetProcesses("wE:p1", herdr.PaneProcessInfoProcess{Name: "nvim", CWD: dashboard})
@@ -310,6 +328,8 @@ func TestTheRowDoesNotFollowTheForegroundProcessBehindATerminalTitle(t *testing.
 }
 
 func TestTheRowIsLeftAloneUnlessItIsAskedFor(t *testing.T) {
+	t.Parallel()
+
 	repo := repoAt(t, "feat/oauth")
 
 	h := soleTabWorkspace(t, testConfig(), repo, herdr.PaneInfo{})
@@ -319,6 +339,8 @@ func TestTheRowIsLeftAloneUnlessItIsAskedFor(t *testing.T) {
 }
 
 func TestAWorkspaceWhoseTabHasNoPaneIsLeftAlone(t *testing.T) {
+	t.Parallel()
+
 	h := startWorkspaces(t, workspaceConfig(t),
 		[]herdr.WorkspaceInfo{{WorkspaceID: "wE", Label: "dashboard"}},
 		[]herdr.TabInfo{{TabID: "wE:t1", WorkspaceID: "wE", Label: "1"}},
@@ -333,6 +355,8 @@ func TestAWorkspaceWhoseTabHasNoPaneIsLeftAlone(t *testing.T) {
 // named, so the row costs that read where pane naming is off, as it is in this
 // package's tests (see poll-loop.md). The work moves after the tab is claimed.
 func TestARowAboveAClaimedTabIsStillNamed(t *testing.T) {
+	t.Parallel()
+
 	repo := repoAt(t, "feat/oauth")
 
 	h := soleTabWorkspace(t, workspaceConfig(t), repo, herdr.PaneInfo{})
@@ -386,6 +410,8 @@ func claimedTabReads(t *testing.T, cfg Config) int {
 // With pane naming on, as it ships, the claimed tab's pane is already read for
 // its panes, so the row above it is named from a read the poll has paid for.
 func TestARowAboveAClaimedTabCostsNoReadWhilePanesAreNamed(t *testing.T) {
+	t.Parallel()
+
 	both := paneConfig()
 	both.RenameWorkspaces = true
 	both.WorkspaceMaxLength = resolver.DefaultWorkspaceMaxLength
@@ -408,6 +434,8 @@ func TestARowAboveAClaimedTabCostsNoReadWhilePanesAreNamed(t *testing.T) {
 
 // With pane naming off, that pane is read for the row alone.
 func TestARowAboveAClaimedTabCostsAReadWhilePanesAreNotNamed(t *testing.T) {
+	t.Parallel()
+
 	without := claimedTabReads(t, testConfig())
 	with := claimedTabReads(t, workspaceConfig(t))
 
@@ -420,6 +448,8 @@ func TestARowAboveAClaimedTabCostsAReadWhilePanesAreNotNamed(t *testing.T) {
 // string. A tab handed the whole label would match neither half of a
 // two-part row and repeat both.
 func TestATabDoesNotRepeatTheRowAboveIt(t *testing.T) {
+	t.Parallel()
+
 	repo := repoAt(t, "feat/oauth")
 
 	h := soleTabWorkspace(t, workspaceConfig(t), repo,
@@ -446,6 +476,8 @@ func TestATabDoesNotRepeatTheRowAboveIt(t *testing.T) {
 // Herdr, so it judges every workspace -- including the ones it cannot name. A
 // workspace that holds two tabs today may hold one tomorrow.
 func TestAMultiTabWorkspaceKeepsItsNameWhenATabCloses(t *testing.T) {
+	t.Parallel()
+
 	repo := repoAt(t, "feat/oauth")
 
 	h := startWorkspaces(t, workspaceConfig(t),
@@ -472,6 +504,8 @@ func TestAMultiTabWorkspaceKeepsItsNameWhenATabCloses(t *testing.T) {
 // is short so the bound, which drops parts from the front, cannot be what
 // leaves the agent's name out.
 func TestTheRowObeysTheAgentNameSetting(t *testing.T) {
+	t.Parallel()
+
 	cfg := workspaceConfig(t)
 	cfg.ShowAgentName = false
 
@@ -494,6 +528,8 @@ func TestTheRowObeysTheAgentNameSetting(t *testing.T) {
 // the feature off the label is whatever its owner typed, separator and all, and
 // a tab must name itself exactly as it did before this branch.
 func TestTheFeatureOffLeavesTabNamingWhereItWas(t *testing.T) {
+	t.Parallel()
+
 	h := startWorkspaces(t, testConfig(),
 		[]herdr.WorkspaceInfo{{WorkspaceID: theWorkspace, Label: "group › dashboard"}},
 		[]herdr.TabInfo{{TabID: "wE:t1", WorkspaceID: theWorkspace, Label: "1"}},
@@ -519,6 +555,8 @@ func TestTheFeatureOffLeavesTabNamingWhereItWas(t *testing.T) {
 // as it was before this branch. A branch that happens to equal the label is a
 // branch the tab still has to say.
 func TestTheFeatureOffMatchesTheLabelAgainstTheContextAlone(t *testing.T) {
+	t.Parallel()
+
 	repo := repoAt(t, "release")
 
 	h := startWorkspaces(t, testConfig(),
@@ -545,6 +583,8 @@ func TestTheFeatureOffMatchesTheLabelAgainstTheContextAlone(t *testing.T) {
 // its label is still judged, because that poll is the only one that can tell
 // its owner's name from Herdr's own.
 func TestAWorkspaceWhosePaneArrivesLateKeepsItsName(t *testing.T) {
+	t.Parallel()
+
 	repo := repoAt(t, "feat/oauth")
 
 	h := startWorkspaces(t, workspaceConfig(t),
@@ -564,6 +604,8 @@ func TestAWorkspaceWhosePaneArrivesLateKeepsItsName(t *testing.T) {
 // Herdr gave it is nobody's name. Without a pane there is no directory to
 // compare against, which must read as "cannot tell yet", not as a claim.
 func TestAWorkspaceStillWearingItsBasenameIsNotClaimedBeforeItsPaneExists(t *testing.T) {
+	t.Parallel()
+
 	repo := repoAt(t, "feat/oauth")
 
 	h := startWorkspaces(t, workspaceConfig(t),
@@ -587,6 +629,8 @@ func TestAWorkspaceStillWearingItsBasenameIsNotClaimedBeforeItsPaneExists(t *tes
 // default to judge by either, so it is neither claimed nor named until its
 // pane arrives, and then flows through the general path like any other.
 func TestAPanelessWorkspaceOpenedLaterIsNamedOnceItsPaneArrives(t *testing.T) {
+	t.Parallel()
+
 	repo := repoAt(t, "feat/oauth")
 
 	h := startWorkspaces(t, workspaceConfig(t), nil, nil, nil)
@@ -610,6 +654,8 @@ func TestAPanelessWorkspaceOpenedLaterIsNamedOnceItsPaneArrives(t *testing.T) {
 // count. A two-tab workspace whose first tab has no pane yet shows no default
 // either, and is judged once it does rather than claimed under the basename.
 func TestATwoTabWorkspaceWhoseFirstTabHasNoPaneIsNotClaimed(t *testing.T) {
+	t.Parallel()
+
 	repo := repoAt(t, "feat/oauth")
 
 	h := startWorkspaces(t, workspaceConfig(t),
@@ -636,6 +682,8 @@ func TestATwoTabWorkspaceWhoseFirstTabHasNoPaneIsNotClaimed(t *testing.T) {
 // named, so no poll recorded the label the lock was taken with. The user's next
 // rename must still read as a label that moved, not as a workspace never seen.
 func TestAReloadedWorkspaceLockSurvivesASecondRename(t *testing.T) {
+	t.Parallel()
+
 	repo := repoAt(t, "feat/oauth")
 	cfg := workspaceConfig(t)
 	cfg.ManualPath = filepath.Join(t.TempDir(), "manual-names.json")
@@ -668,6 +716,8 @@ func TestAReloadedWorkspaceLockSurvivesASecondRename(t *testing.T) {
 // the row named after it says everything the tab does. On the polls after the
 // row is named the tab must keep its title rather than fall back to "Shell".
 func TestATabSaidWhollyByTheRowKeepsItsTitle(t *testing.T) {
+	t.Parallel()
+
 	repo := repoAt(t, "feat/oauth")
 
 	h := soleTabWorkspace(t, workspaceConfig(t), repo, herdr.PaneInfo{})
@@ -689,6 +739,8 @@ func TestATabSaidWhollyByTheRowKeepsItsTitle(t *testing.T) {
 // A pane rooted at the filesystem has no basename, so the first poll cannot
 // tell "mine" from Herdr's own label; the row must wait, not be renamed over.
 func TestAWorkspaceWithoutABasenameIsNotRenamedBeforeItIsJudged(t *testing.T) {
+	t.Parallel()
+
 	h := startWorkspaces(t, workspaceConfig(t),
 		[]herdr.WorkspaceInfo{{WorkspaceID: theWorkspace, Label: "mine"}},
 		[]herdr.TabInfo{{TabID: "wE:t1", WorkspaceID: theWorkspace, Label: "1"}},
@@ -722,6 +774,8 @@ func TestAWorkspaceWithoutABasenameIsNotRenamedBeforeItIsJudged(t *testing.T) {
 }
 
 func TestARowRenameLandingAfterItsCallFailedIsRenamedOver(t *testing.T) {
+	t.Parallel()
+
 	// A stalled Herdr applies a row rename after the call timed out, and the
 	// row has moved on by then. Read as the user's, it would be locked for good.
 	repo := repoAt(t, "feat/oauth")
@@ -753,6 +807,8 @@ func TestARowRenameLandingAfterItsCallFailedIsRenamedOver(t *testing.T) {
 // the same session and the same lock file. A row this plugin wrote is then
 // neither the directory's basename nor empty, and must not read as the owner's.
 func TestARowAutoTitleNamedIsNotClaimedAfterARestart(t *testing.T) {
+	t.Parallel()
+
 	repo := repoAt(t, "feat/oauth")
 	cfg := workspaceConfig(t)
 	cfg.ManualPath = filepath.Join(t.TempDir(), "manual-names.json")
@@ -787,6 +843,8 @@ func TestARowAutoTitleNamedIsNotClaimedAfterARestart(t *testing.T) {
 // wearing a label it cannot recognise and claim it for the user; rather than
 // name it once and freeze it, the row is left alone.
 func TestTheRowIsLeftAloneWhenLocksHaveNowhereToLive(t *testing.T) {
+	t.Parallel()
+
 	repo := repoAt(t, "feat/oauth")
 	cfg := workspaceConfig(t)
 	cfg.ManualPath = ""
@@ -801,6 +859,8 @@ func TestTheRowIsLeftAloneWhenLocksHaveNowhereToLive(t *testing.T) {
 // written, a label is the user's opaque text and is matched whole, as with the
 // feature off. Resolvers is what production builds from, so it is asked directly.
 func TestTheTabChainMatchesTheRowWholeWhenLocksHaveNowhereToLive(t *testing.T) {
+	t.Parallel()
+
 	cfg := workspaceConfig(t)
 	cfg.ManualPath = ""
 

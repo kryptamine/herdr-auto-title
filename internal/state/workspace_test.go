@@ -11,6 +11,8 @@ import (
 // basename is the one thing a poll can tell the user's name apart by. These are
 // the shapes that decision has.
 func TestAWorkspaceIsClaimedOnSight(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		settled bool
@@ -97,6 +99,8 @@ func TestAWorkspaceIsClaimedOnSight(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := LoadManual("")
 			if test.known != "" {
 				m.Workspaces.Applied(test.sight.ID, test.known)
@@ -121,6 +125,8 @@ func TestAWorkspaceIsClaimedOnSight(t *testing.T) {
 // has nothing to compare its label against. It is judged on the first poll that
 // does, by the same test -- not claimed under whatever it wore meanwhile.
 func TestAWorkspaceWithNoDefaultYetIsJudgedOnTheFirstPollThatHasOne(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		settled bool
@@ -140,6 +146,8 @@ func TestAWorkspaceWithNoDefaultYetIsJudgedOnTheFirstPollThatHasOne(t *testing.T
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
 			m := LoadManual("")
 
 			if got := m.Workspaces.Observe(
@@ -175,6 +183,8 @@ func TestAWorkspaceWithNoDefaultYetIsJudgedOnTheFirstPollThatHasOne(t *testing.T
 // The deferral does not outlive the workspace: one closed while still waiting
 // for a pane is forgotten, so a later workspace reusing its id starts afresh.
 func TestAWorkspaceClosedWhileWaitingForAPaneIsForgotten(t *testing.T) {
+	t.Parallel()
+
 	m := LoadManual("")
 	m.Workspaces.Observe(Sighting{ID: "wE", Current: "the migration"})
 	m.Settled()
@@ -191,6 +201,8 @@ func TestAWorkspaceClosedWhileWaitingForAPaneIsForgotten(t *testing.T) {
 // A tab is not told apart on the first poll: its label says nothing about who
 // wrote it, so the same sighting that claims a workspace leaves a tab alone.
 func TestATabIsNotClaimedOnSight(t *testing.T) {
+	t.Parallel()
+
 	m := LoadManual("")
 	s := Sighting{ID: "wE:t1", Current: "the migration", Desired: "api", Default: "1"}
 
@@ -200,6 +212,8 @@ func TestATabIsNotClaimedOnSight(t *testing.T) {
 }
 
 func TestWorkspaceFromCarriesTheDirectoryAsItsDefault(t *testing.T) {
+	t.Parallel()
+
 	// On a volume, since a path without one is not absolute on Windows; the
 	// volume is empty everywhere else.
 	root := filepath.VolumeName(t.TempDir()) + string(filepath.Separator)
@@ -224,6 +238,8 @@ func TestWorkspaceFromCarriesTheDirectoryAsItsDefault(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
 			var pane *PaneState
 			if !test.nilPane {
 				pane = &PaneState{ID: "wE:p1", Dir: test.dir}
@@ -247,6 +263,8 @@ func TestWorkspaceFromCarriesTheDirectoryAsItsDefault(t *testing.T) {
 // restarted plugin meets rows it wrote itself: neither the basename nor a name
 // it remembers. The label last written is kept in the file for exactly this.
 func TestARowThisWroteIsItsOwnAfterAReload(t *testing.T) {
+	t.Parallel()
+
 	path := filepath.Join(t.TempDir(), "manual-names.json")
 
 	m := LoadManual(path)
@@ -287,6 +305,8 @@ func TestARowThisWroteIsItsOwnAfterAReload(t *testing.T) {
 // What was written for a workspace the session no longer holds is dropped, so
 // a workspace later reusing its id is judged on its own label.
 func TestWhatWasWrittenForAClosedWorkspaceIsForgotten(t *testing.T) {
+	t.Parallel()
+
 	path := filepath.Join(t.TempDir(), "manual-names.json")
 
 	m := LoadManual(path)
@@ -309,6 +329,8 @@ func TestWhatWasWrittenForAClosedWorkspaceIsForgotten(t *testing.T) {
 // A row rename that got no answer and landed late is this plugin's work as much
 // as one that answered, so a restart must find it recorded as such.
 func TestARowRenameThatLandedLateIsItsOwnAfterAReload(t *testing.T) {
+	t.Parallel()
+
 	path := filepath.Join(t.TempDir(), "manual-names.json")
 
 	m := LoadManual(path)
@@ -343,6 +365,8 @@ func TestARowRenameThatLandedLateIsItsOwnAfterAReload(t *testing.T) {
 // this plugin's work while it runs -- as a tab is not -- and a restart must
 // agree, rather than lock it at a name the work then leaves behind.
 func TestARowRenamedToTheNameWantedIsItsOwnAfterAReload(t *testing.T) {
+	t.Parallel()
+
 	path := filepath.Join(t.TempDir(), "manual-names.json")
 
 	m := LoadManual(path)

@@ -24,6 +24,8 @@ func sighting(current string) Sighting {
 }
 
 func TestSightingFromDerivesTheDefaultLabel(t *testing.T) {
+	t.Parallel()
+
 	// A tab nobody has named wears its position, so the third tab of a
 	// workspace is `3` however high the ids around it have climbed.
 	tab := TabFrom(herdr.TabInfo{TabID: "wE:t9", Label: "Important work"}, "work", 3, nil, false)
@@ -42,6 +44,8 @@ func TestSightingFromDerivesTheDefaultLabel(t *testing.T) {
 }
 
 func TestTheFirstPollNeverLocks(t *testing.T) {
+	t.Parallel()
+
 	// The trap this rule exists for: on the first poll almost every tab carries
 	// a label that is not yet what the resolver would produce. Locking on that
 	// would claim the whole session the moment the plugin starts.
@@ -59,6 +63,8 @@ func TestTheFirstPollNeverLocks(t *testing.T) {
 }
 
 func TestATabTurningUpAlreadyNamedIsTheUsers(t *testing.T) {
+	t.Parallel()
+
 	// The case that made this rule necessary: a tab created and named faster
 	// than the next poll. Auto Title never saw it carrying its position, so
 	// the name it carries is not Auto Title's.
@@ -76,6 +82,8 @@ func TestATabTurningUpAlreadyNamedIsTheUsers(t *testing.T) {
 }
 
 func TestATabTurningUpUnnamedIsNotTheUsers(t *testing.T) {
+	t.Parallel()
+
 	// Herdr names a new tab after its position. Nobody has claimed this one.
 	m := newManual(t)
 
@@ -87,6 +95,8 @@ func TestATabTurningUpUnnamedIsNotTheUsers(t *testing.T) {
 }
 
 func TestATabFallingBackToItsDefaultLabelIsNotTheUsers(t *testing.T) {
+	t.Parallel()
+
 	// The default label is not only how a tab starts out: it comes back, and it
 	// slides down for every tab that closes to the left. Locking there would
 	// freeze the tab at a number for the rest of the session.
@@ -104,6 +114,8 @@ func TestATabFallingBackToItsDefaultLabelIsNotTheUsers(t *testing.T) {
 }
 
 func TestATabWhoseNameWasClearedIsNotTheUsers(t *testing.T) {
+	t.Parallel()
+
 	// Clearing a tab's name empties its label rather than putting the position
 	// back, so an empty label is Herdr's other way of saying nobody named it —
 	// see docs/architecture/herdr-socket-api.md.
@@ -121,6 +133,8 @@ func TestATabWhoseNameWasClearedIsNotTheUsers(t *testing.T) {
 }
 
 func TestARenameByTheUserLocksTheTab(t *testing.T) {
+	t.Parallel()
+
 	m := newManual(t)
 	m.Tabs.Observe(sighting("1"))
 	m.Tabs.Applied("wE:t1", "dashboard")
@@ -135,6 +149,8 @@ func TestARenameByTheUserLocksTheTab(t *testing.T) {
 }
 
 func TestARenameLandingAfterItsCallFailedIsNotTheUsers(t *testing.T) {
+	t.Parallel()
+
 	// Herdr can apply a rename seconds after the call gave up on it, by when
 	// the name wanted has moved on. Read as the user's, it froze the tab.
 	m := newManual(t)
@@ -151,6 +167,8 @@ func TestARenameLandingAfterItsCallFailedIsNotTheUsers(t *testing.T) {
 }
 
 func TestARenameByThePluginDoesNotLock(t *testing.T) {
+	t.Parallel()
+
 	m := newManual(t)
 	m.Tabs.Observe(sighting("1"))
 	m.Tabs.Applied("wE:t1", "dashboard")
@@ -161,6 +179,8 @@ func TestARenameByThePluginDoesNotLock(t *testing.T) {
 }
 
 func TestALabelThatHasNotMovedIsNobodysDoing(t *testing.T) {
+	t.Parallel()
+
 	m := newManual(t)
 	m.Tabs.Observe(sighting("Important work"))
 
@@ -171,6 +191,8 @@ func TestALabelThatHasNotMovedIsNobodysDoing(t *testing.T) {
 }
 
 func TestALabelMatchingWhatWeWouldSetDoesNotLock(t *testing.T) {
+	t.Parallel()
+
 	// Indistinguishable from the plugin's own work, and harmless either way.
 	m := newManual(t)
 	m.Tabs.Observe(sighting("1"))
@@ -181,6 +203,8 @@ func TestALabelMatchingWhatWeWouldSetDoesNotLock(t *testing.T) {
 }
 
 func TestLocksSurviveAReload(t *testing.T) {
+	t.Parallel()
+
 	path := filepath.Join(t.TempDir(), "manual-names.json")
 
 	m := LoadManual(path)
@@ -196,6 +220,8 @@ func TestLocksSurviveAReload(t *testing.T) {
 }
 
 func TestAReloadedLockIsReleasedWhenTheLabelMovedOn(t *testing.T) {
+	t.Parallel()
+
 	// Herdr's tab ids belong to a session, so a stored wE:t1 may be an
 	// unrelated tab by the time it is read back. Only the label makes it the
 	// same tab.
@@ -218,6 +244,8 @@ func TestAReloadedLockIsReleasedWhenTheLabelMovedOn(t *testing.T) {
 }
 
 func TestRetainDropsTabsTheSessionNoLongerHolds(t *testing.T) {
+	t.Parallel()
+
 	m := newManual(t)
 	m.Tabs.Observe(sighting("1"))
 	m.Tabs.Observe(sighting("Important work"))
@@ -238,6 +266,8 @@ func TestRetainDropsTabsTheSessionNoLongerHolds(t *testing.T) {
 }
 
 func TestAnUnreadableStoreIsNotFatal(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
 
 	path := filepath.Join(dir, "manual-names.json")
@@ -258,6 +288,8 @@ func TestAnUnreadableStoreIsNotFatal(t *testing.T) {
 }
 
 func TestWithoutAPathLocksStayInMemory(t *testing.T) {
+	t.Parallel()
+
 	m := LoadManual("")
 	m.Tabs.Observe(sighting("1"))
 
@@ -277,6 +309,8 @@ func paneSighting(current string) Sighting {
 }
 
 func TestPaneSightingFromHasNoDefaultLabel(t *testing.T) {
+	t.Parallel()
+
 	// A pane has one spelling for unnamed and no second one. pane.rename clears
 	// an empty label rather than storing it, and Herdr omits the field entirely
 	// until a pane is named, so there is no position to compare against.
@@ -289,6 +323,8 @@ func TestPaneSightingFromHasNoDefaultLabel(t *testing.T) {
 }
 
 func TestAPaneTheUserRenamedIsLocked(t *testing.T) {
+	t.Parallel()
+
 	m := LoadManual("")
 	m.Settled()
 
@@ -307,6 +343,8 @@ func TestAPaneTheUserRenamedIsLocked(t *testing.T) {
 }
 
 func TestAPaneAutoTitleNamedIsNotTheUsers(t *testing.T) {
+	t.Parallel()
+
 	m := LoadManual("")
 	m.Settled()
 	m.Panes.Applied("wE:p1", "dashboard")
@@ -317,6 +355,8 @@ func TestAPaneAutoTitleNamedIsNotTheUsers(t *testing.T) {
 }
 
 func TestClearingAPaneLabelHandsItBack(t *testing.T) {
+	t.Parallel()
+
 	m := LoadManual("")
 	m.Settled()
 	m.Panes.Observe(paneSighting("Important work"))
@@ -330,6 +370,8 @@ func TestClearingAPaneLabelHandsItBack(t *testing.T) {
 }
 
 func TestPaneLocksSurviveAReload(t *testing.T) {
+	t.Parallel()
+
 	path := filepath.Join(t.TempDir(), "manual-names.json")
 
 	m := LoadManual(path)

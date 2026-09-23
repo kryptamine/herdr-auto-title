@@ -35,6 +35,8 @@ func tabWithCWD(dir string) state.TabState {
 }
 
 func TestResolveFromCWD(t *testing.T) {
+	t.Parallel()
+
 	home := t.TempDir()
 	source := CWD{home: filepath.Clean(home)}
 	r := New(Options{MaxLength: DefaultMaxLength}, source)
@@ -61,6 +63,8 @@ func TestResolveFromCWD(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			got := r.Resolve(tabWithCWD(tc.cwd))
 			if got.Name != tc.want {
 				t.Errorf("name = %q, want %q", got.Name, tc.want)
@@ -74,6 +78,8 @@ func TestResolveFromCWD(t *testing.T) {
 }
 
 func TestResolveNamesATabAfterItsDirectory(t *testing.T) {
+	t.Parallel()
+
 	r := New(Options{MaxLength: DefaultMaxLength}, NewCWD(""))
 	tab := tabOf([]*state.PaneState{
 		{ID: "wE:p1", Dir: api, Focused: true},
@@ -85,6 +91,8 @@ func TestResolveNamesATabAfterItsDirectory(t *testing.T) {
 }
 
 func TestResolveTabWithoutPanes(t *testing.T) {
+	t.Parallel()
+
 	r := New(Options{MaxLength: DefaultMaxLength}, NewCWD(""))
 
 	got := r.Resolve(tabOf(nil))
@@ -94,6 +102,8 @@ func TestResolveTabWithoutPanes(t *testing.T) {
 }
 
 func TestResolveTruncatesToMaxLength(t *testing.T) {
+	t.Parallel()
+
 	long := strings.Repeat("x", 100)
 	r := New(Options{MaxLength: 10}, NewCWD(""))
 
@@ -104,6 +114,8 @@ func TestResolveTruncatesToMaxLength(t *testing.T) {
 }
 
 func TestResolveIsDeterministic(t *testing.T) {
+	t.Parallel()
+
 	r := New(Options{MaxLength: DefaultMaxLength}, NewCWD(""))
 	panes := []*state.PaneState{
 		{ID: "wE:p1", Dir: dashboard},
@@ -138,6 +150,8 @@ func (s higherSource) Resolve(*state.PaneState) (Parts, bool) {
 }
 
 func TestHigherPrioritySourceSuppliesActivity(t *testing.T) {
+	t.Parallel()
+
 	r := New(Options{MaxLength: DefaultMaxLength},
 		higherSource{confidence: ConfidenceProcess, parts: Parts{Activity: "Tests"}, ok: true},
 		NewCWD(""),
@@ -159,6 +173,8 @@ func TestHigherPrioritySourceSuppliesActivity(t *testing.T) {
 }
 
 func TestHigherPrioritySourceOverridesContext(t *testing.T) {
+	t.Parallel()
+
 	r := New(
 		Options{MaxLength: DefaultMaxLength},
 		higherSource{
@@ -176,6 +192,8 @@ func TestHigherPrioritySourceOverridesContext(t *testing.T) {
 }
 
 func TestSourceThatDeclinesIsSkipped(t *testing.T) {
+	t.Parallel()
+
 	r := New(Options{MaxLength: DefaultMaxLength},
 		higherSource{ok: false},
 		NewCWD(""),
@@ -188,6 +206,8 @@ func TestSourceThatDeclinesIsSkipped(t *testing.T) {
 }
 
 func TestATabDoesNotRepeatItsWorkspace(t *testing.T) {
+	t.Parallel()
+
 	// Herdr shows the workspace above its tabs, so a tab in the workspace it is
 	// named after spends half its width saying what is already on screen.
 	tab := tabWithPane(&state.PaneState{
@@ -203,6 +223,8 @@ func TestATabDoesNotRepeatItsWorkspace(t *testing.T) {
 }
 
 func TestATabWithNothingElseKeepsItsContext(t *testing.T) {
+	t.Parallel()
+
 	// Dropping it here would leave the tab with no name at all, which loses
 	// more than it saves.
 	tab := tabWithPane(&state.PaneState{Dir: dashboard})
@@ -215,6 +237,8 @@ func TestATabWithNothingElseKeepsItsContext(t *testing.T) {
 }
 
 func TestADifferentWorkspaceIsNotDropped(t *testing.T) {
+	t.Parallel()
+
 	// A tab whose directory left its workspace behind is exactly the tab that
 	// needs to say where it is.
 	tab := tabWithPane(&state.PaneState{
@@ -230,6 +254,8 @@ func TestADifferentWorkspaceIsNotDropped(t *testing.T) {
 }
 
 func TestAWorkspaceWithoutAName(t *testing.T) {
+	t.Parallel()
+
 	// An unnamed workspace must not make every context look like a repeat.
 	tab := tabWithPane(&state.PaneState{
 		Dir:           dashboard,
@@ -243,6 +269,8 @@ func TestAWorkspaceWithoutAName(t *testing.T) {
 }
 
 func TestTheShippedChainIsAWellFormedLadder(t *testing.T) {
+	t.Parallel()
+
 	// Confidences used to be repeated in every result a source returned, and
 	// the chain's order was a second, unchecked statement of the same ladder.
 	// Now the numbers are the only statement, so they have to hold up.
@@ -279,6 +307,8 @@ func TestTheShippedChainIsAWellFormedLadder(t *testing.T) {
 }
 
 func TestSourcesAreOrderedByConfidenceNotByArgument(t *testing.T) {
+	t.Parallel()
+
 	// Listing a source out of ladder order must not change what wins.
 	low := higherSource{confidence: ConfidenceCWD, parts: Parts{Activity: "low"}, ok: true}
 	high := higherSource{confidence: ConfidenceAgent, parts: Parts{Activity: "high"}, ok: true}
@@ -300,6 +330,8 @@ func TestSourcesAreOrderedByConfidenceNotByArgument(t *testing.T) {
 }
 
 func TestTheShippedChainResolvesATabWithNoPanes(t *testing.T) {
+	t.Parallel()
+
 	got := defaultChain().Resolve(tabOf(nil))
 	if got.Name != GenericFallback {
 		t.Errorf("name = %q, want %q", got.Name, GenericFallback)
@@ -307,6 +339,8 @@ func TestTheShippedChainResolvesATabWithNoPanes(t *testing.T) {
 }
 
 func TestTheHomeDirectoryIsMatchedTheWayWindowsSpellsIt(t *testing.T) {
+	t.Parallel()
+
 	// A Windows path names the same directory in any case, and a pane sitting
 	// in the home directory must yield nothing whichever case it arrived in.
 	if runtime.GOOS != "windows" {
@@ -323,6 +357,8 @@ func TestTheHomeDirectoryIsMatchedTheWayWindowsSpellsIt(t *testing.T) {
 }
 
 func TestResolvePanesNamesThePaneItIsGiven(t *testing.T) {
+	t.Parallel()
+
 	// The point of naming panes: a tab speaks through one pane, and the goto
 	// panel lists them all. Each must be named from itself or the split reads
 	// as one row repeated.
@@ -342,6 +378,8 @@ func TestResolvePanesNamesThePaneItIsGiven(t *testing.T) {
 }
 
 func TestResolvePanesDropsWhatItsTabAlreadySays(t *testing.T) {
+	t.Parallel()
+
 	// The goto panel puts a pane's row under its tab's, so the directory both
 	// share is on screen once already and only the agent tells them apart.
 	chain := defaultChain()
@@ -359,6 +397,8 @@ func TestResolvePanesDropsWhatItsTabAlreadySays(t *testing.T) {
 }
 
 func TestAPaneKeepsItsActivityAndDropsTheSharedContext(t *testing.T) {
+	t.Parallel()
+
 	// The pane a tab speaks through says the same thing the tab does. Where it
 	// is belongs to the tab's row; the width the pane's row has is worth more
 	// spent on what it is doing, which here is what the tab had to truncate.
@@ -379,6 +419,8 @@ func TestAPaneKeepsItsActivityAndDropsTheSharedContext(t *testing.T) {
 }
 
 func TestAPaneWithOnlyAContextStillGetsIt(t *testing.T) {
+	t.Parallel()
+
 	// The floor: a pane whose only known fact is its directory has nothing but
 	// its tab's words to be named by, and Herdr's own fallback — the agent's
 	// name, the same on every row — is the worse of the two.

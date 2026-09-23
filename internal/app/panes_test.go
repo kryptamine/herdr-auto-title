@@ -51,6 +51,8 @@ func labelsOf(h *harness, paneID string) []string {
 }
 
 func TestPanesAreLeftAloneWhenTurnedOff(t *testing.T) {
+	t.Parallel()
+
 	// Turning pane naming off gives the user back the goto panel Herdr draws
 	// on its own, and a poll that reads one pane per tab.
 	h := start(t, oneTab(), split())
@@ -66,6 +68,8 @@ func TestPanesAreLeftAloneWhenTurnedOff(t *testing.T) {
 }
 
 func TestAPaneIsNamedForWhatTellsItFromItsTab(t *testing.T) {
+	t.Parallel()
+
 	// The goto panel lists a pane under its tab, so the pane that differs is
 	// named by the difference alone rather than by the whole of its context.
 	h := startPanes(t, oneTab(), split())
@@ -81,6 +85,8 @@ func TestAPaneIsNamedForWhatTellsItFromItsTab(t *testing.T) {
 }
 
 func TestEveryPaneIsNamedEvenWhenItEchoesItsTab(t *testing.T) {
+	t.Parallel()
+
 	// The whole point of the feature: Herdr lists an unlabelled pane by its
 	// agent, so every pane of a session reads `claude`. A label that repeats
 	// the tab is redundant; `claude` on every row says nothing at all.
@@ -99,6 +105,8 @@ func TestEveryPaneIsNamedEvenWhenItEchoesItsTab(t *testing.T) {
 }
 
 func TestAPaneIsNotRenamedToWhatItAlreadyCarries(t *testing.T) {
+	t.Parallel()
+
 	h := startPanes(t, oneTab(), split())
 	h.polls(3)
 
@@ -108,6 +116,8 @@ func TestAPaneIsNotRenamedToWhatItAlreadyCarries(t *testing.T) {
 }
 
 func TestAPaneTheUserRenamedIsLeftAlone(t *testing.T) {
+	t.Parallel()
+
 	// The reason this feature cannot ship without the protection: a name the
 	// user set by hand is theirs, and overwriting it twice a second is data
 	// loss rather than a cosmetic bug.
@@ -133,6 +143,8 @@ func TestAPaneTheUserRenamedIsLeftAlone(t *testing.T) {
 }
 
 func TestClearingAPaneLabelHandsThePaneBack(t *testing.T) {
+	t.Parallel()
+
 	// The way out of a pane lock. Herdr has one spelling for it: pane.rename
 	// clears an empty label rather than storing it, so a released pane carries
 	// no label at all.
@@ -153,6 +165,8 @@ func TestClearingAPaneLabelHandsThePaneBack(t *testing.T) {
 }
 
 func TestThePluginsOwnPaneRenamesDoNotLockThePane(t *testing.T) {
+	t.Parallel()
+
 	// Every rename changes a label the plugin then sees again. Reading its own
 	// work as the user's would stop it naming anything after the first time.
 	h := startPanes(t, oneTab(), split())
@@ -170,6 +184,8 @@ func TestThePluginsOwnPaneRenamesDoNotLockThePane(t *testing.T) {
 }
 
 func TestATabTheUserClaimedStillHasItsPanesNamed(t *testing.T) {
+	t.Parallel()
+
 	// The two locks are independent. A tab named by hand says nothing about
 	// what the panes inside it should be listed as.
 	h := startPanes(t, oneTab(), split())
@@ -191,6 +207,8 @@ func TestATabTheUserClaimedStillHasItsPanesNamed(t *testing.T) {
 }
 
 func TestAPaneClosingBeforeItsRenameIsNotFatal(t *testing.T) {
+	t.Parallel()
+
 	// A pane can close between the snapshot that listed it and the rename that
 	// follows, and the poll it happens in must still finish.
 	h := startPanes(t, oneTab(), split())
@@ -202,6 +220,8 @@ func TestAPaneClosingBeforeItsRenameIsNotFatal(t *testing.T) {
 }
 
 func TestNamingPanesCostsOneProcessReadPerPane(t *testing.T) {
+	t.Parallel()
+
 	// The measured cost the setting exists for, stated as a number a change
 	// would move: each pane is read once, and the tab's is not read twice.
 	h := startPanes(
@@ -232,6 +252,8 @@ func appFromConfig(t *testing.T, cfg Config) *App {
 }
 
 func TestTheSettingsThatShapeATitleShapeAPaneLabel(t *testing.T) {
+	t.Parallel()
+
 	// A pane is named by the chain that names tabs, so everything the user has
 	// tuned about a title holds for a pane too. The position is the exception,
 	// and the last case states which way round that goes.
@@ -269,6 +291,8 @@ func TestTheSettingsThatShapeATitleShapeAPaneLabel(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			cfg := paneConfig()
 			cfg.ShowAgentName = true
 			tc.tune(&cfg)
@@ -299,6 +323,8 @@ func TestTheSettingsThatShapeATitleShapeAPaneLabel(t *testing.T) {
 }
 
 func TestAPaneKeepsItsNameWhenItsTabIsClaimed(t *testing.T) {
+	t.Parallel()
+
 	// A pane is named against its tab's own pane, which a claimed tab does not
 	// read for itself. Unread, it has no branch, so a pane ordered before it
 	// would take the branch back the moment the user named the tab.
@@ -332,6 +358,8 @@ func agentPaneInfo(paneID, sessionID, dir string, focused bool) herdr.PaneInfo {
 }
 
 func TestOnlyOnePaneOfATabCarriesTheBranchTheTabShows(t *testing.T) {
+	t.Parallel()
+
 	// Two agents on two worktrees of one project. The tab speaks through one
 	// of them, so that pane's branch is already on screen above it and its
 	// sibling's is not — the rows are asymmetric by design.

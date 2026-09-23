@@ -23,6 +23,8 @@ func atPosition(position int, dir string) state.TabState {
 }
 
 func TestPositionLeadsTheTitle(t *testing.T) {
+	t.Parallel()
+
 	r := numberedCWD(DefaultMaxLength)
 
 	tests := []struct {
@@ -38,6 +40,8 @@ func TestPositionLeadsTheTitle(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			if got := r.Resolve(atPosition(tc.position, tc.dir)); got.Name != tc.want {
 				t.Errorf("name = %q, want %q", got.Name, tc.want)
 			}
@@ -46,6 +50,8 @@ func TestPositionLeadsTheTitle(t *testing.T) {
 }
 
 func TestPositionKeepsTheDecisionItWraps(t *testing.T) {
+	t.Parallel()
+
 	got := numberedCWD(DefaultMaxLength).Resolve(atPosition(1, dashboard))
 	if got.Reason != "cwd" {
 		t.Errorf("reason = %q, want cwd", got.Reason)
@@ -57,6 +63,8 @@ func TestPositionKeepsTheDecisionItWraps(t *testing.T) {
 }
 
 func TestAPositionIsCountedAgainstTheWidth(t *testing.T) {
+	t.Parallel()
+
 	const maxLength = 16
 
 	long := herdrtest.Dir("work", strings.Repeat("a", 40))
@@ -74,6 +82,8 @@ func TestAPositionIsCountedAgainstTheWidth(t *testing.T) {
 // A tab bar narrower than the position itself keeps the name over the number:
 // a title cut down to nothing has lost more than the position is worth.
 func TestAPositionWithNoRoomIsDropped(t *testing.T) {
+	t.Parallel()
+
 	got := numberedCWD(3).Resolve(atPosition(10, dashboard))
 	if got.Name != "das" {
 		t.Errorf("name = %q, want the bare title", got.Name)
@@ -81,6 +91,8 @@ func TestAPositionWithNoRoomIsDropped(t *testing.T) {
 }
 
 func TestNumberedWithoutAWidthTakesTheDefault(t *testing.T) {
+	t.Parallel()
+
 	// Zero means "no bound" to Sanitize but would leave no room at all here,
 	// so every tab would quietly lose the position instead.
 	got := NewNumbered(New(Options{}, NewCWD("")), 0).Resolve(atPosition(2, api))
@@ -98,6 +110,8 @@ type fixedResolver struct {
 func (f fixedResolver) Resolve(state.TabState) Decision { return f.decision }
 
 func TestAnyResolverCanBeNumbered(t *testing.T) {
+	t.Parallel()
+
 	// Numbered asks what it wraps for a name and nothing else, so a resolver
 	// that is not the shipped chain is numbered just the same.
 	inner := fixedResolver{decision: Decision{
@@ -121,6 +135,8 @@ func TestAnyResolverCanBeNumbered(t *testing.T) {
 // Making room for the position is the one thing Numbered does to a name, and a
 // cut that lands on a separator says a part was lost without saying which.
 func TestANumberedTitleLeavesNoDanglingSeparator(t *testing.T) {
+	t.Parallel()
+
 	inner := fixedResolver{decision: Decision{Name: "dashboard › nvim"}}
 
 	got := NewNumbered(inner, 16).Resolve(atPosition(1, dashboard))

@@ -165,6 +165,8 @@ func writeRecord(t *testing.T, path string, rec record) {
 }
 
 func TestAClaimIsNamedAfterItsSocket(t *testing.T) {
+	t.Parallel()
+
 	// One session, one socket, one claim: two sessions of the same user must
 	// not displace each other, and a path is not a file name.
 	dir := t.TempDir()
@@ -194,6 +196,8 @@ func TestAClaimIsNamedAfterItsSocket(t *testing.T) {
 }
 
 func TestTheFirstClaimDisplacesNobody(t *testing.T) {
+	t.Parallel()
+
 	claim, stayed, err := Take(context.Background(), claimFile(t), time.Second)
 	if err != nil {
 		t.Fatalf("Take: %v", err)
@@ -209,6 +213,8 @@ func TestTheFirstClaimDisplacesNobody(t *testing.T) {
 }
 
 func TestAClaimByAnotherProcessIsSeen(t *testing.T) {
+	t.Parallel()
+
 	path := claimFile(t)
 
 	claim := take(t, path)
@@ -221,6 +227,8 @@ func TestAClaimByAnotherProcessIsSeen(t *testing.T) {
 }
 
 func TestAnUnreadableClaimDecidesNothing(t *testing.T) {
+	t.Parallel()
+
 	// A claim being written by another process can read as empty or as half a
 	// line for a moment. That is not a takeover; the next look decides.
 	path := claimFile(t)
@@ -237,6 +245,8 @@ func TestAnUnreadableClaimDecidesNothing(t *testing.T) {
 }
 
 func TestAMissingClaimIsNobodys(t *testing.T) {
+	t.Parallel()
+
 	// A user can empty the directory. That is not a takeover, and nothing
 	// writes a claim outside Take: only a newer claim ends a run.
 	path := claimFile(t)
@@ -253,6 +263,8 @@ func TestAMissingClaimIsNobodys(t *testing.T) {
 }
 
 func TestAClaimWithNoPathIsInert(t *testing.T) {
+	t.Parallel()
+
 	// A user with no configuration directory still gets the plugin, only
 	// without takeover: nothing here may fail the start.
 	claim, stayed, err := Take(context.Background(), "", time.Second)
@@ -271,6 +283,7 @@ func TestAClaimWithNoPathIsInert(t *testing.T) {
 	claim.Ready()
 }
 
+//nolint:paralleltest // the instance started inherits the environment
 func TestAStaleClaimOfAnExitedProcessDisplacesNobody(t *testing.T) {
 	// An instance that crashed leaves its claim behind; waiting on a pid that
 	// is gone would only delay the first poll.
@@ -285,6 +298,7 @@ func TestAStaleClaimOfAnExitedProcessDisplacesNobody(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // the instance started inherits the environment
 func TestAnInstanceLeavingKeepsItsSuccessorsClaim(t *testing.T) {
 	// An instance leaves because a newer one claimed. Removing the claim on
 	// the way out would remove that successor's, and the next instance would
@@ -303,6 +317,8 @@ func TestAnInstanceLeavingKeepsItsSuccessorsClaim(t *testing.T) {
 }
 
 func TestReadyTouchesOnlyTheMarker(t *testing.T) {
+	t.Parallel()
+
 	// The first poll can outlast a takeover, and marking ready must not hand
 	// the session back to the instance that was told to leave: the claim is
 	// never written after it was taken, ready goes in a file of its own.
@@ -322,6 +338,8 @@ func TestReadyTouchesOnlyTheMarker(t *testing.T) {
 }
 
 func TestReadyIsSeenOnlyForTheProcessThatMarkedIt(t *testing.T) {
+	t.Parallel()
+
 	// A marker left by an instance that has gone says nothing about the one
 	// holding the claim now.
 	path := claimFile(t)
@@ -340,6 +358,7 @@ func TestReadyIsSeenOnlyForTheProcessThatMarkedIt(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // the instance started inherits the environment
 func TestAliveTellsARunningProcessFromOneThatExited(t *testing.T) {
 	pid := instance(t, "stay", claimFile(t))
 
@@ -354,6 +373,7 @@ func TestAliveTellsARunningProcessFromOneThatExited(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // the instance started inherits the environment
 func TestTakeReturnsOnceTheOldInstanceLeaves(t *testing.T) {
 	path := claimFile(t)
 	old := instance(t, "daemon", path)
@@ -374,6 +394,7 @@ func TestTakeReturnsOnceTheOldInstanceLeaves(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // the instance started inherits the environment
 func TestTakeReportsAnInstanceThatStays(t *testing.T) {
 	// A version that knew nothing of claims never leaves, and is never
 	// killed: the new instance runs beside it and the user is told.

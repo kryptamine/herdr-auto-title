@@ -3,6 +3,8 @@ package app
 import "testing"
 
 func TestARunOfFailuresIsLoggedOnABackoff(t *testing.T) {
+	t.Parallel()
+
 	// Polls run twice a second, so an hour of Herdr being down is seven
 	// thousand identical warnings unless the run is allowed to double.
 	var failures failureLog

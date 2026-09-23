@@ -151,6 +151,8 @@ func awaitClock() {
 }
 
 func TestTabsAreNamedFromTheFirstPoll(t *testing.T) {
+	t.Parallel()
+
 	h := start(
 		t,
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
@@ -171,6 +173,8 @@ func TestTabsAreNamedFromTheFirstPoll(t *testing.T) {
 }
 
 func TestATabAppearingLaterIsNamed(t *testing.T) {
+	t.Parallel()
+
 	// Nothing announces it; the next poll simply finds it.
 	h := start(t, nil, nil)
 	h.poll()
@@ -191,6 +195,8 @@ func TestATabAppearingLaterIsNamed(t *testing.T) {
 }
 
 func TestChangedContextRetitlesTheTab(t *testing.T) {
+	t.Parallel()
+
 	h := start(
 		t,
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
@@ -212,6 +218,8 @@ func TestChangedContextRetitlesTheTab(t *testing.T) {
 }
 
 func TestARenameLandingAfterItsCallFailedIsRenamedOver(t *testing.T) {
+	t.Parallel()
+
 	// A stalled Herdr applies a rename after the call timed out, and the tab
 	// has moved on by then. Read as the user's, it kept a stale number forever.
 	h := start(
@@ -244,6 +252,8 @@ func TestARenameLandingAfterItsCallFailedIsRenamedOver(t *testing.T) {
 }
 
 func TestARenameThatCannotHaveLandedIsNotTakenForItsOwn(t *testing.T) {
+	t.Parallel()
+
 	// Neither a rename Herdr refused nor one that never reached it can land, so
 	// a tab later found wearing that label was named by the user, and stays so.
 	for name, err := range map[string]error{
@@ -251,6 +261,8 @@ func TestARenameThatCannotHaveLandedIsNotTakenForItsOwn(t *testing.T) {
 		"never sent": errors.New("connect to herdr socket: i/o timeout"),
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
 			h := start(
 				t,
 				[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
@@ -283,6 +295,8 @@ func TestARenameThatCannotHaveLandedIsNotTakenForItsOwn(t *testing.T) {
 }
 
 func TestAnUnchangedSessionIsRenamedOnce(t *testing.T) {
+	t.Parallel()
+
 	// Polling would be unusable if every tick renamed. Deduplication against
 	// the label the snapshot reports is what keeps the loop quiet.
 	h := start(
@@ -300,6 +314,8 @@ func TestAnUnchangedSessionIsRenamedOnce(t *testing.T) {
 }
 
 func TestATabAlreadyCorrectlyNamedIsLeftAlone(t *testing.T) {
+	t.Parallel()
+
 	h := start(
 		t,
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "dashboard"}},
@@ -315,6 +331,8 @@ func TestATabAlreadyCorrectlyNamedIsLeftAlone(t *testing.T) {
 }
 
 func TestATabWithNoContextGetsTheFallback(t *testing.T) {
+	t.Parallel()
+
 	h := start(t,
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{{PaneID: "wE:p1", TabID: "wE:t1", Focused: true}},
@@ -327,6 +345,8 @@ func TestATabWithNoContextGetsTheFallback(t *testing.T) {
 }
 
 func TestATabClosingMidPollIsNotFatal(t *testing.T) {
+	t.Parallel()
+
 	h := start(t,
 		[]herdr.TabInfo{
 			{TabID: "wE:t1", Label: "1"},
@@ -353,6 +373,8 @@ func TestATabClosingMidPollIsNotFatal(t *testing.T) {
 }
 
 func TestFailedRenameIsRetriedOnTheNextPoll(t *testing.T) {
+	t.Parallel()
+
 	h := start(
 		t,
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
@@ -376,6 +398,8 @@ func TestFailedRenameIsRetriedOnTheNextPoll(t *testing.T) {
 }
 
 func TestAFailedPollIsFollowedByAWorkingOne(t *testing.T) {
+	t.Parallel()
+
 	// A poll that could not read the session says nothing about it, and the
 	// next one decides again from state it has read again.
 	h := start(
@@ -403,6 +427,8 @@ func TestAFailedPollIsFollowedByAWorkingOne(t *testing.T) {
 }
 
 func TestAnotherServerOnTheSocketEndsTheRun(t *testing.T) {
+	t.Parallel()
+
 	// Herdr neither stops a startup process when it stops nor looks for one
 	// when it starts, so the instance an earlier server started would double
 	// the new one's, and lock every tab the two named differently.
@@ -437,6 +463,8 @@ func TestAnotherServerOnTheSocketEndsTheRun(t *testing.T) {
 }
 
 func TestTheServerIsLearnedFromTheFirstPollThatSeesOne(t *testing.T) {
+	t.Parallel()
+
 	// A startup hook can outrun the socket, so the first poll may find no
 	// server; the one that then appears is this instance's own, not a successor.
 	h := start(
@@ -463,6 +491,8 @@ func TestTheServerIsLearnedFromTheFirstPollThatSeesOne(t *testing.T) {
 }
 
 func TestRunReturnsWhenAnotherServerTakesTheSocket(t *testing.T) {
+	t.Parallel()
+
 	client := herdrtest.New(
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{
@@ -498,6 +528,8 @@ func TestRunReturnsWhenAnotherServerTakesTheSocket(t *testing.T) {
 }
 
 func TestANewerInstanceClaimingTheSessionEndsTheRun(t *testing.T) {
+	t.Parallel()
+
 	// A restart is a newer instance claiming the session, and it waits for this
 	// one to leave before it names anything: two would lock every tab they
 	// named differently.
@@ -528,6 +560,8 @@ func TestANewerInstanceClaimingTheSessionEndsTheRun(t *testing.T) {
 }
 
 func TestTheSessionIsReportedReadOnceASnapshotCameBack(t *testing.T) {
+	t.Parallel()
+
 	// What a restart waits for is the new instance polling, and a poll that
 	// could not reach Herdr is not that.
 	h := start(
@@ -553,6 +587,8 @@ func TestTheSessionIsReportedReadOnceASnapshotCameBack(t *testing.T) {
 }
 
 func TestRunReturnsWhenANewerInstanceClaimsTheSession(t *testing.T) {
+	t.Parallel()
+
 	client := herdrtest.New(
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{
@@ -588,6 +624,8 @@ func TestRunReturnsWhenANewerInstanceClaimsTheSession(t *testing.T) {
 }
 
 func TestAFailingFirstPollIsTreatedLikeAnyOther(t *testing.T) {
+	t.Parallel()
+
 	// Herdr's socket can be a moment behind the plugin it launched, and a
 	// plugin that gives up stays dead: the startup hook is a one-shot launch,
 	// not a supervised daemon.
@@ -610,6 +648,8 @@ func TestAFailingFirstPollIsTreatedLikeAnyOther(t *testing.T) {
 }
 
 func TestRunStopsCleanlyOnCancellation(t *testing.T) {
+	t.Parallel()
+
 	client := herdrtest.New(
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{
@@ -634,6 +674,8 @@ func TestRunStopsCleanlyOnCancellation(t *testing.T) {
 }
 
 func TestTheMostRecentlyChangedPaneNamesTheTab(t *testing.T) {
+	t.Parallel()
+
 	// Neither pane is focused, so the tab is named after whichever moved last.
 	// Revisions are how a poll tells that apart.
 	h := start(t,
@@ -657,6 +699,8 @@ func TestTheMostRecentlyChangedPaneNamesTheTab(t *testing.T) {
 }
 
 func TestAgentContextNamesTheTab(t *testing.T) {
+	t.Parallel()
+
 	h := start(t,
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{{
@@ -676,6 +720,8 @@ func TestAgentContextNamesTheTab(t *testing.T) {
 }
 
 func TestAnAgentPaneIsNamedAfterTheAgentsOwnDirectory(t *testing.T) {
+	t.Parallel()
+
 	// Both directories the snapshot carries are a descendant's: the agent moved
 	// on to another project, and its MCP server sits in a third place.
 	h := start(
@@ -707,6 +753,8 @@ func TestAnAgentPaneIsNamedAfterTheAgentsOwnDirectory(t *testing.T) {
 }
 
 func TestAPreferredAgentPaneIsTheOneRead(t *testing.T) {
+	t.Parallel()
+
 	// The pane a tab is named after is the one whose processes are read, or its
 	// directory is the snapshot's guess rather than where the agent runs.
 	cfg := testConfig()
@@ -730,6 +778,8 @@ func TestAPreferredAgentPaneIsTheOneRead(t *testing.T) {
 }
 
 func TestARemoteSessionIsNamedAfterItsHost(t *testing.T) {
+	t.Parallel()
+
 	// What is running in a pane is not in the snapshot, so this exercises the
 	// extra read the poll makes for the pane that names the tab.
 	h := start(
@@ -763,6 +813,8 @@ func TestARemoteSessionIsNamedAfterItsHost(t *testing.T) {
 }
 
 func TestAPaneWhoseProcessesCannotBeReadIsStillNamed(t *testing.T) {
+	t.Parallel()
+
 	// The pane closed between the snapshot listing it and the read of what it
 	// is running; the snapshot's own context still names the tab.
 	h := start(
@@ -789,6 +841,8 @@ func TestAPaneWhoseProcessesCannotBeReadIsStillNamed(t *testing.T) {
 }
 
 func TestAWorkspaceNameIsNotRepeatedInItsTabs(t *testing.T) {
+	t.Parallel()
+
 	h := start(
 		t,
 		[]herdr.TabInfo{{TabID: "wE:t1", WorkspaceID: "wE", Label: "1"}},
@@ -807,6 +861,8 @@ func TestAWorkspaceNameIsNotRepeatedInItsTabs(t *testing.T) {
 }
 
 func TestARenameByTheUserTurnsAutomaticNamingOff(t *testing.T) {
+	t.Parallel()
+
 	h := start(
 		t,
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
@@ -832,6 +888,8 @@ func TestARenameByTheUserTurnsAutomaticNamingOff(t *testing.T) {
 }
 
 func TestClearingTheNameHandsTheTabBack(t *testing.T) {
+	t.Parallel()
+
 	// The way out of a lock, and the one a user reaches for: clear the name and
 	// the tab is nobody's again. Herdr stores that as an empty label.
 	h := start(
@@ -855,6 +913,8 @@ func TestClearingTheNameHandsTheTabBack(t *testing.T) {
 }
 
 func TestATabPutBackOnItsPositionIsHandedBack(t *testing.T) {
+	t.Parallel()
+
 	// The same way out, spelled the other way Herdr says a tab is unnamed: the
 	// position it carries while nobody has named it.
 	h := start(
@@ -878,6 +938,8 @@ func TestATabPutBackOnItsPositionIsHandedBack(t *testing.T) {
 }
 
 func TestThePluginsOwnRenamesDoNotLockTheTab(t *testing.T) {
+	t.Parallel()
+
 	// Every rename changes a label the plugin then sees again. Reading its own
 	// work as the user's would stop it naming anything after the first time.
 	h := start(
@@ -904,6 +966,8 @@ func TestThePluginsOwnRenamesDoNotLockTheTab(t *testing.T) {
 }
 
 func TestNoTabIsLockedOnTheFirstPoll(t *testing.T) {
+	t.Parallel()
+
 	// Every tab starts out carrying a label that is not what the resolver
 	// would produce. Locking on that would claim the session at startup.
 	h := start(t,
@@ -930,6 +994,8 @@ func TestNoTabIsLockedOnTheFirstPoll(t *testing.T) {
 }
 
 func TestATabCreatedAndNamedBeforeTheNextPollIsLeftAlone(t *testing.T) {
+	t.Parallel()
+
 	// The reported failure: a tab made and named in the half-second before the
 	// poll that would first see it. Auto Title never saw it carrying its
 	// number, so the name on it is not Auto Title's.
@@ -956,6 +1022,8 @@ func TestATabCreatedAndNamedBeforeTheNextPollIsLeftAlone(t *testing.T) {
 }
 
 func TestATabCreatedWithoutANameIsNamed(t *testing.T) {
+	t.Parallel()
+
 	// Herdr names a new tab after its place in the workspace, which is nobody's
 	// choice. The second tab is "2" — not TabInfo.number, which counts every
 	// tab the workspace has ever held.
@@ -981,6 +1049,8 @@ func TestATabCreatedWithoutANameIsNamed(t *testing.T) {
 }
 
 func TestAPaneHoldingStillIsAskedAboutOnce(t *testing.T) {
+	t.Parallel()
+
 	// pane.process_info is a request per pane, and at two polls a second an
 	// unchanging session would spend all day repeating it.
 	h := start(
@@ -998,6 +1068,8 @@ func TestAPaneHoldingStillIsAskedAboutOnce(t *testing.T) {
 }
 
 func TestAPaneThatMovedIsAskedAboutAgain(t *testing.T) {
+	t.Parallel()
+
 	h := start(
 		t,
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
@@ -1020,6 +1092,8 @@ func TestAPaneThatMovedIsAskedAboutAgain(t *testing.T) {
 }
 
 func TestAPaneThatCannotBeReadIsAskedAgain(t *testing.T) {
+	t.Parallel()
+
 	// A failed read is not an answer, so it must not be remembered as one.
 	h := start(
 		t,
@@ -1044,6 +1118,8 @@ func TestAPaneThatCannotBeReadIsAskedAgain(t *testing.T) {
 }
 
 func TestAPaneThatDoesNotNameItsTabIsNotRead(t *testing.T) {
+	t.Parallel()
+
 	// A tab is named from one pane, so asking what the others are running is a
 	// request each whose answer nothing would look at.
 	h := start(
@@ -1063,6 +1139,8 @@ func TestAPaneThatDoesNotNameItsTabIsNotRead(t *testing.T) {
 }
 
 func TestALockedTabIsNotReadEither(t *testing.T) {
+	t.Parallel()
+
 	// A tab the user has claimed is never renamed, so everything a rename
 	// would have been decided from is a read nobody asked for.
 	h := start(
@@ -1147,6 +1225,8 @@ func paneAt(paneID, dir string) *state.PaneState {
 }
 
 func TestAPollNamesATabAfterItsBranch(t *testing.T) {
+	t.Parallel()
+
 	repo := repoAt(t, "feat/oauth")
 
 	h := start(t,
@@ -1162,6 +1242,8 @@ func TestAPollNamesATabAfterItsBranch(t *testing.T) {
 }
 
 func TestCheckingOutABranchRetitlesTheTab(t *testing.T) {
+	t.Parallel()
+
 	// Nothing in the session announces a checkout, and the pane's revision does
 	// not have to move for one — the next poll simply reads HEAD again.
 	repo := repoAt(t, "main")
@@ -1186,6 +1268,8 @@ func TestCheckingOutABranchRetitlesTheTab(t *testing.T) {
 }
 
 func TestARepositoryIsWalkedOncePerPoll(t *testing.T) {
+	t.Parallel()
+
 	// Every tab of a project reads the same directory, and the walk up to it is
 	// the read. Rewriting HEAD between two panes of one poll is how the test
 	// sees that the second one never reached the disk.
@@ -1223,6 +1307,8 @@ func TestARepositoryIsWalkedOncePerPoll(t *testing.T) {
 }
 
 func TestADirectoryHoldingNoRepositoryIsRememberedToo(t *testing.T) {
+	t.Parallel()
+
 	// Finding out that there is no repository costs the same walk to the root
 	// as finding one, so a pane outside a checkout must not repeat it per tab.
 	dir := t.TempDir()
@@ -1251,6 +1337,8 @@ func TestADirectoryHoldingNoRepositoryIsRememberedToo(t *testing.T) {
 }
 
 func TestBranchesSwitchedOffAreNotRead(t *testing.T) {
+	t.Parallel()
+
 	// Zero is how a user turns branches off, and a read whose answer is
 	// discarded still costs a walk up the tree on every pane, every poll.
 	repo := repoAt(t, "feat/oauth")
@@ -1304,6 +1392,8 @@ func agentPane() herdr.PaneInfo {
 }
 
 func TestATabIsNamedFromTheAgentsOwnSession(t *testing.T) {
+	t.Parallel()
+
 	// The agent never titled its terminal, so the transcript Herdr pointed at
 	// is the only thing that says what the session is about.
 	home := transcript(
@@ -1326,6 +1416,8 @@ func TestATabIsNamedFromTheAgentsOwnSession(t *testing.T) {
 }
 
 func TestTranscriptsAreLeftUnreadWhenTurnedOff(t *testing.T) {
+	t.Parallel()
+
 	home := transcript(
 		t,
 		`{"type":"ai-title","aiTitle":"Poll loop rework","sessionId":"`+testSession+`"}`,
@@ -1346,6 +1438,8 @@ func TestTranscriptsAreLeftUnreadWhenTurnedOff(t *testing.T) {
 }
 
 func TestAPollPastItsDeadlineStopsReadingTheFilesystem(t *testing.T) {
+	t.Parallel()
+
 	// git.Read and the transcript reader take no context: they are file reads,
 	// and a pane sitting on a hung mount blocks the whole loop for as long as
 	// the mount does. A poll the tab loop will throw away makes none of them.
@@ -1379,6 +1473,8 @@ func TestAPollPastItsDeadlineStopsReadingTheFilesystem(t *testing.T) {
 }
 
 func TestAPaneIsReadFromItsForegroundProcessesDirectory(t *testing.T) {
+	t.Parallel()
+
 	// Both directories the snapshot carries point at a server the agent spawned
 	// elsewhere, so a checkout read from either finds no repository at all.
 	repo := repoAt(t, "feat/oauth")
@@ -1415,6 +1511,8 @@ func TestAPaneIsReadFromItsForegroundProcessesDirectory(t *testing.T) {
 }
 
 func TestRunNamesWhatExistsBeforeTheFirstTick(t *testing.T) {
+	t.Parallel()
+
 	// A tab is named as the plugin starts, not a poll interval later. The
 	// interval here is long enough that a rename arriving at all can only have
 	// come from the poll Run makes before it waits.
@@ -1454,6 +1552,8 @@ func TestRunNamesWhatExistsBeforeTheFirstTick(t *testing.T) {
 }
 
 func TestAWindowsShellPaneIsNamedAfterItsDirectory(t *testing.T) {
+	t.Parallel()
+
 	// What Herdr reports for an idle pane on Windows: the shell with its
 	// extension, its directory with a trailing separator, and a title of
 	// Herdr's own making that names both. None of it is what the pane is doing.
@@ -1553,6 +1653,8 @@ func branchFor(pane *state.PaneState) string {
 }
 
 func TestATabIsNamedAfterTheBranchTheAgentIsWorkingOn(t *testing.T) {
+	t.Parallel()
+
 	// The pane sits at the repository root on the trunk while its agent works
 	// in a worktree, so the branch the user cares about is only the agent's.
 	repo := repoAt(t, "main")
@@ -1583,6 +1685,8 @@ func TestATabIsNamedAfterTheBranchTheAgentIsWorkingOn(t *testing.T) {
 // session in one of them is named, which is what says the wiring is connected:
 // nothing reads the setting out of the environment on the reader's behalf.
 func TestASessionInAnExtraConfigHomeIsNamed(t *testing.T) {
+	t.Parallel()
+
 	first := stateDir(t)
 
 	other := t.TempDir()
@@ -1607,6 +1711,8 @@ func TestASessionInAnExtraConfigHomeIsNamed(t *testing.T) {
 }
 
 func TestAnAgentsBranchIsNamedWhereNoTrunkIsRecorded(t *testing.T) {
+	t.Parallel()
+
 	// A repository with no origin records no trunk, and the pane standing on a
 	// branch of its own must still be named after the worktree its agent is in.
 	repo := repoWithNoTrunkAt(t, "main")
@@ -1630,6 +1736,8 @@ func TestAnAgentsBranchIsNamedWhereNoTrunkIsRecorded(t *testing.T) {
 }
 
 func TestAnAgentOnATrunkNobodyRecordedLeavesThePanesBranch(t *testing.T) {
+	t.Parallel()
+
 	// A name only a trunk carries is taken to be one even where no trunk is
 	// recorded, so the pane keeps the worktree branch it is standing on.
 	repo := repoWithNoTrunkAt(t, "main")
@@ -1656,6 +1764,8 @@ func TestAnAgentOnATrunkNobodyRecordedLeavesThePanesBranch(t *testing.T) {
 const otherSession = "0c3a1d94-77b1-4f2e-8a6d-5e91b2c4d803"
 
 func TestTwoAgentsOnTwoWorktreesOfOneRepositoryShowDifferentBranches(t *testing.T) {
+	t.Parallel()
+
 	// The panes share a project and are told apart only by the worktree each
 	// agent was sent into, which is the whole point of reading it.
 	repo := repoAt(t, "main")
@@ -1686,6 +1796,8 @@ func TestTwoAgentsOnTwoWorktreesOfOneRepositoryShowDifferentBranches(t *testing.
 }
 
 func TestAnAgentInAnotherRepositoryIsIgnored(t *testing.T) {
+	t.Parallel()
+
 	// A branch from somewhere else beside this project's name is a wrong
 	// label, and worse than the pane having none.
 	repo := repoAt(t, "feat/oauth")
@@ -1702,6 +1814,8 @@ func TestAnAgentInAnotherRepositoryIsIgnored(t *testing.T) {
 }
 
 func TestAnAgentInNoRepositoryKeepsThePanesBranch(t *testing.T) {
+	t.Parallel()
+
 	// An agent that ended up in a home directory or a scratch directory must
 	// not cost the pane the branch it already had.
 	repo := repoAt(t, "feat/oauth")
@@ -1717,6 +1831,8 @@ func TestAnAgentInNoRepositoryKeepsThePanesBranch(t *testing.T) {
 }
 
 func TestAnAgentInASubdirectoryReadsTheCheckoutAboveIt(t *testing.T) {
+	t.Parallel()
+
 	// A directory below a checkout is still that checkout, so an agent working
 	// in one names its branch — here a worktree's, where the pane's own
 	// directory is the trunk and says nothing.
@@ -1739,6 +1855,8 @@ func TestAnAgentInASubdirectoryReadsTheCheckoutAboveIt(t *testing.T) {
 }
 
 func TestAWorktreeTakenOffDiskLeavesThePaneItsOwnBranch(t *testing.T) {
+	t.Parallel()
+
 	// The directory the transcript names is gone, so the agent has nothing to
 	// say and the branch the pane sits on is the one the tab keeps.
 	repo := repoAt(t, "main")
@@ -1759,6 +1877,8 @@ func TestAWorktreeTakenOffDiskLeavesThePaneItsOwnBranch(t *testing.T) {
 }
 
 func TestAWorktreeTakenOffDiskIsNotReadAtAll(t *testing.T) {
+	t.Parallel()
+
 	// The walk up from a removed worktree answers with the repository above it,
 	// whose branch is not the agent's, so the directory is refused for being
 	// gone rather than for what it would have said.
@@ -1781,6 +1901,8 @@ func TestAWorktreeTakenOffDiskIsNotReadAtAll(t *testing.T) {
 }
 
 func TestAPaneOnAWorktreeKeepsItsBranchWhenItsAgentWalkedUp(t *testing.T) {
+	t.Parallel()
+
 	// The agent's directory is the repository root, whose trunk the branch
 	// source then suppresses, so taking it would delete a segment the pane
 	// shows today.
@@ -1798,6 +1920,8 @@ func TestAPaneOnAWorktreeKeepsItsBranchWhenItsAgentWalkedUp(t *testing.T) {
 }
 
 func TestAnAgentOnTheTrunkKeepsThePanesBranch(t *testing.T) {
+	t.Parallel()
+
 	repo := repoAt(t, "feat/oauth")
 	worktree := worktreeIn(t, repo, "wt", "main")
 
@@ -1812,6 +1936,8 @@ func TestAnAgentOnTheTrunkKeepsThePanesBranch(t *testing.T) {
 }
 
 func TestADetachedAgentWorktreeShowsItsShortHash(t *testing.T) {
+	t.Parallel()
+
 	// A detached HEAD is where commits get lost, so it is worth the segment
 	// even in a repository that records no trunk to compare it against.
 	for _, remote := range []bool{true, false} {
@@ -1846,6 +1972,8 @@ func TestADetachedAgentWorktreeShowsItsShortHash(t *testing.T) {
 }
 
 func TestTranscriptsSwitchedOffLeaveTheBranchOnThePanesDirectory(t *testing.T) {
+	t.Parallel()
+
 	// The transcript is what says where the agent is, so a user who turned it
 	// off is named exactly as before the branch ever followed one.
 	repo := repoAt(t, "feat/oauth")
@@ -1869,6 +1997,8 @@ func TestTranscriptsSwitchedOffLeaveTheBranchOnThePanesDirectory(t *testing.T) {
 }
 
 func TestBranchesSwitchedOffReadNeitherDirectory(t *testing.T) {
+	t.Parallel()
+
 	repo := repoAt(t, "main")
 	worktree := worktreeIn(t, repo, "wt", "feat/oauth")
 
@@ -1889,6 +2019,8 @@ func TestBranchesSwitchedOffReadNeitherDirectory(t *testing.T) {
 }
 
 func TestAPaneWhoseAgentHoldsNoSessionKeepsItsBranch(t *testing.T) {
+	t.Parallel()
+
 	// Herdr reports no session until that agent's integration hook is
 	// installed, and a pane with no agent at all never had one.
 	repo := repoAt(t, "feat/oauth")
@@ -1917,6 +2049,8 @@ func TestAPaneWhoseAgentHoldsNoSessionKeepsItsBranch(t *testing.T) {
 }
 
 func TestALongTopicAndAWorktreeBranchFitTheDefaultBounds(t *testing.T) {
+	t.Parallel()
+
 	// The branch takes width the topic used to have, so both bounds are pinned
 	// here: a later change to either must not reduce the topic to a fragment.
 	repo := repoAt(t, "main")
@@ -1947,6 +2081,8 @@ func TestALongTopicAndAWorktreeBranchFitTheDefaultBounds(t *testing.T) {
 }
 
 func TestOneRepositorySpelledTwoWaysDoesNotFollowTheAgent(t *testing.T) {
+	t.Parallel()
+
 	// Both directories are the same repository, but the pane reaches it through
 	// a symlink and the worktree records the real path, so the two common
 	// directories do not match and the pane keeps its own branch.
@@ -1969,6 +2105,8 @@ func TestOneRepositorySpelledTwoWaysDoesNotFollowTheAgent(t *testing.T) {
 }
 
 func TestAPaneOutsideARepositoryFollowsNoAgent(t *testing.T) {
+	t.Parallel()
+
 	// An agent's directory follows every cd it makes, and one outside the tree
 	// the pane sits in could only be labelling someone else's project.
 	repo := repoAt(t, "main")
@@ -1984,6 +2122,8 @@ func TestAPaneOutsideARepositoryFollowsNoAgent(t *testing.T) {
 }
 
 func TestAHumanPaneOnAWorktreeStillSaysItsBranchOnce(t *testing.T) {
+	t.Parallel()
+
 	// A worktree is named after the branch checked out in it, so a pane sitting
 	// in one reads both facts from the same directory and is worth the width of
 	// only one of them.
@@ -2005,6 +2145,8 @@ func TestAHumanPaneOnAWorktreeStillSaysItsBranchOnce(t *testing.T) {
 }
 
 func TestAnAgentsWorktreeBranchStandsBesideTheProject(t *testing.T) {
+	t.Parallel()
+
 	// The same worktree, read through the agent instead: the context names the
 	// project the pane sits in, so the branch repeats nothing and both segments
 	// are worth their width.
@@ -2029,6 +2171,8 @@ func TestAnAgentsWorktreeBranchStandsBesideTheProject(t *testing.T) {
 }
 
 func TestAPaneHoldingSeveralRepositoriesFollowsItsAgentsWorktree(t *testing.T) {
+	t.Parallel()
+
 	// The pane sits in a parent directory holding several projects, so it has
 	// no checkout of its own and the only branch anyone could name is the one
 	// its agent is working on, inside one of them.
@@ -2055,6 +2199,8 @@ func TestAPaneHoldingSeveralRepositoriesFollowsItsAgentsWorktree(t *testing.T) {
 }
 
 func TestAnAgentOnATrunkNamesNoBranchForAPaneOutsideARepository(t *testing.T) {
+	t.Parallel()
+
 	// A trunk says nothing wherever it is read, and the pane has no branch of
 	// its own for it to replace either.
 	parent := t.TempDir()
@@ -2071,6 +2217,8 @@ func TestAnAgentOnATrunkNamesNoBranchForAPaneOutsideARepository(t *testing.T) {
 }
 
 func TestAPaneInARepositoryRefusesAnAgentInOneNestedUnderIt(t *testing.T) {
+	t.Parallel()
+
 	// Containment is what lets a pane with no checkout follow its agent, and a
 	// pane that has one must not gain a nested clone's branch through it.
 	repo := repoAt(t, "feat/oauth")
@@ -2087,6 +2235,8 @@ func TestAPaneInARepositoryRefusesAnAgentInOneNestedUnderIt(t *testing.T) {
 }
 
 func TestAPaneOutsideARepositoryRefusesAnAgentOutsideOneToo(t *testing.T) {
+	t.Parallel()
+
 	// Neither directory holds a repository, so there is no branch anywhere to
 	// name and the walk up must not answer with one from above the pane.
 	parent := t.TempDir()
@@ -2107,6 +2257,8 @@ func TestAPaneOutsideARepositoryRefusesAnAgentOutsideOneToo(t *testing.T) {
 }
 
 func TestADirectoryNamedLikeThePanesIsNotInsideIt(t *testing.T) {
+	t.Parallel()
+
 	// A sibling whose name begins with the pane's own would pass a prefix test
 	// on the spelling, and its branch belongs to a tree the pane does not hold.
 	parent := t.TempDir()
