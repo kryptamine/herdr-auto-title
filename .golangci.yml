@@ -19,6 +19,7 @@ linters:
     - dupword         # the the repeated word
     - durationcheck   # a duration multiplied by a duration
     - embeddedstructfieldcheck # an embedded field mixed in among named ones
+    - errcheck        # an error dropped without a word
     - errchkjson      # a json.Marshal whose error cannot happen, and one that can
     - errname         # error values and types named the way Go names them
     - errorlint       # errors compared with == and formatted with %v
@@ -65,11 +66,6 @@ linters:
     - usetesting      # what the testing package now does itself
     - wastedassign    # a value assigned and then overwritten unread
     - wsl_v5          # statements that belong together cuddled, the rest spaced
-  disable:
-    # Silence is a decision here, not an oversight: writing the manual-name
-    # file and closing a socket both fail quietly on purpose, and each place
-    # says so. See internal/state/manual.go and internal/herdr/client.go.
-    - errcheck
 
   settings:
     depguard:
@@ -86,6 +82,12 @@ linters:
           deny:
             - pkg: os/exec
               desc: renames go over the socket API, never through a shell
+    errcheck:
+      # A connection that already answered has nothing left to report on close.
+      # A file is not listed: closing one that was written can report the write.
+      exclude-functions:
+        - (io.Closer).Close
+        - (net.Listener).Close
     exhaustive:
       # A default that says what the rest mean is as good as naming each.
       default-signifies-exhaustive: true

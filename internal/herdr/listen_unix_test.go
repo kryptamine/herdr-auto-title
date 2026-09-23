@@ -13,7 +13,7 @@ import (
 type socketListener struct{ net.Listener }
 
 func (l socketListener) accept() (io.ReadWriteCloser, error) { return l.Accept() }
-func (l socketListener) close()                              { l.Close() }
+func (l socketListener) close()                              { _ = l.Close() }
 
 // listen opens a Unix socket for the client to dial.
 func listen(t *testing.T) (listener, string) {
@@ -27,7 +27,11 @@ func listen(t *testing.T) (listener, string) {
 		t.Fatalf("temp dir: %v", err)
 	}
 
-	t.Cleanup(func() { os.RemoveAll(dir) })
+	t.Cleanup(func() {
+		if err := os.RemoveAll(dir); err != nil {
+			t.Error(err)
+		}
+	})
 
 	path := filepath.Join(dir, "h.sock")
 
