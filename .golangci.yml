@@ -120,11 +120,17 @@ linters:
 
 formatters:
   enable:
-    - gofmt
+    - gofumpt
+    - gci
     # An over-long call is broken one argument to a line rather than wrapped
     # to fill the width, which keeps a diff to the argument that changed.
     - golines
   settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/kryptamine/herdr-auto-title)
     golines:
       max-len: 100
       tab-len: 4

@@ -139,8 +139,10 @@ func TestASha256HeadIsAbbreviatedToo(t *testing.T) {
 func TestAHeadHoldingSomethingElseIsNoCheckout(t *testing.T) {
 	// A HEAD that is neither a ref nor a hash must not reach a tab label. A
 	// hash of the wrong length is not one: that is what bounds the read.
-	for _, content := range []string{"", "\n", "ref: refs/tags/v1.0.0\n", "not a hash\n",
-		"aaf1fd85f68047764760489dbfc3ecb5ab9d0c\n"} {
+	for _, content := range []string{
+		"", "\n", "ref: refs/tags/v1.0.0\n", "not a hash\n",
+		"aaf1fd85f68047764760489dbfc3ecb5ab9d0c\n",
+	} {
 		r := newRepo(t).head(t, content)
 		if Read(r.root) != (Checkout{}) {
 			t.Errorf("HEAD %q reported a checkout", content)
