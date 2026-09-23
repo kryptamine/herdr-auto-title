@@ -27,6 +27,7 @@ linters:
     - fatcontext      # a context rebuilt on every turn of a loop
     - forbidigo       # the calls named below
     - forcetypeassert # a type assertion that panics instead of reporting
+    - funcorder       # exported methods before the unexported ones they use
     - funlen          # a function longer than it can be read in one screen
     - gocheckcompilerdirectives # a //go: directive the compiler will not read
     - gochecknoinits  # an init() doing work nobody can see the call to
