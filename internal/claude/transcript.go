@@ -117,6 +117,22 @@ func (r *Reader) Topic(sessionID, dir string) Topic {
 	return session.topic
 }
 
+// Retain forgets every session but these, so a pane that closed takes its
+// transcript with it.
+func (r *Reader) Retain(sessionIDs []string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	kept := make(map[string]*transcript, len(sessionIDs))
+	for _, id := range sessionIDs {
+		if session, known := r.sessions[id]; known {
+			kept[id] = session
+		}
+	}
+
+	r.sessions = kept
+}
+
 // find fills in the session's transcript path, and reports whether there is one
 // to read. A search that came up empty is not repeated until locateRetry has
 // passed, because the scan behind it walks every project directory.
@@ -136,22 +152,6 @@ func (r *Reader) find(session *transcript, sessionID, dir string) bool {
 	session.path = path
 
 	return true
-}
-
-// Retain forgets every session but these, so a pane that closed takes its
-// transcript with it.
-func (r *Reader) Retain(sessionIDs []string) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	kept := make(map[string]*transcript, len(sessionIDs))
-	for _, id := range sessionIDs {
-		if session, known := r.sessions[id]; known {
-			kept[id] = session
-		}
-	}
-
-	r.sessions = kept
 }
 
 // sessionIDPattern is the shape of a session id. The id arrives over the socket

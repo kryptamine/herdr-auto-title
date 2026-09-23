@@ -175,6 +175,92 @@ func (c *Claims) Observe(s Sighting) Verdict {
 	return c.claimedOnChange(s, previous, known, ours)
 }
 
+// Settled marks the end of a poll. Only the first matters: after it, something
+// unseen is something that did not exist before.
+func (m *Manual) Settled() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.settled = true
+}
+
+// Applied records a label Auto Title has just set, so the next poll does not
+// read its own work as the user's.
+func (c *Claims) Applied(id, label string) {
+	c.manual.mu.Lock()
+	defer c.manual.mu.Unlock()
+
+	seen := c.seen[id]
+	seen.current = label
+	c.seen[id] = seen
+
+	if c.judgeOnSight {
+		c.written[id] = label
+
+		c.manual.saveLocked()
+	}
+}
+
+// Sent records the label of a rename whose call got no answer, which Herdr
+// may still apply once it answers again — by when the name wanted may have
+// moved on.
+func (c *Claims) Sent(id, label string) {
+	c.manual.mu.Lock()
+	defer c.manual.mu.Unlock()
+
+	seen := c.seen[id]
+	if seen.sent == nil {
+		seen.sent = make(map[string]struct{})
+	}
+
+	seen.sent[label] = struct{}{}
+	c.seen[id] = seen
+}
+
+// Retain drops everything about what the session no longer holds, and releases
+// a lock whose owner now carries a different label — which is what stops a
+// reloaded lock from claiming an unrelated tab or pane that inherited its id.
+func (c *Claims) Retain(live map[string]string) {
+	m := c.manual
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	changed := false
+
+	for id, label := range c.locked {
+		if current, alive := live[id]; !alive || current != label {
+			delete(c.locked, id)
+
+			changed = true
+		}
+	}
+
+	for id := range c.seen {
+		if _, alive := live[id]; !alive {
+			delete(c.seen, id)
+		}
+	}
+
+	for id := range c.pending {
+		if _, alive := live[id]; !alive {
+			delete(c.pending, id)
+		}
+	}
+
+	for id := range c.written {
+		if _, alive := live[id]; !alive {
+			delete(c.written, id)
+
+			changed = true
+		}
+	}
+
+	if changed {
+		m.saveLocked()
+	}
+}
+
 // record is the bookkeeping both rules share. A watched workspace wearing a
 // label that is this plugin's -- wanted now, or a rename that landed late --
 // has it kept on disk, so a restart does not read it as the owner's.
@@ -261,92 +347,6 @@ func (c *Claims) claim(s Sighting) Verdict {
 func (c *Claims) ours(s Sighting) bool {
 	_, sent := c.seen[s.ID].sent[s.Current]
 	return sent || s.Current == s.Desired
-}
-
-// Settled marks the end of a poll. Only the first matters: after it, something
-// unseen is something that did not exist before.
-func (m *Manual) Settled() {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	m.settled = true
-}
-
-// Applied records a label Auto Title has just set, so the next poll does not
-// read its own work as the user's.
-func (c *Claims) Applied(id, label string) {
-	c.manual.mu.Lock()
-	defer c.manual.mu.Unlock()
-
-	seen := c.seen[id]
-	seen.current = label
-	c.seen[id] = seen
-
-	if c.judgeOnSight {
-		c.written[id] = label
-
-		c.manual.saveLocked()
-	}
-}
-
-// Sent records the label of a rename whose call got no answer, which Herdr
-// may still apply once it answers again — by when the name wanted may have
-// moved on.
-func (c *Claims) Sent(id, label string) {
-	c.manual.mu.Lock()
-	defer c.manual.mu.Unlock()
-
-	seen := c.seen[id]
-	if seen.sent == nil {
-		seen.sent = make(map[string]struct{})
-	}
-
-	seen.sent[label] = struct{}{}
-	c.seen[id] = seen
-}
-
-// Retain drops everything about what the session no longer holds, and releases
-// a lock whose owner now carries a different label — which is what stops a
-// reloaded lock from claiming an unrelated tab or pane that inherited its id.
-func (c *Claims) Retain(live map[string]string) {
-	m := c.manual
-
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	changed := false
-
-	for id, label := range c.locked {
-		if current, alive := live[id]; !alive || current != label {
-			delete(c.locked, id)
-
-			changed = true
-		}
-	}
-
-	for id := range c.seen {
-		if _, alive := live[id]; !alive {
-			delete(c.seen, id)
-		}
-	}
-
-	for id := range c.pending {
-		if _, alive := live[id]; !alive {
-			delete(c.pending, id)
-		}
-	}
-
-	for id := range c.written {
-		if _, alive := live[id]; !alive {
-			delete(c.written, id)
-
-			changed = true
-		}
-	}
-
-	if changed {
-		m.saveLocked()
-	}
 }
 
 // saveLocked writes the locks out through a temporary file, so a crash cannot
