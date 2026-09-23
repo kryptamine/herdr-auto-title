@@ -56,6 +56,7 @@ linters:
     - noctx           # a call made without the context it could take
     - nolintlint      # a //nolint must name its linter and say why
     - perfsprint      # fmt.Sprintf where a cheaper call says the same
+    - prealloc        # a slice grown in a loop whose length is known
     - predeclared     # a shadowed predeclared identifier
     - reassign        # a package variable of somebody else's reassigned
     - recvcheck       # a type mixing pointer and value receivers
