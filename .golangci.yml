@@ -40,6 +40,7 @@ linters:
     - iface           # an interface declared where it is not needed
     - inamedparam     # an interface method whose parameters have no names
     - interfacebloat  # an interface with more methods than a seam wants
+    - intrange        # a counting loop that range-over-int now writes
     - iotamixing      # iota sharing a const block with unrelated values
     - maintidx        # a function whose maintainability index has gone
     - makezero        # a slice made with a length and then appended to
