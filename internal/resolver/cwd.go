@@ -1,7 +1,6 @@
 package resolver
 
 import (
-	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -18,11 +17,11 @@ type CWD struct {
 
 var _ Source = CWD{}
 
-// NewCWD builds the source, resolving the user's home directory once.
-func NewCWD() CWD {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		home = ""
+// NewCWD builds the source for a user whose home directory is home, which
+// names no project. An empty home is one that could not be found.
+func NewCWD(home string) CWD {
+	if home == "" {
+		return CWD{}
 	}
 
 	return CWD{home: filepath.Clean(home)}

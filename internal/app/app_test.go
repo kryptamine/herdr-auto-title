@@ -29,17 +29,13 @@ var (
 	billing   = herdrtest.Dir("work", "billing")
 )
 
+// testConfig reads nothing from the environment, so no title depends on the
+// developer's own home or Claude sessions, and tests can run in parallel.
 func testConfig() Config {
-	// The homes come from the environment the way LoadConfig would read them,
-	// so a fixture that points CLAUDE_CONFIG_DIR at its own directory reaches
-	// the transcript reader without also naming the home twice.
-	homes, _ := configHomes()
-
 	return Config{
-		Poll:       testPoll,
-		MaxLength:  resolver.DefaultMaxLength,
-		BranchMax:  resolver.DefaultBranchMaxLength,
-		ClaudeDirs: homes,
+		Poll:      testPoll,
+		MaxLength: resolver.DefaultMaxLength,
+		BranchMax: resolver.DefaultBranchMaxLength,
 	}
 }
 
@@ -47,20 +43,11 @@ func discardLogger() *slog.Logger {
 	return slog.New(slog.DiscardHandler)
 }
 
-// setHome points os.UserHomeDir at dir. Unix reads HOME and Windows reads
-// USERPROFILE, and setting both spares every fixture from knowing which.
-func setHome(t *testing.T, dir string) {
-	t.Helper()
-	t.Setenv("HOME", dir)
-	t.Setenv("USERPROFILE", dir)
-}
-
 // testResolver builds the shipped chain against a home directory of the test's
 // own, because CWD declines a pane sitting in the user's and the fixtures below
 // must not depend on whose machine they run on.
 func testResolver(t *testing.T, cfg Config) *resolver.Deterministic {
 	t.Helper()
-	setHome(t, filepath.Join(t.TempDir(), "home"))
 
 	return resolver.Default(resolver.Options{
 		MaxLength: resolver.DefaultMaxLength,
@@ -68,7 +55,14 @@ func testResolver(t *testing.T, cfg Config) *resolver.Deterministic {
 		// A tab reads the row above it as parts only when this wrote that row,
 		// so the chain under test has to know what the configuration does.
 		NamesWorkspaces: cfg.namesWorkspaces(),
+		Home:            testHome(t),
 	})
+}
+
+// testHome is a home directory of the test's own, never the developer's.
+func testHome(t *testing.T) string {
+	t.Helper()
+	return filepath.Join(t.TempDir(), "home")
 }
 
 // fakeInstance is a claim on the session that a test can have taken over, and
@@ -1279,9 +1273,13 @@ const testSession = "8852bfe0-8b24-4a23-a35e-7521d04da061"
 // transcript lays down a Claude Code session transcript and points the plugin
 // at the state directory holding it. Which project directory it lands in is
 // the transcript reader's business, and its own tests cover that.
-func transcript(t *testing.T, lines ...string) {
+func transcript(t *testing.T, lines ...string) string {
 	t.Helper()
-	writeTranscript(t, stateDir(t), testSession, lines...)
+
+	home := stateDir(t)
+	writeTranscript(t, home, testSession, lines...)
+
+	return home
 }
 
 // writeTranscript lays down one session's transcript in a state directory the
@@ -1308,14 +1306,13 @@ func agentPane() herdr.PaneInfo {
 func TestATabIsNamedFromTheAgentsOwnSession(t *testing.T) {
 	// The agent never titled its terminal, so the transcript Herdr pointed at
 	// is the only thing that says what the session is about.
-	transcript(
+	home := transcript(
 		t,
 		`{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"rework the poll loop"}}`,
 		`{"type":"ai-title","aiTitle":"Poll loop rework","sessionId":"`+testSession+`"}`,
 	)
 
-	cfg := testConfig()
-	cfg.ReadTranscripts = true
+	cfg := transcriptConfig(home)
 	h := startConfigured(t, herdrtest.New(
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{agentPane()},
@@ -1329,12 +1326,18 @@ func TestATabIsNamedFromTheAgentsOwnSession(t *testing.T) {
 }
 
 func TestTranscriptsAreLeftUnreadWhenTurnedOff(t *testing.T) {
-	transcript(t, `{"type":"ai-title","aiTitle":"Poll loop rework","sessionId":"`+testSession+`"}`)
+	home := transcript(
+		t,
+		`{"type":"ai-title","aiTitle":"Poll loop rework","sessionId":"`+testSession+`"}`,
+	)
 
-	h := start(t,
+	cfg := testConfig()
+	cfg.ClaudeDirs = []string{home}
+
+	h := startConfigured(t, herdrtest.New(
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{agentPane()},
-	)
+	), cfg)
 	h.poll()
 
 	if got := h.client.Renames()[0].Label; got != "dashboard › claude" {
@@ -1505,10 +1508,7 @@ func worktreeIn(t *testing.T, root, name, branch string) string {
 // own, so several sessions can be laid down in one.
 func stateDir(t *testing.T) string {
 	t.Helper()
-	root := t.TempDir()
-	t.Setenv(EnvClaudeConfigDir, root)
-
-	return root
+	return t.TempDir()
 }
 
 // agentIn is a transcript line saying where the agent is working. Only the
@@ -1528,9 +1528,10 @@ func agentPaneAt(paneID, sessionID, dir string) *state.PaneState {
 	}, time.Time{})
 }
 
-func transcriptConfig() Config {
+func transcriptConfig(homes ...string) Config {
 	cfg := testConfig()
 	cfg.ReadTranscripts = true
+	cfg.ClaudeDirs = homes
 
 	return cfg
 }
@@ -1557,7 +1558,7 @@ func TestATabIsNamedAfterTheBranchTheAgentIsWorkingOn(t *testing.T) {
 	repo := repoAt(t, "main")
 	worktree := worktreeIn(t, repo, "wt", "feat/oauth")
 
-	transcript(
+	home := transcript(
 		t,
 		agentIn(worktree),
 		`{"type":"ai-title","aiTitle":"Poll loop rework","sessionId":"`+testSession+`"}`,
@@ -1569,7 +1570,7 @@ func TestATabIsNamedAfterTheBranchTheAgentIsWorkingOn(t *testing.T) {
 	h := startConfigured(t, herdrtest.New(
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{pane},
-	), transcriptConfig())
+	), transcriptConfig(home))
 	h.poll()
 
 	got := h.client.Renames()[0].Label
@@ -1582,7 +1583,7 @@ func TestATabIsNamedAfterTheBranchTheAgentIsWorkingOn(t *testing.T) {
 // session in one of them is named, which is what says the wiring is connected:
 // nothing reads the setting out of the environment on the reader's behalf.
 func TestASessionInAnExtraConfigHomeIsNamed(t *testing.T) {
-	stateDir(t)
+	first := stateDir(t)
 
 	other := t.TempDir()
 	writeTranscript(
@@ -1592,8 +1593,7 @@ func TestASessionInAnExtraConfigHomeIsNamed(t *testing.T) {
 		`{"type":"ai-title","aiTitle":"Poll loop rework","sessionId":"`+testSession+`"}`,
 	)
 
-	cfg := transcriptConfig()
-	cfg.ClaudeDirs = []string{other}
+	cfg := transcriptConfig(first, other)
 
 	h := startConfigured(t, herdrtest.New(
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
@@ -1612,7 +1612,7 @@ func TestAnAgentsBranchIsNamedWhereNoTrunkIsRecorded(t *testing.T) {
 	repo := repoWithNoTrunkAt(t, "main")
 	worktree := worktreeIn(t, repo, "wt", "feat/oauth")
 
-	transcript(t, agentIn(worktree))
+	home := transcript(t, agentIn(worktree))
 
 	pane := agentPane()
 	pane.CWD = repo
@@ -1620,7 +1620,7 @@ func TestAnAgentsBranchIsNamedWhereNoTrunkIsRecorded(t *testing.T) {
 	h := startConfigured(t, herdrtest.New(
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{pane},
-	), transcriptConfig())
+	), transcriptConfig(home))
 	h.poll()
 
 	got := h.client.Renames()[0].Label
@@ -1635,7 +1635,7 @@ func TestAnAgentOnATrunkNobodyRecordedLeavesThePanesBranch(t *testing.T) {
 	repo := repoWithNoTrunkAt(t, "main")
 	worktree := worktreeIn(t, repo, "wt", "feat/oauth")
 
-	transcript(t, agentIn(repo))
+	home := transcript(t, agentIn(repo))
 
 	pane := agentPane()
 	pane.CWD = worktree
@@ -1643,7 +1643,7 @@ func TestAnAgentOnATrunkNobodyRecordedLeavesThePanesBranch(t *testing.T) {
 	h := startConfigured(t, herdrtest.New(
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{pane},
-	), transcriptConfig())
+	), transcriptConfig(home))
 	h.poll()
 
 	got := h.client.Renames()[0].Label
@@ -1666,7 +1666,7 @@ func TestTwoAgentsOnTwoWorktreesOfOneRepositoryShowDifferentBranches(t *testing.
 	writeTranscript(t, root, testSession, agentIn(oauth))
 	writeTranscript(t, root, otherSession, agentIn(token))
 
-	app := newTestApp(t, transcriptConfig())
+	app := newTestApp(t, transcriptConfig(root))
 	reads := app.reads.forPoll(nil)
 
 	first := agentPaneAt("wE:p1", testSession, repo)
@@ -1691,10 +1691,10 @@ func TestAnAgentInAnotherRepositoryIsIgnored(t *testing.T) {
 	repo := repoAt(t, "feat/oauth")
 	unrelated := repoAt(t, "fix/token")
 
-	transcript(t, agentIn(unrelated))
+	home := transcript(t, agentIn(unrelated))
 
 	pane := agentPaneAt("wE:p1", testSession, repo)
-	readOne(t, transcriptConfig(), pane)
+	readOne(t, transcriptConfig(home), pane)
 
 	if got := branchFor(pane); got != "feat/oauth" {
 		t.Errorf("branch = %q, want the pane's own", got)
@@ -1706,10 +1706,10 @@ func TestAnAgentInNoRepositoryKeepsThePanesBranch(t *testing.T) {
 	// not cost the pane the branch it already had.
 	repo := repoAt(t, "feat/oauth")
 
-	transcript(t, agentIn(t.TempDir()))
+	home := transcript(t, agentIn(t.TempDir()))
 
 	pane := agentPaneAt("wE:p1", testSession, repo)
-	readOne(t, transcriptConfig(), pane)
+	readOne(t, transcriptConfig(home), pane)
 
 	if got := branchFor(pane); got != "feat/oauth" {
 		t.Errorf("branch = %q, want the pane's own", got)
@@ -1728,10 +1728,10 @@ func TestAnAgentInASubdirectoryReadsTheCheckoutAboveIt(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	transcript(t, agentIn(nested))
+	home := transcript(t, agentIn(nested))
 
 	pane := agentPaneAt("wE:p1", testSession, repo)
-	readOne(t, transcriptConfig(), pane)
+	readOne(t, transcriptConfig(home), pane)
 
 	if got := branchFor(pane); got != "feat/oauth" {
 		t.Errorf("branch = %q, want the worktree the subdirectory sits in", got)
@@ -1744,10 +1744,10 @@ func TestAWorktreeTakenOffDiskLeavesThePaneItsOwnBranch(t *testing.T) {
 	repo := repoAt(t, "main")
 	worktree := worktreeIn(t, repo, "wt", "feat/oauth")
 
-	transcript(t, agentIn(filepath.Join(repo, ".claude", "worktrees", "gone")))
+	home := transcript(t, agentIn(filepath.Join(repo, ".claude", "worktrees", "gone")))
 
 	pane := agentPaneAt("wE:p1", testSession, worktree)
-	readOne(t, transcriptConfig(), pane)
+	readOne(t, transcriptConfig(home), pane)
 
 	if pane.AgentGit != (git.Checkout{}) {
 		t.Errorf("agent checkout = %+v, want nothing read", pane.AgentGit)
@@ -1766,10 +1766,10 @@ func TestAWorktreeTakenOffDiskIsNotReadAtAll(t *testing.T) {
 	above := worktreeIn(t, repo, "above", "feat/oauth")
 	gone := filepath.Join(above, ".claude", "worktrees", "gone")
 
-	transcript(t, agentIn(gone))
+	home := transcript(t, agentIn(gone))
 
 	pane := agentPaneAt("wE:p1", testSession, repo)
-	readOne(t, transcriptConfig(), pane)
+	readOne(t, transcriptConfig(home), pane)
 
 	if pane.AgentGit != (git.Checkout{}) {
 		t.Errorf("agent checkout = %+v, want the gone directory refused", pane.AgentGit)
@@ -1787,10 +1787,10 @@ func TestAPaneOnAWorktreeKeepsItsBranchWhenItsAgentWalkedUp(t *testing.T) {
 	repo := repoAt(t, "main")
 	worktree := worktreeIn(t, repo, "wt", "feat/oauth")
 
-	transcript(t, agentIn(repo))
+	home := transcript(t, agentIn(repo))
 
 	pane := agentPaneAt("wE:p1", testSession, worktree)
-	readOne(t, transcriptConfig(), pane)
+	readOne(t, transcriptConfig(home), pane)
 
 	if got := branchFor(pane); got != "feat/oauth" {
 		t.Errorf("branch = %q, want the pane's own worktree branch", got)
@@ -1801,10 +1801,10 @@ func TestAnAgentOnTheTrunkKeepsThePanesBranch(t *testing.T) {
 	repo := repoAt(t, "feat/oauth")
 	worktree := worktreeIn(t, repo, "wt", "main")
 
-	transcript(t, agentIn(worktree))
+	home := transcript(t, agentIn(worktree))
 
 	pane := agentPaneAt("wE:p1", testSession, repo)
-	readOne(t, transcriptConfig(), pane)
+	readOne(t, transcriptConfig(home), pane)
 
 	if got := branchFor(pane); got != "feat/oauth" {
 		t.Errorf("branch = %q, want the pane's own", got)
@@ -1834,10 +1834,10 @@ func TestADetachedAgentWorktreeShowsItsShortHash(t *testing.T) {
 			}
 		}
 
-		transcript(t, agentIn(worktree))
+		home := transcript(t, agentIn(worktree))
 
 		pane := agentPaneAt("wE:p1", testSession, repo)
-		readOne(t, transcriptConfig(), pane)
+		readOne(t, transcriptConfig(home), pane)
 
 		if got := branchFor(pane); got != "aaf1fd8" {
 			t.Errorf("remote %v: branch = %q, want aaf1fd8", remote, got)
@@ -1851,10 +1851,13 @@ func TestTranscriptsSwitchedOffLeaveTheBranchOnThePanesDirectory(t *testing.T) {
 	repo := repoAt(t, "feat/oauth")
 	worktreeIn(t, repo, "wt", "fix/token")
 
-	transcript(t, agentIn(filepath.Join(repo, ".claude", "worktrees", "wt")))
+	home := transcript(t, agentIn(filepath.Join(repo, ".claude", "worktrees", "wt")))
+
+	cfg := testConfig()
+	cfg.ClaudeDirs = []string{home}
 
 	pane := agentPaneAt("wE:p1", testSession, repo)
-	readOne(t, testConfig(), pane)
+	readOne(t, cfg, pane)
 
 	if pane.AgentGit != (git.Checkout{}) {
 		t.Errorf("agent checkout = %+v, want nothing read", pane.AgentGit)
@@ -1869,9 +1872,9 @@ func TestBranchesSwitchedOffReadNeitherDirectory(t *testing.T) {
 	repo := repoAt(t, "main")
 	worktree := worktreeIn(t, repo, "wt", "feat/oauth")
 
-	transcript(t, agentIn(worktree))
+	home := transcript(t, agentIn(worktree))
 
-	cfg := transcriptConfig()
+	cfg := transcriptConfig(home)
 	cfg.BranchMax = 0
 
 	pane := agentPaneAt("wE:p1", testSession, repo)
@@ -1890,9 +1893,9 @@ func TestAPaneWhoseAgentHoldsNoSessionKeepsItsBranch(t *testing.T) {
 	// installed, and a pane with no agent at all never had one.
 	repo := repoAt(t, "feat/oauth")
 
-	transcript(t, agentIn(worktreeIn(t, repo, "wt", "fix/token")))
+	home := transcript(t, agentIn(worktreeIn(t, repo, "wt", "fix/token")))
 
-	cfg := transcriptConfig()
+	cfg := transcriptConfig(home)
 
 	for name, pane := range map[string]*state.PaneState{
 		"no agent": paneAt("wE:p1", repo),
@@ -1919,7 +1922,7 @@ func TestALongTopicAndAWorktreeBranchFitTheDefaultBounds(t *testing.T) {
 	repo := repoAt(t, "main")
 	worktree := worktreeIn(t, repo, "wt", "feat/oauth")
 
-	transcript(
+	home := transcript(
 		t,
 		agentIn(worktree),
 		`{"type":"ai-title","aiTitle":"Make the branch follow the agent worktree",`+
@@ -1932,7 +1935,7 @@ func TestALongTopicAndAWorktreeBranchFitTheDefaultBounds(t *testing.T) {
 	h := startConfigured(t, herdrtest.New(
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{pane},
-	), transcriptConfig())
+	), transcriptConfig(home))
 	h.poll()
 
 	got := h.client.Renames()[0].Label
@@ -1955,10 +1958,10 @@ func TestOneRepositorySpelledTwoWaysDoesNotFollowTheAgent(t *testing.T) {
 		t.Skipf("symlinks are unavailable here: %v", err)
 	}
 
-	transcript(t, agentIn(worktree))
+	home := transcript(t, agentIn(worktree))
 
 	pane := agentPaneAt("wE:p1", testSession, alias)
-	readOne(t, transcriptConfig(), pane)
+	readOne(t, transcriptConfig(home), pane)
 
 	if got := branchFor(pane); got != "feat/oauth" {
 		t.Errorf("branch = %q, want the pane's own", got)
@@ -1970,10 +1973,10 @@ func TestAPaneOutsideARepositoryFollowsNoAgent(t *testing.T) {
 	// the pane sits in could only be labelling someone else's project.
 	repo := repoAt(t, "main")
 
-	transcript(t, agentIn(worktreeIn(t, repo, "wt", "feat/oauth")))
+	home := transcript(t, agentIn(worktreeIn(t, repo, "wt", "feat/oauth")))
 
 	pane := agentPaneAt("wE:p1", testSession, t.TempDir())
-	readOne(t, transcriptConfig(), pane)
+	readOne(t, transcriptConfig(home), pane)
 
 	if got := branchFor(pane); got != "" {
 		t.Errorf("branch = %q, want none", got)
@@ -2008,7 +2011,7 @@ func TestAnAgentsWorktreeBranchStandsBesideTheProject(t *testing.T) {
 	repo := repoAt(t, "main")
 	worktree := worktreeIn(t, repo, "oauth", "oauth")
 
-	transcript(t, agentIn(worktree))
+	home := transcript(t, agentIn(worktree))
 
 	pane := agentPane()
 	pane.CWD = repo
@@ -2016,7 +2019,7 @@ func TestAnAgentsWorktreeBranchStandsBesideTheProject(t *testing.T) {
 	h := startConfigured(t, herdrtest.New(
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{pane},
-	), transcriptConfig())
+	), transcriptConfig(home))
 	h.poll()
 
 	got := h.client.Renames()[0].Label
@@ -2034,7 +2037,7 @@ func TestAPaneHoldingSeveralRepositoriesFollowsItsAgentsWorktree(t *testing.T) {
 	repoIn(t, filepath.Join(parent, "billing"), "main")
 	worktree := worktreeIn(t, repo, "node", "chore/node-24.21.0")
 
-	transcript(t, agentIn(worktree))
+	home := transcript(t, agentIn(worktree))
 
 	pane := agentPane()
 	pane.CWD = parent
@@ -2042,7 +2045,7 @@ func TestAPaneHoldingSeveralRepositoriesFollowsItsAgentsWorktree(t *testing.T) {
 	h := startConfigured(t, herdrtest.New(
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
 		[]herdr.PaneInfo{pane},
-	), transcriptConfig())
+	), transcriptConfig(home))
 	h.poll()
 
 	got := h.client.Renames()[0].Label
@@ -2057,10 +2060,10 @@ func TestAnAgentOnATrunkNamesNoBranchForAPaneOutsideARepository(t *testing.T) {
 	parent := t.TempDir()
 	repo := repoIn(t, filepath.Join(parent, "dashboard"), "feat/oauth")
 
-	transcript(t, agentIn(worktreeIn(t, repo, "wt", "main")))
+	home := transcript(t, agentIn(worktreeIn(t, repo, "wt", "main")))
 
 	pane := agentPaneAt("wE:p1", testSession, parent)
-	readOne(t, transcriptConfig(), pane)
+	readOne(t, transcriptConfig(home), pane)
 
 	if got := branchFor(pane); got != "" {
 		t.Errorf("branch = %q, want none", got)
@@ -2073,10 +2076,10 @@ func TestAPaneInARepositoryRefusesAnAgentInOneNestedUnderIt(t *testing.T) {
 	repo := repoAt(t, "feat/oauth")
 	nested := repoIn(t, filepath.Join(repo, "vendor", "other"), "fix/token")
 
-	transcript(t, agentIn(nested))
+	home := transcript(t, agentIn(nested))
 
 	pane := agentPaneAt("wE:p1", testSession, repo)
-	readOne(t, transcriptConfig(), pane)
+	readOne(t, transcriptConfig(home), pane)
 
 	if got := branchFor(pane); got != "feat/oauth" {
 		t.Errorf("branch = %q, want the pane's own", got)
@@ -2093,10 +2096,10 @@ func TestAPaneOutsideARepositoryRefusesAnAgentOutsideOneToo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	transcript(t, agentIn(scratch))
+	home := transcript(t, agentIn(scratch))
 
 	pane := agentPaneAt("wE:p1", testSession, parent)
-	readOne(t, transcriptConfig(), pane)
+	readOne(t, transcriptConfig(home), pane)
 
 	if got := branchFor(pane); got != "" {
 		t.Errorf("branch = %q, want none", got)
@@ -2115,10 +2118,10 @@ func TestADirectoryNamedLikeThePanesIsNotInsideIt(t *testing.T) {
 
 	sibling := repoIn(t, filepath.Join(parent, "code-review"), "feat/oauth")
 
-	transcript(t, agentIn(sibling))
+	home := transcript(t, agentIn(sibling))
 
 	pane := agentPaneAt("wE:p1", testSession, own)
-	readOne(t, transcriptConfig(), pane)
+	readOne(t, transcriptConfig(home), pane)
 
 	if got := branchFor(pane); got != "" {
 		t.Errorf("branch = %q, want none", got)

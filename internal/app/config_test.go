@@ -12,6 +12,14 @@ import (
 	"github.com/kryptamine/herdr-auto-title/internal/resolver"
 )
 
+// setHome points os.UserHomeDir at dir. Unix reads HOME and Windows reads
+// USERPROFILE, and setting both spares every fixture from knowing which.
+func setHome(t *testing.T, dir string) {
+	t.Helper()
+	t.Setenv("HOME", dir)
+	t.Setenv("USERPROFILE", dir)
+}
+
 // isolate takes a test off the developer's machine: the home decides where
 // the configuration file is looked for, and every variable Auto Title reads
 // is removed so the test sees only what it sets.

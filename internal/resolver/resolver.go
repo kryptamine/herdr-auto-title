@@ -131,6 +131,8 @@ type Options struct {
 	// way round so that the zero value keeps the name, which is what a resolver
 	// built without options wants.
 	HideAgentName bool
+	// Home is the user's home directory, which names no project.
+	Home string
 }
 
 // Deterministic resolves titles from a fixed priority list of sources.
@@ -176,7 +178,7 @@ func Default(opts Options) *Deterministic {
 		NewProcess(),
 		NewSSH(),
 		NewGit(opts.BranchMax),
-		NewCWD(),
+		NewCWD(opts.Home),
 	)
 }
 

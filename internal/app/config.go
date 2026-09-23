@@ -89,6 +89,8 @@ type Config struct {
 	// adds. A home the user's shell picks per directory cannot be discovered,
 	// so it is named.
 	ClaudeDirs []string
+	// Home is the user's home directory, or "" when there is none.
+	Home string
 }
 
 // LoadConfig reads configuration from the configuration file and the
@@ -123,6 +125,7 @@ func LoadConfig() (Config, []string) {
 		// rather than assumed.
 		WorkspaceMaxLength: resolver.DefaultWorkspaceMaxLength,
 		ClaudeDirs:         homes,
+		Home:               userHome(),
 	}
 
 	cfg.Debug = fromEnv(&warnings, EnvDebug, cfg.Debug, boolean)
@@ -221,12 +224,21 @@ func claudeHome() string {
 		return dir
 	}
 
+	home := userHome()
+	if home == "" {
+		return ""
+	}
+
+	return filepath.Join(home, ".claude")
+}
+
+func userHome() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return ""
 	}
 
-	return filepath.Join(home, ".claude")
+	return home
 }
 
 // fromEnv returns what the environment says name is, or fallback when it says

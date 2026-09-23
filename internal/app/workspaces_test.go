@@ -804,7 +804,7 @@ func TestTheTabChainMatchesTheRowWholeWhenLocksHaveNowhereToLive(t *testing.T) {
 	cfg := workspaceConfig(t)
 	cfg.ManualPath = ""
 
-	setHome(t, filepath.Join(t.TempDir(), "home"))
+	cfg.Home = testHome(t)
 
 	titles, _, workspaces := Resolvers(cfg)
 	if workspaces != nil {
