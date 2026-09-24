@@ -18,7 +18,7 @@ func alive(pid int) bool {
 	if err != nil {
 		return false
 	}
-	defer syscall.CloseHandle(handle)
+	defer func() { _ = syscall.CloseHandle(handle) }()
 
 	event, err := syscall.WaitForSingleObject(handle, 0)
 

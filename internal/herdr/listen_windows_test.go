@@ -85,21 +85,21 @@ func (l *pipeListener) accept() (io.ReadWriteCloser, error) {
 
 	ok, _, err := procConnectNamedPipe.Call(uintptr(handle), 0)
 	if ok == 0 && !errors.Is(err, errPipeConnected) {
-		syscall.CloseHandle(handle)
+		_ = syscall.CloseHandle(handle)
 
 		return nil, err
 	}
 
 	select {
 	case <-l.closed:
-		syscall.CloseHandle(handle)
+		_ = syscall.CloseHandle(handle)
 
 		return nil, errListenerClosed
 	default:
 	}
 
 	if l.next, err = l.instance(); err != nil {
-		syscall.CloseHandle(handle)
+		_ = syscall.CloseHandle(handle)
 
 		return nil, err
 	}
@@ -113,7 +113,7 @@ func (l *pipeListener) close() {
 	close(l.closed)
 
 	if f, err := os.OpenFile(pipePrefix+l.path, os.O_RDWR, 0); err == nil {
-		f.Close()
+		_ = f.Close()
 	}
 }
 
