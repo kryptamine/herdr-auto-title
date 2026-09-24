@@ -7,6 +7,8 @@ import (
 )
 
 func TestAServerIsToldByTheMarkerItWrote(t *testing.T) {
+	t.Parallel()
+
 	path := filepath.Join(t.TempDir(), "herdr.sock")
 
 	if got := serverIdentity(path); got != "" {
