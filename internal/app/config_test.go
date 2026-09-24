@@ -107,6 +107,10 @@ func TestLoadConfigDefaults(t *testing.T) {
 	if !cfg.RenamePanes {
 		t.Error("panes are not named by default")
 	}
+
+	if home, _ := os.UserHomeDir(); cfg.Home != home {
+		t.Errorf("home = %q, want %q", cfg.Home, home)
+	}
 }
 
 func TestLoadConfigTurnsPositionsOff(t *testing.T) {

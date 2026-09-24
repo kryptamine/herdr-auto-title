@@ -2279,3 +2279,31 @@ func TestADirectoryNamedLikeThePanesIsNotInsideIt(t *testing.T) {
 		t.Errorf("branch = %q, want none", got)
 	}
 }
+
+// Resolvers hands the home directory to both chains it builds: without it a
+// pane sitting in the home names the tab and the workspace row after the account.
+func TestResolversKeepAPaneInTheHomeFromNamingAnything(t *testing.T) {
+	t.Parallel()
+
+	cfg := workspaceConfig(t)
+	cfg.Home = testHome(t)
+
+	titles, _, workspaces := Resolvers(cfg)
+
+	pane := &state.PaneState{ID: "w1:p1", Dir: cfg.Home, Focused: true}
+	tab := state.TabFrom(
+		herdr.TabInfo{TabID: "w1:t1", WorkspaceID: "w1", Label: "1"},
+		"",
+		1,
+		[]*state.PaneState{pane},
+		false,
+	)
+
+	if got := titles.Resolve(tab).Name; got != resolver.GenericFallback {
+		t.Errorf("tab named %q, want %q", got, resolver.GenericFallback)
+	}
+
+	if got := workspaces.ResolveWorkspace(state.WorkspaceState{Context: pane}).Name; got != "" {
+		t.Errorf("workspace named %q, want the row left alone", got)
+	}
+}
