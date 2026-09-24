@@ -117,7 +117,9 @@ polls is shared, two tests still run the loop in a goroutine of its own, and a
 future reset action will touch that state from outside the loop. Tests run in
 parallel so the detector has something to catch, and a test therefore takes
 its settings from the `Config` it builds, never from the environment; the few
-that exercise reading the environment itself say so in a `//nolint`.
+that exercise reading the environment itself run serially: `t.Setenv` refuses
+a parallel test, and one that reaches the environment through a helper says so
+in a `//nolint:paralleltest`.
 
 The linter lives in `tools/go.mod`, a module of its own, so its dependency tree
 stays out of the plugin's: the main module keeps two dependencies and still
