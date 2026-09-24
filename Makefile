@@ -21,9 +21,15 @@ fmt: ## Format the code and apply every fix the linters can make themselves
 vet: ## Static checks
 	@go vet ./...
 
+# A platform's own files build only there, so the other one is linted as well.
+# GOOS on `go tool` would build the linter for that platform, where it cannot
+# run, so the one built for this machine is run instead.
+OTHER_GOOS = $(if $(filter windows,$(shell go env GOOS)),linux,windows)
+
 .PHONY: lint
-lint: ## golangci-lint, pinned in tools/go.mod
+lint: ## golangci-lint, pinned in tools/go.mod, for this platform and the other
 	@go tool -modfile=tools/go.mod golangci-lint run ./...
+	@GOOS=$(OTHER_GOOS) "$$(go tool -modfile=tools/go.mod -n golangci-lint)" run ./...
 
 .PHONY: test
 test: ## Tests with the race detector
