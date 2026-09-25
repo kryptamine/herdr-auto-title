@@ -411,8 +411,9 @@ pane is showing.
 
 Both of those are the snapshot's guess, and the pane a tab is named from does
 better: `pane.process_info` reports each foreground process with the directory
-it is itself in, deepest first, so the last entry is the pane's own foreground
-process and its directory is the pane's. That is what the poll reads, and the
+it is itself in, and the entry whose `pid` is the foreground process group's is
+the pane's own foreground process; the client moves it last, and its directory
+is the pane's. That is what the poll reads, and the
 snapshot's pair stays behind it for the panes nothing is read for.
 
 The difference is what an agent spawns. `foreground_cwd` is the deepest

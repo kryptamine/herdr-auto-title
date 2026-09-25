@@ -242,7 +242,7 @@ func TestPaneDirTakesTheForegroundProcessesOwnDirectory(t *testing.T) {
 	t.Parallel()
 
 	// A snapshot reports the deepest descendant's directory, which for an agent
-	// is a server it spawned. The process list is deepest first.
+	// is a server it spawned. The client puts the foreground process last.
 	server, portal := herdrtest.Dir("opt", "gimp-mcp"), herdrtest.Dir("work", "self-care-portal")
 	processes := []herdr.PaneProcessInfoProcess{
 		{Name: "gimp-mcp", CWD: server},
@@ -261,7 +261,7 @@ func TestPaneDirTakesTheForegroundProcessesOwnDirectory(t *testing.T) {
 	}
 
 	if len(pane.Processes) != 2 || pane.Processes[0].Name != "gimp-mcp" {
-		t.Errorf("processes = %+v, want both, deepest first", pane.Processes)
+		t.Errorf("processes = %+v, want both, foreground last", pane.Processes)
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -245,6 +246,52 @@ func TestSessionSnapshotDecodesTheWrapper(t *testing.T) {
 
 	if len(snapshot.Panes) != 1 || snapshot.Panes[0].CWD != "/work/api" {
 		t.Errorf("panes = %+v, want one pane in /work/api", snapshot.Panes)
+	}
+}
+
+func TestPaneProcessesPutsTheForegroundProcessLast(t *testing.T) {
+	t.Parallel()
+
+	// Herdr 0.9.0 lists the agent first and the servers it spawned after it.
+	srv := newTestServer(t, func(req incoming) string {
+		return `{"id":"` + req.ID + `","result":{"process_info":{"foreground_process_group_id":10,` +
+			`"foreground_processes":[{"pid":10,"name":"claude","cwd":"/work/dashboard"},` +
+			`{"pid":11,"name":"uv","cwd":"/opt/gimp-mcp"},{"pid":12,"name":"gimp-mcp","cwd":"/opt/gimp-mcp"}]}}}`
+	})
+
+	processes, err := PaneProcesses(context.Background(), srv.client(), "wE:p1")
+	if err != nil {
+		t.Fatalf("PaneProcesses: %v", err)
+	}
+
+	names := make([]string, 0, len(processes))
+	for _, process := range processes {
+		names = append(names, process.Name)
+	}
+
+	if got, want := strings.Join(names, ","), "uv,gimp-mcp,claude"; got != want {
+		t.Errorf("processes = %s, want %s", got, want)
+	}
+}
+
+func TestPaneProcessesKeepsHerdrsOrderWithoutAForegroundMatch(t *testing.T) {
+	t.Parallel()
+
+	for name, info := range map[string]PaneProcessInfo{
+		"no group id": {ForegroundProcesses: []PaneProcessInfoProcess{{Name: "sleep"}, {Name: "python3"}}},
+		"no match": {
+			ForegroundProcessGroupID: 99,
+			ForegroundProcesses:      []PaneProcessInfoProcess{{PID: 1, Name: "sleep"}, {PID: 2, Name: "python3"}},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			got := foregroundLast(info)
+			if len(got) != 2 || got[0].Name != "sleep" || got[1].Name != "python3" {
+				t.Errorf("processes = %+v, want Herdr's order kept", got)
+			}
+		})
 	}
 }
 

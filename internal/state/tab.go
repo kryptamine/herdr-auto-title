@@ -70,8 +70,8 @@ type Process struct {
 }
 
 // PaneDir is the directory a pane speaks for, settled by what it is running:
-// the list is deepest first, so the pane's own foreground process is last and
-// the directory it is in is the pane's. A read saying nothing leaves guess.
+// herdr.PaneProcesses puts the pane's own foreground process last, and the
+// directory it is in is the pane's. A read saying nothing leaves guess.
 func PaneDir(processes []herdr.PaneProcessInfoProcess, guess string) string {
 	if last := len(processes) - 1; last >= 0 && processes[last].CWD != "" {
 		return cleanDir(processes[last].CWD)

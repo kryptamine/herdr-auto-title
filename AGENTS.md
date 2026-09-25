@@ -172,7 +172,8 @@ are only the facts that would otherwise mislead the code in silence.
   which a subshell leaves behind; `foreground_cwd` is the _deepest
   descendant's_, so anything a program starts elsewhere takes the pane with it.
   The directory is the foreground process's own `cwd`, which only
-  `pane.process_info` reports.
+  `pane.process_info` reports — found by `pid`, since the list's order is not
+  the same on every Herdr.
 - **A revision does not track what is running in a pane.** Measured, the
   foreground processes changed nine times while the revision moved four. A
   revision says the pane drew: a hint that a process read is due, never a
