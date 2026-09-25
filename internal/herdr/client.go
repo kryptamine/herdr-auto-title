@@ -140,15 +140,40 @@ func SessionSnapshot(ctx context.Context, c Client) (Snapshot, error) {
 	return res.Snapshot, nil
 }
 
-// PaneProcesses reads what is running in a pane. PaneInfo has no process name
-// and this is the only method that answers one, at 0.11 ms per pane.
+// PaneProcesses reads what is running in a pane, the pane's own foreground
+// process last. PaneInfo has no process name and this is the only method that
+// answers one, at 0.11 ms per pane.
 func PaneProcesses(ctx context.Context, c Client, paneID string) ([]PaneProcessInfoProcess, error) {
 	var res processInfoResult
 	if err := c.Call(ctx, MethodPaneProcessInfo, PaneTarget{PaneID: paneID}, &res); err != nil {
 		return nil, err
 	}
 
-	return res.ProcessInfo.ForegroundProcesses, nil
+	return foregroundLast(res.ProcessInfo), nil
+}
+
+// foregroundLast moves the foreground process to the end of the list. Herdr
+// 0.8.2 on macOS listed it last and 0.9.0 on Linux lists it first, ahead of the
+// servers an agent spawned, so only its pid says which one it is.
+func foregroundLast(info PaneProcessInfo) []PaneProcessInfoProcess {
+	processes := info.ForegroundProcesses
+	if info.ForegroundProcessGroupID == 0 {
+		return processes
+	}
+
+	for i, process := range processes {
+		if process.PID != info.ForegroundProcessGroupID {
+			continue
+		}
+
+		ordered := make([]PaneProcessInfoProcess, 0, len(processes))
+		ordered = append(ordered, processes[:i]...)
+		ordered = append(ordered, processes[i+1:]...)
+
+		return append(ordered, process)
+	}
+
+	return processes
 }
 
 func RenameTab(ctx context.Context, c Client, tabID, label string) error {

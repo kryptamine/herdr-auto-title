@@ -236,7 +236,10 @@ reads, so this section describes Herdr rather than those types.
   `pane.process_info` reports. Probed across the four panes of a live session:
   in every one the last entry of `foreground_processes` was the process whose
   `pid` equals `foreground_process_group_id`, and its `cwd` was the directory
-  the pane was working in. One pane disagreed with both snapshot fields at once
+  the pane was working in. The order is not the same everywhere: Herdr 0.9.0
+  on Linux lists the foreground process first and its descendants after it,
+  so `herdr.PaneProcesses` finds it by that `pid` and moves it last rather
+  than trusting its place. One pane disagreed with both snapshot fields at once
   — `cwd: ~/Work/herdr-auto-title` (the shell it was started from) against
   `foreground_cwd: ~/Work/self-care-portal` (an MCP server), with the agent
   itself in `~/Work/self-care-portal`. Auto Title reads it for the pane that

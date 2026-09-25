@@ -77,20 +77,22 @@ func (s *AgentSessionInfo) IDFor(agent string) (string, bool) {
 	return s.Value, true
 }
 
-// PaneProcessInfoProcess is one process running in a pane. Herdr reports its
-// pid and the joined command line too; a title is derived from the name, the
-// arguments and the directory the process itself is in.
+// PaneProcessInfoProcess is one process running in a pane. Herdr reports the
+// joined command line too; a title is derived from the name, the arguments and
+// the directory the process itself is in, and the pid finds the foreground one.
 type PaneProcessInfoProcess struct {
+	PID  int      `json:"pid"`
 	Name string   `json:"name"`
 	Argv []string `json:"argv"`
 	CWD  string   `json:"cwd"`
 }
 
 // PaneProcessInfo is what pane.process_info answers. ForegroundProcesses holds
-// the pane's foreground process and its descendants, deepest first, so an
-// editor that shelled out lists both and the editor is last.
+// the pane's foreground process and its descendants in an order Herdr does not
+// keep the same everywhere; ForegroundProcessGroupID is the foreground one's pid.
 type PaneProcessInfo struct {
-	ForegroundProcesses []PaneProcessInfoProcess `json:"foreground_processes"`
+	ForegroundProcessGroupID int                      `json:"foreground_process_group_id"`
+	ForegroundProcesses      []PaneProcessInfoProcess `json:"foreground_processes"`
 }
 
 // Snapshot is the whole session as session.snapshot reports it.
