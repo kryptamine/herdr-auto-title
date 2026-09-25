@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.9.1](https://github.com/kryptamine/herdr-auto-title/compare/v0.9.0...v0.9.1) (2026-09-25)
+
+
+### Bug Fixes
+
+* **herdr:** find a pane's foreground process by its pid ([7308d8f](https://github.com/kryptamine/herdr-auto-title/commit/7308d8f508377719ced04e950522c5f07c721709))
+
+
+### Refactoring
+
+* **claude:** take the configuration homes as a value ([a6e2e09](https://github.com/kryptamine/herdr-auto-title/commit/a6e2e09f89e523d6cbd064d6a98d8cdd4022abae))
+* **resolver:** take the home directory as a value ([a05ca15](https://github.com/kryptamine/herdr-auto-title/commit/a05ca15c5800bd49683b4fda93a866e696224a13))
+
 ## [0.9.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.8.0...v0.9.0) (2026-09-22)
 
 
