@@ -208,6 +208,10 @@ are only the facts that would otherwise mislead the code in silence.
   Herdr reads an action's output to EOF, so a child holding the pipes keeps
   the action "running" and one of the thirty-two plugin command slots with it.
   The restart starts the new instance on the null device, detached.
+- **A pane on a saved SSH machine is not in the local snapshot.** That machine
+  runs its own Herdr server, and the Auto Title installed there names its tabs
+  from its own filesystem, transcripts included. Nothing marks a pane remote
+  because no remote pane ever reaches the local socket.
 - **One action id per manifest, whatever the platforms.** Herdr rejects a
   duplicate id even when the two entries' `platforms` do not overlap, so
   there is no Windows twin naming the `.exe`; Herdr 0.9.0 on Windows appends
