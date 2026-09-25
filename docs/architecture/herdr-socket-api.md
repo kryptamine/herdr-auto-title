@@ -125,6 +125,34 @@ throwaway plugin (link, invoke, unlink):
   `<config>/sessions/<name>/herdr.sock` for a named one. Anything kept per
   session is therefore keyed by the socket path.
 
+## Saved SSH machines
+
+Measured on Herdr 0.9.1, protocol 22, with a macOS client and a Linux machine
+saved through `herdr machine add`, both running Auto Title:
+
+- **A saved machine's panes never reach the local socket.** The machine runs a
+  Herdr server of its own — here the named session its profile points at,
+  `<config>/sessions/<name>/herdr.sock` on the remote — and the TUI shows its
+  workspaces by talking to that server. The local `session.snapshot` carried
+  none of them, with the machine selected in the sidebar, and no field of any
+  object in it names a machine or host. Workspace, tab and pane ids are scoped
+  to one server, so the two sessions' `w1:p1` are different panes.
+- **The machine's own Auto Title names those tabs**, started by the remote
+  server's startup hook with the remote socket. It reads the remote session and
+  the remote filesystem, which is where the agent's transcript is:
+  `agent_session` is reported for a Claude pane there as it is locally, and the
+  transcript it names exists in that machine's `~/.claude/projects/`. The
+  topic reached the tab label, which is what the local sidebar then renders.
+- **`cwd`, `foreground_cwd` and `terminal_title_stripped` are the remote's**,
+  unaltered: a remote path, and for a plain shell the title the shell sets
+  (`user@host: ~`). `pane.process_info` answers through
+  `herdr --machine <label> pane process-info` with the remote processes and
+  their remote `cwd`, as locally.
+
+So a saved machine needs no handling in the plugin: a pane on one is local to
+the only Auto Title that sees it. A machine without Auto Title installed keeps
+whatever labels it has; the local instance cannot see it to name it.
+
 ## The methods Auto Title uses
 
 Six, and no others (`internal/herdr/client.go`), `workspace.rename` only while
