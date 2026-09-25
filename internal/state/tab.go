@@ -151,7 +151,7 @@ func programName(name string) string {
 }
 
 // Foreground is the process the pane is running rather than one it started:
-// Herdr lists descendants first, so it is the last.
+// herdr.PaneProcesses moves it last, as Herdr's own order differs by platform.
 func (p *PaneState) Foreground() (Process, bool) {
 	if len(p.Processes) == 0 {
 		return Process{}, false
