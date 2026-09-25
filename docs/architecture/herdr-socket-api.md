@@ -256,8 +256,9 @@ reads, so this section describes Herdr rather than those types.
 - **`pane.process_info` reports more per process than a name.** Each entry
   carries `pid`, `argv0`, `cmdline` and `cwd` beside `name` and `argv`, and the
   pane's entry carries `shell_pid` and `foreground_process_group_id`. Auto
-  Title reads the name, the arguments and the directory; the rest is listed
-  here so a future change need not probe again.
+  Title reads the name, the arguments, the directory, and the `pid` matched
+  against `foreground_process_group_id`; the rest is listed here so a future
+  change need not probe again.
 - **On Windows, `foreground_processes` holds the pane's shell or a recognized
   agent, and nothing else.** Probed with `python.exe` and then `node.exe`
   running under a pane's `pwsh.exe`, both confirmed present in the process tree:
