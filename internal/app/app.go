@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
+	"github.com/kryptamine/herdr-auto-title/internal/reads"
 	"github.com/kryptamine/herdr-auto-title/internal/resolver"
 	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
@@ -47,7 +48,7 @@ type App struct {
 	workspaces resolver.WorkspaceResolver
 	changes    *state.Changes
 	manual     *state.Manual
-	reads      *paneReader
+	reads      *reads.Reader
 	// failures is the run of polls that have failed in a row, which decides
 	// how loudly the next one is reported.
 	failures failureLog
@@ -69,8 +70,6 @@ func New(
 	workspaces resolver.WorkspaceResolver,
 	instance Instance,
 ) *App {
-	changes := state.NewChanges()
-
 	return &App{
 		pollEvery:   cfg.Poll,
 		log:         log,
@@ -78,10 +77,14 @@ func New(
 		panes:       panes,
 		workspaces:  workspaces,
 		preferAgent: cfg.PreferAgentPane,
-		changes:     changes,
+		changes:     state.NewChanges(),
 		manual:      state.LoadManual(cfg.ManualPath),
-		reads:       newPaneReader(cfg, log, changes),
-		instance:    instance,
+		reads: reads.New(reads.Options{
+			ClaudeDirs:      cfg.ClaudeDirs,
+			BranchMax:       cfg.BranchMax,
+			ReadTranscripts: cfg.ReadTranscripts,
+		}, log),
+		instance: instance,
 	}
 }
 
@@ -234,17 +237,17 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 	a.manual.Workspaces.Retain(workspaceLabelsIn(snapshot.Workspaces))
 
 	tabs := a.tabsIn(snapshot)
-	reads := a.reads.forPoll(snapshot.Panes)
+	poll := a.reads.Poll(client, snapshot.Panes)
 
 	for _, tab := range tabs {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
 
-		a.nameTab(ctx, client, reads, tab)
+		a.nameTab(ctx, client, poll, tab)
 
 		if a.panes != nil {
-			a.namePanes(ctx, client, reads, tab)
+			a.namePanes(ctx, client, poll, tab)
 		}
 	}
 
@@ -252,7 +255,7 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 		// Last, so a poll cut short gives up the row rather than a tab. Order
 		// changes nothing else: a tab deduplicates against the row label in the
 		// snapshot, and a rename issued here reaches it on the next poll.
-		a.nameWorkspaces(ctx, client, reads, snapshot, tabs)
+		a.nameWorkspaces(ctx, client, poll, snapshot, tabs)
 
 		// As the tab loop above returns on a cancelled context: a pass cut short
 		// has not seen every workspace, and settling would leave the ones it
@@ -275,7 +278,7 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 func (a *App) nameWorkspaces(
 	ctx context.Context,
 	client herdr.Client,
-	reads *paneReads,
+	poll *reads.Poll,
 	snapshot herdr.Snapshot,
 	tabs []state.TabState,
 ) {
@@ -297,7 +300,7 @@ func (a *App) nameWorkspaces(
 		// Read before judging, not after: the snapshot's directory is a
 		// descendant's guess, and a row judged on it could be claimed for
 		// wearing a basename it never wore.
-		reads.fill(ctx, client, context)
+		poll.Fill(ctx, context)
 
 		workspace := state.WorkspaceFrom(info, context)
 
@@ -341,7 +344,7 @@ func workspaceTabs(tabs []herdr.TabInfo) (count map[string]int, first map[string
 func (a *App) nameTab(
 	ctx context.Context,
 	client herdr.Client,
-	reads *paneReads,
+	poll *reads.Poll,
 	tab state.TabState,
 ) {
 	if a.manual.Tabs.Locked(tab.ID) {
@@ -350,7 +353,7 @@ func (a *App) nameTab(
 
 	// Read here rather than during assembly: the reads are what a poll
 	// spends, and only a tab that will be renamed is worth them.
-	reads.fill(ctx, client, tab.Context)
+	poll.Fill(ctx, tab.Context)
 
 	decision := a.titles.Resolve(tab)
 	a.apply(
@@ -369,16 +372,16 @@ func (a *App) nameTab(
 func (a *App) namePanes(
 	ctx context.Context,
 	client herdr.Client,
-	reads *paneReads,
+	poll *reads.Poll,
 	tab state.TabState,
 ) {
 	// Every pane is named against the tab's own pane, which is read even when
 	// the tab is claimed; a poll never spends the same read twice.
-	reads.fill(ctx, client, tab.Context)
+	poll.Fill(ctx, tab.Context)
 
 	for _, pane := range tab.Panes {
 		if !a.manual.Panes.Locked(pane.ID) {
-			reads.fill(ctx, client, pane)
+			poll.Fill(ctx, pane)
 		}
 	}
 

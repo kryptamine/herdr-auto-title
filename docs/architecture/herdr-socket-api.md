@@ -245,7 +245,7 @@ reads, so this section describes Herdr rather than those types.
 
 - **Pane revisions are monotonic per pane.** That is how one poll tells which
   panes moved since the last, and it is the whole basis of
-  `internal/state/changes.go`.
+  `internal/state/changes.go` and of the process reads `internal/reads` reuses.
 - **`PaneInfo.cwd` is the pane's own shell, not what the user is typing into.**
   A subshell moves `foreground_cwd` and leaves `cwd` behind: probed with
   `chezmoi cd`, which runs `$SHELL` in the source directory, the pane reported

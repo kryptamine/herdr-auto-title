@@ -64,22 +64,23 @@ cannot express it:
   are monotonic, so comparing one poll's revisions with the last says which panes
   moved. The map is rebuilt from each snapshot, so panes that closed disappear
   from it for free.
-- **What each pane was running** (`internal/state/changes.go`, kept beside the
-  revisions). `PaneInfo` carries no process name, so naming a pane after the
-  program in it costs a `pane.process_info` request per pane. Measured against
-  an eight-pane session, a read is 0.17 ms and the snapshot before it 1.35 ms,
-  so making one for every pane every poll cost as much again as the snapshot —
-  and on a session where nothing is happening, every one of those reads returns
-  what the last already said. A pane whose revision has not moved is running
-  what it usually was, so its answer is reused until the revision moves. That
-  test is a hint rather than a guarantee, and it was measured to be one: over
-  ten minutes of a live eight-pane session the foreground processes changed nine
-  times and the revision moved with them only four, one pane going
-  `env` → `node` → `esbuild` → `fish` with its revision held at 10 throughout. A
-  revision says the pane *drew*, which starting a command usually but not always
-  provokes. So the reuse is bounded twice: by the revision, which catches the
-  common case in the very next poll, and by `processRefresh` (2 s), which is
-  what actually bounds how wrong the answer can be.
+- **What each pane was running** (`internal/reads/processes.go`, which keeps the
+  revisions it was read at). `PaneInfo` carries no process name, so naming a
+  pane after the program in it costs a `pane.process_info` request per pane.
+  Measured against an eight-pane session, a read is 0.17 ms and the snapshot
+  before it 1.35 ms, so making one for every pane every poll cost as much again
+  as the snapshot — and on a session where nothing is happening, every one of
+  those reads returns what the last already said. A pane whose revision has not
+  moved is running what it usually was, so its answer is reused until the
+  revision moves. That test is a hint rather than a guarantee, and it was
+  measured to be one: over ten minutes of a live eight-pane session the
+  foreground processes changed nine times and the revision moved with them only
+  four, one pane going `env` → `node` → `esbuild` → `fish` with its revision
+  held at 10 throughout. A revision says the pane *drew*, which starting a
+  command usually but not always provokes. So the reuse is bounded twice: by the
+  revision, which catches the common case in the very next poll, and by
+  `processRefresh` (2 s), which is what actually bounds how wrong the answer can
+  be.
 
   Only the pane a tab is named from is asked about, so the request is per tab
   rather than per pane. The reuse still earns its keep: focus moves between the
@@ -118,8 +119,10 @@ changes name at most once per poll however fast its pane is churning, so
    skip.
 4. `tabsIn` — assemble tabs with their panes from the snapshot alone. Nothing
    is read here: assembly is what says which pane will be asked about.
+   `Reader.Poll` opens the poll's reads, forgetting what was read of a pane
+   whose revision moved and of panes and agent sessions that are gone.
 5. Per tab (`nameTab`): skip it if locked, otherwise read the one pane the tab
-   is named from (`paneReads.fill`), resolve a title, then check whether the
+   is named from (`Poll.Fill`), resolve a title, then check whether the
    label moved under us and rename when the result differs from the label the
    tab already carries (`apply`).
 6. Per tab again (`namePanes`), and only when pane naming is on: read the tab's
@@ -160,10 +163,10 @@ still, issues nothing beyond the snapshot itself.
 the one its tab speaks through, so the four-pane tab above costs four process
 requests instead of one, and a tab the user has claimed is read as well, because
 its panes are still named against it. The reads a poll has already spent are not
-spent again — the pane that named the tab is filled once, the git checkouts are
-memoized by directory, and a pane holding still keeps its last process answer —
-but the floor is one read per pane, which is why it can be turned off
-([configuration](./configuration.md)).
+spent again — `Poll.Fill` reads a pane once however often it is asked, the git
+checkouts are memoized by directory, and a pane holding still keeps its last
+process answer — but the floor is one read per pane, which is why it can be
+turned off ([configuration](./configuration.md)).
 
 The whole poll is bounded by `PollTimeout` (5 s). A tab that closed between the
 snapshot and its rename answers `tab_not_found`, which is expected rather than an

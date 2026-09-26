@@ -6,6 +6,7 @@ import (
 
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
 	"github.com/kryptamine/herdr-auto-title/internal/herdr/herdrtest"
+	"github.com/kryptamine/herdr-auto-title/internal/reads/readstest"
 )
 
 // paneConfig is the configuration with pane naming on, as it ships. The rest of
@@ -328,7 +329,7 @@ func TestAPaneKeepsItsNameWhenItsTabIsClaimed(t *testing.T) {
 	// A pane is named against its tab's own pane, which a claimed tab does not
 	// read for itself. Unread, it has no branch, so a pane ordered before it
 	// would take the branch back the moment the user named the tab.
-	repo := repoAt(t, "feat/oauth")
+	repo := readstest.Repo(t, "feat/oauth")
 	h := startPanes(t, oneTab(), []herdr.PaneInfo{
 		{PaneID: "wE:p1", TabID: "wE:t1", CWD: repo, Agent: "claude"},
 		{PaneID: "wE:p2", TabID: "wE:t1", CWD: repo, Focused: true},
@@ -363,14 +364,14 @@ func TestOnlyOnePaneOfATabCarriesTheBranchTheTabShows(t *testing.T) {
 	// Two agents on two worktrees of one project. The tab speaks through one
 	// of them, so that pane's branch is already on screen above it and its
 	// sibling's is not — the rows are asymmetric by design.
-	repo := repoAt(t, "main")
-	oauth := worktreeIn(t, repo, "oauth", "feat/oauth")
-	token := worktreeIn(t, repo, "token", "fix/token")
+	repo := readstest.Repo(t, "main")
+	oauth := readstest.Worktree(t, repo, "oauth", "feat/oauth")
+	token := readstest.Worktree(t, repo, "token", "fix/token")
 
 	root := stateDir(t)
-	writeTranscript(t, root, testSession, agentIn(oauth),
+	readstest.Transcript(t, root, testSession, readstest.AgentIn(oauth),
 		`{"type":"ai-title","aiTitle":"Poll loop rework","sessionId":"`+testSession+`"}`)
-	writeTranscript(t, root, otherSession, agentIn(token),
+	readstest.Transcript(t, root, otherSession, readstest.AgentIn(token),
 		`{"type":"ai-title","aiTitle":"Token refresh","sessionId":"`+otherSession+`"}`)
 
 	cfg := paneConfig()

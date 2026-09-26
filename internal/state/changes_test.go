@@ -66,83 +66,6 @@ func TestPanesTheSessionDroppedAreForgotten(t *testing.T) {
 	}
 }
 
-func TestAReadSurvivesAPollThatChangedNothing(t *testing.T) {
-	t.Parallel()
-
-	c := NewChanges()
-	c.Observe([]herdr.PaneInfo{pane("wE:p1", 7)})
-	c.Ran("wE:p1", []herdr.PaneProcessInfoProcess{{Name: "nvim"}})
-
-	c.Observe([]herdr.PaneInfo{pane("wE:p1", 7)})
-
-	got, read := c.Processes("wE:p1")
-	if !read || len(got) != 1 || got[0].Name != "nvim" {
-		t.Errorf("processes = %v, %v, want nvim remembered", got, read)
-	}
-}
-
-func TestAMovedRevisionForgetsWhatWasRunning(t *testing.T) {
-	t.Parallel()
-
-	c := NewChanges()
-	c.Observe([]herdr.PaneInfo{pane("wE:p1", 7)})
-	c.Ran("wE:p1", []herdr.PaneProcessInfoProcess{{Name: "nvim"}})
-
-	c.Observe([]herdr.PaneInfo{pane("wE:p1", 8)})
-
-	if _, read := c.Processes("wE:p1"); read {
-		t.Error("a pane that moved still answers with what it used to run")
-	}
-}
-
-func TestARevisionThatWentBackwardsIsANewPane(t *testing.T) {
-	t.Parallel()
-
-	// Revisions are monotonic per pane, so a lower one means Herdr handed the
-	// id to a pane that is not the one that was read.
-	c := NewChanges()
-	c.Observe([]herdr.PaneInfo{pane("wE:p1", 7)})
-	c.Ran("wE:p1", []herdr.PaneProcessInfoProcess{{Name: "nvim"}})
-
-	c.Observe([]herdr.PaneInfo{pane("wE:p1", 2)})
-
-	if _, read := c.Processes("wE:p1"); read {
-		t.Error("a reused pane id kept the processes of the pane before it")
-	}
-}
-
-func TestAnOldReadIsMadeAgain(t *testing.T) {
-	t.Parallel()
-
-	// A command starting just after a read moves no revision until the pane
-	// draws, so a remembered read is not trusted forever.
-	c := NewChanges()
-	c.Observe([]herdr.PaneInfo{pane("wE:p1", 7)})
-	c.Ran("wE:p1", []herdr.PaneProcessInfoProcess{{Name: "nvim"}})
-	read := c.now()
-
-	c.now = func() time.Time { return read.Add(processRefresh - time.Millisecond) }
-	if _, ok := c.Processes("wE:p1"); !ok {
-		t.Error("a read was discarded before it went stale")
-	}
-
-	c.now = func() time.Time { return read.Add(processRefresh) }
-	if _, ok := c.Processes("wE:p1"); ok {
-		t.Error("a stale read was still answered with")
-	}
-}
-
-func TestAPaneTheSessionDroppedCannotBeRecorded(t *testing.T) {
-	t.Parallel()
-
-	c := NewChanges()
-	c.Ran("wE:p1", []herdr.PaneProcessInfoProcess{{Name: "nvim"}})
-
-	if _, read := c.Processes("wE:p1"); read {
-		t.Error("a pane no poll has seen was recorded anyway")
-	}
-}
-
 func TestChangesAreSafeUnderConcurrentUse(t *testing.T) {
 	t.Parallel()
 
@@ -158,8 +81,6 @@ func TestChangesAreSafeUnderConcurrentUse(t *testing.T) {
 			for n := range 200 {
 				c.Observe([]herdr.PaneInfo{pane("wE:p1", uint64(n))})
 				c.ChangedAt("wE:p1")
-				c.Ran("wE:p1", []herdr.PaneProcessInfoProcess{{Name: "nvim"}})
-				c.Processes("wE:p1")
 			}
 		}()
 	}

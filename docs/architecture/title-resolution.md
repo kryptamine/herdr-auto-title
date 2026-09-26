@@ -338,8 +338,8 @@ outright — a `.claude/worktrees/<branch>` directory's basename *is* the branch
 context and branch would arrive identical and the segment this source exists for
 would silently go.
 
-*Within* one poll the answer is memoized by directory (`checkoutMemo`,
-`internal/app/reads.go`), because the tabs of a project usually share one: six
+*Within* one poll the answer is memoized by directory (`Poll.checkout`,
+`internal/reads/reads.go`), because the tabs of a project usually share one: six
 tabs of the same checkout walked the same tree six times, and a memo that is
 thrown away with the poll that filled it cannot hand back a stale answer, which
 is the only thing the refusal to cache between polls is about. A pane whose agent
