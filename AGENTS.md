@@ -8,9 +8,10 @@ no LLM and no external service.
 
 ```
 cmd/herdr-auto-title  the binary
-internal/app          the poll loop and the reads it spends, configuration
+internal/app          the poll loop and its configuration
 internal/herdr        the socket client; herdrtest beside it is its stub
 internal/state        a session snapshot turned into what each tab is doing
+internal/reads        what a snapshot cannot say about a pane, once per poll
 internal/resolver     that state turned into a title, one source at a time
 internal/claude       what a Claude Code session is about, from its transcript
 internal/git          what a repository has checked out, read from .git

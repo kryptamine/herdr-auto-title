@@ -7,6 +7,7 @@ import (
 
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
 	"github.com/kryptamine/herdr-auto-title/internal/herdr/herdrtest"
+	"github.com/kryptamine/herdr-auto-title/internal/reads/readstest"
 )
 
 // The tab is locked from the lock file and panes are off, so nothing has read
@@ -15,7 +16,7 @@ import (
 func TestARowIsJudgedByItsPaneDirectoryNotTheSnapshotGuess(t *testing.T) {
 	t.Parallel()
 
-	repo := repoAt(t, "feat/oauth")
+	repo := readstest.Repo(t, "feat/oauth")
 
 	cfg := workspaceConfig(t)
 
@@ -55,7 +56,7 @@ func TestARowIsJudgedByItsPaneDirectoryNotTheSnapshotGuess(t *testing.T) {
 func TestAMultiTabRowIsJudgedByItsPaneDirectoryNotTheSnapshotGuess(t *testing.T) {
 	t.Parallel()
 
-	repo := repoAt(t, "feat/oauth")
+	repo := readstest.Repo(t, "feat/oauth")
 
 	cfg := workspaceConfig(t)
 
