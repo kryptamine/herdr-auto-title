@@ -43,6 +43,13 @@ type Claims struct {
 	// locked is the label a thing carried when the user claimed it. The label,
 	// not the id, is what makes a reloaded lock safe: Herdr reuses ids.
 	locked map[string]string
+	// followsMoves takes a thing sighted wearing an unclaimed departed label as
+	// the same one, moved. Only a pane: Herdr moves one across workspaces under
+	// a new id, label intact, while a moved tab or workspace keeps its id.
+	followsMoves bool
+	// departed is the labels of things gone unclaimed since the last poll that
+	// saw everything; a poll cut short must not lose them.
+	departed map[string]struct{}
 }
 
 // labels is what is known of one thing's label: the one it carried when last
@@ -53,14 +60,16 @@ type labels struct {
 	sent    map[string]struct{}
 }
 
-func newClaims(m *Manual, judgeOnSight bool) *Claims {
+func newClaims(m *Manual, judgeOnSight, followsMoves bool) *Claims {
 	return &Claims{
 		manual:       m,
 		judgeOnSight: judgeOnSight,
+		followsMoves: followsMoves,
 		seen:         make(map[string]labels),
 		pending:      make(map[string]struct{}),
 		written:      make(map[string]string),
 		locked:       make(map[string]string),
+		departed:     make(map[string]struct{}),
 	}
 }
 
@@ -79,9 +88,9 @@ type manualFile struct {
 // empty set: this is a convenience, not a reason to refuse to start.
 func LoadManual(path string) *Manual {
 	m := &Manual{path: path}
-	m.Tabs = newClaims(m, false)
-	m.Panes = newClaims(m, false)
-	m.Workspaces = newClaims(m, true)
+	m.Tabs = newClaims(m, false, false)
+	m.Panes = newClaims(m, false, true)
+	m.Workspaces = newClaims(m, true, false)
 
 	raw, err := os.ReadFile(path) //nolint:gosec // the path is configured, never terminal-derived
 	if err != nil {
@@ -165,7 +174,8 @@ func (c *Claims) Observe(s Sighting) Verdict {
 	defer m.mu.Unlock()
 
 	previous, known := c.seen[s.ID]
-	ours := c.ours(s)
+	_, moved := c.departed[s.Current]
+	ours := c.ours(s) || (!known && moved)
 	c.record(s, previous, known, ours)
 
 	if c.judgeOnSight {
@@ -175,13 +185,17 @@ func (c *Claims) Observe(s Sighting) Verdict {
 	return c.claimedOnChange(s, previous, known, ours)
 }
 
-// Settled marks the end of a poll. Only the first matters: after it, something
-// unseen is something that did not exist before.
+// Settled marks the end of a poll that saw everything. After the first,
+// something unseen did not exist before; after any, a moved thing has been seen.
 func (m *Manual) Settled() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	m.settled = true
+
+	for _, c := range []*Claims{m.Tabs, m.Panes, m.Workspaces} {
+		clear(c.departed)
+	}
 }
 
 // Applied records a label Auto Title has just set, so the next poll does not
@@ -228,6 +242,10 @@ func (c *Claims) Retain(live map[string]string) {
 
 	changed := false
 
+	if c.followsMoves {
+		c.keepDeparted(live)
+	}
+
 	for id, label := range c.locked {
 		if current, alive := live[id]; !alive || current != label {
 			delete(c.locked, id)
@@ -258,6 +276,19 @@ func (c *Claims) Retain(live map[string]string) {
 
 	if changed {
 		m.saveLocked()
+	}
+}
+
+// keepDeparted adds the labels of things gone from live that the user had not
+// claimed. It runs before Retain forgets them, so the locks are still there.
+func (c *Claims) keepDeparted(live map[string]string) {
+	for id, seen := range c.seen {
+		_, alive := live[id]
+		_, claimed := c.locked[id]
+
+		if !alive && !claimed && seen.current != "" {
+			c.departed[seen.current] = struct{}{}
+		}
 	}
 }
 

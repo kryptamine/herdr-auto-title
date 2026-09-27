@@ -402,3 +402,58 @@ func TestOnlyOnePaneOfATabCarriesTheBranchTheTabShows(t *testing.T) {
 		t.Errorf("sibling pane = %v, want its own branch kept", got)
 	}
 }
+
+func TestAMovedPaneTakesItsNewID(t *testing.T) {
+	t.Parallel()
+
+	// Herdr gives a pane moved to another workspace a new ID and carries its
+	// label along, so the label names the ID the pane no longer has.
+	cfg := paneConfig()
+	cfg.ShowPaneID = true
+	h := &harness{
+		t: t, app: appFromConfig(t, cfg),
+		client: herdrtest.New(oneTab(), split()), instance: &fakeInstance{},
+	}
+	h.poll()
+
+	if got := labelsOf(h, "wE:p2"); len(got) != 1 || got[0] != "[wE:p2] api" {
+		t.Fatalf("pane = %v, want it named with its ID", got)
+	}
+
+	h.client.ClosePane("wE:p2")
+	h.client.SetPane(herdr.PaneInfo{
+		PaneID: "wE:p9", TabID: "wE:t1", CWD: api, Label: "[wE:p2] api",
+	})
+	h.poll()
+
+	if got := labelsOf(h, "wE:p9"); len(got) != 1 || got[0] != "[wE:p9] api" {
+		t.Errorf("moved pane = %v, want it renamed to its new ID", got)
+	}
+}
+
+func TestAMovedPaneKeepsTheNameTheUserGaveIt(t *testing.T) {
+	t.Parallel()
+
+	cfg := paneConfig()
+	cfg.ShowPaneID = true
+	h := &harness{
+		t: t, app: appFromConfig(t, cfg),
+		client: herdrtest.New(oneTab(), split()), instance: &fakeInstance{},
+	}
+	h.poll()
+
+	h.client.SetPane(herdr.PaneInfo{
+		PaneID: "wE:p2", TabID: "wE:t1", CWD: api, Label: "Important work",
+	})
+	h.poll()
+
+	h.client.ClosePane("wE:p2")
+	h.client.SetPane(herdr.PaneInfo{
+		PaneID: "wE:p9", TabID: "wE:t1", CWD: api, Label: "Important work",
+	})
+	h.poll()
+
+	if got := labelsOf(h, "wE:p9"); len(got) != 0 {
+		t.Errorf("moved pane = %v, want the user's name left alone", got)
+	}
+}

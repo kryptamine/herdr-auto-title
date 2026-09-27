@@ -391,3 +391,59 @@ func TestPaneLocksSurviveAReload(t *testing.T) {
 		t.Error("the two kinds of lock did not survive the same store")
 	}
 }
+
+// moved is a pane seen again under the id Herdr gave it in another workspace,
+// wearing the label it carried under wE:p1.
+func moved() Sighting {
+	return Sighting{ID: "wV:p9", Current: "[wE:p1] api", Desired: "[wV:p9] api"}
+}
+
+func TestAMovedPaneOutlivesAPollCutShort(t *testing.T) {
+	t.Parallel()
+
+	// A poll that times out before reaching the moved pane never settles, and
+	// the label it left must still be there for the poll that does reach it.
+	m := newManual(t)
+	m.Panes.Observe(Sighting{ID: "wE:p1", Current: "[wE:p1] api", Desired: "[wE:p1] api"})
+
+	m.Panes.Retain(map[string]string{"wV:p9": "[wE:p1] api"})
+	m.Panes.Retain(map[string]string{"wV:p9": "[wE:p1] api"})
+
+	if m.Panes.Observe(moved()) != VerdictName {
+		t.Error("a moved pane was claimed for the user after a poll cut short")
+	}
+}
+
+func TestAMovedPaneIsForgottenOnceEverythingWasSeen(t *testing.T) {
+	t.Parallel()
+
+	// A poll that saw everything has seen any pane that moved, so a label worn
+	// by a pane appearing later is somebody else's.
+	m := newManual(t)
+	m.Panes.Observe(Sighting{ID: "wE:p1", Current: "[wE:p1] api", Desired: "[wE:p1] api"})
+
+	m.Panes.Retain(map[string]string{})
+	m.Settled()
+	m.Panes.Retain(map[string]string{"wV:p9": "[wE:p1] api"})
+
+	if m.Panes.Observe(moved()) != VerdictClaimed {
+		t.Error("a departed label was still taken as moved after a settled poll")
+	}
+}
+
+func TestATabIsNotFollowedAcrossIDs(t *testing.T) {
+	t.Parallel()
+
+	// Herdr moves a tab only within its workspace and keeps its id, so a tab
+	// wearing a departed tab's label is judged as any tab turning up named.
+	m := newManual(t)
+	m.Tabs.Observe(Sighting{ID: "wE:t1", Current: "api", Desired: "api", Default: "1"})
+
+	m.Tabs.Retain(map[string]string{"wV:t9": "api"})
+
+	if m.Tabs.Observe(
+		Sighting{ID: "wV:t9", Current: "api", Desired: "web", Default: "1"},
+	) != VerdictClaimed {
+		t.Error("a tab was taken as moved")
+	}
+}

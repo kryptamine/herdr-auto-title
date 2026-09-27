@@ -180,6 +180,27 @@ inside a tab Auto Title goes on naming.
 Handing a pane back is the same gesture with one spelling: clear its label
 (`herdr pane rename <PANE_ID>`) and the next poll takes it again.
 
+### A moved pane arrives under a new id, wearing its old label
+
+Herdr gives a pane moved to another workspace a new id and carries its label
+along ([measured](herdr-socket-api.md#what-the-objects-carry); moving to
+another tab of the same workspace keeps the id). Seen from the new id that label
+is neither wanted now nor one Auto Title sent, so the rule above would claim it
+for the user — and with `HERDR_AUTO_TITLE_PANE_ID=true` the label names an id
+the pane no longer has, so the stale id would stay for good.
+
+`Retain` therefore keeps the labels of panes that vanished without being
+claimed, and a pane sighted for the first time wearing one of them is Auto
+Title's own, moved. The labels are kept until a poll has seen every tab —
+`Settled` clears them — because a poll cut short may never reach the moved
+pane, and the next one no longer knows the old id. A label the user had claimed
+is not kept, so a moved pane the user named stays theirs.
+
+This applies to panes and to nothing else. A tab and a workspace share
+`Claims`, but Herdr moves neither under a new id — `tab.move` and
+`workspace.move` only reorder — so one turning up wearing a departed label is
+judged like any other.
+
 ## Nothing expires
 
 An earlier design had an expiring `ExpectedRename` to correlate a `tab_renamed`
