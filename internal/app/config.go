@@ -28,6 +28,7 @@ const (
 	EnvAgentName   = "HERDR_AUTO_TITLE_AGENT_NAME"
 	EnvPanes       = "HERDR_AUTO_TITLE_PANES"
 	EnvPreferAgent = "HERDR_AUTO_TITLE_PREFER_AGENT"
+	EnvPaneID      = "HERDR_AUTO_TITLE_PANE_ID"
 
 	EnvWorkspaces         = "HERDR_AUTO_TITLE_WORKSPACES"
 	EnvWorkspaceMaxLength = "HERDR_AUTO_TITLE_WORKSPACE_MAX_LENGTH"
@@ -77,6 +78,10 @@ type Config struct {
 	// PreferAgentPane names a tab after its agent pane even when another pane
 	// is focused, so opening an editor beside the agent leaves the title alone.
 	PreferAgentPane bool
+	// ShowPaneID puts each pane's Herdr ID in front of its label, the handle
+	// a script or another agent addresses that pane by. Inert without
+	// RenamePanes.
+	ShowPaneID bool
 	// RenameWorkspaces names the row above a workspace holding exactly one
 	// tab, after that tab. Herdr sets that row once, from the directory the
 	// workspace was created in, and never revisits it. Inert without ManualPath.
@@ -138,6 +143,7 @@ func LoadConfig() (Config, []string) {
 	cfg.ShowAgentName = fromEnv(&warnings, EnvAgentName, cfg.ShowAgentName, boolean)
 	cfg.RenamePanes = fromEnv(&warnings, EnvPanes, cfg.RenamePanes, boolean)
 	cfg.PreferAgentPane = fromEnv(&warnings, EnvPreferAgent, cfg.PreferAgentPane, boolean)
+	cfg.ShowPaneID = fromEnv(&warnings, EnvPaneID, cfg.ShowPaneID, boolean)
 	cfg.RenameWorkspaces = fromEnv(&warnings, EnvWorkspaces, cfg.RenameWorkspaces, boolean)
 	cfg.WorkspaceMaxLength = fromEnv(
 		&warnings,

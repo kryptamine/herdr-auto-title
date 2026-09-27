@@ -633,3 +633,19 @@ Three things follow from what the tab bar does with a title:
   name stays.
 
 `HERDR_AUTO_TITLE_POSITION=false` drops the decorator.
+
+## The pane ID is not a part of the label either
+
+`HERDR_AUTO_TITLE_PANE_ID=true` puts each pane's Herdr ID in front of its label:
+`[w1:p2] billing › claude`. The ID is what `herdr agent prompt`, `pane read` and
+every other pane command address a pane by, and without it a user handing one
+agent the pane of another had to look it up with `herdr pane list` first.
+
+It is a second decorator, `PaneIDs` (`internal/resolver/pane_id.go`), for the
+reasons the position is one: it says nothing about what a pane holds, and the
+label it returns is the one that will be set, which the manual-rename
+bookkeeping compares against. It follows the position's rules too — the ID
+leads, it is counted against `MaxLength`, and where nothing would be left of the
+name the ID goes and the name stays. The brackets rather than `·` keep it from
+reading as a tab position when the goto panel lists both. It is off by default:
+the ID is noise to anyone not addressing panes by hand.

@@ -87,7 +87,8 @@ func New(
 
 // Resolvers builds what the configuration asks titles to be resolved by: the
 // shipped chain, its position in front when asked, panes named unless that is
-// turned off, and workspaces named only when asked.
+// turned off and their IDs in front when asked, and workspaces named only when
+// asked.
 func Resolvers(
 	cfg Config,
 ) (resolver.TitleResolver, resolver.PaneResolver, resolver.WorkspaceResolver) {
@@ -110,7 +111,12 @@ func Resolvers(
 		return titles, nil, workspaces
 	}
 
-	return titles, chain, workspaces
+	var panes resolver.PaneResolver = chain
+	if cfg.ShowPaneID {
+		panes = resolver.NewPaneIDs(chain, cfg.MaxLength)
+	}
+
+	return titles, panes, workspaces
 }
 
 // WorkspaceResolver is the chain a workspace row is named by, or nil when the

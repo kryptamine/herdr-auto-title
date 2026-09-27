@@ -100,6 +100,7 @@ change. It does not read the config directory that `herdr plugin list` prints.
 | `HERDR_AUTO_TITLE_AGENT_NAME`   | `true`                                   | Put the agent's name in front of what it is doing                  |
 | `HERDR_AUTO_TITLE_PANES`        | `true`                                   | Name panes as well as tabs                                         |
 | `HERDR_AUTO_TITLE_PREFER_AGENT` | `false`                                  | Name a tab after its agent pane even while another pane is focused |
+| `HERDR_AUTO_TITLE_PANE_ID`      | `false`                                  | Put the pane's Herdr ID in front of its label, as `[w1:p2] api`    |
 | `HERDR_AUTO_TITLE_WORKSPACES`   | `false`                                  | Name a one-tab workspace's row after that tab; needs the manual file |
 | `HERDR_AUTO_TITLE_WORKSPACE_MAX_LENGTH` | `20`                             | Longest workspace label, in columns of the sidebar                 |
 | `HERDR_AUTO_TITLE_CLAUDE_DIRS`  | none                                     | Extra Claude config homes to search, `:`-separated                 |
