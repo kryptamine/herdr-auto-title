@@ -185,6 +185,9 @@ are only the facts that would otherwise mislead the code in silence.
 - **An unnamed tab reports one of two labels**: its position, or the empty
   string `tab.rename` stores verbatim when given one. Code reading the label to
   mean "nobody named this" must accept either.
+- **A pane moved to another workspace takes a new id and keeps its label.** A
+  pane first seen already named is not necessarily one the user named; see
+  [docs/architecture/manual-rename-protection.md](docs/architecture/manual-rename-protection.md).
 - **A tab label is one line.** `tab.rename` takes a newline and stores it
   verbatim, but the tab bar renders one row and Herdr exposes no height setting.
 - **`PaneInfo.title` is the agent's own title, and is null in practice.** Claude

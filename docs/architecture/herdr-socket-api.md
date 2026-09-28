@@ -368,3 +368,14 @@ reads, so this section describes Herdr rather than those types.
   `{"pane_id": p, "label": ""}` answered with the `label` key gone. So clearing
   a pane's name is the whole of the gesture that hands it back, and there is no
   position spelling to accept beside it.
+- **A pane moved to another workspace takes a new id and keeps its label.** On
+  0.9.0-preview, `herdr pane move --new-tab` kept `wW5:p2` as it was; then
+  `--new-workspace` made it `wW7:p1`, and `--new-tab --workspace wW5` made it
+  `wW5:p3` rather than handing back `p2`. The label rode along each time, and
+  `session.snapshot` no longer listed the old id. So a pane first seen wearing a
+  label is not necessarily one its owner just named; see
+  [manual-rename-protection.md](manual-rename-protection.md).
+- **Nothing moves a tab or a workspace under a new id.** `tab.move` takes a
+  `tab_id` and an `insert_index` and reorders within the tab's workspace,
+  ignoring any other field; `workspace.move` reorders the workspace list. Both
+  kept the id, and neither CLI offers a move.
