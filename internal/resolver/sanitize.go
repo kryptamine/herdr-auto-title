@@ -103,6 +103,24 @@ func truncate(s string, maxWidth int) string {
 	return strings.TrimSpace(cut)
 }
 
+// withPrefix puts prefix in front of name within maxWidth columns, cutting the
+// name to fit. It returns name alone when the prefix would leave it no room:
+// a label reduced to its prefix has lost more than the prefix is worth.
+func withPrefix(prefix, name string, maxWidth int) string {
+	room := maxWidth - uniseg.StringWidth(prefix)
+	// truncate takes a width of zero as "no bound at all".
+	if room <= 0 {
+		return name
+	}
+
+	cut := truncate(name, room)
+	if cut == "" {
+		return name
+	}
+
+	return prefix + cut
+}
+
 // splitAtWidth returns the longest prefix of s fitting in maxWidth terminal
 // columns, cut between grapheme clusters. Neither runes nor bytes work here —
 // see docs/architecture/sanitization.md.

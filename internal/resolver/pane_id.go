@@ -1,8 +1,6 @@
 package resolver
 
 import (
-	"github.com/rivo/uniseg"
-
 	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
 
@@ -34,16 +32,7 @@ func (p *PaneIDs) ResolvePanes(tab state.TabState) []Decision {
 	decisions := p.inner.ResolvePanes(tab)
 
 	for i := range decisions {
-		prefix := "[" + tab.Panes[i].ID + "] "
-		room := p.maxLength - uniseg.StringWidth(prefix)
-		// truncate takes a width of zero as "no bound at all".
-		if room <= 0 {
-			continue
-		}
-
-		if name := truncate(decisions[i].Name, room); name != "" {
-			decisions[i].Name = prefix + name
-		}
+		decisions[i].Name = withPrefix("["+tab.Panes[i].ID+"] ", decisions[i].Name, p.maxLength)
 	}
 
 	return decisions

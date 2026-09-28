@@ -3,8 +3,6 @@ package resolver
 import (
 	"strconv"
 
-	"github.com/rivo/uniseg"
-
 	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
 
@@ -43,21 +41,8 @@ func (n *Numbered) Resolve(tab state.TabState) Decision {
 
 	// The prefix goes in front because truncation cuts the tail: a position at
 	// the end is the first thing a title too wide for the tab bar would lose.
-	prefix := strconv.Itoa(tab.Position) + positionMark
-	room := n.maxLength - uniseg.StringWidth(prefix)
-	// truncate takes a width of zero as "no bound at all", and a title reduced
-	// to nothing has lost more than the position is worth.
-	if room <= 0 {
-		return decision
-	}
-
 	// The name arrives sanitized, so only the fitting is left.
-	name := truncate(decision.Name, room)
-	if name == "" {
-		return decision
-	}
-
-	decision.Name = prefix + name
+	decision.Name = withPrefix(strconv.Itoa(tab.Position)+positionMark, decision.Name, n.maxLength)
 
 	return decision
 }
