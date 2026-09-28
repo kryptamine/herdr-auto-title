@@ -1078,7 +1078,10 @@ func TestAPaneThatMovedIsAskedAboutAgain(t *testing.T) {
 	)
 	h.poll()
 
-	h.client.SetProcesses("wE:p1", herdr.PaneProcessInfoProcess{Name: "nvim"})
+	h.client.SetProcesses(
+		"wE:p1",
+		herdr.PaneProcessInfoProcess{Name: "nvim", Argv: []string{"nvim"}},
+	)
 	h.client.SetPane(herdr.PaneInfo{
 		PaneID: "wE:p1", TabID: "wE:t1", Focused: true, Revision: 2,
 		CWD: dashboard,
@@ -1107,7 +1110,10 @@ func TestAPaneThatCannotBeReadIsAskedAgain(t *testing.T) {
 	// The tab is already named from the snapshot alone; the second rename can
 	// only come from a process read that happened again. The processes go in
 	// before the error clears: an empty read between the two would be reused.
-	h.client.SetProcesses("wE:p1", herdr.PaneProcessInfoProcess{Name: "nvim"})
+	h.client.SetProcesses(
+		"wE:p1",
+		herdr.PaneProcessInfoProcess{Name: "nvim", Argv: []string{"nvim"}},
+	)
 	h.client.SetProcessError(nil)
 	h.poll()
 

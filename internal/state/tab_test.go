@@ -271,13 +271,33 @@ func TestAProcessIsNamedWithoutItsWindowsExtension(t *testing.T) {
 	// Windows reports `pwsh.exe` where every other platform reports `pwsh`,
 	// and the extension would keep a shell from being read as one.
 	processes := ProcessesFrom([]herdr.PaneProcessInfoProcess{
-		{Name: "pwsh.exe"}, {Name: "claude.EXE"}, {Name: "nvim"}, {Name: ".exe"},
+		{Name: "pwsh.exe", Argv: []string{"pwsh.exe"}},
+		{Name: "claude.EXE", Argv: []string{"claude.EXE"}},
+		{Name: "nvim", Argv: []string{"nvim"}},
+		{Name: ".exe", Argv: []string{".exe"}},
 	})
 
 	for i, want := range []string{"pwsh", "claude", "nvim", ".exe"} {
 		if processes[i].Name != want {
 			t.Errorf("process %d = %q, want %q", i, processes[i].Name, want)
 		}
+	}
+}
+
+func TestAZombieIsNotAProcessThePaneRuns(t *testing.T) {
+	t.Parallel()
+
+	// fish leaves a disowned child unreaped until its next command, and Herdr
+	// still lists it. A process in disk wait loses its argv but not its cwd.
+	dir := herdrtest.Dir("work", "dashboard")
+	processes := ProcessesFrom([]herdr.PaneProcessInfoProcess{
+		{PID: 10, Name: "fish", Argv: []string{"fish"}, CWD: dir},
+		{PID: 11, Name: "atuin"},
+		{PID: 12, Name: "cp", CWD: dir},
+	})
+
+	if len(processes) != 2 || processes[0].Name != "fish" || processes[1].Name != "cp" {
+		t.Errorf("processes = %+v, want fish and cp", processes)
 	}
 }
 

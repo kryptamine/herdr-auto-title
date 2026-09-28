@@ -287,6 +287,12 @@ reads, so this section describes Herdr rather than those types.
   Title reads the name, the arguments, the directory, and the `pid` matched
   against `foreground_process_group_id`; the rest is listed here so a future
   change need not probe again.
+- **A zombie stays in `foreground_processes`, with only a `pid` and a `name`.**
+  Herdr reads no `argv` from a process in state `D`, `Z` or `X`, and a zombie
+  has no `cwd`. Probed on 0.9.1 on Linux: in fish,
+  `status job-control none; sleep 1 & disown` kept `sleep` listed until the next
+  command. `state.ProcessesFrom` drops an entry with neither field, since a
+  process in disk wait keeps its `cwd`.
 - **On Windows, `foreground_processes` holds the pane's shell or a recognized
   agent, and nothing else.** Probed with `python.exe` and then `node.exe`
   running under a pane's `pwsh.exe`, both confirmed present in the process tree:

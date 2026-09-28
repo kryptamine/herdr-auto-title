@@ -157,6 +157,9 @@ are only the facts that would otherwise mislead the code in silence.
   agent**, never an editor, a build or an ssh session running under the shell.
   Names arrive with `.exe` and a process's `cwd` with a trailing backslash; the
   state package strips both as they arrive, so no reader of a pane sees either.
+- **`pane.process_info` lists zombies**, with a `pid` and a `name` and no `argv`
+  or `cwd`. An idle fish pane with atuin holds one after every command, and it
+  names the pane `atuin` unless `state.ProcessesFrom` drops it.
 - Auto Title uses six methods and no others: `session.snapshot`,
   `pane.process_info`, `tab.rename`, `pane.rename`, `workspace.rename` only
   while the workspace row is being named (`HERDR_AUTO_TITLE_WORKSPACES=true`),

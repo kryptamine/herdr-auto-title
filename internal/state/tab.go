@@ -132,6 +132,12 @@ func ProcessesFrom(processes []herdr.PaneProcessInfoProcess) []Process {
 
 	out := make([]Process, 0, len(processes))
 	for _, p := range processes {
+		// A zombie arrives with neither argv nor cwd. A process in disk wait
+		// has no argv either, but it keeps its cwd and is still running.
+		if len(p.Argv) == 0 && p.CWD == "" {
+			continue
+		}
+
 		out = append(out, Process{Name: programName(p.Name), Args: p.Argv})
 	}
 

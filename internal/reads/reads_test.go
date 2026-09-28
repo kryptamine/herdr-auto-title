@@ -112,7 +112,10 @@ func TestAReadThatFailedIsMadeAgainInTheSamePoll(t *testing.T) {
 	client.SetProcessError(errors.New("herdr is busy"))
 	poll.Fill(context.Background(), pane)
 
-	client.SetProcesses("wE:p1", herdr.PaneProcessInfoProcess{Name: "nvim"})
+	client.SetProcesses(
+		"wE:p1",
+		herdr.PaneProcessInfoProcess{Name: "nvim", Argv: []string{"nvim"}},
+	)
 	client.SetProcessError(nil)
 	poll.Fill(context.Background(), pane)
 
@@ -171,7 +174,10 @@ func TestAPaneThatMovedIsAskedAboutAgain(t *testing.T) {
 	reader.Poll(client, []herdr.PaneInfo{info}, nil).
 		Fill(context.Background(), state.PaneFrom(info, time.Time{}))
 
-	client.SetProcesses("wE:p1", herdr.PaneProcessInfoProcess{Name: "nvim"})
+	client.SetProcesses(
+		"wE:p1",
+		herdr.PaneProcessInfoProcess{Name: "nvim", Argv: []string{"nvim"}},
+	)
 
 	pane := state.PaneFrom(info, time.Time{})
 	reader.Poll(client, []herdr.PaneInfo{info}, map[string]bool{"wE:p1": true}).
@@ -194,7 +200,10 @@ func TestAPaneThatCannotBeReadIsAskedAgain(t *testing.T) {
 	reader.Poll(client, []herdr.PaneInfo{info}, nil).
 		Fill(context.Background(), state.PaneFrom(info, time.Time{}))
 
-	client.SetProcesses("wE:p1", herdr.PaneProcessInfoProcess{Name: "nvim"})
+	client.SetProcesses(
+		"wE:p1",
+		herdr.PaneProcessInfoProcess{Name: "nvim", Argv: []string{"nvim"}},
+	)
 	client.SetProcessError(nil)
 
 	pane := state.PaneFrom(info, time.Time{})
