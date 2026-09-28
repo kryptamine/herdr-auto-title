@@ -29,14 +29,17 @@ func NewChanges() *Changes {
 }
 
 // Observe records a poll: panes whose revision moved changed just now, and
-// panes the session no longer holds are forgotten.
-func (c *Changes) Observe(panes []herdr.PaneInfo) {
+// panes the session no longer holds are forgotten. It returns the panes that
+// changed, a first sighting included.
+func (c *Changes) Observe(panes []herdr.PaneInfo) map[string]bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	now := c.now()
 
 	seen := make(map[string]paneChange, len(panes))
+	drew := make(map[string]bool)
+
 	for _, pane := range panes {
 		previous, known := c.panes[pane.PaneID]
 		// Any difference, not just an advance: a revision that went backwards
@@ -44,12 +47,15 @@ func (c *Changes) Observe(panes []herdr.PaneInfo) {
 		switch {
 		case !known, pane.Revision != previous.revision:
 			seen[pane.PaneID] = paneChange{revision: pane.Revision, at: now}
+			drew[pane.PaneID] = true
 		default:
 			seen[pane.PaneID] = previous
 		}
 	}
 
 	c.panes = seen
+
+	return drew
 }
 
 // ChangedAt reports when a pane was last seen to change, or the zero time for

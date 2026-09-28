@@ -1213,6 +1213,30 @@ func TestCheckingOutABranchRetitlesTheTab(t *testing.T) {
 	}
 }
 
+func TestBranchesSwitchedOffLeaveTheTabWithoutOne(t *testing.T) {
+	t.Parallel()
+
+	// Zero is how a user turns branches off, and the reads must hear it too:
+	// a checkout read and then discarded is still a walk up the tree.
+	repo := readstest.Repo(t, "feat/oauth")
+
+	cfg := testConfig()
+	cfg.BranchMax = 0
+
+	h := startConfigured(t, herdrtest.New(
+		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
+		[]herdr.PaneInfo{{PaneID: "wE:p1", TabID: "wE:t1", CWD: repo, Focused: true}},
+	), cfg)
+	h.poll()
+
+	// The chain under test still shows a branch, so one appearing here can only
+	// have been read.
+	got := h.client.Renames()[0].Label
+	if want := filepath.Base(repo); got != want {
+		t.Errorf("rename = %q, want %q", got, want)
+	}
+}
+
 // The session an agent pane is holding in the tests below.
 const testSession = "8852bfe0-8b24-4a23-a35e-7521d04da061"
 

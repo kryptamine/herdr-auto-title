@@ -44,10 +44,10 @@ func New(opts Options, log *slog.Logger) *Reader {
 }
 
 // Poll opens the reads of one poll over the snapshot's panes, forgetting what
-// was read of a pane whose revision moved and of the panes and agent sessions
-// the snapshot no longer holds.
-func (r *Reader) Poll(client herdr.Client, panes []herdr.PaneInfo) *Poll {
-	r.processes.observe(panes)
+// was read of the panes that drew and of the panes and agent sessions the
+// snapshot no longer holds.
+func (r *Reader) Poll(client herdr.Client, panes []herdr.PaneInfo, drew map[string]bool) *Poll {
+	r.processes.observe(panes, drew)
 	r.topics.Retain(sessionsIn(panes))
 
 	return &Poll{
@@ -78,9 +78,13 @@ func (p *Poll) Fill(ctx context.Context, pane *state.PaneState) {
 		return
 	}
 
-	p.filled[pane] = struct{}{}
+	// A read that failed with time left is asked again by the next Fill: a
+	// workspace row is judged on sight, so it has no next poll to wait for.
+	processes, read := p.reader.processesOf(ctx, p.client, pane.ID)
+	if read || spent(ctx) {
+		p.filled[pane] = struct{}{}
+	}
 
-	processes := p.reader.processesOf(ctx, p.client, pane.ID)
 	dir := state.PaneDir(processes, pane.Dir)
 
 	pane.Processes = state.ProcessesFrom(processes)
@@ -95,21 +99,26 @@ func (p *Poll) Fill(ctx context.Context, pane *state.PaneState) {
 	pane.AgentDir = topic.Dir
 }
 
-// processesOf reports what a pane is running, reusing the last read while the
-// pane's revision holds and that read is recent. Neither test is exact, which
-// is why there are two — see docs/architecture/poll-loop.md.
+// processesOf reports what a pane is running, or false when Herdr gave no
+// answer. A read is reused while the pane has not drawn and the read is recent;
+// neither test is exact alone — see docs/architecture/poll-loop.md.
 func (r *Reader) processesOf(
 	ctx context.Context,
 	client herdr.Client,
 	paneID string,
-) []herdr.PaneProcessInfoProcess {
+) ([]herdr.PaneProcessInfoProcess, bool) {
 	if processes, read := r.processes.lookup(paneID); read {
-		return processes
+		return processes, true
 	}
 
 	processes, err := herdr.PaneProcesses(ctx, client, paneID)
 	if err != nil {
-		if herdr.ErrorCode(err) != herdr.CodePaneNotFound && ctx.Err() == nil {
+		// A pane that closed is an answer, and asking again cannot change it.
+		if herdr.ErrorCode(err) == herdr.CodePaneNotFound {
+			return nil, true
+		}
+
+		if ctx.Err() == nil {
 			r.log.Debug(
 				"could not read what a pane is running",
 				"pane_id", paneID,
@@ -117,12 +126,12 @@ func (r *Reader) processesOf(
 			)
 		}
 
-		return nil
+		return nil, false
 	}
 
 	r.processes.record(paneID, processes)
 
-	return processes
+	return processes, true
 }
 
 // checkout reports what the repository holding dir has checked out, going to

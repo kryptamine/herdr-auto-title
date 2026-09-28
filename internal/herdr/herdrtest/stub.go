@@ -56,6 +56,7 @@ type Client struct {
 	workspaceRenames []WorkspaceRenameCall
 	renameErr        error
 	processErr       error
+	processErrOnce   error
 	callErr          error
 	reads            int
 	server           string
@@ -156,6 +157,15 @@ func (s *Client) SetProcessError(err error) {
 	s.processErr = err
 }
 
+// FailNextProcessRead makes only the next pane.process_info call fail, as a
+// Herdr busy for a moment does.
+func (s *Client) FailNextProcessRead(err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.processErrOnce = err
+}
+
 // SetCallError makes every subsequent call fail, as a dropped socket would.
 func (s *Client) SetCallError(err error) {
 	s.mu.Lock()
@@ -234,6 +244,11 @@ func (s *Client) Call(ctx context.Context, method string, params any, result any
 func (s *Client) processInfo(params any, result any) error {
 	if s.processErr != nil {
 		return s.processErr
+	}
+
+	if err := s.processErrOnce; err != nil {
+		s.processErrOnce = nil
+		return err
 	}
 
 	var target herdr.PaneTarget

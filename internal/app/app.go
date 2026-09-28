@@ -229,7 +229,7 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 		return err
 	}
 
-	a.changes.Observe(snapshot.Panes)
+	drew := a.changes.Observe(snapshot.Panes)
 	// Taken from the snapshot rather than from the tabs below, because this is
 	// what decides which of them are locked, and a locked tab is never read.
 	a.manual.Tabs.Retain(labelsIn(snapshot.Tabs))
@@ -237,7 +237,7 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 	a.manual.Workspaces.Retain(workspaceLabelsIn(snapshot.Workspaces))
 
 	tabs := a.tabsIn(snapshot)
-	poll := a.reads.Poll(client, snapshot.Panes)
+	poll := a.reads.Poll(client, snapshot.Panes, drew)
 
 	for _, tab := range tabs {
 		if ctx.Err() != nil {

@@ -69,7 +69,7 @@ func agentPaneAt(paneID, sessionID, dir string) *state.PaneState {
 
 // readOne fills one pane in a poll of its own, on options of its own.
 func readOne(opts reads.Options, pane *state.PaneState) {
-	newReader(opts).Poll(herdrtest.New(nil, nil), nil).Fill(context.Background(), pane)
+	newReader(opts).Poll(herdrtest.New(nil, nil), nil, nil).Fill(context.Background(), pane)
 }
 
 // branchFor is the branch a filled pane would put in its tab's title, which is
@@ -84,11 +84,29 @@ func TestAPaneFilledTwiceInOnePollIsReadOnce(t *testing.T) {
 	t.Parallel()
 
 	// A tab's own pane is filled for the tab, for its panes and for its row.
-	// A read that failed is left failed until the next poll, which asks again.
 	info := herdr.PaneInfo{PaneID: "wE:p1", TabID: "wE:t1", CWD: t.TempDir()}
 	client := herdrtest.New([]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}}, []herdr.PaneInfo{info})
 
-	poll := newReader(branchOptions()).Poll(client, []herdr.PaneInfo{info})
+	poll := newReader(branchOptions()).Poll(client, []herdr.PaneInfo{info}, nil)
+	pane := state.PaneFrom(info, time.Time{})
+
+	poll.Fill(context.Background(), pane)
+	poll.Fill(context.Background(), pane)
+
+	if reads := client.ProcessReads(); reads != 1 {
+		t.Errorf("asked what the pane runs %d times in one poll, want 1", reads)
+	}
+}
+
+func TestAReadThatFailedIsMadeAgainInTheSamePoll(t *testing.T) {
+	t.Parallel()
+
+	// A workspace row is judged on sight, so a read left failed until the next
+	// poll would judge it on the snapshot's guess and could lock it for good.
+	info := herdr.PaneInfo{PaneID: "wE:p1", TabID: "wE:t1", CWD: t.TempDir()}
+	client := herdrtest.New([]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}}, []herdr.PaneInfo{info})
+
+	poll := newReader(branchOptions()).Poll(client, []herdr.PaneInfo{info}, nil)
 	pane := state.PaneFrom(info, time.Time{})
 
 	client.SetProcessError(errors.New("herdr is busy"))
@@ -98,8 +116,48 @@ func TestAPaneFilledTwiceInOnePollIsReadOnce(t *testing.T) {
 	client.SetProcessError(nil)
 	poll.Fill(context.Background(), pane)
 
-	if reads := client.ProcessReads(); reads != 0 {
-		t.Errorf("asked what the pane runs %d more times in the same poll, want 0", reads)
+	if foreground, ok := pane.Foreground(); !ok || foreground.Name != "nvim" {
+		t.Errorf("foreground = %+v, want the failed read made again", foreground)
+	}
+}
+
+func TestAReadPastTheDeadlineKeepsWhatTheFirstFound(t *testing.T) {
+	t.Parallel()
+
+	// A poll that ran out of time between two fills of one pane must not blank
+	// the branch and topic the first fill found.
+	repo := readstest.Repo(t, "feat/oauth")
+	home := transcript(
+		t,
+		`{"type":"ai-title","aiTitle":"Poll loop rework","sessionId":"`+testSession+`"}`,
+	)
+
+	info := herdr.PaneInfo{
+		PaneID: "wE:p1", TabID: "wE:t1", CWD: repo, Agent: "claude",
+		AgentSession: &herdr.AgentSessionInfo{
+			Agent: "claude", Kind: herdr.SessionRefID, Value: testSession,
+		},
+	}
+	client := herdrtest.New([]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}}, []herdr.PaneInfo{info})
+
+	poll := newReader(transcriptOptions(home)).Poll(client, []herdr.PaneInfo{info}, nil)
+	pane := state.PaneFrom(info, time.Time{})
+
+	poll.Fill(context.Background(), pane)
+
+	if pane.Git.Branch != "feat/oauth" || pane.AgentTopic != "Poll loop rework" {
+		t.Fatalf("branch %q, topic %q with time left, so this test proves nothing",
+			pane.Git.Branch, pane.AgentTopic)
+	}
+
+	spent, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	poll.Fill(spent, pane)
+
+	if pane.Git.Branch != "feat/oauth" || pane.AgentTopic != "Poll loop rework" {
+		t.Errorf("branch %q, topic %q, want the first fill's answers kept",
+			pane.Git.Branch, pane.AgentTopic)
 	}
 }
 
@@ -110,15 +168,14 @@ func TestAPaneThatMovedIsAskedAboutAgain(t *testing.T) {
 	client := herdrtest.New([]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}}, []herdr.PaneInfo{info})
 	reader := newReader(branchOptions())
 
-	reader.Poll(client, []herdr.PaneInfo{info}).
+	reader.Poll(client, []herdr.PaneInfo{info}, nil).
 		Fill(context.Background(), state.PaneFrom(info, time.Time{}))
 
 	client.SetProcesses("wE:p1", herdr.PaneProcessInfoProcess{Name: "nvim"})
 
-	info.Revision = 2
-
 	pane := state.PaneFrom(info, time.Time{})
-	reader.Poll(client, []herdr.PaneInfo{info}).Fill(context.Background(), pane)
+	reader.Poll(client, []herdr.PaneInfo{info}, map[string]bool{"wE:p1": true}).
+		Fill(context.Background(), pane)
 
 	if foreground, ok := pane.Foreground(); !ok || foreground.Name != "nvim" {
 		t.Errorf("foreground = %+v, want nvim read again after the pane drew", foreground)
@@ -134,14 +191,14 @@ func TestAPaneThatCannotBeReadIsAskedAgain(t *testing.T) {
 	reader := newReader(branchOptions())
 
 	client.SetProcessError(errors.New("herdr is busy"))
-	reader.Poll(client, []herdr.PaneInfo{info}).
+	reader.Poll(client, []herdr.PaneInfo{info}, nil).
 		Fill(context.Background(), state.PaneFrom(info, time.Time{}))
 
 	client.SetProcesses("wE:p1", herdr.PaneProcessInfoProcess{Name: "nvim"})
 	client.SetProcessError(nil)
 
 	pane := state.PaneFrom(info, time.Time{})
-	reader.Poll(client, []herdr.PaneInfo{info}).Fill(context.Background(), pane)
+	reader.Poll(client, []herdr.PaneInfo{info}, nil).Fill(context.Background(), pane)
 
 	if foreground, ok := pane.Foreground(); !ok || foreground.Name != "nvim" {
 		t.Errorf("foreground = %+v, want the pane asked again after a failed read", foreground)
@@ -158,7 +215,7 @@ func TestARepositoryIsWalkedOncePerPoll(t *testing.T) {
 	reader := newReader(branchOptions())
 	ctx, client := context.Background(), herdrtest.New(nil, nil)
 
-	poll := reader.Poll(client, nil)
+	poll := reader.Poll(client, nil, nil)
 
 	first := paneAt("wE:p1", repo)
 	poll.Fill(ctx, first)
@@ -180,7 +237,7 @@ func TestARepositoryIsWalkedOncePerPoll(t *testing.T) {
 	}
 
 	next := paneAt("wE:p3", repo)
-	reader.Poll(client, nil).Fill(ctx, next)
+	reader.Poll(client, nil, nil).Fill(ctx, next)
 
 	if next.Git.Branch != "fix/token" {
 		t.Errorf("branch = %q, want the next poll to read HEAD again", next.Git.Branch)
@@ -193,7 +250,7 @@ func TestADirectoryHoldingNoRepositoryIsRememberedToo(t *testing.T) {
 	// Finding out that there is no repository costs the same walk to the root
 	// as finding one, so a pane outside a checkout must not repeat it per tab.
 	dir := t.TempDir()
-	poll := newReader(branchOptions()).Poll(herdrtest.New(nil, nil), nil)
+	poll := newReader(branchOptions()).Poll(herdrtest.New(nil, nil), nil, nil)
 
 	first := paneAt("wE:p1", dir)
 	poll.Fill(context.Background(), first)
@@ -240,7 +297,7 @@ func TestAPollPastItsDeadlineStopsReadingTheFilesystem(t *testing.T) {
 	// The live read first, so a checkout that never resolves cannot make the
 	// spent one below look like the guard working.
 	live := paneAt("wE:p1", repo)
-	reader.Poll(client, nil).Fill(context.Background(), live)
+	reader.Poll(client, nil, nil).Fill(context.Background(), live)
 
 	if got := live.Git.Branch; got != "feat/oauth" {
 		t.Fatalf("branch = %q with time left, so this test proves nothing", got)
@@ -250,7 +307,7 @@ func TestAPollPastItsDeadlineStopsReadingTheFilesystem(t *testing.T) {
 	cancel()
 
 	late := paneAt("wE:p1", repo)
-	reader.Poll(client, nil).Fill(spent, late)
+	reader.Poll(client, nil, nil).Fill(spent, late)
 
 	if got := late.Git; got != (git.Checkout{}) {
 		t.Errorf("checkout = %+v, want a poll past its deadline to read nothing", got)
@@ -278,7 +335,10 @@ func TestAPaneIsReadFromItsForegroundProcessesDirectory(t *testing.T) {
 	)
 
 	pane := state.PaneFrom(info, time.Time{})
-	newReader(branchOptions()).Poll(client, []herdr.PaneInfo{info}).Fill(context.Background(), pane)
+	newReader(
+		branchOptions(),
+	).Poll(client, []herdr.PaneInfo{info}, nil).
+		Fill(context.Background(), pane)
 
 	if pane.Dir != repo {
 		t.Errorf("dir = %q, want the agent's own %q", pane.Dir, repo)
@@ -302,7 +362,7 @@ func TestTwoAgentsOnTwoWorktreesOfOneRepositoryShowDifferentBranches(t *testing.
 	readstest.Transcript(t, home, testSession, readstest.AgentIn(oauth))
 	readstest.Transcript(t, home, otherSession, readstest.AgentIn(token))
 
-	poll := newReader(transcriptOptions(home)).Poll(herdrtest.New(nil, nil), nil)
+	poll := newReader(transcriptOptions(home)).Poll(herdrtest.New(nil, nil), nil, nil)
 
 	first := agentPaneAt("wE:p1", testSession, repo)
 	second := agentPaneAt("wE:p2", otherSession, repo)

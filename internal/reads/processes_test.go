@@ -8,9 +8,7 @@ import (
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
 )
 
-func pane(revision uint64) herdr.PaneInfo {
-	return herdr.PaneInfo{PaneID: "wE:p1", TabID: "wE:t1", Revision: revision}
-}
+var p1 = []herdr.PaneInfo{{PaneID: "wE:p1", TabID: "wE:t1"}}
 
 var nvim = []herdr.PaneProcessInfoProcess{{Name: "nvim"}}
 
@@ -18,10 +16,10 @@ func TestAReadSurvivesAPollThatChangedNothing(t *testing.T) {
 	t.Parallel()
 
 	c := newProcessCache()
-	c.observe([]herdr.PaneInfo{pane(7)})
+	c.observe(p1, map[string]bool{"wE:p1": true})
 	c.record("wE:p1", nvim)
 
-	c.observe([]herdr.PaneInfo{pane(7)})
+	c.observe(p1, nil)
 
 	got, read := c.lookup("wE:p1")
 	if !read || len(got) != 1 || got[0].Name != "nvim" {
@@ -29,33 +27,17 @@ func TestAReadSurvivesAPollThatChangedNothing(t *testing.T) {
 	}
 }
 
-func TestAMovedRevisionForgetsWhatWasRunning(t *testing.T) {
+func TestAPaneThatDrewForgetsWhatWasRunning(t *testing.T) {
 	t.Parallel()
 
 	c := newProcessCache()
-	c.observe([]herdr.PaneInfo{pane(7)})
+	c.observe(p1, nil)
 	c.record("wE:p1", nvim)
 
-	c.observe([]herdr.PaneInfo{pane(8)})
+	c.observe(p1, map[string]bool{"wE:p1": true})
 
 	if _, read := c.lookup("wE:p1"); read {
-		t.Error("a pane that moved still answers with what it used to run")
-	}
-}
-
-func TestARevisionThatWentBackwardsIsANewPane(t *testing.T) {
-	t.Parallel()
-
-	// Revisions are monotonic per pane, so a lower one means Herdr handed the
-	// id to a pane that is not the one that was read.
-	c := newProcessCache()
-	c.observe([]herdr.PaneInfo{pane(7)})
-	c.record("wE:p1", nvim)
-
-	c.observe([]herdr.PaneInfo{pane(2)})
-
-	if _, read := c.lookup("wE:p1"); read {
-		t.Error("a reused pane id kept the processes of the pane before it")
+		t.Error("a pane that drew still answers with what it used to run")
 	}
 }
 
@@ -63,11 +45,11 @@ func TestAPaneTheSessionDroppedIsForgotten(t *testing.T) {
 	t.Parallel()
 
 	c := newProcessCache()
-	c.observe([]herdr.PaneInfo{pane(7)})
+	c.observe(p1, nil)
 	c.record("wE:p1", nvim)
 
-	c.observe(nil)
-	c.observe([]herdr.PaneInfo{pane(7)})
+	c.observe(nil, nil)
+	c.observe(p1, nil)
 
 	if _, read := c.lookup("wE:p1"); read {
 		t.Error("a pane that left the session came back with what it ran before")
@@ -80,7 +62,7 @@ func TestAnOldReadIsMadeAgain(t *testing.T) {
 	// A command starting just after a read moves no revision until the pane
 	// draws, so a remembered read is not trusted forever.
 	c := newProcessCache()
-	c.observe([]herdr.PaneInfo{pane(7)})
+	c.observe(p1, nil)
 	c.record("wE:p1", nvim)
 	read := c.now()
 
@@ -119,7 +101,7 @@ func TestTheProcessCacheIsSafeUnderConcurrentUse(t *testing.T) {
 			defer wg.Done()
 
 			for n := range 200 {
-				c.observe([]herdr.PaneInfo{pane(uint64(n))})
+				c.observe(p1, map[string]bool{"wE:p1": n%2 == 0})
 				c.record("wE:p1", nvim)
 				c.lookup("wE:p1")
 			}

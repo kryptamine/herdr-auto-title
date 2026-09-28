@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -294,6 +295,25 @@ func TestTheRowDoesNotFollowTheForegroundProcess(t *testing.T) {
 		!strings.Contains(tabs[len(tabs)-1].Label, "npm") {
 		t.Errorf("the tab should still take the process, got %v", tabs)
 	}
+}
+
+func TestARowIsJudgedOnItsDirectoryWhenAReadFailsOnce(t *testing.T) {
+	t.Parallel()
+
+	// The snapshot's directory is a descendant's guess, and a row judged on it
+	// is claimed for good on the first poll, so one failed read must not be all
+	// the row gets.
+	repo := readstest.Repo(t, "feat/oauth")
+	elsewhere := t.TempDir()
+
+	h := soleTabWorkspace(t, workspaceConfig(t), repo, herdr.PaneInfo{
+		CWD: elsewhere, ForegroundCWD: elsewhere,
+	})
+	h.client.SetProcesses("wE:p1", herdr.PaneProcessInfoProcess{Name: "zsh", CWD: repo})
+	h.client.FailNextProcessRead(errors.New("herdr is busy"))
+	h.poll()
+
+	wantRow(t, h, filepath.Base(repo)+" › feat/oauth")
 }
 
 // The row's chain leaves the process source out, and the terminal title must

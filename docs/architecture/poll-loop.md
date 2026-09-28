@@ -64,8 +64,9 @@ cannot express it:
   are monotonic, so comparing one poll's revisions with the last says which panes
   moved. The map is rebuilt from each snapshot, so panes that closed disappear
   from it for free.
-- **What each pane was running** (`internal/reads/processes.go`, which keeps the
-  revisions it was read at). `PaneInfo` carries no process name, so naming a
+- **What each pane was running** (`internal/reads/processes.go`, which forgets a
+  read on the panes `Changes.Observe` reports as drawn, so the two cannot
+  disagree on which panes moved). `PaneInfo` carries no process name, so naming a
   pane after the program in it costs a `pane.process_info` request per pane.
   Measured against an eight-pane session, a read is 0.17 ms and the snapshot
   before it 1.35 ms, so making one for every pane every poll cost as much again
@@ -110,7 +111,7 @@ changes name at most once per poll however fast its pane is churning, so
 ## One poll
 
 1. `session.snapshot` — the whole session in one request.
-2. `Changes.Observe` — note which panes' revisions advanced.
+2. `Changes.Observe` — note which panes' revisions advanced, and return them.
 3. `Claims.Retain`, for tabs, panes and workspaces alike — drop bookkeeping
    for what the session no longer holds, and release a lock whose owner has
    moved on. The workspace set is pruned whether or not the row is being named,
@@ -119,8 +120,8 @@ changes name at most once per poll however fast its pane is churning, so
    skip.
 4. `tabsIn` — assemble tabs with their panes from the snapshot alone. Nothing
    is read here: assembly is what says which pane will be asked about.
-   `Reader.Poll` opens the poll's reads, forgetting what was read of a pane
-   whose revision moved and of panes and agent sessions that are gone.
+   `Reader.Poll` opens the poll's reads, forgetting what was read of the panes
+   step 2 returned and of panes and agent sessions that are gone.
 5. Per tab (`nameTab`): skip it if locked, otherwise read the one pane the tab
    is named from (`Poll.Fill`), resolve a title, then check whether the
    label moved under us and rename when the result differs from the label the
@@ -134,7 +135,10 @@ changes name at most once per poll however fast its pane is churning, so
 while its tab is nobody's. `pane.process_info` is asked about the panes that moved since they
 were last read, reusing the last answer for the rest; a pane whose processes
 cannot be read simply has none, and a failed read is not remembered as an
-answer. That pane's directory is read for the branch it has checked out, every
+answer. `Poll.Fill` reads a pane once per poll however often it is asked, except
+that a read which failed with time left is made again by the next `Fill`: a
+workspace row is judged on sight, and judging it on the snapshot's guess at the
+directory could claim it for good. That pane's directory is read for the branch it has checked out, every
 poll and with nothing kept between polls: two small file reads at 0.038 ms are
 cheaper than the bookkeeping that would keep a stale answer. A pane holding an
 agent that is working in another directory of the same repository costs a second
