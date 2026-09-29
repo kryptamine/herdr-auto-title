@@ -175,6 +175,13 @@ func TestABranchIsReducedToWhatIdentifiesIt(t *testing.T) {
 		"test/process-read-flake":      "process-read",
 		"feature/add-dark-mode":        "add-dark",
 
+		// A name with no slash marks no namespace. Its first word alone would
+		// be `chore` or `feat`, which every branch of a repository may carry.
+		"chore-prettierignore-nested-worktrees": "prettierigno",
+		"feat-dashboard-redesign":               "dashboard",
+		"fix-login-redirect-loop":               "fix-login",
+		"prettierignore-nested":                 "prettierigno",
+
 		// A name that fits is left whole, key or no key: `feat/` is what tells
 		// it from `fix/`, and a key that already fits needs no rescuing.
 		"feat/oauth": "feat/oauth",

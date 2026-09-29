@@ -363,7 +363,12 @@ saying anything it has not earned:
   tells it from `fix/oauth`. Only a name too wide for `BranchMax` is reduced,
   and then an issue key wins outright (`bugfix-asa-cpanel-uapi-mc-13675` →
   `MC-13675`) because it identifies the work whatever convention wraps it;
-  failing that the namespace goes and the rest is cut at a whole word.
+  failing that the namespace goes and the rest is cut at a whole word. A name
+  with no slash marks no namespace, so when the cut would leave its first word
+  standing alone, that word is taken for one:
+  `chore-prettierignore-nested-worktrees` would otherwise read `chore`, which
+  every branch in that convention begins with. No list of known namespaces is
+  involved, because a list fits only the team it was written for.
 - **A detached HEAD says so**, with the short hash — it is where commits get
   lost, and silence there is indistinguishable from sitting on the trunk. A
   rebase is the exception: it detaches HEAD but records the branch it set aside,

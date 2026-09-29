@@ -140,10 +140,18 @@ func shortenBranch(branch string, maxLength int) string {
 	}
 
 	if cut := strings.LastIndex(branch, "/"); cut >= 0 && cut+1 < len(branch) {
-		branch = branch[cut+1:]
+		return cutAtSeparator(branch[cut+1:], maxLength)
 	}
 
-	return cutAtSeparator(branch, maxLength)
+	short := cutAtSeparator(branch, maxLength)
+
+	// With no slash to mark a namespace, a first word left standing alone is
+	// taken for one: `chore-…` would otherwise tell no branch from another.
+	if end := strings.IndexAny(branch, branchSeparators); end >= 0 && short == branch[:end] {
+		return cutAtSeparator(strings.TrimLeft(branch[end:], branchSeparators), maxLength)
+	}
+
+	return short
 }
 
 // cutAtSeparator shortens a value to maxWidth columns, ending on the last
