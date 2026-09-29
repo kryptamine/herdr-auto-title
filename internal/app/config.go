@@ -123,11 +123,12 @@ func LoadConfig() (Config, []string) {
 		ShowPosition:     true,
 		ManualPath:       ownPath(manualFile),
 		ReadTranscripts:  true,
-		ShowAgentName:    true,
 		RenamePanes:      true,
 		ReportWorkspaces: true,
 		ClaudeDirs:       homes,
 		Home:             userHome(),
+		// ShowAgentName stays false: most sessions run one agent, whose name
+		// would repeat on every tab.
 	}
 
 	cfg.Debug = fromEnv(&warnings, EnvDebug, cfg.Debug, boolean)

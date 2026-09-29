@@ -40,7 +40,7 @@ a session you opened with a slash command and never prompted stays `claude`.
 ~/work/dashboard                       →  1 · dashboard
 ~/work/dashboard on feature/MC-13200   →  2 · dashboard › MC-13200
 nvim editing auth.provider.ts          →  3 · nvim › auth.provider.ts
-an agent working on OAuth scopes       →  4 · dashboard › claude › Implement OAuth scopes
+an agent working on OAuth scopes       →  4 · dashboard › Implement OAuth scopes
 ssh into prod-01                       →  5 · ssh › prod-01
 $HOME                                  →  6 · Shell
 ```
@@ -105,7 +105,7 @@ change. It does not read the config directory that `herdr plugin list` prints.
 | `HERDR_AUTO_TITLE_POSITION`     | `true`                                   | Put the tab's position in front of its title                       |
 | `HERDR_AUTO_TITLE_MANUAL_FILE`  | `manual-names.json`, found the same way  | Where names you set by hand are kept; empty keeps them in memory   |
 | `HERDR_AUTO_TITLE_TRANSCRIPT`   | `true`                                   | Read Claude Code's transcript: what an agent is doing, and where     |
-| `HERDR_AUTO_TITLE_AGENT_NAME`   | `true`                                   | Put the agent's name in front of what it is doing                  |
+| `HERDR_AUTO_TITLE_AGENT_NAME`   | `false`                                  | Put the agent's name in front of what it is doing                  |
 | `HERDR_AUTO_TITLE_PANES`        | `true`                                   | Name panes as well as tabs                                         |
 | `HERDR_AUTO_TITLE_PREFER_AGENT` | `false`                                  | Name a tab after its agent pane even while another pane is focused |
 | `HERDR_AUTO_TITLE_PANE_ID`      | `false`                                  | Put the pane's Herdr ID in front of its label, as `[w1:p2] api`    |

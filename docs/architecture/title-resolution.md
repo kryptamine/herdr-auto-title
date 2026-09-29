@@ -554,9 +554,11 @@ exists.
 
 ## The agent's name is optional
 
-`HERDR_AUTO_TITLE_AGENT_NAME=false` leaves the agent's name out of every title.
-Some terminals say which agent holds a pane on their own, and a name repeated in
-the tab costs columns the work could use.
+The agent's name is left out of every title unless
+`HERDR_AUTO_TITLE_AGENT_NAME=true` asks for it. Most sessions run a single
+agent, so its name repeats on every tab without telling any two apart, and some
+terminals say which agent holds a pane on their own; either way the name costs
+columns the work could use.
 
 Off means off, including the case where the name is the entire title: a pane
 whose agent has reported nothing then reads as its directory, `dashboard`, or as
