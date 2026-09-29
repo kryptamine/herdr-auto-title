@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.10.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.9.1...v0.10.0) (2026-09-29)
+
+
+### Features
+
+* **app:** put each pane's Herdr ID in front of its label ([16381ed](https://github.com/kryptamine/herdr-auto-title/commit/16381ed2465ddaf1df0c3666be73cbd371d5d800))
+
+
+### Bug Fixes
+
+* **reads:** retry a process read that failed within the poll ([d3ba3c6](https://github.com/kryptamine/herdr-auto-title/commit/d3ba3c61147d8683cb298d04d858856c83390ec7))
+* **resolver:** compare a worktree's whole branch with its directory ([5df48bf](https://github.com/kryptamine/herdr-auto-title/commit/5df48bfde92571027544722d32d95cf585184c95)), closes [#113](https://github.com/kryptamine/herdr-auto-title/issues/113)
+* **resolver:** take a branch's lone first word for its namespace ([ff65628](https://github.com/kryptamine/herdr-auto-title/commit/ff656286dc7cbb81037e6923ed551c35553b6ce8)), closes [#113](https://github.com/kryptamine/herdr-auto-title/issues/113)
+* **state:** leave a zombie out of a pane's processes ([10df052](https://github.com/kryptamine/herdr-auto-title/commit/10df0521fd7eb5eb5879718cfe18f269de08b108))
+* **state:** take a moved pane's carried label as the plugin's own ([5dc04d9](https://github.com/kryptamine/herdr-auto-title/commit/5dc04d92047d08f0de4af9a47f0defd41bf1ca07))
+
+
+### Refactoring
+
+* **reads:** read panes in a package of their own ([bc876fa](https://github.com/kryptamine/herdr-auto-title/commit/bc876fa192905e1ae610b386794c7259489c04d4))
+* **resolver:** fit a prefix and a name in one place ([63fe937](https://github.com/kryptamine/herdr-auto-title/commit/63fe937fa49127be7848e370e024cce863bdb16f))
+
 ## [0.9.1](https://github.com/kryptamine/herdr-auto-title/compare/v0.9.0...v0.9.1) (2026-09-25)
 
 
