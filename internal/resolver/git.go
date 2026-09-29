@@ -52,17 +52,24 @@ func (g Git) Resolve(pane *state.PaneState) (Parts, bool) {
 		return Parts{}, false
 	}
 
-	branch := g.label(pane.Git)
+	checkout := pane.Git
+	branch := g.label(checkout)
 
 	// Labelled before it is chosen, so a detached agent brings its hash and one
 	// standing on the trunk brings nothing, with no case here for either.
 	if belongsToPane(pane) {
 		if agent := g.label(pane.AgentGit); agent != "" {
-			branch = agent
+			checkout, branch = pane.AgentGit, agent
 		}
 	}
 
 	if branch == "" {
+		return Parts{}, false
+	}
+
+	// A worktree named after its branch says it once. Only the whole name can
+	// match the directory: cut down to maxLength, it no longer does.
+	if strings.EqualFold(checkout.Branch, filepath.Base(pane.Dir)) {
 		return Parts{}, false
 	}
 

@@ -442,7 +442,9 @@ the directory the context already names.
 the same name, and the two are one fact rather than two: the title would read
 `feat-oauth › feat-oauth › nvim`. The branch is dropped when it matches the
 directory exactly, because the directory leads the title and the branch only
-qualifies it.
+qualifies it. The whole name is compared, before any cut to `BranchMax`: cut
+down, `chore-prettierignore-nested-worktrees` no longer matches its directory,
+and the title would say the one fact twice, in two spellings.
 
 The rule is about a pane whose *own* directory is a worktree — a user who moved
 into one and is working there themselves. A branch that came from an agent's

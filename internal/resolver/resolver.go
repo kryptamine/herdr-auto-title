@@ -333,9 +333,9 @@ func withoutRepetition(parts Parts) Parts {
 		parts.Activity = ""
 	}
 
-	// A worktree is usually named after the branch checked out in it, so
-	// `git worktree add ../feat-oauth feat-oauth` would otherwise produce
-	// `feat-oauth › feat-oauth`. The directory leads, so the branch goes.
+	// A branch cut down to the directory's name, `feature/dashboard-redesign`
+	// in `dashboard`, would otherwise produce `dashboard › dashboard`. The
+	// directory leads, so the branch goes.
 	if parts.Branch != "" && strings.EqualFold(parts.Branch, parts.Context) {
 		parts.Branch = ""
 	}

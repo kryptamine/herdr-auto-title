@@ -226,6 +226,31 @@ func TestAWorktreeNamedAfterItsBranchSaysItOnce(t *testing.T) {
 	}
 }
 
+func TestAWorktreeNamedAfterALongBranchSaysItOnce(t *testing.T) {
+	t.Parallel()
+
+	// Cut to BranchMax first, the branch could never match the directory named
+	// after it, so the whole name is what has to be compared.
+	pane := repoPane("fix-login-redirect", "main")
+	pane.Dir = filepath.Join(filepath.Dir(dashboard), "fix-login-redirect")
+	pane.TerminalTitle = "auth.ts - Nvim"
+	pane.Processes = []state.Process{{Name: "nvim"}}
+
+	if got := resolveRepoPane(pane); got != "fix-login-redirect › nvim › auth.ts" {
+		t.Errorf("title %q, want the branch said once", got)
+	}
+}
+
+func TestABranchCutToTheDirectorysNameSaysItOnce(t *testing.T) {
+	t.Parallel()
+
+	// Not a worktree, so the whole names differ; what the title would show
+	// twice is the cut, and that is what goes.
+	if got := resolveRepoPane(repoPane("feature/dashboard-redesign", "main")); got != "dashboard" {
+		t.Errorf("title %q, want the directory alone", got)
+	}
+}
+
 func TestTheBranchSurvivesTheWorkspaceItRepeats(t *testing.T) {
 	t.Parallel()
 
