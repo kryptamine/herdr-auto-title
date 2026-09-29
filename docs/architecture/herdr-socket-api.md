@@ -292,7 +292,8 @@ reads, so this section describes Herdr rather than those types.
   has no `cwd`. Probed on 0.9.1 on Linux: in fish,
   `status job-control none; sleep 1 & disown` kept `sleep` listed until the next
   command. `state.ProcessesFrom` drops an entry with neither field, since a
-  process in disk wait keeps its `cwd`.
+  process in disk wait keeps its `cwd`. On macOS Herdr leaves the zombie out,
+  and a process owned by root too: `sudo` waiting for a password is not listed.
 - **On Windows, `foreground_processes` holds the pane's shell or a recognized
   agent, and nothing else.** Probed with `python.exe` and then `node.exe`
   running under a pane's `pwsh.exe`, both confirmed present in the process tree:

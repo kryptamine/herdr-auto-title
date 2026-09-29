@@ -123,8 +123,8 @@ func PaneFrom(info herdr.PaneInfo, changedAt time.Time) *PaneState {
 }
 
 // ProcessesFrom is a process read as a pane holds it: the name and the whole
-// argument vector. The directory a process is in is read by PaneDir and not
-// carried.
+// argument vector, without the zombies Herdr still lists. The directory a
+// process is in is read by PaneDir and not carried.
 func ProcessesFrom(processes []herdr.PaneProcessInfoProcess) []Process {
 	if len(processes) == 0 {
 		return nil
