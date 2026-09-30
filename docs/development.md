@@ -92,6 +92,7 @@ another tab will rebuild and restart on it.
 
 ```sh
 make probe-snapshot  # the snapshot the plugin polls
+make probe-workspaces # each workspace's active tab and reported tokens
 ```
 
 `scripts/probe.py` talks to the socket directly, so it shows you the wire truth

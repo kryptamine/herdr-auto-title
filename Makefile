@@ -73,6 +73,10 @@ watch-tabs: ## Watch the tab names
 probe-snapshot: ## Show the session snapshot the plugin polls
 	@./scripts/probe.py snapshot
 
+.PHONY: probe-workspaces
+probe-workspaces: ## Show each workspace's active tab and reported tokens
+	@./scripts/probe.py workspaces
+
 .PHONY: clean
 clean: ## Remove the built binary
 	@rm -f $(BINARY) $(BINARY).exe

@@ -14,6 +14,7 @@ USAGE = """usage: scripts/probe.py <command>
   tabs         one-shot list of tab ids and labels
   watch-tabs   the same, refreshed every second
   snapshot     the session snapshot Auto Title polls
+  workspaces   each workspace's label, active tab and reported tokens
   version      protocol and version of the running Herdr
 """
 
@@ -57,6 +58,15 @@ def cmd_snapshot():
             print(f"  {'':10} title={title!r}")
 
 
+def cmd_workspaces():
+    snap = herdr("api", "snapshot")["snapshot"]
+    for ws in snap["workspaces"]:
+        print(
+            f"{ws['workspace_id']:6} active={ws.get('active_tab_id') or '-':8} "
+            f"tabs={ws.get('tab_count')} label={ws['label']!r} tokens={ws.get('tokens') or {}}"
+        )
+
+
 def cmd_version():
     snap = herdr("api", "snapshot")["snapshot"]
     print(f"herdr {snap['version']}, protocol {snap['protocol']}")
@@ -66,6 +76,7 @@ COMMANDS = {
     "tabs": cmd_tabs,
     "watch-tabs": cmd_watch_tabs,
     "snapshot": cmd_snapshot,
+    "workspaces": cmd_workspaces,
     "version": cmd_version,
 }
 
