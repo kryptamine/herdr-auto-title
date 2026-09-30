@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.11.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.10.0...v0.11.0) (2026-09-30)
+
+
+### ⚠ BREAKING CHANGES
+
+* **app:** workspaces are no longer renamed. HERDR_AUTO_TITLE_WORKSPACES now reports a `topic` token, on by default, which Herdr shows only in a `$topic` row of ui.sidebar.spaces.rows, and HERDR_AUTO_TITLE_WORKSPACE_MAX_LENGTH is unset by default. A label an earlier version wrote stays until that workspace is renamed or closed. A manual-names file saved by this version drops its workspace locks, so a rollback starts without them.
+
+### Features
+
+* **app:** report each workspace's topic instead of renaming it ([2a41338](https://github.com/kryptamine/herdr-auto-title/commit/2a41338fc4a7b6be77829e68b2df63913da96fb9))
+
+
+### Refactoring
+
+* **app:** log each topic report outcome where it is decided ([5e4c426](https://github.com/kryptamine/herdr-auto-title/commit/5e4c426ff387e797fcd7784ccea8a62350549f40))
+* **resolver:** give workspace topics a type of their own ([f70a11c](https://github.com/kryptamine/herdr-auto-title/commit/f70a11c3beee1ac2aa76d0a53129f1dcea8579db))
+
 ## [0.10.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.9.1...v0.10.0) (2026-09-29)
 
 
