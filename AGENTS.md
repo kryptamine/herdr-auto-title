@@ -202,7 +202,8 @@ are only the facts that would otherwise mislead the code in silence.
   workspace's tabs all read `false`.
 - **`workspace.report_metadata` clears a token with `null`.** `tokens` is a
   required map of string or `null`; a string-only map cannot clear, and
-  leaving the key out changes nothing.
+  leaving the key out changes nothing. A token is keyed by its name alone:
+  another source's report replaces it and that source's `null` clears it.
 - **A tab label is one line.** `tab.rename` takes a newline and stores it
   verbatim, but the tab bar renders one row and Herdr exposes no height setting.
 - **`PaneInfo.title` is the agent's own title, and is null in practice.** Claude
