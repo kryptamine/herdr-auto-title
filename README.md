@@ -158,3 +158,4 @@ leave. On Windows the action needs Herdr 0.9.0 or newer.
 <a href="https://github.com/youngxguo"><img src="https://images.weserv.nl/?url=github.com/youngxguo.png&w=128&h=128&fit=cover&mask=circle&maxage=7d" width="64" alt="Young Guo"></a>
 <a href="https://github.com/chechunhsu"><img src="https://images.weserv.nl/?url=github.com/chechunhsu.png&w=128&h=128&fit=cover&mask=circle&maxage=7d" width="64" alt="Kelvin Hsu"></a>
 <a href="https://github.com/2451965602"><img src="https://images.weserv.nl/?url=github.com/2451965602.png&w=128&h=128&fit=cover&mask=circle&maxage=7d" width="64" alt="悠然"></a>
+<a href="https://github.com/beefyhalo"><img src="https://images.weserv.nl/?url=github.com/beefyhalo.png&w=128&h=128&fit=cover&mask=circle&maxage=7d" width="64" alt="Kevin Horlick"></a>
