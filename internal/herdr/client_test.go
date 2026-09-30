@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 // incoming is one request as the test server saw it.
@@ -321,6 +322,82 @@ func TestRenameTabSendsTabAndLabel(t *testing.T) {
 
 	if params.TabID != "wE:t1" || params.Label != "dashboard › Tests" {
 		t.Errorf("params = %+v, want {wE:t1 dashboard › Tests}", params)
+	}
+}
+
+func TestReportWorkspaceTopicSendsTheTokenAndItsLifetime(t *testing.T) {
+	t.Parallel()
+
+	srv := newTestServer(t, respondOK)
+
+	if err := ReportWorkspaceTopic(
+		context.Background(),
+		srv.client(),
+		"wE",
+		"herdr.auto-title",
+		"Fix login",
+		time.Minute,
+	); err != nil {
+		t.Fatalf("ReportWorkspaceTopic: %v", err)
+	}
+
+	seen := srv.seen()
+	if len(seen) != 1 || seen[0].Method != MethodWorkspaceReportMetadata {
+		t.Fatalf("server saw %+v, want one workspace.report_metadata", seen)
+	}
+
+	want := `{"workspace_id":"wE","source":"herdr.auto-title","tokens":{"topic":"Fix login"},"ttl_ms":60000}`
+	if got := string(seen[0].Params); got != want {
+		t.Errorf("params = %s, want %s", got, want)
+	}
+}
+
+func TestReportWorkspaceTopicClearsWithANull(t *testing.T) {
+	t.Parallel()
+
+	// Herdr clears a token only when its value is null; leaving the key out
+	// changes nothing, so an empty topic must reach the wire as a null.
+	srv := newTestServer(t, respondOK)
+
+	if err := ReportWorkspaceTopic(
+		context.Background(),
+		srv.client(),
+		"wE",
+		"herdr.auto-title",
+		"",
+		time.Minute,
+	); err != nil {
+		t.Fatalf("ReportWorkspaceTopic: %v", err)
+	}
+
+	seen := srv.seen()
+	if len(seen) != 1 || !strings.Contains(string(seen[0].Params), `"tokens":{"topic":null}`) {
+		t.Errorf("server saw %+v, want the topic sent as null", seen)
+	}
+}
+
+func TestSessionSnapshotReadsAWorkspacesActiveTabAndTokens(t *testing.T) {
+	t.Parallel()
+
+	srv := newTestServer(t, func(req incoming) string {
+		return `{"id":"` + req.ID + `","result":{"snapshot":{"version":"0.9.1","protocol":22,` +
+			`"workspaces":[{"workspace_id":"wE","number":3,"label":"dashboard","focused":false,` +
+			`"active_tab_id":"wE:t2","tab_count":2,"tokens":{"topic":"Fix login"},"worktree":null}],` +
+			`"tabs":[],"panes":[]}}}`
+	})
+
+	snapshot, err := SessionSnapshot(context.Background(), srv.client())
+	if err != nil {
+		t.Fatalf("SessionSnapshot: %v", err)
+	}
+
+	if len(snapshot.Workspaces) != 1 {
+		t.Fatalf("workspaces = %+v, want one", snapshot.Workspaces)
+	}
+
+	ws := snapshot.Workspaces[0]
+	if ws.ActiveTabID != "wE:t2" || ws.Tokens["topic"] != "Fix login" || ws.Label != "dashboard" {
+		t.Errorf("workspace = %+v, want dashboard showing wE:t2 with topic Fix login", ws)
 	}
 }
 

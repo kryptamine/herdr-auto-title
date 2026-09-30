@@ -55,7 +55,7 @@ name is derived from the state read for that poll, which is what makes the
 resolver's determinism worth anything: identical session state always yields an
 identical title.
 
-Four things are carried between polls, and each exists because a snapshot
+Five things are carried between polls, and each exists because a snapshot
 cannot express it:
 
 - **When each pane last changed** (`internal/state/changes.go`). A snapshot says
@@ -103,6 +103,15 @@ cannot express it:
 - **What Auto Title last named each tab** (`internal/state/manual.go`), which is
   how a rename by the user is told from the plugin's own work. That is a design
   of its own: [manual rename protection](./manual-rename-protection.md).
+- **What Auto Title last reported for each workspace, and when**
+  (`internal/app/topics.go`). A snapshot does carry each workspace's tokens, but
+  keyed by name alone, whoever reported them, and with no expiry, so it can say
+  neither whether a topic is this plugin's nor when it runs out. Every
+  report lives `topicTTL` (60 s) in Herdr, and an unchanged topic is sent again
+  once its last report is `topicRefresh` (20 s) old: a third of the lifetime,
+  so two missed refreshes and a restart still fit inside it. The map is rebuilt
+  from each snapshot's workspaces, as the pane map is. See
+  [the workspace topic](#the-workspace-topic).
 
 One consequence worth stating: **the interval is the rename rate.** A tab
 changes name at most once per poll however fast its pane is churning, so
@@ -112,12 +121,10 @@ changes name at most once per poll however fast its pane is churning, so
 
 1. `session.snapshot` — the whole session in one request.
 2. `Changes.Observe` — note which panes' revisions advanced, and return them.
-3. `Claims.Retain`, for tabs, panes and workspaces alike — drop bookkeeping
-   for what the session no longer holds, and release a lock whose owner has
-   moved on. The workspace set is pruned whether or not the row is being named,
-   so a lock an earlier run left behind does not outlive its workspace. This runs off the snapshot's own labels,
-   because it is what decides which tabs, panes and rows the next steps can
-   skip.
+3. `Claims.Retain`, for tabs and panes alike — drop bookkeeping for what the
+   session no longer holds, and release a lock whose owner has moved on. This
+   runs off the snapshot's own labels, because it is what decides which tabs and
+   panes the next steps can skip.
 4. `tabsIn` — assemble tabs with their panes from the snapshot alone. Nothing
    is read here: assembly is what says which pane will be asked about.
    `Reader.Poll` opens the poll's reads, forgetting what was read of the panes
@@ -130,15 +137,18 @@ changes name at most once per poll however fast its pane is churning, so
    own pane even if the tab is locked, and every pane nobody has claimed; name
    all of them at once against the tab (`ResolvePanes`); then `apply` each name
    against the pane's own label, exactly as step 5 does for the tab.
+7. Per workspace (`reportTopics`), unless topics are turned off: read the
+   active tab's pane and report its topic when it changed or is due for a
+   refresh — [the workspace topic](#the-workspace-topic).
 
 **Without pane naming, only the pane that names its tab is read**, and only
 while its tab is nobody's. `pane.process_info` is asked about the panes that moved since they
 were last read, reusing the last answer for the rest; a pane whose processes
 cannot be read simply has none, and a failed read is not remembered as an
 answer. `Poll.Fill` reads a pane once per poll however often it is asked, except
-that a read which failed with time left is made again by the next `Fill`: a
-workspace row is judged on sight, and judging it on the snapshot's guess at the
-directory could claim it for good. That pane's directory is read for the branch it has checked out, every
+that a read which failed with time left is made again by the next `Fill`, so a
+workspace's topic, read after its tab, need not wait a poll for it. That pane's
+directory is read for the branch it has checked out, every
 poll and with nothing kept between polls: two small file reads at 0.038 ms are
 cheaper than the bookkeeping that would keep a stale answer. A pane holding an
 agent that is working in another directory of the same repository costs a second
@@ -316,22 +326,47 @@ outlives the call that made it.
 Every source resolves synchronously inside the poll, so when `Run` returns there
 is nothing left running.
 
-## The workspace row
+## The workspace topic
 
-With `HERDR_AUTO_TITLE_WORKSPACES` on and a manual file to write to, a poll
-ends by naming each workspace that holds exactly one tab. Going last matters only to a poll cut short: the row is
-what such a poll gives up, not a tab. A tab drops the row's parts from its own
-title, but it deduplicates against the row label in the snapshot, so a rename
-issued here reaches the tabs on the next poll whichever order runs.
+A poll ends by reporting what each workspace's active tab is doing as the
+workspace's `topic` token (`workspace.report_metadata`), which Herdr draws
+wherever the user's `ui.sidebar.spaces.rows` ask for `$topic`. The label is
+never touched: Herdr keeps an unnamed workspace's label on its pane's directory
+by itself, and any rename would freeze it there. Going last matters only to a
+poll cut short: a topic is what such a poll gives up, not a tab.
 
-A workspace holding any other number of tabs is not named, but it is still
-judged on the first poll (see manual-rename-protection.md), through the pane of
-its first tab. That judgement, like naming, reads the pane before it looks: the
-snapshot's directory is a descendant's guess, and a row compared against that
-basename could be claimed for a label it never wore. The reads ask for nothing
-of their own in the ordinary case: the pane a row is judged or named through is
-the pane its tab was already named through, and a poll never spends the same
-read twice. The exception is a tab the user has claimed, which is not read for
-its own sake: with pane naming off, a row above one costs the pane read that
-tab did not; with it on, as it ships, that pane is already read for the panes
-it names, so the row still costs nothing.
+The active tab is the snapshot's `active_tab_id`. A snapshot that names none,
+or names a tab that has closed since, is read through the workspace's first
+tab, and a workspace with no tabs is sent nothing. The topic is that tab's
+pane, read through the chain [title resolution](./title-resolution.md#the-workspace-topic)
+describes, and an empty topic is sent as `null`, which clears it at once
+rather than waiting out the lifetime.
+
+A report is sent only when the topic differs from the last one this instance
+sent, or when that one is `topicRefresh` old. A workspace this instance has not
+reported to yet is the one exception: an empty topic is still sent as `null`
+if the snapshot shows a topic, which is how a restarted instance takes down what
+its predecessor left rather than letting it stand for up to a minute. Nothing is
+sent on the way out, since a leaving instance clearing its topics would race
+its successor's first reports; the lifetime alone takes them down, and turning
+the setting off leaves them to fade the same way.
+
+Auto Title takes the `topic` token of every workspace as its own. Herdr keys a
+token by name alone, not by who reported it, so another program reporting
+`topic` would share that one value, and the two would overwrite each other at
+every change and refresh. Nothing guards against that; it is unsupported.
+
+A report that fails never cuts the poll short. `workspace_not_found` means the
+workspace closed after the snapshot, and it is forgotten. A report Herdr did not
+answer counts as sent, as a rename does, since Herdr may still apply it seconds
+later; if it lands after a newer topic, the next refresh puts the newer one back
+within `topicRefresh`. Any other refusal is one Herdr will make again for the
+same value, so the value is remembered and not sent again until the topic
+changes.
+
+The reads ask for nothing of their own in the ordinary case: the pane a topic
+comes from is the pane its tab was already named through, and a poll never
+spends the same read twice. The exception is a tab the user has claimed, which
+is not read for its own sake: with pane naming off, a topic above one costs the
+pane read that tab did not; with it on, as it ships, that pane is already read
+for the panes it names, so the topic still costs nothing.

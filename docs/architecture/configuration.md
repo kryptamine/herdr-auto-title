@@ -159,11 +159,27 @@ The setting decides one thing only: whether `App` holds a pane resolver at all.
 Everything below that — which pane is read, how it is named, whether the user
 has claimed it — is the same code either way.
 
+## Why reporting workspace topics is on by default
+
+Auto Title reports each workspace's topic unless
+`HERDR_AUTO_TITLE_WORKSPACES=false`. The same setting once renamed a one-tab
+workspace after its tab, and that was off by default: a rename replaces a label
+the user may find their projects by, and shows the moment it lands. A topic
+shows nothing until the user's `ui.sidebar.spaces.rows` ask for `$topic`, so a
+user who never adds that row pays one small report per workspace when its topic
+changes and one every `topicRefresh` otherwise
+([the poll loop](./poll-loop.md#the-workspace-topic)). The setting kept its
+name, so an existing `config.env` still means on or off.
+
+`HERDR_AUTO_TITLE_WORKSPACE_MAX_LENGTH` is unset by default for the same
+reason the row stopped being renamed: Herdr knows how wide the sidebar is and
+fits the topic to it, while any width set here is a guess.
+
 ## Why it is not reread
 
 The file is read once. Half the settings are consumed in `main.run` while it
 builds the resolver chains — `MAX_LENGTH` and `BRANCH_MAX` are baked into
-`resolver.Default`, `WORKSPACE_MAX_LENGTH` into the workspace chain, `POSITION`
+`resolver.Default`, `WORKSPACE_MAX_LENGTH` into the topic's bound, `POSITION`
 decides whether the tab chain is wrapped at all — so
 rereading the file mid-run would apply some settings and quietly ignore others.
 An honest restart is better than a reload that works half the time, and the

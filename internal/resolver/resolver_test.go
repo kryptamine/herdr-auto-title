@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/kryptamine/herdr-auto-title/internal/git"
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
 	"github.com/kryptamine/herdr-auto-title/internal/herdr/herdrtest"
 	"github.com/kryptamine/herdr-auto-title/internal/state"
@@ -250,6 +251,49 @@ func TestADifferentWorkspaceIsNotDropped(t *testing.T) {
 	got := defaultChain().Resolve(tab)
 	if want := "dashboard › Fix OAuth redirect"; got.Name != want {
 		t.Errorf("name = %q, want %q", got.Name, want)
+	}
+}
+
+// A label is whatever its owner typed, or the directory Herdr took it from: not
+// parts, just where a tab is. So it is matched whole, against the context alone.
+func TestAWorkspaceLabelIsMatchedWholeAgainstTheContext(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []struct {
+		label string
+		pane  *state.PaneState
+		want  string
+	}{
+		{
+			label: "group › dashboard",
+			pane:  &state.PaneState{Dir: dashboard, TerminalTitle: "auth.ts"},
+			want:  "dashboard › auth.ts",
+		},
+		{
+			label: "release",
+			pane: &state.PaneState{
+				Dir:           api,
+				Git:           git.Checkout{Branch: "release", Default: "main"},
+				TerminalTitle: "Fix OAuth redirect",
+			},
+			want: "api › release › Fix OAuth redirect",
+		},
+		{
+			label: "claude › Fix totals",
+			pane:  &state.PaneState{Dir: api, Agent: "claude", AgentTitle: "Fix totals"},
+			want:  "api › claude › Fix totals",
+		},
+	} {
+		t.Run(test.label, func(t *testing.T) {
+			t.Parallel()
+
+			tab := tabWithPane(test.pane)
+			tab.WorkspaceName = test.label
+
+			if got := defaultChain().Resolve(tab).Name; got != test.want {
+				t.Errorf("name = %q, want %q", got, test.want)
+			}
+		})
 	}
 }
 

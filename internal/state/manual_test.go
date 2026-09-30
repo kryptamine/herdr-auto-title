@@ -3,6 +3,7 @@ package state
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
@@ -284,6 +285,36 @@ func TestAnUnreadableStoreIsNotFatal(t *testing.T) {
 
 	if m.Tabs.Observe(sighting("Important work")) != VerdictClaimed {
 		t.Error("locking stopped working after a corrupt store")
+	}
+}
+
+// A file an earlier version saved still carries its workspace keys. They must
+// not cost the tab and pane locks beside them, and go at the next save.
+func TestAFileWithWorkspaceLocksStillLoads(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "manual-names.json")
+	stored := `{"locked_tabs":{"wE:t1":"mine"},"locked_panes":{"wE:p1":"pane"},` +
+		`"locked_workspaces":{"wE":"the migration"},"written_workspaces":{"wE":"x"}}`
+
+	if err := os.WriteFile(path, []byte(stored), 0o600); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	m := LoadManual(path)
+	if !m.Tabs.Locked("wE:t1") || !m.Panes.Locked("wE:p1") {
+		t.Fatal("the tab and pane locks were lost with the workspace keys")
+	}
+
+	m.Tabs.Retain(map[string]string{})
+
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+
+	if strings.Contains(string(raw), "workspaces") {
+		t.Errorf("the saved file still carries workspace keys: %s", raw)
 	}
 }
 

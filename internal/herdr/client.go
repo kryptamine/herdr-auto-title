@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"sync/atomic"
+	"time"
 )
 
 // socketPathEnv is where Herdr names the socket it made for this session. The
@@ -201,11 +202,26 @@ func ShowNotification(
 	return res, err
 }
 
-// RenameWorkspace names the row Herdr shows above a workspace's tabs. Herdr
-// labels an unnamed workspace after its directory and never revisits that, so
-// the row stays put when the work moves on until someone renames it.
-func RenameWorkspace(ctx context.Context, c Client, workspaceID, label string) error {
-	params := WorkspaceRenameParams{WorkspaceID: workspaceID, Label: label}
+// ReportWorkspaceTopic shows topic as the workspace's `topic` token until ttl
+// runs out, or clears the token when topic is empty. Herdr draws a token where
+// the user's sidebar rows ask for one and never changes the label for it.
+func ReportWorkspaceTopic(
+	ctx context.Context,
+	c Client,
+	workspaceID, source, topic string,
+	ttl time.Duration,
+) error {
+	var value *string
+	if topic != "" {
+		value = &topic
+	}
 
-	return c.Call(ctx, MethodWorkspaceRename, params, nil)
+	params := WorkspaceMetadataParams{
+		WorkspaceID: workspaceID,
+		Source:      source,
+		Tokens:      map[string]*string{TopicToken: value},
+		TTLMs:       ttl.Milliseconds(),
+	}
+
+	return c.Call(ctx, MethodWorkspaceReportMetadata, params, nil)
 }

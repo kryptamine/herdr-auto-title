@@ -155,8 +155,8 @@ whatever labels it has; the local instance cannot see it to name it.
 
 ## The methods Auto Title uses
 
-Six, and no others (`internal/herdr/client.go`), `workspace.rename` only while
-the workspace row is being named:
+Six, and no others (`internal/herdr/client.go`), `workspace.report_metadata`
+unless workspace topics are turned off:
 
 - **`session.snapshot`** returns the whole session — every tab with its label,
   every pane with its directory, terminal title, agent and agent status.
@@ -197,10 +197,11 @@ the workspace row is being named:
   "shown"}` and the user sees nothing, so the action's log is the only place
   its outcome can be read.
 
-- **`workspace.rename`** takes `{workspace_id, label}`, the shape `tab.rename`
-  has. Auto Title sends it only when workspace naming is turned on. A workspace
-  closed between the snapshot and the rename answers `workspace_not_found`,
-  probed with an id no session holds.
+- **`workspace.report_metadata`** takes `{workspace_id, source, tokens,
+  ttl_ms}`. Auto Title reports one token, `topic`, under the source
+  `herdr.auto-title`, and never renames a workspace: see what the call does
+  [below](#what-the-objects-carry) and when it is made in
+  [the poll loop](./poll-loop.md#the-workspace-topic).
 
 A label is **one line**. `tab.rename` accepts a newline and stores it verbatim,
 with no error and no stripping, but the tab bar renders a single line and Herdr
@@ -371,9 +372,7 @@ reads, so this section describes Herdr rather than those types.
   `beta-dir`, then `gamma-dir`, as its shell `cd`'d there, with nothing renaming
   it. Any rename stops that. Renamed to `Named`, it stayed `Named` across a
   `cd`; renamed to `""`, it read `""` and kept it — an empty rename does not
-  hand the label back. `WorkspaceSightingFrom` reads its `Default` from the
-  pane's directory as Auto Title last read it, which can lag a label Herdr has
-  already moved.
+  hand the label back.
 - **`TabInfo.number` is not the label an unnamed tab carries.** `number` counts
   every tab its workspace has ever held and never repeats — a workspace holding
   six tabs was seen numbering them 2, 9, 30, 33, 35, 36. The label Herdr puts on

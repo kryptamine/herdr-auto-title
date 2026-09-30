@@ -13,6 +13,12 @@ const (
 type WorkspaceInfo struct {
 	WorkspaceID string `json:"workspace_id"`
 	Label       string `json:"label"`
+	// ActiveTabID is the tab the workspace shows. TabInfo carries a focused
+	// flag too, but it marks only the one tab a client is looking at.
+	ActiveTabID string `json:"active_tab_id"`
+	// Tokens is each token's latest value, keyed by name alone whichever source
+	// reported it, with neither source nor expiry.
+	Tokens map[string]string `json:"tokens"`
 }
 
 // TabInfo describes a tab. Optional fields are decoded as plain strings, so a

@@ -1,6 +1,6 @@
 // Package app polls the Herdr session and keeps every tab's title in step with
 // what that tab is doing, each pane's label too unless the configuration turns
-// that off, and the workspace row above them when it is asked for.
+// that off, and reports what each workspace's active tab is doing as its topic.
 package app
 
 import (
@@ -43,12 +43,14 @@ type App struct {
 	panes resolver.PaneResolver
 	// preferAgent names a tab after its agent pane rather than its focused one.
 	preferAgent bool
-	// workspaces names the row above each workspace's tabs, and is nil when the
-	// user has not asked for it.
-	workspaces resolver.WorkspaceResolver
-	changes    *state.Changes
-	manual     *state.Manual
-	reads      *reads.Reader
+	// topics says what each workspace's active tab is doing, and is nil when the
+	// user turned that off.
+	topics   resolver.TopicResolver
+	topicMax int
+	reported *topicReports
+	changes  *state.Changes
+	manual   *state.Manual
+	reads    *reads.Reader
 	// failures is the run of polls that have failed in a row, which decides
 	// how loudly the next one is reported.
 	failures failureLog
@@ -67,7 +69,7 @@ func New(
 	log *slog.Logger,
 	titles resolver.TitleResolver,
 	panes resolver.PaneResolver,
-	workspaces resolver.WorkspaceResolver,
+	topics resolver.TopicResolver,
 	instance Instance,
 ) *App {
 	return &App{
@@ -75,7 +77,9 @@ func New(
 		log:         log,
 		titles:      titles,
 		panes:       panes,
-		workspaces:  workspaces,
+		topics:      topics,
+		topicMax:    cfg.WorkspaceMaxLength,
+		reported:    newTopicReports(),
 		preferAgent: cfg.PreferAgentPane,
 		changes:     state.NewChanges(),
 		manual:      state.LoadManual(cfg.ManualPath),
@@ -90,17 +94,16 @@ func New(
 
 // Resolvers builds what the configuration asks titles to be resolved by: the
 // shipped chain, its position in front when asked, panes named unless that is
-// turned off and their IDs in front when asked, and workspaces named only when
-// asked.
+// turned off and their IDs in front when asked, and topics reported unless that
+// is turned off.
 func Resolvers(
 	cfg Config,
-) (resolver.TitleResolver, resolver.PaneResolver, resolver.WorkspaceResolver) {
+) (resolver.TitleResolver, resolver.PaneResolver, resolver.TopicResolver) {
 	chain := resolver.Default(resolver.Options{
-		MaxLength:       cfg.MaxLength,
-		BranchMax:       cfg.BranchMax,
-		HideAgentName:   !cfg.ShowAgentName,
-		NamesWorkspaces: cfg.namesWorkspaces(),
-		Home:            cfg.Home,
+		MaxLength:     cfg.MaxLength,
+		BranchMax:     cfg.BranchMax,
+		HideAgentName: !cfg.ShowAgentName,
+		Home:          cfg.Home,
 	})
 
 	var titles resolver.TitleResolver = chain
@@ -108,10 +111,10 @@ func Resolvers(
 		titles = resolver.NewNumbered(chain, cfg.MaxLength)
 	}
 
-	workspaces := WorkspaceResolver(cfg)
+	topics := TopicResolver(cfg)
 
 	if !cfg.RenamePanes {
-		return titles, nil, workspaces
+		return titles, nil, topics
 	}
 
 	var panes resolver.PaneResolver = chain
@@ -119,19 +122,18 @@ func Resolvers(
 		panes = resolver.NewPaneIDs(chain, cfg.MaxLength)
 	}
 
-	return titles, panes, workspaces
+	return titles, panes, topics
 }
 
-// WorkspaceResolver is the chain a workspace row is named by, or nil when the
-// user has not asked for the row to be named. Not the tabs' chain: a workspace
-// is named for where the work is, under a bound the tab bar does not set.
-func WorkspaceResolver(cfg Config) resolver.WorkspaceResolver {
-	if !cfg.namesWorkspaces() {
+// TopicResolver is the chain a workspace's topic is read by, or nil when the
+// user turned topics off. Not the tabs' chain: a topic that followed the
+// foreground process would change at every prompt.
+func TopicResolver(cfg Config) resolver.TopicResolver {
+	if !cfg.ReportWorkspaces {
 		return nil
 	}
 
 	return resolver.Places(resolver.Options{
-		MaxLength:     cfg.WorkspaceMaxLength,
 		BranchMax:     cfg.BranchMax,
 		HideAgentName: !cfg.ShowAgentName,
 		Home:          cfg.Home,
@@ -240,7 +242,6 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 	// what decides which of them are locked, and a locked tab is never read.
 	a.manual.Tabs.Retain(labelsIn(snapshot.Tabs))
 	a.manual.Panes.Retain(paneLabelsIn(snapshot.Panes))
-	a.manual.Workspaces.Retain(workspaceLabelsIn(snapshot.Workspaces))
 
 	tabs := a.tabsIn(snapshot)
 	poll := a.reads.Poll(client, snapshot.Panes, drew)
@@ -257,18 +258,9 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 		}
 	}
 
-	if a.workspaces != nil {
-		// Last, so a poll cut short gives up the row rather than a tab. Order
-		// changes nothing else: a tab deduplicates against the row label in the
-		// snapshot, and a rename issued here reaches it on the next poll.
-		a.nameWorkspaces(ctx, client, poll, snapshot, tabs)
-
-		// As the tab loop above returns on a cancelled context: a pass cut short
-		// has not seen every workspace, and settling would leave the ones it
-		// missed looking like workspaces never there on the first poll.
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
+	if a.topics != nil {
+		// Last, so a poll cut short gives up a topic rather than a tab.
+		a.reportTopics(ctx, client, poll, snapshot, tabs)
 	}
 
 	// Reached only when every tab was seen. Deferring this would settle after a
@@ -278,72 +270,93 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 	return nil
 }
 
-// nameWorkspaces judges every workspace's label and names the row above one
-// holding exactly one tab after that tab. Other counts are left alone; the
-// reads this costs are in poll-loop.md.
-func (a *App) nameWorkspaces(
+// reportTopics tells Herdr what each workspace's active tab is doing, when that
+// changed or is due for a refresh. The label is never touched, and a report
+// that fails never cuts the poll short.
+func (a *App) reportTopics(
 	ctx context.Context,
 	client herdr.Client,
 	poll *reads.Poll,
 	snapshot herdr.Snapshot,
 	tabs []state.TabState,
 ) {
-	count, first := workspaceTabs(snapshot.Tabs)
+	first := firstTabs(snapshot.Tabs)
 
 	contexts := make(map[string]*state.PaneState, len(tabs))
 	for _, tab := range tabs {
 		contexts[tab.ID] = tab.Context
 	}
 
-	for _, info := range snapshot.Workspaces {
+	a.reported.observe(snapshot.Workspaces)
+
+	for _, workspace := range snapshot.Workspaces {
 		if ctx.Err() != nil {
 			return
 		}
 
-		id := info.WorkspaceID
-		context := contexts[first[id]]
+		// An older Herdr may not say which tab is active, and the one it names
+		// may have closed since.
+		active := workspace.ActiveTabID
+		if _, live := contexts[active]; !live {
+			active = first[workspace.WorkspaceID]
+		}
 
-		// Read before judging, not after: the snapshot's directory is a
-		// descendant's guess, and a row judged on it could be claimed for
-		// wearing a basename it never wore.
-		poll.Fill(ctx, context)
-
-		workspace := state.WorkspaceFrom(info, context)
-
-		// Not named, but still seen. Every workspace is judged, since one
-		// holding two tabs today may hold one tomorrow; and a lock read back
-		// from disk needs a sighting for the user's next rename to read as a move.
-		if count[id] != 1 || a.manual.Workspaces.Locked(id) {
-			a.manual.Workspaces.Observe(state.WorkspaceSightingFrom(workspace, ""))
-
+		if active == "" {
 			continue
 		}
 
-		decision := a.workspaces.ResolveWorkspace(workspace)
-		a.apply(
-			ctx,
-			client,
-			workspaceLabels,
-			a.manual.Workspaces,
-			state.WorkspaceSightingFrom(workspace, decision.Name),
-			decision,
-		)
+		pane := contexts[active]
+		poll.Fill(ctx, pane)
+
+		topic := a.topics.Topic(pane, a.topicMax).Name
+		if a.reported.due(workspace, topic) {
+			a.report(ctx, client, workspace.WorkspaceID, topic)
+		}
 	}
 }
 
-// workspaceTabs counts the tabs each workspace holds, and names the first of
-// them, which is the tab a workspace is read through.
-func workspaceTabs(tabs []herdr.TabInfo) (count map[string]int, first map[string]string) {
-	count = make(map[string]int, len(tabs))
-	first = make(map[string]string, len(tabs))
+// report sends one workspace's topic, or clears it when topic is empty.
+func (a *App) report(ctx context.Context, client herdr.Client, id, topic string) {
+	err := herdr.ReportWorkspaceTopic(ctx, client, id, topicSource, topic, topicTTL)
+
+	message := "workspace topic report failed"
+
+	switch {
+	case err == nil:
+		a.reported.sent(id, topic)
+		a.log.Debug("workspace topic reported", "workspace_id", id, "topic", topic)
+
+		return
+	case herdr.ErrorCode(err) == herdr.CodeWorkspaceNotFound:
+		a.reported.forget(id)
+		a.log.Debug("workspace closed before its topic could be reported", "workspace_id", id)
+
+		return
+	case errors.Is(err, herdr.ErrUnanswered):
+		// Herdr may still apply it, and the next refresh repairs one that lands
+		// after a newer topic: docs/architecture/poll-loop.md.
+		a.reported.sent(id, topic)
+	case herdr.ErrorCode(err) != "":
+		// Herdr refuses the same value the same way every time.
+		a.reported.rejected(id, topic)
+
+		message = "herdr refused a workspace topic"
+	}
+
+	a.log.Warn(message, "workspace_id", id, "topic", topic, "error", err)
+}
+
+// firstTabs names the first tab of each workspace, in snapshot order.
+func firstTabs(tabs []herdr.TabInfo) map[string]string {
+	first := make(map[string]string, len(tabs))
 
 	for _, tab := range tabs {
-		if count[tab.WorkspaceID]++; count[tab.WorkspaceID] == 1 {
+		if _, seen := first[tab.WorkspaceID]; !seen {
 			first[tab.WorkspaceID] = tab.TabID
 		}
 	}
 
-	return count, first
+	return first
 }
 
 // nameTab keeps one tab's label in step with what the tab is doing.
@@ -432,14 +445,9 @@ var (
 		rename: herdr.RenamePane,
 		gone:   herdr.CodePaneNotFound,
 	}
-	workspaceLabels = labelKind{
-		noun:   "workspace",
-		rename: herdr.RenameWorkspace,
-		gone:   herdr.CodeWorkspaceNotFound,
-	}
 )
 
-// apply gives a tab, a pane or a workspace the name the resolver chose, unless
+// apply gives a tab or a pane the name the resolver chose, unless
 // the user put the label it carries there. Nothing that goes wrong here is
 // worth cutting the poll short: the next one decides again from state read again.
 func (a *App) apply(
@@ -455,9 +463,6 @@ func (a *App) apply(
 	switch claims.Observe(seen) {
 	case state.VerdictClaimed:
 		a.log.Info("leaving a "+kind.noun+" the user renamed", idKey, seen.ID, "name", seen.Current)
-		return
-	case state.VerdictUnjudged:
-		a.log.Debug("leaving a "+kind.noun+" not yet judged", idKey, seen.ID, "name", seen.Current)
 		return
 	case state.VerdictName:
 	}
@@ -505,9 +510,9 @@ func labelsIn(tabs []herdr.TabInfo) map[string]string {
 	return labels
 }
 
-// workspaceLabelsIn indexes the session's workspaces by id, for the bookkeeping
-// labelsIn feeds. Herdr always answers a label here: a workspace nobody has
-// renamed carries the basename of the directory it was created in.
+// workspaceLabelsIn indexes the session's workspaces by id, which is what a tab
+// is told its workspace is called. Herdr always answers a label here: one
+// nobody renamed carries the basename of its pane's directory.
 func workspaceLabelsIn(workspaces []herdr.WorkspaceInfo) map[string]string {
 	labels := make(map[string]string, len(workspaces))
 	for _, workspace := range workspaces {

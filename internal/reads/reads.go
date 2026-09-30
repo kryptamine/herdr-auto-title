@@ -78,8 +78,8 @@ func (p *Poll) Fill(ctx context.Context, pane *state.PaneState) {
 		return
 	}
 
-	// A read that failed with time left is asked again by the next Fill: a
-	// workspace row is judged on sight, so it has no next poll to wait for.
+	// A read that failed with time left is asked again by the next Fill, so a
+	// second reader of the pane in this poll is not left with the snapshot's guess.
 	processes, read := p.reader.processesOf(ctx, p.client, pane.ID)
 	if read || spent(ctx) {
 		p.filled[pane] = struct{}{}

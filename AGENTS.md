@@ -162,9 +162,9 @@ are only the facts that would otherwise mislead the code in silence.
   no `argv` or `cwd`, so an idle pane would be named after a process that has
   exited; the state package drops them. On macOS Herdr leaves them out.
 - Auto Title uses six methods and no others: `session.snapshot`,
-  `pane.process_info`, `tab.rename`, `pane.rename`, `workspace.rename` only
-  while the workspace row is being named (`HERDR_AUTO_TITLE_WORKSPACES=true`),
-  and, from the restart action alone, `notification.show`.
+  `pane.process_info`, `tab.rename`, `pane.rename`,
+  `workspace.report_metadata` unless `HERDR_AUTO_TITLE_WORKSPACES=false`, and,
+  from the restart action alone, `notification.show`.
 - **A pane carries no label until it has one, and an empty one clears it.**
   Herdr omits `label` from a pane object entirely until the pane is named, and
   `pane.rename` clears rather than stores an empty label — the opposite of
@@ -249,9 +249,11 @@ are only the facts that would otherwise mislead the code in silence.
   cannot say: when each pane last changed, what it was running when it was last
   asked — reused only until that pane's revision moves, and for no longer than
   `processRefresh` either way, because a revision does not track what runs in a
-  pane — and how far each agent transcript has been read, because a transcript
+  pane — how far each agent transcript has been read, because a transcript
   only grows and re-reading megabytes twice a second to find one new line would
-  cost more than the rest of the loop together.
+  cost more than the rest of the loop together, and what each workspace was
+  last reported and when, because the snapshot's tokens name no source and
+  carry no expiry.
 - **The code is the source of truth, then `docs/architecture`, then a comment.**
   A doc that contradicts the code is a bug in the doc, so fix it in the change
   that found it rather than leaving the next reader to rediscover the same

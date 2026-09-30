@@ -45,16 +45,13 @@ func discardLogger() *slog.Logger {
 // testResolver builds the shipped chain against a home directory of the test's
 // own, because CWD declines a pane sitting in the user's and the fixtures below
 // must not depend on whose machine they run on.
-func testResolver(t *testing.T, cfg Config) *resolver.Deterministic {
+func testResolver(t *testing.T) *resolver.Deterministic {
 	t.Helper()
 
 	return resolver.Default(resolver.Options{
 		MaxLength: resolver.DefaultMaxLength,
 		BranchMax: resolver.DefaultBranchMaxLength,
-		// A tab reads the row above it as parts only when this wrote that row,
-		// so the chain under test has to know what the configuration does.
-		NamesWorkspaces: cfg.namesWorkspaces(),
-		Home:            testHome(t),
+		Home:      testHome(t),
 	})
 }
 
@@ -84,14 +81,14 @@ func newTestApp(t *testing.T, cfg Config) *App {
 func newTestAppOn(t *testing.T, cfg Config, instance Instance) *App {
 	t.Helper()
 
-	chain := testResolver(t, cfg)
+	chain := testResolver(t)
 
 	var panes resolver.PaneResolver
 	if cfg.RenamePanes {
 		panes = chain
 	}
 
-	return New(cfg, discardLogger(), chain, panes, WorkspaceResolver(cfg), instance)
+	return New(cfg, discardLogger(), chain, panes, TopicResolver(cfg), instance)
 }
 
 // harness drives an App against a stubbed Herdr session one poll at a time, so
@@ -1612,15 +1609,15 @@ func TestAPaneHoldingSeveralRepositoriesFollowsItsAgentsWorktree(t *testing.T) {
 	}
 }
 
-// Resolvers hands the home directory to both chains it builds: without it a
-// pane sitting in the home names the tab and the workspace row after the account.
-func TestResolversKeepAPaneInTheHomeFromNamingAnything(t *testing.T) {
+// Resolvers hands the home directory to the chain it builds: without it a pane
+// sitting in the home names the tab after the account.
+func TestResolversKeepAPaneInTheHomeFromNamingATab(t *testing.T) {
 	t.Parallel()
 
-	cfg := workspaceConfig(t)
+	cfg := testConfig()
 	cfg.Home = testHome(t)
 
-	titles, _, workspaces := Resolvers(cfg)
+	titles, _, _ := Resolvers(cfg)
 
 	pane := &state.PaneState{ID: "w1:p1", Dir: cfg.Home, Focused: true}
 	tab := state.TabFrom(
@@ -1633,9 +1630,5 @@ func TestResolversKeepAPaneInTheHomeFromNamingAnything(t *testing.T) {
 
 	if got := titles.Resolve(tab).Name; got != resolver.GenericFallback {
 		t.Errorf("tab named %q, want %q", got, resolver.GenericFallback)
-	}
-
-	if got := workspaces.ResolveWorkspace(state.WorkspaceState{Context: pane}).Name; got != "" {
-		t.Errorf("workspace named %q, want the row left alone", got)
 	}
 }

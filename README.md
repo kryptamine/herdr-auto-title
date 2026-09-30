@@ -55,11 +55,19 @@ $HOME                                  →  6 · Shell
   longer lists every Claude Code pane as `claude`.
 - Rename a tab or a pane yourself and Auto Title stops touching it. Clear the
   name to hand it back.
-- With `HERDR_AUTO_TITLE_WORKSPACES=true` a workspace holding exactly one tab
-  is named after that tab, under a length of its own. Herdr labels a workspace
-  after its pane's directory until anything renames it, so the row above the
-  tabs otherwise says only which directory the shell is in. A workspace you
-  named yourself, or one holding more than one tab, is left alone.
+- The sidebar can say what each workspace is doing, under its name. Auto Title
+  reports its active tab's topic -- what the agent or program there is working
+  on, never the directory or the branch -- and leaves the workspace's name
+  alone. Add a `$topic` row to Herdr's `config.toml` to see it:
+
+  ```toml
+  [ui.sidebar.spaces]
+  rows = [["state_icon", "workspace"], ["$topic"]]
+  ```
+
+  A topic fades within a minute of Auto Title stopping or of
+  `HERDR_AUTO_TITLE_WORKSPACES=false`. A workspace name that an earlier Auto
+  Title wrote, old task and all, stays until you rename or close the workspace.
 - On Windows, Herdr reports only the shell or an agent running in a pane, so an
   editor or an ssh session does not name its tab.
 
@@ -101,8 +109,8 @@ change. It does not read the config directory that `herdr plugin list` prints.
 | `HERDR_AUTO_TITLE_PANES`        | `true`                                   | Name panes as well as tabs                                         |
 | `HERDR_AUTO_TITLE_PREFER_AGENT` | `false`                                  | Name a tab after its agent pane even while another pane is focused |
 | `HERDR_AUTO_TITLE_PANE_ID`      | `false`                                  | Put the pane's Herdr ID in front of its label, as `[w1:p2] api`    |
-| `HERDR_AUTO_TITLE_WORKSPACES`   | `false`                                  | Name a one-tab workspace's row after that tab; needs the manual file |
-| `HERDR_AUTO_TITLE_WORKSPACE_MAX_LENGTH` | `20`                             | Longest workspace label, in columns of the sidebar                 |
+| `HERDR_AUTO_TITLE_WORKSPACES`   | `true`                                   | Report what each workspace's active tab is doing as its `topic`    |
+| `HERDR_AUTO_TITLE_WORKSPACE_MAX_LENGTH` | none: Herdr fits it              | Longest topic, in columns                                          |
 | `HERDR_AUTO_TITLE_CLAUDE_DIRS`  | none                                     | Extra Claude config homes to search, `:`-separated                 |
 
 Turning `HERDR_AUTO_TITLE_TRANSCRIPT` off also drops the branch from a tab whose

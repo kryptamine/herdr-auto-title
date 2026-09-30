@@ -64,12 +64,12 @@ func ErrorCode(err error) string {
 // Method names used by Auto Title: two to read the session, three to act on
 // it, and one to tell the user how a restart went.
 const (
-	MethodSessionSnapshot  = "session.snapshot"
-	MethodPaneProcessInfo  = "pane.process_info"
-	MethodTabRename        = "tab.rename"
-	MethodPaneRename       = "pane.rename"
-	MethodWorkspaceRename  = "workspace.rename"
-	MethodNotificationShow = "notification.show"
+	MethodSessionSnapshot         = "session.snapshot"
+	MethodPaneProcessInfo         = "pane.process_info"
+	MethodTabRename               = "tab.rename"
+	MethodPaneRename              = "pane.rename"
+	MethodWorkspaceReportMetadata = "workspace.report_metadata"
+	MethodNotificationShow        = "notification.show"
 )
 
 type PaneTarget struct {
@@ -100,9 +100,18 @@ type NotificationResult struct {
 	Reason string `json:"reason"`
 }
 
-type WorkspaceRenameParams struct {
-	WorkspaceID string `json:"workspace_id"`
-	Label       string `json:"label"`
+// TopicToken is the one workspace token Auto Title reports, which a sidebar row
+// draws where the user's layout says `$topic`.
+const TopicToken = "topic"
+
+// WorkspaceMetadataParams reports display tokens on a workspace. A nil value
+// clears its token, which is why the map holds pointers: leaving a key out
+// changes nothing.
+type WorkspaceMetadataParams struct {
+	WorkspaceID string             `json:"workspace_id"`
+	Source      string             `json:"source"`
+	Tokens      map[string]*string `json:"tokens"`
+	TTLMs       int64              `json:"ttl_ms"`
 }
 
 type emptyParams struct{}

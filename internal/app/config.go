@@ -82,12 +82,12 @@ type Config struct {
 	// a script or another agent addresses that pane by. Inert without
 	// RenamePanes.
 	ShowPaneID bool
-	// RenameWorkspaces names the row above a workspace holding exactly one
-	// tab, after that tab. Herdr sets that row once, from the directory the
-	// workspace was created in, and never revisits it. Inert without ManualPath.
-	RenameWorkspaces bool
-	// WorkspaceMaxLength bounds a workspace label, in columns. It is separate
-	// from MaxLength because the workspace row is not the tab bar.
+	// ReportWorkspaces reports what each workspace's active tab is doing as its
+	// `topic` token. Herdr draws it only where the user's sidebar rows ask for
+	// `$topic`, and the label is never touched.
+	ReportWorkspaces bool
+	// WorkspaceMaxLength bounds a topic, in columns. Zero, the default, leaves
+	// the fitting to Herdr, which knows how wide the sidebar is.
 	WorkspaceMaxLength int
 	// ClaudeDirs are the configuration homes to read transcripts from, in
 	// search order: the one CLAUDE_CONFIG_DIR gives, then any EnvClaudeDirs
@@ -117,20 +117,17 @@ func LoadConfig() (Config, []string) {
 	}
 
 	cfg := Config{
-		Poll:            DefaultPoll,
-		MaxLength:       resolver.DefaultMaxLength,
-		BranchMax:       resolver.DefaultBranchMaxLength,
-		ShowPosition:    true,
-		ManualPath:      ownPath(manualFile),
-		ReadTranscripts: true,
-		ShowAgentName:   true,
-		RenamePanes:     true,
-		// RenameWorkspaces stays at its zero value: the workspace row is shared
-		// with whatever else the user reads the sidebar by, so it is asked for
-		// rather than assumed.
-		WorkspaceMaxLength: resolver.DefaultWorkspaceMaxLength,
-		ClaudeDirs:         homes,
-		Home:               userHome(),
+		Poll:             DefaultPoll,
+		MaxLength:        resolver.DefaultMaxLength,
+		BranchMax:        resolver.DefaultBranchMaxLength,
+		ShowPosition:     true,
+		ManualPath:       ownPath(manualFile),
+		ReadTranscripts:  true,
+		ShowAgentName:    true,
+		RenamePanes:      true,
+		ReportWorkspaces: true,
+		ClaudeDirs:       homes,
+		Home:             userHome(),
 	}
 
 	cfg.Debug = fromEnv(&warnings, EnvDebug, cfg.Debug, boolean)
@@ -144,7 +141,7 @@ func LoadConfig() (Config, []string) {
 	cfg.RenamePanes = fromEnv(&warnings, EnvPanes, cfg.RenamePanes, boolean)
 	cfg.PreferAgentPane = fromEnv(&warnings, EnvPreferAgent, cfg.PreferAgentPane, boolean)
 	cfg.ShowPaneID = fromEnv(&warnings, EnvPaneID, cfg.ShowPaneID, boolean)
-	cfg.RenameWorkspaces = fromEnv(&warnings, EnvWorkspaces, cfg.RenameWorkspaces, boolean)
+	cfg.ReportWorkspaces = fromEnv(&warnings, EnvWorkspaces, cfg.ReportWorkspaces, boolean)
 	cfg.WorkspaceMaxLength = fromEnv(
 		&warnings,
 		EnvWorkspaceMaxLength,
@@ -158,20 +155,7 @@ func LoadConfig() (Config, []string) {
 		cfg.ManualPath = raw
 	}
 
-	if cfg.RenameWorkspaces && !cfg.namesWorkspaces() {
-		warnings = append(warnings, EnvWorkspaces+"=true needs "+EnvManual+
-			" to name a file: without one a restart cannot tell a row this named from one you did,"+
-			" so workspaces are left alone")
-	}
-
 	return cfg, warnings
-}
-
-// namesWorkspaces says the row is named: asked for, and with a file to keep
-// the labels this wrote in, since memory alone cannot tell a row this named
-// from one the user did after a restart (manual-rename-protection.md).
-func (cfg Config) namesWorkspaces() bool {
-	return cfg.RenameWorkspaces && cfg.ManualPath != ""
 }
 
 // readConfigFile puts the file's settings into the environment, which is how a

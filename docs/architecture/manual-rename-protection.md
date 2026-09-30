@@ -27,9 +27,8 @@ set nor would have set. Three things are compared on every poll
 - **Desired** — what the resolver would name the tab right now.
 - **Seen** — the label Auto Title last observed or set for that tab.
 
-A label equal to *Desired* is never the user's on a tab or a pane: it cannot be
-told from Auto Title's own work, and it is harmless either way. (A workspace on
-the poll it is judged on is the one exception, below.) A label equal to *Seen*
+A label equal to *Desired* is never the user's: it cannot be told from Auto
+Title's own work, and it is harmless either way. A label equal to *Seen*
 has not moved, so nobody did anything. Anything else moved, and whoever moved
 it was not the plugin.
 
@@ -44,8 +43,7 @@ Both were found by running it, not by reading it.
 
 **The first poll never locks a tab or a pane.** On startup almost every tab
 carries a label that is not yet what the resolver would produce, and locking on
-that would claim the whole session at once. A workspace is the one thing it does
-claim; see [A workspace is claimed on sight](#a-workspace-is-claimed-on-sight-not-after-a-move).
+that would claim the whole session at once.
 
 Applied per *tab* rather than per *poll*, the same rule loses names. A tab
 created and named faster than the next poll is first seen already carrying the
@@ -157,11 +155,11 @@ its own is specified and not built.
 Auto Title can name panes as well as tabs
 ([configuration](./configuration.md)), and a pane it names is a pane the user
 can rename back. The rule above is the same rule: `Manual` holds one `Claims`
-per kind — `Manual.Tabs`, `Manual.Panes` and `Manual.Workspaces` — and each
-runs it over ids of its own. Locks for all three live in the same file, panes
-under `locked_panes` and workspaces under `locked_workspaces`, so a store
-written by an older version reads back unchanged. The one way the workspace
-set differs is claimed on sight, below.
+per kind — `Manual.Tabs` and `Manual.Panes` — and each runs it over ids of its
+own. Locks for both live in the same file, panes under `locked_panes`, so a
+store written by an older version reads back unchanged. A store from a version
+that named workspaces also carries `locked_workspaces` and `written_workspaces`;
+those are ignored on load and gone from the next save.
 
 Two things differ, both because Herdr labels a pane differently from a tab.
 
@@ -196,10 +194,9 @@ Title's own, moved. The labels are kept until a poll has seen every tab —
 pane, and the next one no longer knows the old id. A label the user had claimed
 is not kept, so a moved pane the user named stays theirs.
 
-This applies to panes and to nothing else. A tab and a workspace share
-`Claims`, but Herdr moves neither under a new id — `tab.move` and
-`workspace.move` only reorder — so one turning up wearing a departed label is
-judged like any other.
+This applies to panes and to nothing else. A tab shares `Claims`, but Herdr
+does not move one under a new id — `tab.move` only reorders — so one turning up
+wearing a departed label is judged like any other.
 
 ## Nothing expires
 
@@ -209,59 +206,3 @@ arrives separately from the question. A poll asks and is answered in the same
 breath: either the label is the one Auto Title set, or it is not. What survives
 of the idea is a single remembered label per tab, pruned to the live session on
 every poll rather than by a clock.
-
-## A workspace is claimed on sight, not after a move
-
-Tabs and panes are protected once a label has been seen to move: the first poll
-cannot tell the user's name from nobody's, so it claims nothing. A workspace
-can be told apart on the first poll, and is.
-
-Herdr labels a workspace nobody has renamed after its pane's directory, and
-moves that label when the pane changes directory (see the socket API note).
-`Sighting.Default` is the basename of that directory as Auto Title last read
-it, which can lag the label Herdr has already moved: a shell that changes
-directory before the row is first named then reads as the user's rename, and
-the workspace is claimed. `Claims.Observe` needs one thing tabs do not: any
-label that is not the default is claimed the first time it is seen, rather than
-waited on —
-even one the resolver would have chosen itself, which on a tab cannot be told
-from Auto Title's own work but on a workspace was simply there first.
-`Claims.judgeOnSight` is that difference, and the workspace set is the only one
-that carries it: `Observe` reads the flag once and hands the sighting to the
-rule for that kind, `claimedOnSight` or `claimedOnChange`, after the
-bookkeeping both share.
-
-The two halves each cover what the other cannot. A workspace renamed while Auto
-Title was not running is remembered by no poll, and the default test is what
-stops it being taken. A workspace renamed to something the resolver might itself
-have produced passes the default test, and the claim is what stops it.
-
-A workspace opened after the first poll still wears its directory's name, so it
-is taken like any other rather than counted as the user's.
-
-The basename is read from a pane, and a tab can exist before its pane does. A
-workspace that shows no directory on the first poll has no default to compare
-against, so that poll cannot tell its label apart; it is judged by the same
-test on the first poll that shows one, and until then is neither claimed under
-whatever it wore nor named over it — `Observe` answers `VerdictUnjudged`, the
-third verdict beside a name allowed and a label claimed — and stays unseen.
-
-A row this plugin wrote outlives it too. Herdr runs the startup hook again at
-every start and live handoff, and a restarted plugin finds that row wearing
-neither the basename nor a name it remembers — which the default test would
-read as the owner's, and lock at a label the work has moved past. So the label
-last written per workspace is kept in the same file (`written_workspaces`,
-recorded by `Claims.Applied`), and the judging poll reads its own work as its
-own: renamed on, not claimed. A watched row found wearing a label that is this
-plugin's by the tab rule -- the name wanted now, or a rename that landed after
-its call got no answer -- is recorded the same way, so the two rules agree
-across a restart. It is forgotten with the workspace. A user who renames a row
-to exactly what the plugin wants is not told apart, as a tab renamed to
-*Desired* is not; nor is a rename Herdr applies only after the restart, which
-no lock file can have seen.
-
-Without a file there is nowhere to keep that label, and the row would be named
-once and then frozen at the first restart. So the row is not named at all when
-`HERDR_AUTO_TITLE_MANUAL_FILE` names no file — asked for or not — and the
-configuration says so with a warning. For a tab the same setting only costs a
-lock its persistence; for a workspace it would cost the feature.

@@ -9,13 +9,12 @@ import (
 	"sync"
 )
 
-// Manual remembers which tabs, panes and workspaces the user renamed by hand,
-// so Auto Title stops naming them. A rename is not an event but a label that
+// Manual remembers which tabs and panes the user renamed by hand, so Auto Title
+// stops naming them. A rename is not an event but a label that
 // moved between two polls; see docs/architecture/manual-rename-protection.md.
 type Manual struct {
-	Tabs       *Claims
-	Panes      *Claims
-	Workspaces *Claims
+	Tabs  *Claims
+	Panes *Claims
 
 	mu   sync.Mutex
 	path string
@@ -28,24 +27,13 @@ type Manual struct {
 // numbers each kind apart, so each keeps claims of its own.
 type Claims struct {
 	manual *Manual
-	// judgeOnSight tells the user's label apart on the first poll rather than
-	// after a move. Only a workspace can be: Herdr labels an unnamed one after
-	// its directory, so anything else is its owner's. manual-rename-protection.md.
-	judgeOnSight bool
-	seen         map[string]labels
-	// pending holds a workspace sighted with no default yet -- no pane, so no
-	// directory to compare against. It is judged on the first poll that has one.
-	pending map[string]struct{}
-	// written is the label this last wrote, kept on disk for the kind claimed
-	// on sight: a restarted plugin finds its own work wearing neither the
-	// default nor a name it remembers, and must not claim it as the owner's.
-	written map[string]string
+	seen   map[string]labels
 	// locked is the label a thing carried when the user claimed it. The label,
 	// not the id, is what makes a reloaded lock safe: Herdr reuses ids.
 	locked map[string]string
 	// followsMoves takes a thing sighted wearing an unclaimed departed label as
 	// the same one, moved. Only a pane: Herdr moves one across workspaces under
-	// a new id, label intact, while a moved tab or workspace keeps its id.
+	// a new id, label intact, while a moved tab keeps its id.
 	followsMoves bool
 	// departed is the labels of things gone unclaimed since the last poll that
 	// saw everything; a poll cut short must not lose them.
@@ -60,14 +48,11 @@ type labels struct {
 	sent    map[string]struct{}
 }
 
-func newClaims(m *Manual, judgeOnSight, followsMoves bool) *Claims {
+func newClaims(m *Manual, followsMoves bool) *Claims {
 	return &Claims{
 		manual:       m,
-		judgeOnSight: judgeOnSight,
 		followsMoves: followsMoves,
 		seen:         make(map[string]labels),
-		pending:      make(map[string]struct{}),
-		written:      make(map[string]string),
 		locked:       make(map[string]string),
 		departed:     make(map[string]struct{}),
 	}
@@ -76,21 +61,16 @@ func newClaims(m *Manual, judgeOnSight, followsMoves bool) *Claims {
 // manualFile is the on-disk form: locks outlive the process because Herdr can
 // restart a plugin mid-session.
 type manualFile struct {
-	Locked           map[string]string `json:"locked_tabs"`
-	LockedPanes      map[string]string `json:"locked_panes"`
-	LockedWorkspaces map[string]string `json:"locked_workspaces"`
-	// WrittenWorkspaces is what this last named each workspace, which a lock
-	// cannot say: it is the label a restart must not mistake for the owner's.
-	WrittenWorkspaces map[string]string `json:"written_workspaces"`
+	Locked      map[string]string `json:"locked_tabs"`
+	LockedPanes map[string]string `json:"locked_panes"`
 }
 
 // LoadManual reads persisted locks from path. Anything unreadable yields an
 // empty set: this is a convenience, not a reason to refuse to start.
 func LoadManual(path string) *Manual {
 	m := &Manual{path: path}
-	m.Tabs = newClaims(m, false, false)
-	m.Panes = newClaims(m, false, true)
-	m.Workspaces = newClaims(m, true, false)
+	m.Tabs = newClaims(m, false)
+	m.Panes = newClaims(m, true)
 
 	raw, err := os.ReadFile(path) //nolint:gosec // the path is configured, never terminal-derived
 	if err != nil {
@@ -104,8 +84,6 @@ func LoadManual(path string) *Manual {
 
 	maps.Copy(m.Tabs.locked, stored.Locked)
 	maps.Copy(m.Panes.locked, stored.LockedPanes)
-	maps.Copy(m.Workspaces.locked, stored.LockedWorkspaces)
-	maps.Copy(m.Workspaces.written, stored.WrittenWorkspaces)
 
 	return m
 }
@@ -160,13 +138,10 @@ const (
 	VerdictName Verdict = iota
 	// VerdictClaimed says the user put the label there, and it is left alone.
 	VerdictClaimed
-	// VerdictUnjudged says the label cannot be told apart yet -- a workspace
-	// with no directory to read a default from -- and must not be written over.
-	VerdictUnjudged
 )
 
 // Observe records what a poll saw and says whether the user put that label
-// there. Each kind follows one rule: docs/architecture/manual-rename-protection.md.
+// there: docs/architecture/manual-rename-protection.md.
 func (c *Claims) Observe(s Sighting) Verdict {
 	m := c.manual
 
@@ -176,11 +151,7 @@ func (c *Claims) Observe(s Sighting) Verdict {
 	previous, known := c.seen[s.ID]
 	_, moved := c.departed[s.Current]
 	ours := c.ours(s) || (!known && moved)
-	c.record(s, previous, known, ours)
-
-	if c.judgeOnSight {
-		return c.claimedOnSight(s, previous, known, ours)
-	}
+	c.record(s, previous)
 
 	return c.claimedOnChange(s, previous, known, ours)
 }
@@ -193,7 +164,7 @@ func (m *Manual) Settled() {
 
 	m.settled = true
 
-	for _, c := range []*Claims{m.Tabs, m.Panes, m.Workspaces} {
+	for _, c := range []*Claims{m.Tabs, m.Panes} {
 		clear(c.departed)
 	}
 }
@@ -207,12 +178,6 @@ func (c *Claims) Applied(id, label string) {
 	seen := c.seen[id]
 	seen.current = label
 	c.seen[id] = seen
-
-	if c.judgeOnSight {
-		c.written[id] = label
-
-		c.manual.saveLocked()
-	}
 }
 
 // Sent records the label of a rename whose call got no answer, which Herdr
@@ -260,20 +225,6 @@ func (c *Claims) Retain(live map[string]string) {
 		}
 	}
 
-	for id := range c.pending {
-		if _, alive := live[id]; !alive {
-			delete(c.pending, id)
-		}
-	}
-
-	for id := range c.written {
-		if _, alive := live[id]; !alive {
-			delete(c.written, id)
-
-			changed = true
-		}
-	}
-
 	if changed {
 		m.saveLocked()
 	}
@@ -292,54 +243,11 @@ func (c *Claims) keepDeparted(live map[string]string) {
 	}
 }
 
-// record is the bookkeeping both rules share. A watched workspace wearing a
-// label that is this plugin's -- wanted now, or a rename that landed late --
-// has it kept on disk, so a restart does not read it as the owner's.
-func (c *Claims) record(s Sighting, previous labels, known, ours bool) {
-	if c.judgeOnSight && ours && known && s.Current != "" && c.written[s.ID] != s.Current {
-		c.written[s.ID] = s.Current
-
-		c.manual.saveLocked()
-	}
-
+// record remembers the label a poll saw. A rename that got no answer and has
+// now landed is no longer waited for.
+func (c *Claims) record(s Sighting, previous labels) {
 	delete(previous.sent, s.Current)
 	c.seen[s.ID] = labels{current: s.Current, sent: previous.sent}
-}
-
-// claimedOnSight is the workspace rule: told apart on the first poll that shows
-// a default (the basename is Herdr's, its own written label is its own, anything
-// else the owner's), judged by a move like a tab once watched, and left unseen
-// and unjudged until a default shows. Opened after the first poll: not claimed.
-func (c *Claims) claimedOnSight(s Sighting, previous labels, known, ours bool) Verdict {
-	if known {
-		return c.claimedOnChange(s, previous, known, ours)
-	}
-
-	if _, pending := c.pending[s.ID]; c.manual.settled && !pending {
-		return VerdictName
-	}
-
-	delete(c.pending, s.ID)
-
-	switch written, ok := c.written[s.ID]; {
-	case ok && written == s.Current:
-		return VerdictName
-	case s.Default == "":
-		return c.park(s)
-	case s.Current == "", s.Current == s.Default:
-		return VerdictName
-	}
-
-	return c.claim(s)
-}
-
-// park keeps a workspace out of the seen set, so the first poll that shows a
-// default still finds it new and judges it.
-func (c *Claims) park(s Sighting) Verdict {
-	c.pending[s.ID] = struct{}{}
-	delete(c.seen, s.ID)
-
-	return VerdictUnjudged
 }
 
 // claimedOnChange is the tab and pane rule: a label that moved between two
@@ -394,10 +302,8 @@ func (m *Manual) saveLocked() {
 	// encoding/json sorts map keys itself, so the file is diffable already.
 	raw, err := json.MarshalIndent(
 		manualFile{
-			Locked:            m.Tabs.locked,
-			LockedPanes:       m.Panes.locked,
-			LockedWorkspaces:  m.Workspaces.locked,
-			WrittenWorkspaces: m.Workspaces.written,
+			Locked:      m.Tabs.locked,
+			LockedPanes: m.Panes.locked,
 		},
 		"",
 		"  ",

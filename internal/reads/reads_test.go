@@ -101,8 +101,8 @@ func TestAPaneFilledTwiceInOnePollIsReadOnce(t *testing.T) {
 func TestAReadThatFailedIsMadeAgainInTheSamePoll(t *testing.T) {
 	t.Parallel()
 
-	// A workspace row is judged on sight, so a read left failed until the next
-	// poll would judge it on the snapshot's guess and could lock it for good.
+	// A workspace's topic is read after its tab, and a read left failed until
+	// the next poll would clear the topic for a poll.
 	info := herdr.PaneInfo{PaneID: "wE:p1", TabID: "wE:t1", CWD: t.TempDir()}
 	client := herdrtest.New([]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}}, []herdr.PaneInfo{info})
 

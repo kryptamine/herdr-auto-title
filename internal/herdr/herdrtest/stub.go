@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 	"sync"
@@ -38,9 +39,13 @@ type PaneRenameCall struct {
 	Label  string
 }
 
-type WorkspaceRenameCall struct {
+// WorkspaceReportCall is one workspace.report_metadata the stub received. A nil
+// token value is a clear.
+type WorkspaceReportCall struct {
 	WorkspaceID string
-	Label       string
+	Source      string
+	Tokens      map[string]*string
+	TTLMs       int64
 }
 
 // Client is an in-memory herdr.Client. Tests change the session it describes
@@ -53,8 +58,9 @@ type Client struct {
 	processes        map[string][]herdr.PaneProcessInfoProcess
 	renames          []RenameCall
 	paneRenames      []PaneRenameCall
-	workspaceRenames []WorkspaceRenameCall
+	workspaceReports []WorkspaceReportCall
 	renameErr        error
+	reportErr        error
 	processErr       error
 	processErrOnce   error
 	callErr          error
@@ -140,14 +146,23 @@ func (s *Client) ClosePane(paneID string) {
 	delete(s.panes, paneID)
 }
 
-// SetRenameError makes every subsequent tab or workspace rename fail with err.
-// One wrapping herdr.ErrUnanswered lands all the same, as a request Herdr read
-// but did not answer does. Pane renames are unaffected.
+// SetRenameError makes every subsequent tab rename fail with err. One wrapping
+// herdr.ErrUnanswered lands all the same, as a request Herdr read but did not
+// answer does. Pane renames are unaffected.
 func (s *Client) SetRenameError(err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	s.renameErr = err
+}
+
+// SetReportError makes every subsequent workspace report fail with err. One
+// wrapping herdr.ErrUnanswered lands all the same, as a rename's does.
+func (s *Client) SetReportError(err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.reportErr = err
 }
 
 func (s *Client) SetProcessError(err error) {
@@ -188,11 +203,11 @@ func (s *Client) PaneRenames() []PaneRenameCall {
 	return slices.Clone(s.paneRenames)
 }
 
-func (s *Client) WorkspaceRenames() []WorkspaceRenameCall {
+func (s *Client) WorkspaceReports() []WorkspaceReportCall {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	return slices.Clone(s.workspaceRenames)
+	return slices.Clone(s.workspaceReports)
 }
 
 // ProcessReads counts the pane.process_info calls received so far, which is how
@@ -233,8 +248,8 @@ func (s *Client) Call(ctx context.Context, method string, params any, result any
 	case herdr.MethodPaneRename:
 		return s.renamePane(params)
 
-	case herdr.MethodWorkspaceRename:
-		return s.renameWorkspace(params)
+	case herdr.MethodWorkspaceReportMetadata:
+		return s.reportMetadata(params)
 
 	default:
 		return fmt.Errorf("stub client: unsupported method %s", method)
@@ -316,12 +331,12 @@ func (s *Client) renamePane(params any) error {
 	return nil
 }
 
-func (s *Client) renameWorkspace(params any) error {
-	if s.renameErr != nil && !errors.Is(s.renameErr, herdr.ErrUnanswered) {
-		return s.renameErr
+func (s *Client) reportMetadata(params any) error {
+	if s.reportErr != nil && !errors.Is(s.reportErr, herdr.ErrUnanswered) {
+		return s.reportErr
 	}
 
-	var call herdr.WorkspaceRenameParams
+	var call herdr.WorkspaceMetadataParams
 	if err := decode(params, &call); err != nil {
 		return err
 	}
@@ -330,17 +345,38 @@ func (s *Client) renameWorkspace(params any) error {
 		if workspace.WorkspaceID != call.WorkspaceID {
 			continue
 		}
-		// Herdr's label really does change, so the next poll must agree.
-		s.workspaces[i].Label = call.Label
-		s.workspaceRenames = append(s.workspaceRenames, WorkspaceRenameCall(call))
+		// The tokens really do change, so the next snapshot must show them.
+		s.workspaces[i].Tokens = merged(workspace.Tokens, call.Tokens)
+		s.workspaceReports = append(s.workspaceReports, WorkspaceReportCall(call))
 
-		return s.renameErr
+		return s.reportErr
 	}
 
 	return &herdr.APIError{
 		Code:    herdr.CodeWorkspaceNotFound,
 		Message: "workspace " + call.WorkspaceID + " not found",
 	}
+}
+
+// merged applies reported tokens the way Herdr does: each key replaces its own
+// value, a nil value clears it, and keys not reported stay.
+func merged(current map[string]string, reported map[string]*string) map[string]string {
+	next := make(map[string]string, len(current))
+	maps.Copy(next, current)
+
+	for key, value := range reported {
+		if value == nil || *value == "" {
+			delete(next, key)
+		} else {
+			next[key] = *value
+		}
+	}
+
+	if len(next) == 0 {
+		return nil
+	}
+
+	return next
 }
 
 // answer encodes the stub's reply and decodes it into result the way the socket

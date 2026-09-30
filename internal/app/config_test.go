@@ -434,72 +434,62 @@ func TestAnUnsetManualFileKeepsTheDefault(t *testing.T) {
 	}
 }
 
-// The row is bounded apart from the tab bar, so the two limits must not be the
-// same number by accident, and the row's must be readable on its own.
-func TestTheWorkspaceRowIsBoundedApartFromTheTabBar(t *testing.T) {
+// Reporting costs nothing until the user's sidebar rows ask for a topic, so it
+// is on by default, and it no longer needs a file: nothing it writes is judged.
+func TestWorkspaceTopicsAreReportedByDefault(t *testing.T) {
 	isolate(t)
-
-	cfg, warnings := LoadConfig()
-	if len(warnings) != 0 {
-		t.Fatalf("unexpected warnings: %v", warnings)
-	}
-
-	if cfg.RenameWorkspaces {
-		t.Error("the row is named without being asked for")
-	}
-
-	if cfg.WorkspaceMaxLength != resolver.DefaultWorkspaceMaxLength {
-		t.Errorf("WorkspaceMaxLength = %d, want %d",
-			cfg.WorkspaceMaxLength, resolver.DefaultWorkspaceMaxLength)
-	}
-
-	if cfg.WorkspaceMaxLength == cfg.MaxLength {
-		t.Errorf("both bounds are %d; the sidebar is not the tab bar", cfg.MaxLength)
-	}
-
-	t.Setenv(EnvWorkspaces, "true")
-	t.Setenv(EnvWorkspaceMaxLength, "26")
-
-	cfg, warnings = LoadConfig()
-	if len(warnings) != 0 {
-		t.Fatalf("unexpected warnings: %v", warnings)
-	}
-
-	if !cfg.RenameWorkspaces || cfg.WorkspaceMaxLength != 26 {
-		t.Errorf("the environment was not read: %+v", cfg)
-	}
-
-	if cfg.MaxLength != resolver.DefaultMaxLength {
-		t.Errorf("the row's bound moved the tab bar's to %d", cfg.MaxLength)
-	}
-
-	t.Setenv(EnvWorkspaceMaxLength, "0")
-
-	cfg, warnings = LoadConfig()
-	if len(warnings) == 0 {
-		t.Error("zero was accepted as a width")
-	}
-
-	if cfg.WorkspaceMaxLength != resolver.DefaultWorkspaceMaxLength {
-		t.Errorf("a rejected value was kept: %d", cfg.WorkspaceMaxLength)
-	}
-}
-
-// The row cannot be named honestly without a file: after a restart nothing in
-// memory tells a row this named from one the user did, and the row would
-// freeze. So asking for both is answered with a warning and the row left alone.
-func TestNamingWorkspacesWithoutAManualFileIsRefusedWithAWarning(t *testing.T) {
-	isolate(t)
-	t.Setenv(EnvWorkspaces, "true")
 	t.Setenv(EnvManual, "")
 
 	cfg, warnings := LoadConfig()
-	if len(warnings) != 1 || !strings.Contains(warnings[0], "workspaces are left alone") {
-		t.Errorf("warnings = %v, want one saying workspaces are left alone", warnings)
+	if len(warnings) != 0 {
+		t.Fatalf("unexpected warnings: %v", warnings)
 	}
 
-	if WorkspaceResolver(cfg) != nil {
-		t.Error("a workspace resolver was built with nowhere to keep what it writes")
+	if !cfg.ReportWorkspaces {
+		t.Error("topics are not reported by default")
+	}
+
+	t.Setenv(EnvWorkspaces, "false")
+
+	if cfg, _ = LoadConfig(); cfg.ReportWorkspaces {
+		t.Errorf("%s=false left reporting on", EnvWorkspaces)
+	}
+
+	t.Setenv(EnvWorkspaces, "true")
+
+	if cfg, _ = LoadConfig(); !cfg.ReportWorkspaces {
+		t.Errorf("%s=true turned reporting off", EnvWorkspaces)
+	}
+}
+
+// Unset, the topic's width is Herdr's to fit, and zero is how that is spelled:
+// a user cannot set it, since zero is not a width.
+//
+//nolint:paralleltest // configuration is read from the environment
+func TestATopicIsUnboundUnlessAWidthIsSet(t *testing.T) {
+	isolate(t)
+
+	for _, test := range []struct {
+		raw      string
+		want     int
+		warnings int
+	}{
+		{raw: "", want: 0},
+		{raw: "30", want: 30},
+		{raw: "0", want: 0, warnings: 1},
+	} {
+		t.Setenv(EnvWorkspaceMaxLength, test.raw)
+
+		cfg, warnings := LoadConfig()
+		if cfg.WorkspaceMaxLength != test.want || len(warnings) != test.warnings {
+			t.Errorf("%s=%q: width %d with warnings %v, want %d with %d",
+				EnvWorkspaceMaxLength, test.raw, cfg.WorkspaceMaxLength, warnings,
+				test.want, test.warnings)
+		}
+
+		if cfg.MaxLength != resolver.DefaultMaxLength {
+			t.Errorf("the topic's bound moved the tab bar's to %d", cfg.MaxLength)
+		}
 	}
 }
 

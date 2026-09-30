@@ -87,8 +87,8 @@ func run() error {
 		log.Warn("the instance this one replaces is still running", "pid", stayed)
 	}
 
-	titles, panes, workspaces := app.Resolvers(cfg)
-	app.New(cfg, log, titles, panes, workspaces, claim).Run(ctx, client)
+	titles, panes, topics := app.Resolvers(cfg)
+	app.New(cfg, log, titles, panes, topics, claim).Run(ctx, client)
 
 	return nil
 }
