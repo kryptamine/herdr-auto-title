@@ -100,7 +100,7 @@ cannot express it:
   user has, and doing that twice a second for the life of a pane costs more than
   every other read in the loop. A failed search is therefore left alone for
   `locateRetry` (10 s).
-- **What Auto Title last named each tab** (`internal/state/manual.go`), which is
+- **What Auto Title last named each tab** (`internal/labels`), which is
   how a rename by the user is told from the plugin's own work. That is a design
   of its own: [manual rename protection](./manual-rename-protection.md).
 - **What Auto Title last reported for each workspace, and when**
@@ -121,10 +121,11 @@ changes name at most once per poll however fast its pane is churning, so
 
 1. `session.snapshot` — the whole session in one request.
 2. `Changes.Observe` — note which panes' revisions advanced, and return them.
-3. `Claims.Retain`, for tabs and panes alike — drop bookkeeping for what the
-   session no longer holds, and release a lock whose owner has moved on. This
-   runs off the snapshot's own labels, because it is what decides which tabs and
-   panes the next steps can skip.
+3. `Labels.Pass` — open the poll's pass over the labels, which for tabs and
+   panes alike drops bookkeeping for what the session no longer holds and
+   releases a lock whose owner has moved on. This runs off the snapshot's own
+   labels, because it is what decides which tabs and panes the next steps can
+   skip, and a pass cannot be asked anything before it has run.
 4. `tabsIn` — assemble tabs with their panes from the snapshot alone. Nothing
    is read here: assembly is what says which pane will be asked about.
    `Reader.Poll` opens the poll's reads, forgetting what was read of the panes
@@ -132,11 +133,12 @@ changes name at most once per poll however fast its pane is churning, so
 5. Per tab (`nameTab`): skip it if locked, otherwise read the one pane the tab
    is named from (`Poll.Fill`), resolve a title, then check whether the
    label moved under us and rename when the result differs from the label the
-   tab already carries (`apply`).
+   tab already carries (`Pass.Tab`).
 6. Per tab again (`namePanes`), and only when pane naming is on: read the tab's
    own pane even if the tab is locked, and every pane nobody has claimed; name
-   all of them at once against the tab (`ResolvePanes`); then `apply` each name
-   against the pane's own label, exactly as step 5 does for the tab.
+   all of them at once against the tab (`ResolvePanes`); then `Pass.Pane`
+   checks each name against the pane's own label, exactly as step 5 does for
+   the tab.
 7. Per workspace (`reportTopics`), unless topics are turned off: read the
    active tab's pane and report its topic when it changed or is due for a
    refresh — [the workspace topic](#the-workspace-topic).
