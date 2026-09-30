@@ -332,21 +332,48 @@ reads, so this section describes Herdr rather than those types.
   `--clear-title` undid it. Nothing installs a source for it today, which is why
   `title` is null in practice. It also carries `--display-agent`,
   `--state-label`, `--token` and a `--ttl-ms`.
+- **A workspace object carries** `workspace_id`, `number`, `label`, `focused`,
+  `pane_count`, `tab_count`, `active_tab_id` and `agent_status`, plus `tokens`
+  only while metadata is reported on it and `worktree` for a workspace in a git
+  worktree. `active_tab_id` is the tab the workspace shows: a second tab
+  created with `--no-focus` left it on the first. `TabInfo.focused` is not that
+  tab — it was false for both tabs of that workspace, since it marks only the
+  one tab a client is looking at.
+- **`workspace.report_metadata` attaches display-only tokens to a workspace and
+  never touches its label.** It takes `{workspace_id, source, tokens}` plus an
+  optional `seq` and `ttl_ms`, with `tokens` a required map from name to a
+  string or `null`: `null` clears, and there is no `clear_tokens` field — an
+  unknown field is ignored rather than refused. Probed on 0.9.1 with a
+  temporary workspace: the source `herdr.auto-title` was accepted; a second
+  token from the same source merged beside the first; `null` for a token the
+  workspace did not carry was accepted; `""` was accepted and stored nothing; a
+  600-character value was stored cut to 80. A token reported with
+  `ttl_ms: 2000` was gone three seconds later, and re-reporting the same value
+  before it expired postponed the expiry. **A token is keyed by its name
+  alone, whichever source reports it**: with `topic` set to `one` by one source,
+  a second source's `two` replaced it, that second source's `null` then left no
+  `topic` at all rather than `one`, and its `null` also cleared a `topic` only
+  the first had set. The snapshot returns that one flat map, with neither source
+  nor expiry. A closed workspace answers `workspace_not_found`, and `ttl_ms`
+  must lie in 1..86400000. A `$name` entry in `ui.sidebar.spaces.rows` draws a
+  token.
 - **`agent_status` is `idle | working | blocked | done | unknown`.** Every pane
   carries one, and a pane with no agent reports `unknown`. `TabInfo` carries one
   as well, aggregated over the tab's panes: with a single Claude Code pane
   working, its tab reported `working` while every other tab reported `unknown`.
   How it aggregates two agent panes in one tab has not been probed.
-- **A workspace nobody has renamed is labelled after its directory, not its
-  number.** Probed: `herdr workspace create --no-focus --cwd /tmp` answered
-  `label: "tmp"` with `number: 3`, while the tab created inside it answered
-  `label: "1"`. So the trap below is a tab's alone — a workspace never wears its
-  position, and its default label cannot move on its own the way a position
-  slides when a tab to its left closes. That is what `WorkspaceSightingFrom`
-  carries as its `Default`, and what the first poll tells a name its owner wrote
-  apart by. It is a basename read from the pane, not from the workspace: the
-  snapshot carries no creation directory, so a tab that has since moved out of
-  the directory its workspace was made in will report the wrong default.
+- **A workspace nobody has renamed is labelled after its pane's directory, and
+  the label follows that directory until anything renames it.** Probed:
+  `herdr workspace create --no-focus --cwd /tmp` answered `label: "tmp"` with
+  `number: 3`, while the tab created inside it answered `label: "1"`, so the
+  trap below is a tab's alone — a workspace never wears its position. On 0.9.1
+  the label then followed the shell: a workspace created in `alpha-dir` read
+  `beta-dir`, then `gamma-dir`, as its shell `cd`'d there, with nothing renaming
+  it. Any rename stops that. Renamed to `Named`, it stayed `Named` across a
+  `cd`; renamed to `""`, it read `""` and kept it — an empty rename does not
+  hand the label back. `WorkspaceSightingFrom` reads its `Default` from the
+  pane's directory as Auto Title last read it, which can lag a label Herdr has
+  already moved.
 - **`TabInfo.number` is not the label an unnamed tab carries.** `number` counts
   every tab its workspace has ever held and never repeats — a workspace holding
   six tabs was seen numbering them 2, 9, 30, 33, 35, 36. The label Herdr puts on

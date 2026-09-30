@@ -216,10 +216,14 @@ Tabs and panes are protected once a label has been seen to move: the first poll
 cannot tell the user's name from nobody's, so it claims nothing. A workspace
 can be told apart on the first poll, and is.
 
-Herdr labels a workspace nobody has renamed after the directory it holds, and
-never revisits that label (see the socket API note). So `Sighting.Default` is
-that basename, and `Claims.Observe` needs one thing tabs do not: any label that
-is not the default is claimed the first time it is seen, rather than waited on —
+Herdr labels a workspace nobody has renamed after its pane's directory, and
+moves that label when the pane changes directory (see the socket API note).
+`Sighting.Default` is the basename of that directory as Auto Title last read
+it, which can lag the label Herdr has already moved: a shell that changes
+directory before the row is first named then reads as the user's rename, and
+the workspace is claimed. `Claims.Observe` needs one thing tabs do not: any
+label that is not the default is claimed the first time it is seen, rather than
+waited on —
 even one the resolver would have chosen itself, which on a tab cannot be told
 from Auto Title's own work but on a workspace was simply there first.
 `Claims.judgeOnSight` is that difference, and the workspace set is the only one

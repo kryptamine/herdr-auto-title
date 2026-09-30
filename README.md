@@ -56,10 +56,10 @@ $HOME                                  →  6 · Shell
 - Rename a tab or a pane yourself and Auto Title stops touching it. Clear the
   name to hand it back.
 - With `HERDR_AUTO_TITLE_WORKSPACES=true` a workspace holding exactly one tab
-  is named after that tab, under a length of its own. Herdr names a workspace
-  after the directory it was created in and never revisits it, so the row above
-  the tabs is otherwise the one thing that stays where the work started. A
-  workspace you named yourself, or one holding more than one tab, is left alone.
+  is named after that tab, under a length of its own. Herdr labels a workspace
+  after its pane's directory until anything renames it, so the row above the
+  tabs otherwise says only which directory the shell is in. A workspace you
+  named yourself, or one holding more than one tab, is left alone.
 - On Windows, Herdr reports only the shell or an agent running in a pane, so an
   editor or an ssh session does not name its tab.
 

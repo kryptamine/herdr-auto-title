@@ -111,6 +111,7 @@ make stop       # stop them
 make tabs       # current tab names
 make watch-tabs # ...refreshed every second
 make probe-snapshot # the session snapshot the plugin polls
+make probe-workspaces # each workspace's active tab and reported tokens
 ```
 
 `go test -race` is the gate, not `go test`: the state a poll carries between
@@ -192,6 +193,16 @@ are only the facts that would otherwise mislead the code in silence.
 - **A pane moved to another workspace takes a new id and keeps its label.** A
   pane first seen already named is not necessarily one the user named; see
   [docs/architecture/manual-rename-protection.md](docs/architecture/manual-rename-protection.md).
+- **An unnamed workspace's label follows its pane's directory, and any rename
+  freezes it.** Herdr relabels a workspace nobody renamed as its shell changes
+  directory, so that label moves on its own; a rename, even to `""`, stops that
+  for good, and no call hands the label back to Herdr.
+- **A workspace's active tab is `active_tab_id`, not `TabInfo.focused`.**
+  `focused` marks only the one tab a client is looking at, so every other
+  workspace's tabs all read `false`.
+- **`workspace.report_metadata` clears a token with `null`.** `tokens` is a
+  required map of string or `null`; a string-only map cannot clear, and
+  leaving the key out changes nothing.
 - **A tab label is one line.** `tab.rename` takes a newline and stores it
   verbatim, but the tab bar renders one row and Herdr exposes no height setting.
 - **`PaneInfo.title` is the agent's own title, and is null in practice.** Claude
