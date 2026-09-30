@@ -317,31 +317,49 @@ func (a *App) reportTopics(
 func (a *App) report(ctx context.Context, client herdr.Client, id, topic string) {
 	err := herdr.ReportWorkspaceTopic(ctx, client, id, topicSource, topic, topicTTL)
 
-	message := "workspace topic report failed"
-
 	switch {
 	case err == nil:
 		a.reported.sent(id, topic)
 		a.log.Debug("workspace topic reported", "workspace_id", id, "topic", topic)
-
-		return
 	case herdr.ErrorCode(err) == herdr.CodeWorkspaceNotFound:
 		a.reported.forget(id)
 		a.log.Debug("workspace closed before its topic could be reported", "workspace_id", id)
-
-		return
 	case errors.Is(err, herdr.ErrUnanswered):
 		// Herdr may still apply it, and the next refresh repairs one that lands
 		// after a newer topic: docs/architecture/poll-loop.md.
 		a.reported.sent(id, topic)
+		a.log.Warn(
+			"workspace topic report failed",
+			"workspace_id",
+			id,
+			"topic",
+			topic,
+			"error",
+			err,
+		)
 	case herdr.ErrorCode(err) != "":
 		// Herdr refuses the same value the same way every time.
 		a.reported.rejected(id, topic)
-
-		message = "herdr refused a workspace topic"
+		a.log.Warn(
+			"herdr refused a workspace topic",
+			"workspace_id",
+			id,
+			"topic",
+			topic,
+			"error",
+			err,
+		)
+	default:
+		a.log.Warn(
+			"workspace topic report failed",
+			"workspace_id",
+			id,
+			"topic",
+			topic,
+			"error",
+			err,
+		)
 	}
-
-	a.log.Warn(message, "workspace_id", id, "topic", topic, "error", err)
 }
 
 // firstTabs names the first tab of each workspace, in snapshot order.
