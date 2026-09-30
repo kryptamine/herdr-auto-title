@@ -9,8 +9,8 @@ import (
 	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
 
-func places() *Deterministic {
-	return Places(Options{BranchMax: DefaultBranchMaxLength})
+func topics() *Topics {
+	return NewTopics(Options{BranchMax: DefaultBranchMaxLength}, 0)
 }
 
 // The agent's name follows the setting the tab bar obeys, so a user who hid it
@@ -20,12 +20,12 @@ func TestTheTopicIsWhatTheAgentIsDoing(t *testing.T) {
 
 	pane := &state.PaneState{Dir: api, Agent: "claude", AgentTitle: "Fix login"}
 
-	if got, want := places().Topic(pane, 0).Name, "claude › Fix login"; got != want {
+	if got, want := topics().Topic(pane), "claude › Fix login"; got != want {
 		t.Errorf("topic = %q, want %q", got, want)
 	}
 
-	hidden := Places(Options{BranchMax: DefaultBranchMaxLength, HideAgentName: true})
-	if got, want := hidden.Topic(pane, 0).Name, "Fix login"; got != want {
+	hidden := NewTopics(Options{BranchMax: DefaultBranchMaxLength, HideAgentName: true}, 0)
+	if got, want := hidden.Topic(pane), "Fix login"; got != want {
 		t.Errorf("with the name hidden: topic = %q, want %q", got, want)
 	}
 }
@@ -50,8 +50,8 @@ func TestATopicSaysNothingRatherThanShell(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			if got := places().Topic(test.pane, 0); got.Name != "" {
-				t.Errorf("topic = %q, want empty", got.Name)
+			if got := topics().Topic(test.pane); got != "" {
+				t.Errorf("topic = %q, want empty", got)
 			}
 		})
 	}
@@ -68,7 +68,7 @@ func TestATopicCarriesNeitherTheDirectoryNorTheBranch(t *testing.T) {
 		TerminalTitle: "Tests",
 	}
 
-	if got, want := places().Topic(pane, 0).Name, "Tests"; got != want {
+	if got, want := topics().Topic(pane), "Tests"; got != want {
 		t.Errorf("topic = %q, want %q", got, want)
 	}
 }
@@ -76,9 +76,9 @@ func TestATopicCarriesNeitherTheDirectoryNorTheBranch(t *testing.T) {
 func TestAnSSHSessionsHostLeadsTheTopic(t *testing.T) {
 	t.Parallel()
 
-	got := places().Topic(sshPane("ssh", "root@prod-01"), 0)
-	if want := "ssh › prod-01"; got.Name != want {
-		t.Errorf("topic = %q, want %q", got.Name, want)
+	got := topics().Topic(sshPane("ssh", "root@prod-01"))
+	if want := "ssh › prod-01"; got != want {
+		t.Errorf("topic = %q, want %q", got, want)
 	}
 }
 
@@ -98,16 +98,17 @@ func TestATopicIsBoundOnlyWhenABoundIsSet(t *testing.T) {
 		{maxLen: 20, want: "claude › Reconcile t"},
 		{maxLen: 8, want: "claude"},
 	} {
-		if got := places().Topic(pane, test.maxLen).Name; got != test.want {
+		bounded := NewTopics(Options{BranchMax: DefaultBranchMaxLength}, test.maxLen)
+		if got := bounded.Topic(pane); got != test.want {
 			t.Errorf("bound %d: topic = %q, want %q", test.maxLen, got, test.want)
 		}
 	}
 }
 
-// Places is the shipped chain minus one source. Each of the rest is checked by
+// A topic's chain is the shipped one minus one source. Each of the rest is checked by
 // giving a pane only what that source reads, and the process is checked by
 // giving it one and finding it unused.
-func TestPlacesKeepsEverySourceButTheProcess(t *testing.T) {
+func TestTheTopicChainKeepsEverySourceButTheProcess(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -157,7 +158,9 @@ func TestPlacesKeepsEverySourceButTheProcess(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := places().Resolve(tabWithPane(test.pane))
+			got := topicChain(
+				Options{BranchMax: DefaultBranchMaxLength},
+			).Resolve(tabWithPane(test.pane))
 			if got.Reason != test.want {
 				t.Errorf("Reason = %q, want %q (name %q)", got.Reason, test.want, got.Name)
 			}
@@ -189,9 +192,8 @@ func TestPlacesKeepsEverySourceButTheProcess(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := places().Topic(test.pane, 0)
-			if got.Reason == "process" || strings.Contains(got.Name, "npm") {
-				t.Errorf("the topic took the foreground process: %+v", got)
+			if got := topics().Topic(test.pane); strings.Contains(got, "npm") {
+				t.Errorf("the topic took the foreground process: %q", got)
 			}
 		})
 	}
@@ -209,15 +211,15 @@ func TestTheTopicDoesNotCarryTheForegroundProcessThroughTheTerminalTitle(t *test
 		Processes:     []state.Process{{Name: "nvim", Args: []string{"nvim", "auth.ts"}}},
 	}
 
-	first := places().Topic(pane, 0)
-	if first.Name != "auth.ts" {
-		t.Errorf("topic = %q, want auth.ts", first.Name)
+	first := topics().Topic(pane)
+	if first != "auth.ts" {
+		t.Errorf("topic = %q, want auth.ts", first)
 	}
 
 	pane.Processes = []state.Process{{Name: "less", Args: []string{"less", "auth.ts"}}}
 
-	if second := places().Topic(pane, 0); first.Name != second.Name {
-		t.Errorf("the topic followed the process: %q then %q", first.Name, second.Name)
+	if second := topics().Topic(pane); first != second {
+		t.Errorf("the topic followed the process: %q then %q", first, second)
 	}
 }
 

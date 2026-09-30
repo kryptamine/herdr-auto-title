@@ -16,7 +16,7 @@ var _ Source = TerminalTitle{}
 func NewTerminalTitle() TerminalTitle { return TerminalTitle{} }
 
 // NewUnboundTerminalTitle reads the title as it is, `auth.ts` rather than
-// `nvim › auth.ts`. Places builds on it, for the reason given there.
+// `nvim › auth.ts`. topicChain builds on it, for the reason given there.
 func NewUnboundTerminalTitle() TerminalTitle { return TerminalTitle{unbound: true} }
 
 func (TerminalTitle) Name() string    { return "terminal_title" }

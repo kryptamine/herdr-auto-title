@@ -88,7 +88,7 @@ func newTestAppOn(t *testing.T, cfg Config, instance Instance) *App {
 		panes = chain
 	}
 
-	return New(cfg, discardLogger(), chain, panes, TopicResolver(cfg), instance)
+	return New(cfg, discardLogger(), chain, panes, topicsFor(cfg), instance)
 }
 
 // harness drives an App against a stubbed Herdr session one poll at a time, so

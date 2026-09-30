@@ -181,7 +181,7 @@ that is not bound here — only stripped — because it is a field of its own, w
 the user can switch off.
 
 A workspace's topic (`HERDR_AUTO_TITLE_WORKSPACES`) is read by a chain without
-this source (`Places`), which reads the terminal title without binding a kind
+this source (`topicChain`), which reads the terminal title without binding a kind
 either, so a topic says `auth.ts` where the tab says `nvim › auth.ts`. A
 workspace outlives every command typed in it, and a topic that followed the
 process would rewrite itself at every prompt — which is what the tab under it is
@@ -460,7 +460,7 @@ keeps both, because nothing here can tell a near-miss from two real facts.
 
 The sidebar row under a workspace's name shows its `topic` token, which is what
 the workspace's active tab is doing: its agent's name and activity from the
-chain without the foreground process, formatted as one string (`Topic`). The
+chain without the foreground process, formatted as one string (`Topics`). The
 directory and the branch are left out, because the label above names the
 project and Herdr draws the branch beside it on its own. An ssh session is the
 exception: its host is the task rather than the project, so `ssh › prod-01`

@@ -45,8 +45,7 @@ type App struct {
 	preferAgent bool
 	// topics says what each workspace's active tab is doing, and is nil when the
 	// user turned that off.
-	topics   resolver.TopicResolver
-	topicMax int
+	topics   *resolver.Topics
 	reported *topicReports
 	changes  *state.Changes
 	manual   *state.Manual
@@ -69,7 +68,7 @@ func New(
 	log *slog.Logger,
 	titles resolver.TitleResolver,
 	panes resolver.PaneResolver,
-	topics resolver.TopicResolver,
+	topics *resolver.Topics,
 	instance Instance,
 ) *App {
 	return &App{
@@ -78,7 +77,6 @@ func New(
 		titles:      titles,
 		panes:       panes,
 		topics:      topics,
-		topicMax:    cfg.WorkspaceMaxLength,
 		reported:    newTopicReports(),
 		preferAgent: cfg.PreferAgentPane,
 		changes:     state.NewChanges(),
@@ -98,7 +96,7 @@ func New(
 // is turned off.
 func Resolvers(
 	cfg Config,
-) (resolver.TitleResolver, resolver.PaneResolver, resolver.TopicResolver) {
+) (resolver.TitleResolver, resolver.PaneResolver, *resolver.Topics) {
 	chain := resolver.Default(resolver.Options{
 		MaxLength:     cfg.MaxLength,
 		BranchMax:     cfg.BranchMax,
@@ -111,7 +109,7 @@ func Resolvers(
 		titles = resolver.NewNumbered(chain, cfg.MaxLength)
 	}
 
-	topics := TopicResolver(cfg)
+	topics := topicsFor(cfg)
 
 	if !cfg.RenamePanes {
 		return titles, nil, topics
@@ -125,19 +123,19 @@ func Resolvers(
 	return titles, panes, topics
 }
 
-// TopicResolver is the chain a workspace's topic is read by, or nil when the
-// user turned topics off. Not the tabs' chain: a topic that followed the
-// foreground process would change at every prompt.
-func TopicResolver(cfg Config) resolver.TopicResolver {
+// topicsFor is what a workspace's topic is read by, or nil when the user turned
+// topics off. Not the tabs' chain: a topic that followed the foreground process
+// would change at every prompt.
+func topicsFor(cfg Config) *resolver.Topics {
 	if !cfg.ReportWorkspaces {
 		return nil
 	}
 
-	return resolver.Places(resolver.Options{
+	return resolver.NewTopics(resolver.Options{
 		BranchMax:     cfg.BranchMax,
 		HideAgentName: !cfg.ShowAgentName,
 		Home:          cfg.Home,
-	})
+	}, cfg.WorkspaceMaxLength)
 }
 
 // Run polls the session until the context is cancelled. Herdr's event stream is
@@ -308,7 +306,7 @@ func (a *App) reportTopics(
 		pane := contexts[active]
 		poll.Fill(ctx, pane)
 
-		topic := a.topics.Topic(pane, a.topicMax).Name
+		topic := a.topics.Topic(pane)
 		if a.reported.due(workspace, topic) {
 			a.report(ctx, client, workspace.WorkspaceID, topic)
 		}
