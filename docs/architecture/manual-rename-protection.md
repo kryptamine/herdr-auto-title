@@ -193,10 +193,12 @@ the pane no longer has, so the stale id would stay for good.
 
 `claims.retain` therefore keeps the labels of panes that vanished without being
 claimed, and a pane sighted for the first time wearing one of them is Auto
-Title's own, moved. The labels are kept until a poll has seen every tab —
-`settle` clears them — because a poll cut short may never reach the moved
-pane, and the next one no longer knows the old id. A label the user had claimed
-is not kept, so a moved pane the user named stays theirs.
+Title's own, moved. The labels are kept until a poll has seen every tab and
+every pane — `settle` clears them — because a poll cut short may never reach
+the moved pane, and the next one no longer knows the old id. A poll whose
+deadline lands among the last tab's panes is cut short too, and does not
+settle. A label the user had claimed is not kept, so a moved pane the user
+named stays theirs.
 
 This applies to panes and to nothing else. A tab shares `claims`, but Herdr
 does not move one under a new id — `tab.move` only reorders — so one turning up
