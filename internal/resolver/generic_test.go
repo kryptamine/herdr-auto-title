@@ -48,6 +48,55 @@ func TestMeaningful(t *testing.T) {
 		{"windows home path", `~\work\dashboard`, "", false},
 		{"unc path", `\\build-01\share\dashboard`, "", false},
 		{"drive letter alone is not a path", "C:", "C:", true},
+		// Split on whitespace, a path with spaces would leave its tail behind
+		// as if it named an activity.
+		{"windows path with spaces", `C:\Program Files\PowerShell\7\pwsh.exe`, "", false},
+		{"work after a windows path", `C:\work - Fix login`, "Fix login", true},
+		{
+			"work after a windows path with spaces",
+			`C:\WINDOWS\system32\cmd.exe - python scripts/probe.py`,
+			"python scripts/probe.py", true,
+		},
+		{"work after a home path", "~/work/app git status", "git status", true},
+		{
+			"editor title carrying a windows path with spaces",
+			`auth.ts (C:\Program Files\app) - Nvim`,
+			"auth.ts - Nvim", true,
+		},
+		{"a windows path ending in a spaced name", `C:\Users\Jane Doe`, "", false},
+		{
+			"work after a windows path ending in a spaced name",
+			`C:\Users\Jane Doe - Fix login`,
+			"Fix login", true,
+		},
+		{
+			"arguments after the shell's path",
+			`C:\Program Files\PowerShell\7\pwsh.exe -NoLogo`,
+			"", false,
+		},
+		// A title that opens with a Windows path is only that path up to a
+		// separator, so a command written straight after it goes with it.
+		{"a title opening with a windows path", `C:\work\app git status`, "", false},
+		{
+			"work after a windows path inside a sentence",
+			`editing C:\notes\todo.txt now`,
+			"editing now", true,
+		},
+		{
+			"editor title carrying a bracketed path ending in a spaced name",
+			`auth.ts (C:\Users\Jane Doe) - Nvim`,
+			"auth.ts - Nvim", true,
+		},
+		{
+			"editor title carrying a bracketed home path with spaces",
+			"auth.ts (~/My Projects/app) - Nvim",
+			"auth.ts - Nvim", true,
+		},
+		{
+			"a quoted program path in a command",
+			`C:\WINDOWS\system32\cmd.exe - "C:\Program Files\nodejs\node.exe" server.js`,
+			"server.js", true,
+		},
 
 		// Herdr's own title for a Windows pane whose program has set none. It
 		// names the shell and the directory, and neither is what the user is
@@ -55,6 +104,10 @@ func TestMeaningful(t *testing.T) {
 		{"herdr's title for an idle windows pane", "pwsh in dashboard", "", false},
 		{"the same under cmd", "cmd in herdr-auto-title", "", false},
 		{"the same in the home directory", "pwsh in ~", "", false},
+		{"the windows shell by its executable", "pwsh.exe", "", false},
+		{"the oldest windows shell by its executable", "cmd.exe", "", false},
+		{"the older windows shell by its executable", "powershell.exe", "", false},
+		{"herdr's title naming the executable", "pwsh.exe in dashboard", "", false},
 		{
 			"work that happens to be in something",
 			"Fix login in dashboard",

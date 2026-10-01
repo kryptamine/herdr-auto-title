@@ -23,13 +23,16 @@ var genericValues = map[string]struct{}{
 }
 
 // isGeneric reports whether a lower-cased value names something rather than
-// says what is being done with it.
+// says what is being done with it. A Windows title names a program with its
+// `.exe`, which the lists leave out.
 func isGeneric(lowered string) bool {
-	if _, generic := genericValues[lowered]; generic {
+	name := strings.TrimSuffix(lowered, ".exe")
+
+	if _, generic := genericValues[name]; generic {
 		return true
 	}
 
-	_, shell := shellNames[lowered]
+	_, shell := shellNames[name]
 
 	return shell
 }
@@ -83,15 +86,60 @@ func stripLocations(value string) string {
 	words := strings.Fields(value)
 
 	kept := make([]string, 0, len(words))
-	for _, word := range words {
-		if isLocation(strings.Trim(word, punctuation)) {
+	for i := 0; i < len(words); i++ {
+		if !isLocation(strings.Trim(words[i], punctuation)) {
+			kept = append(kept, words[i])
 			continue
 		}
 
-		kept = append(kept, word)
+		i += pathTail(words[i], words[i+1:], i == 0)
 	}
 
 	return tidy(kept)
+}
+
+// pathClosers pairs what can open a path inside a title with what closes it.
+var pathClosers = map[byte]string{
+	'(': ")", '[': "]", '{': "}", '<': ">", '"': `"`, '\'': "'",
+}
+
+// pathTail counts the words after a location that still belong to it, which a
+// path with spaces leaves behind: `C:\Program Files\PowerShell`. The rules and
+// what each costs are in docs/architecture/sanitization.md.
+func pathTail(location string, rest []string, leading bool) int {
+	if closer, open := unclosed(location); open {
+		for i, word := range rest {
+			if strings.Contains(word, closer) {
+				return i + 1
+			}
+		}
+	}
+
+	whole := leading && strings.Contains(location, `\`)
+	tail := 0
+
+	for i, word := range rest {
+		if isPunctuationOnly(word) {
+			break
+		}
+
+		if whole || strings.Contains(word, `\`) {
+			tail = i + 1
+		}
+	}
+
+	return tail
+}
+
+// unclosed reports the closer a location word opened and did not close, as
+// `(C:\Users\Jane` does in `auth.ts (C:\Users\Jane Doe) - Nvim`.
+func unclosed(word string) (string, bool) {
+	closer, opens := pathClosers[word[0]]
+	if !opens || strings.Contains(word[1:], closer) {
+		return "", false
+	}
+
+	return closer, true
 }
 
 // isFallbackTitle reports a title that only says which shell sits where. The
