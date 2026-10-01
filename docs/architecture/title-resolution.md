@@ -94,10 +94,10 @@ In practice most agent context arrives one rung lower. `PaneInfo.title` was null
 for every Claude Code pane observed; that agent reports its topic through the
 terminal title instead. An agent that echoes its own name (`Claude Code`) is
 rejected as an activity — it is compared against the agent Herdr recognized in
-the pane rather than against a list — and reappears as a *kind*, so a tab reads
-`dashboard › claude` until there is something to report and
-`dashboard › claude › Implement OAuth scopes` after. That name can be [turned
-off](#the-agents-name-is-optional).
+the pane rather than against a list — and reappears as a *kind*, so with the
+name [turned on](#the-agents-name-is-optional) a tab reads `dashboard › claude`
+until there is something to report and
+`dashboard › claude › Implement OAuth scopes` after.
 
 ### Terminal title
 

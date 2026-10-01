@@ -14,8 +14,8 @@ import (
 	"github.com/kryptamine/herdr-auto-title/internal/reads/readstest"
 )
 
-// topicConfig is testConfig with topics reported and the agent's name shown,
-// as both ship.
+// topicConfig is testConfig with topics reported, as they ship, and the agent's
+// name shown so a topic's agent half can be asserted.
 func topicConfig() Config {
 	cfg := testConfig()
 	cfg.ReportWorkspaces = true
