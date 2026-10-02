@@ -24,7 +24,7 @@ func topicChain(opts Options) *Deterministic {
 		NewAgent(),
 		NewUnboundTerminalTitle(),
 		NewTranscript(),
-		NewSSH(),
+		NewRemote(),
 		NewGit(opts.BranchMax),
 		NewCWD(opts.Home),
 	)
@@ -32,7 +32,7 @@ func topicChain(opts Options) *Deterministic {
 
 // Topic is the agent and activity of a pane, or "" when there is nothing to say.
 // The label names the project and Herdr draws the branch, so neither is repeated;
-// an ssh session's host is the task rather than the project, so it leads.
+// a remote session's host is the task rather than the project, so it leads.
 func (t *Topics) Topic(pane *state.PaneState) string {
 	if pane == nil {
 		return ""
@@ -46,7 +46,7 @@ func (t *Topics) Topic(pane *state.PaneState) string {
 		topic.Agent = ""
 	}
 
-	if _, remote := sshArgs(pane); remote {
+	if _, _, remote := remoteOf(pane); remote {
 		topic.Context = parts.Context
 	}
 

@@ -145,12 +145,12 @@ func TestTheTopicChainKeepsEverySourceButTheProcess(t *testing.T) {
 			want: "agent",
 		},
 		{
-			name: "ssh",
+			name: "remote",
 			pane: &state.PaneState{
 				Dir:       api,
 				Processes: []state.Process{{Name: "ssh", Args: []string{"ssh", "prod-01"}}},
 			},
-			want: "ssh",
+			want: "remote",
 		},
 	}
 

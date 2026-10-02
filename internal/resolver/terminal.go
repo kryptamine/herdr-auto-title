@@ -31,9 +31,12 @@ func (s TerminalTitle) Resolve(pane *state.PaneState) (Parts, bool) {
 	}
 
 	// A shell titles its window with the command it runs, so until the remote
-	// shell sets a title this one only repeats the ssh the context already names.
-	if echoesSSHCommand(pane, title) {
-		return Parts{}, false
+	// shell sets a title this one only repeats the session the context names.
+	if session, _, remote := remoteOf(pane); remote {
+		title = session.withoutPrefix(title)
+		if session.echoesCommand(title) {
+			return Parts{}, false
+		}
 	}
 
 	// An agent is a field of its own rather than a bound kind, so it stays.

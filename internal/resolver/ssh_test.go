@@ -66,12 +66,12 @@ func TestTheTabIsNamedAfterTheMarkedHost(t *testing.T) {
 		t.Errorf("name = %q, want %q", got.Name, want)
 	}
 
-	if got.Reason != "ssh" {
-		t.Errorf("reason = %q, want ssh", got.Reason)
+	if got.Reason != "remote" {
+		t.Errorf("reason = %q, want remote", got.Reason)
 	}
 
-	if got.Confidence != ConfidenceSSH {
-		t.Errorf("confidence = %d, want %d", got.Confidence, ConfidenceSSH)
+	if got.Confidence != ConfidenceRemote {
+		t.Errorf("confidence = %d, want %d", got.Confidence, ConfidenceRemote)
 	}
 }
 

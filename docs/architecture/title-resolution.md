@@ -65,7 +65,7 @@ rather than by the order the sources happen to be listed in
 | 80 | Terminal title | `terminal.go` | Activity |
 | 75 | Session transcript | `transcript.go` | Activity |
 | 70 | Foreground process | `process.go` | Activity |
-| 60 | SSH session | `ssh.go` | Context |
+| 60 | Remote session | `remote.go` | Context |
 | 40 | Git branch | `git.go` | Branch |
 | 30 | Working directory | `cwd.go` | Context |
 | 10 | Generic fallback | `resolver.go` | the whole name (`Shell`) |
@@ -199,12 +199,21 @@ never reaches either source, and its tab is named from the terminal title and
 the directory alone. Process names arrive there with an `.exe` the state package
 strips, so `pwsh.exe` is read as the shell it is.
 
-### SSH
+### Remote sessions
 
 A pane running `ssh` is named after the machine it reached, not the directory it
 was launched from: `ssh › prod-01`, and
 `ssh › prod-01 › Restart the queue workers` once the remote shell has something
 to report.
+
+Which panes are remote sessions is answered in one place, the `remotes` table
+in `remote.go`. A row names the process that runs the session, the mark it puts
+in a title, how its arguments yield the host, which runs open no remote shell,
+and the prefix the program puts before the remote title, if any. The source,
+the terminal title, the foreground process, the git branch and the workspace
+topic each ask that table rather than naming a transport, so another transport
+is one more row. ssh is the first; its host parsing lives in `ssh.go`. The
+source reports itself as `remote` in the debug log, whatever the transport.
 
 **The mark goes on the host rather than into the activity slot**, because the
 activity is contested — a remote shell sets a terminal title, that title

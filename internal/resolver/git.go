@@ -46,9 +46,9 @@ func (g Git) Resolve(pane *state.PaneState) (Parts, bool) {
 		return Parts{}, false
 	}
 
-	// The branch is read from the directory ssh was launched in, which says
-	// nothing about the machine the tab is showing.
-	if _, remote := sshArgs(pane); remote {
+	// The branch is read from the directory a remote session was launched in,
+	// which says nothing about the machine the tab is showing.
+	if _, _, remote := remoteOf(pane); remote {
 		return Parts{}, false
 	}
 

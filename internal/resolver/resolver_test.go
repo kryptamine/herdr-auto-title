@@ -179,7 +179,7 @@ func TestHigherPrioritySourceOverridesContext(t *testing.T) {
 	r := New(
 		Options{MaxLength: DefaultMaxLength},
 		higherSource{
-			confidence: ConfidenceSSH,
+			confidence: ConfidenceRemote,
 			parts:      Parts{Context: "prod-01", Activity: "SSH"},
 			ok:         true,
 		},

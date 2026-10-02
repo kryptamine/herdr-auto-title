@@ -45,10 +45,11 @@ func paneKind(pane *state.PaneState) string {
 		kind = name
 	}
 
-	switch strings.ToLower(kind) {
-	case "":
+	if kind == "" {
 		return ""
-	case "ssh":
+	}
+
+	if runsRemote(kind) {
 		// A remote session is marked on the host, where the mark cannot be
 		// outranked. Saying it again here would only repeat it.
 		return ""

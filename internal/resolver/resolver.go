@@ -24,7 +24,7 @@ const (
 	ConfidenceFallback      = 10
 	ConfidenceCWD           = 30
 	ConfidenceGit           = 40
-	ConfidenceSSH           = 60
+	ConfidenceRemote        = 60
 	ConfidenceProcess       = 70
 	ConfidenceTranscript    = 75
 	ConfidenceTerminalTitle = 80
@@ -170,7 +170,7 @@ func Default(opts Options) *Deterministic {
 		NewTerminalTitle(),
 		NewTranscript(),
 		NewProcess(),
-		NewSSH(),
+		NewRemote(),
 		NewGit(opts.BranchMax),
 		NewCWD(opts.Home),
 	)

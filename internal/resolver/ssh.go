@@ -1,14 +1,10 @@
 package resolver
 
-import (
-	"strings"
-
-	"github.com/kryptamine/herdr-auto-title/internal/state"
-)
+import "strings"
 
 const (
-	// sshKind marks a session as remote: `ssh › prod-01`, or `ssh` alone when
-	// the host cannot be read. It goes in the context, never the activity the
+	// sshKind marks an ssh session: `ssh › prod-01`, or `ssh` alone when the
+	// host cannot be read. It goes in the context, never the activity the
 	// terminal title outranks — see docs/architecture/title-resolution.md.
 	sshKind = "ssh"
 )
@@ -20,60 +16,6 @@ var sshFlagsWithValue = map[byte]struct{}{
 	'B': {}, 'b': {}, 'c': {}, 'D': {}, 'E': {}, 'e': {}, 'F': {}, 'I': {},
 	'i': {}, 'J': {}, 'L': {}, 'l': {}, 'm': {}, 'O': {}, 'o': {}, 'P': {},
 	'p': {}, 'Q': {}, 'R': {}, 'S': {}, 'W': {}, 'w': {},
-}
-
-// SSH makes the host the tab's context: `ssh › prod-01`. A remote shell's
-// directory and title describe the remote but never say which machine, which is
-// what a row of identical shells needs. The user is dropped.
-type SSH struct{}
-
-var _ Source = SSH{}
-
-func NewSSH() SSH { return SSH{} }
-
-func (SSH) Name() string    { return "ssh" }
-func (SSH) Confidence() int { return ConfidenceSSH }
-
-func (SSH) Resolve(pane *state.PaneState) (Parts, bool) {
-	args, running := sshArgs(pane)
-	if !running {
-		return Parts{}, false
-	}
-
-	// With no host to bind it to the mark stands alone, but it still goes in
-	// the context slot: an activity would be outranked by the remote shell's
-	// own title, exactly when the tab most needs to say it is remote.
-	host := Sanitize(sshHost(args), 0)
-	if host == "" {
-		return Parts{Context: sshKind}, true
-	}
-
-	return Parts{Context: qualify(host, sshKind)}, true
-}
-
-// sshArgs returns the arguments of the ssh the pane is running. Only the
-// foreground process counts: git and agents start ssh of their own, and so does
-// ssh for a jump host. A tunnel (`ssh -N`) runs no remote shell and is skipped.
-func sshArgs(pane *state.PaneState) ([]string, bool) {
-	process, ok := pane.Foreground()
-	if !ok || !strings.EqualFold(process.Name, "ssh") || sshIsTunnel(process.Args) {
-		return nil, false
-	}
-
-	return process.Args, true
-}
-
-// echoesSSHCommand reports a title that is the command line of the ssh the pane
-// runs. It is matched by its first word, not the host: fish trims the command to
-// twenty columns, `ssh deploy@productio`.
-func echoesSSHCommand(pane *state.PaneState, title string) bool {
-	if _, running := sshArgs(pane); !running {
-		return false
-	}
-
-	command, _, _ := strings.Cut(strings.TrimSpace(title), " ")
-
-	return strings.EqualFold(command, sshKind)
 }
 
 // sshIsTunnel reports whether -N appears before the destination; -pN is a port.
@@ -125,31 +67,19 @@ func sshHost(args []string) string {
 		return ""
 	}
 
-	for i := 1; i < len(args); i++ {
-		arg := args[i]
-		switch {
-		case arg == "--":
-			// Everything after this is positional.
-			if i+1 < len(args) {
-				return hostOf(args[i+1])
-			}
+	return hostOf(firstPositional(args[1:], sshTakesNext))
+}
 
-			return ""
-		case len(arg) > 1 && arg[0] == '-':
-			// A flag whose value is a separate argument consumes the next one,
-			// unless the value is attached: -p2222 carries its own.
-			last := arg[len(arg)-1]
-			if _, takesValue := sshFlagsWithValue[last]; takesValue {
-				i++
-			}
-		case arg == "-":
-			// Not a destination and not a flag; ignore it.
-		default:
-			return hostOf(arg)
-		}
+// sshTakesNext reports an option whose value is the next argument: the last
+// flag of a cluster takes one, unless the value is attached, as in -p2222.
+func sshTakesNext(option string) bool {
+	if option == "" {
+		return false
 	}
 
-	return ""
+	_, takesValue := sshFlagsWithValue[option[len(option)-1]]
+
+	return takesValue
 }
 
 // hostOf reduces an ssh destination to the host alone, dropping the scheme, the
