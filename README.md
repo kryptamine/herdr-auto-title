@@ -42,7 +42,8 @@ a session you opened with a slash command and never prompted stays `claude`.
 nvim editing auth.provider.ts          →  3 · nvim › auth.provider.ts
 an agent working on OAuth scopes       →  4 · dashboard › claude › Implement OAuth scopes
 ssh into prod-01                       →  5 · ssh › prod-01
-$HOME                                  →  6 · Shell
+mosh into devbox                       →  6 · mosh › devbox
+$HOME                                  →  7 · Shell
 ```
 
 - The number in front is the tab's position, which is also the key that
@@ -69,7 +70,7 @@ $HOME                                  →  6 · Shell
   `HERDR_AUTO_TITLE_WORKSPACES=false`. A workspace name that an earlier Auto
   Title wrote, old task and all, stays until you rename or close the workspace.
 - On Windows, Herdr reports only the shell or an agent running in a pane, so an
-  editor or an ssh session does not name its tab.
+  editor or an ssh or mosh session does not name its tab.
 
 > [!WARNING]
 > The first start renames every pane, including panes you had already named by

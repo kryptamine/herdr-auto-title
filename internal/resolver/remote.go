@@ -21,6 +21,7 @@ type remote struct {
 
 var remotes = []remote{
 	{kind: sshKind, process: "ssh", host: sshHost, skip: sshIsTunnel},
+	{kind: moshKind, process: "mosh-client", host: moshHost, titlePrefix: moshTitlePrefix},
 }
 
 // remoteOf returns the remote session a pane is running and its arguments. Only

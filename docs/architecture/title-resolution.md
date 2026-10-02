@@ -192,11 +192,11 @@ specified and is deliberately not built: the commands it would map are invisible
 in the process table, visible only in the terminal title, and a source below the
 terminal title can never fill an activity the terminal title has already filled.
 
-**On Windows this source and the ssh one below are mostly silent.** Herdr lists
+**On Windows this source and the remote one below are mostly silent.** Herdr lists
 only the pane's shell or a recognized agent as what a pane there is running —
-see [the socket API](./herdr-socket-api.md) — so an editor or an ssh session
-never reaches either source, and its tab is named from the terminal title and
-the directory alone. Process names arrive there with an `.exe` the state package
+see [the socket API](./herdr-socket-api.md) — so an editor or an ssh or mosh
+session never reaches either source, and its tab is named from the terminal
+title and the directory alone. Process names arrive there with an `.exe` the state package
 strips, so `pwsh.exe` is read as the shell it is.
 
 ### Remote sessions
@@ -245,6 +245,37 @@ read `ssh › prod-01 › ssh root@prod-01` until the remote prompt replaced it.
 title opening with the word `ssh` in a pane running ssh is therefore not an
 activity. It is recognized by that word rather than by the host because fish
 trims the command to twenty columns, leaving `ssh deploy@productio`.
+
+### Mosh
+
+A mosh session is the second row of the table, marked the same way and for the
+same reasons: `mosh › devbox`, or `mosh` alone when the host cannot be read.
+
+What runs is `mosh-client`, which the `mosh` wrapper execs once the connection
+is set up. The wrapper hands on its own arguments as one argument,
+`-# <arguments joined by spaces> |`, ahead of the server's address and port, so
+the host is the first word there that is not one of mosh's options or an
+option's value. A quoted `--ssh` value arrives split into words too, so the
+words after `--ssh` are read as ssh's options: in `--ssh="ssh -i key" prod-01`
+the key is not taken for the host. A remote command follows the host and is
+left to the terminal title, as with ssh. Options are read as mosh's
+Getopt::Long reads them: a long name after one dash or two, or any prefix of
+it, so `-port 60001` and `--serv PATH` are skipped like `--port`. A prefix that
+is ambiguous or names no option makes the wrapper exit before mosh-client
+runs, so it never reaches a pane and needs no reading.
+
+The joined line loses what the shell quoted, which leaves two cases it reads
+wrong. A space inside an ssh option's value (`-o ProxyCommand="nc %h %p"`)
+splits it, so a piece of the value is taken for the host. And after a spaced
+`--ssh` value, mosh's own `-o` cannot be told from ssh's, which takes a value,
+so the host is skipped and the tab reads `mosh` alone.
+
+mosh-client puts `[mosh]` before the remote title, which only repeats the mark,
+so it is dropped in a mosh pane and nowhere else. The local shell's `mosh devbox`
+title is refused while mosh-client connects, as `ssh root@prod-01` is.
+
+The wrapper itself, while it sets the connection up over ssh, is not read:
+that phase lasts a moment and its tab is named as before.
 
 ### The git branch
 
@@ -408,9 +439,9 @@ tab carried alike. Moving it into the context is what makes it visible beside an
 agent or an editor; reading the trunk from the repository is what retires the
 guess that produced the noise.
 
-It stays out of an ssh pane. The branch is read from the directory ssh was
-launched in, which says nothing about the machine on the other end, and a branch
-printed beside `prod-01` reads as that machine's.
+It stays out of an ssh or mosh pane. The branch is read from the directory
+ssh or mosh was launched in, which says nothing about the machine on the other
+end, and a branch printed beside `prod-01` reads as that machine's.
 
 ### Working directory and the fallback
 
@@ -471,11 +502,12 @@ The sidebar row under a workspace's name shows its `topic` token, which is what
 the workspace's active tab is doing: its agent's name and activity from the
 chain without the foreground process, formatted as one string (`Topics`). The
 directory and the branch are left out, because the label above names the
-project and Herdr draws the branch beside it on its own. An ssh session is the
-exception: its host is the task rather than the project, so `ssh › prod-01`
-leads the topic. An agent's name alone says only that it is there, so an agent
-that has not said what it is doing, like a bare shell or editor, has no topic,
-and an empty topic clears the token rather than falling back to `Shell`.
+project and Herdr draws the branch beside it on its own. An ssh or mosh
+session is the exception: its host is the task rather than the project, so
+`ssh › prod-01` leads the topic. An agent's name alone says only that it is
+there, so an agent that has not said what it is doing, like a bare shell or
+editor, has no topic, and an empty topic clears the token rather than falling
+back to `Shell`.
 
 The topic is cut only when `HERDR_AUTO_TITLE_WORKSPACE_MAX_LENGTH` is set. By
 default it is sent whole and Herdr fits it to the sidebar, which knows how wide
