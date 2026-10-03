@@ -48,6 +48,8 @@ func TestMeaningful(t *testing.T) {
 		{"windows home path", `~\work\dashboard`, "", false},
 		{"unc path", `\\build-01\share\dashboard`, "", false},
 		{"drive letter alone is not a path", "C:", "C:", true},
+		{"windows path with spaces", `C:\Program Files\PowerShell\7\pwsh.exe`, "", false},
+		{"work after a windows path", `C:\work - Fix login`, "Fix login", true},
 
 		// Herdr's own title for a Windows pane whose program has set none. It
 		// names the shell and the directory, and neither is what the user is

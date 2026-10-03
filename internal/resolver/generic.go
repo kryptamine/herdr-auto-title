@@ -56,7 +56,7 @@ const punctuation = `()[]{}<>"'` + ",;:-–—|"
 // Nvim`, while a bare `~` leaves nothing.
 func Meaningful(value string) (string, bool) {
 	trimmed := strings.TrimSpace(value)
-	if isFallbackTitle(trimmed) {
+	if isFallbackTitle(trimmed) || isSpacedDrivePath(trimmed) {
 		return "", false
 	}
 
@@ -124,6 +124,15 @@ func isDrivePath(word string) bool {
 	letter := unicode.ToLower(rune(word[0]))
 
 	return letter >= 'a' && letter <= 'z'
+}
+
+// isSpacedDrivePath reports a title that is one drive path containing spaces,
+// `C:\Program Files\PowerShell\7\pwsh.exe`: split into words, its tail would
+// survive stripLocations as if it named an activity.
+func isSpacedDrivePath(value string) bool {
+	words := strings.Fields(value)
+
+	return len(words) > 1 && isDrivePath(value) && strings.ContainsAny(words[len(words)-1], `\/`)
 }
 
 // tidy joins words back together, dropping the punctuation that only made sense
