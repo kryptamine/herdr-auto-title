@@ -256,14 +256,20 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 		}
 	}
 
+	// The loop checks the deadline only between tabs, so the last tab's panes
+	// can still be cut short, and a pass that missed them must not settle.
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
+	// Reached only when every tab and pane was seen. Deferring this would settle
+	// after a poll cut short, and what it missed would look new and already named.
+	a.manual.Settled()
+
 	if a.topics != nil {
 		// Last, so a poll cut short gives up a topic rather than a tab.
 		a.reportTopics(ctx, client, poll, snapshot, tabs)
 	}
-
-	// Reached only when every tab was seen. Deferring this would settle after a
-	// poll cut short, and the tabs it missed would look new and already named.
-	a.manual.Settled()
 
 	return nil
 }
