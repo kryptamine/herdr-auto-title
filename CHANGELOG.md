@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.12.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.11.0...v0.12.0) (2026-10-03)
+
+
+### Features
+
+* **resolver:** name a mosh pane after its host ([1ffa829](https://github.com/kryptamine/herdr-auto-title/commit/1ffa8292c424cf679ed632275750819c234e610b))
+
+
+### Refactoring
+
+* **resolver:** model ssh as a remote session ([bf4e084](https://github.com/kryptamine/herdr-auto-title/commit/bf4e084b13c4602c037c448ced7c0c2cf39ae1bc))
+
 ## [0.11.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.10.0...v0.11.0) (2026-09-30)
 
 
