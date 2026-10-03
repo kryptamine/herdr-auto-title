@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.13.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.12.0...v0.13.0) (2026-10-03)
+
+
+### ⚠ BREAKING CHANGES
+
+* **app:** HERDR_AUTO_TITLE_AGENT_NAME now defaults to false. Set it to true in config.env to keep the agent's name in titles.
+
+### Features
+
+* **app:** leave the agent name out of titles by default ([a6ad2fc](https://github.com/kryptamine/herdr-auto-title/commit/a6ad2fccec4d003f2f105eda52e128e5d6807fd7))
+
 ## [0.12.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.11.0...v0.12.0) (2026-10-03)
 
 
