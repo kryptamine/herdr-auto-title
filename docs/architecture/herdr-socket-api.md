@@ -310,6 +310,10 @@ reads, so this section describes Herdr rather than those types.
   the shell and the basename of its directory, `pwsh in Windows` after the
   `Set-Location` above. It is Herdr's own fallback, and the resolver refuses it
   the way it refuses a shell prompt.
+- **Under Herdr 0.9.3 a PowerShell 7 pane carries the shell's full path
+  instead**, `C:\Program Files\PowerShell\7\pwsh.exe`, on every pane observed,
+  idle or running an agent. The path holds spaces, so the resolver reads a
+  location as running on past them — see [sanitization](./sanitization.md).
 - **`PaneInfo` carries no foreground process name.** Only `pane.process_info`
   answers that, and nothing announces that a command started.
 - **`PaneInfo.title` is the agent's own title**, not the terminal's. Herdr left
