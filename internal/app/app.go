@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
+	"github.com/kryptamine/herdr-auto-title/internal/labels"
 	"github.com/kryptamine/herdr-auto-title/internal/reads"
 	"github.com/kryptamine/herdr-auto-title/internal/resolver"
 	"github.com/kryptamine/herdr-auto-title/internal/state"
@@ -48,7 +49,7 @@ type App struct {
 	topics   *resolver.Topics
 	reported *topicReports
 	changes  *state.Changes
-	manual   *state.Manual
+	labels   *labels.Labels
 	reads    *reads.Reader
 	// failures is the run of polls that have failed in a row, which decides
 	// how loudly the next one is reported.
@@ -80,7 +81,7 @@ func New(
 		reported:    newTopicReports(),
 		preferAgent: cfg.PreferAgentPane,
 		changes:     state.NewChanges(),
-		manual:      state.LoadManual(cfg.ManualPath),
+		labels:      labels.Load(cfg.ManualPath, log),
 		reads: reads.New(reads.Options{
 			ClaudeDirs:      cfg.ClaudeDirs,
 			BranchMax:       cfg.BranchMax,
@@ -236,10 +237,7 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 	}
 
 	drew := a.changes.Observe(snapshot.Panes)
-	// Taken from the snapshot rather than from the tabs below, because this is
-	// what decides which of them are locked, and a locked tab is never read.
-	a.manual.Tabs.Retain(labelsIn(snapshot.Tabs))
-	a.manual.Panes.Retain(paneLabelsIn(snapshot.Panes))
+	pass := a.labels.Pass(client, snapshot)
 
 	tabs := a.tabsIn(snapshot)
 	poll := a.reads.Poll(client, snapshot.Panes, drew)
@@ -249,10 +247,10 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 			return ctx.Err()
 		}
 
-		a.nameTab(ctx, client, poll, tab)
+		a.nameTab(ctx, pass, poll, tab)
 
 		if a.panes != nil {
-			a.namePanes(ctx, client, poll, tab)
+			a.namePanes(ctx, pass, poll, tab)
 		}
 	}
 
@@ -261,9 +259,8 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 		a.reportTopics(ctx, client, poll, snapshot, tabs)
 	}
 
-	// Reached only when every tab was seen. Deferring this would settle after a
-	// poll cut short, and the tabs it missed would look new and already named.
-	a.manual.Settled()
+	// Reached only when every tab was seen, so never deferred.
+	pass.Settle()
 
 	return nil
 }
@@ -378,11 +375,11 @@ func firstTabs(tabs []herdr.TabInfo) map[string]string {
 // nameTab keeps one tab's label in step with what the tab is doing.
 func (a *App) nameTab(
 	ctx context.Context,
-	client herdr.Client,
+	pass *labels.Pass,
 	poll *reads.Poll,
 	tab state.TabState,
 ) {
-	if a.manual.Tabs.Locked(tab.ID) {
+	if pass.TabLocked(tab.ID) {
 		return
 	}
 
@@ -390,15 +387,7 @@ func (a *App) nameTab(
 	// spends, and only a tab that will be renamed is worth them.
 	poll.Fill(ctx, tab.Context)
 
-	decision := a.titles.Resolve(tab)
-	a.apply(
-		ctx,
-		client,
-		tabLabels,
-		a.manual.Tabs,
-		state.SightingFrom(tab, decision.Name),
-		decision,
-	)
+	pass.Tab(ctx, tab, a.titles.Resolve(tab))
 }
 
 // namePanes labels every pane of a tab, which is what Herdr's goto panel lists
@@ -406,7 +395,7 @@ func (a *App) nameTab(
 // it costs a read per pane — see docs/architecture/poll-loop.md.
 func (a *App) namePanes(
 	ctx context.Context,
-	client herdr.Client,
+	pass *labels.Pass,
 	poll *reads.Poll,
 	tab state.TabState,
 ) {
@@ -415,7 +404,7 @@ func (a *App) namePanes(
 	poll.Fill(ctx, tab.Context)
 
 	for _, pane := range tab.Panes {
-		if !a.manual.Panes.Locked(pane.ID) {
+		if !pass.PaneLocked(pane.ID) {
 			poll.Fill(ctx, pane)
 		}
 	}
@@ -425,105 +414,8 @@ func (a *App) namePanes(
 			return
 		}
 
-		pane := tab.Panes[i]
-		if a.manual.Panes.Locked(pane.ID) {
-			continue
-		}
-
-		a.apply(
-			ctx,
-			client,
-			paneLabels,
-			a.manual.Panes,
-			state.PaneSightingFrom(pane, decision.Name),
-			decision,
-		)
+		pass.Pane(ctx, tab.Panes[i], decision)
 	}
-}
-
-// labelKind is what differs between the things Auto Title names.
-type labelKind struct {
-	noun   string
-	rename func(ctx context.Context, c herdr.Client, id, label string) error
-	// gone is the error Herdr answers when the thing closed between the
-	// snapshot and the rename. The next poll will not see it at all.
-	gone string
-}
-
-var (
-	tabLabels = labelKind{
-		noun:   "tab",
-		rename: herdr.RenameTab,
-		gone:   herdr.CodeTabNotFound,
-	}
-	paneLabels = labelKind{
-		noun:   "pane",
-		rename: herdr.RenamePane,
-		gone:   herdr.CodePaneNotFound,
-	}
-)
-
-// apply gives a tab or a pane the name the resolver chose, unless
-// the user put the label it carries there. Nothing that goes wrong here is
-// worth cutting the poll short: the next one decides again from state read again.
-func (a *App) apply(
-	ctx context.Context,
-	client herdr.Client,
-	kind labelKind,
-	claims *state.Claims,
-	seen state.Sighting,
-	decision resolver.Decision,
-) {
-	idKey := kind.noun + "_id"
-
-	switch claims.Observe(seen) {
-	case state.VerdictClaimed:
-		a.log.Info("leaving a "+kind.noun+" the user renamed", idKey, seen.ID, "name", seen.Current)
-		return
-	case state.VerdictName:
-	}
-
-	if decision.Name == "" || decision.Name == seen.Current {
-		return
-	}
-
-	if err := kind.rename(ctx, client, seen.ID, decision.Name); err != nil {
-		if herdr.ErrorCode(err) == kind.gone {
-			a.log.Debug(kind.noun+" closed before it could be renamed", idKey, seen.ID)
-			return
-		}
-
-		if errors.Is(err, herdr.ErrUnanswered) {
-			// Herdr may still apply it: docs/architecture/manual-rename-protection.md.
-			claims.Sent(seen.ID, decision.Name)
-		}
-
-		a.log.Warn(kind.noun+" rename failed", idKey, seen.ID, "name", decision.Name, "error", err)
-
-		return
-	}
-
-	// Recorded before the log line so the next poll cannot read this rename as
-	// the user's.
-	claims.Applied(seen.ID, decision.Name)
-	a.log.Info(kind.noun+" renamed",
-		idKey, seen.ID,
-		"old", seen.Current,
-		"new", decision.Name,
-		"reason", decision.Reason,
-		"confidence", decision.Confidence,
-	)
-}
-
-// labelsIn indexes the session's tabs by id for the manual-name bookkeeping,
-// which needs both an id that is gone and a label that has moved on.
-func labelsIn(tabs []herdr.TabInfo) map[string]string {
-	labels := make(map[string]string, len(tabs))
-	for _, tab := range tabs {
-		labels[tab.TabID] = tab.Label
-	}
-
-	return labels
 }
 
 // workspaceLabelsIn indexes the session's workspaces by id, which is what a tab
@@ -533,18 +425,6 @@ func workspaceLabelsIn(workspaces []herdr.WorkspaceInfo) map[string]string {
 	labels := make(map[string]string, len(workspaces))
 	for _, workspace := range workspaces {
 		labels[workspace.WorkspaceID] = workspace.Label
-	}
-
-	return labels
-}
-
-// paneLabelsIn indexes the session's panes by id, for the same bookkeeping
-// labelsIn feeds. A pane Herdr has never been asked to name carries no label
-// at all, which arrives here as the empty string.
-func paneLabelsIn(panes []herdr.PaneInfo) map[string]string {
-	labels := make(map[string]string, len(panes))
-	for _, pane := range panes {
-		labels[pane.PaneID] = pane.Label
 	}
 
 	return labels
