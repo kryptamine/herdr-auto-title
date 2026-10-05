@@ -114,6 +114,10 @@ func pathTail(words []string, leading bool) int {
 	}
 
 	if !isWindowsPath(strings.Trim(words[0], punctuation)) {
+		for tail+1 < len(words) && strings.HasSuffix(words[tail], `\`) {
+			tail++
+		}
+
 		return tail
 	}
 
@@ -150,7 +154,7 @@ func continuesPath(word string) bool {
 }
 
 // isWindowsPath reports a location rooted the Windows way. Anywhere else a
-// backslash is no separator, so only a bracket or a quote says where it ends.
+// backslash ending a word escapes the space after it: `/tmp/My\ Big\ Folder`.
 func isWindowsPath(location string) bool {
 	return isDrivePath(location) || isUNCPath(location) || strings.HasPrefix(location, `~\`)
 }
