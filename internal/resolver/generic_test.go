@@ -171,6 +171,7 @@ func TestMeaningful(t *testing.T) {
 			`"C:\Program Files\Git\bin\bash.exe" --login -i`,
 			"", false,
 		},
+		{"a path with escaped spaces", `vim /tmp/My\ Big\ Folder/x.txt`, "vim", true},
 		{"a backslash after a posix path", `vim /tmp/x.txt foo\bar`, `vim foo\bar`, true},
 		{
 			"a quoted posix path opening the title",

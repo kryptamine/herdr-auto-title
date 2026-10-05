@@ -106,13 +106,15 @@ worthless as a title. `Meaningful` and the tables in
   A share is rooted the Windows way only as `\\host\share`, with both parts:
   `\\n` and `\\r\\n` are escaped backslashes in a sentence.
 
-  Only the first rule reads a path not rooted the Windows way. What remains
-  is a spaced name at the end of a path inside a sentence:
-  `editing C:\Users\Jane Doe` keeps `editing Doe`, and the reverse, a relative
-  path straight after a folder: `git diff C:\work\app src\auth.ts` keeps
-  `git diff`. Looking the path up on disk would settle both, and is ruled out:
-  the title is untrusted, and on Windows a lookup of `\\host\share` connects
-  to that host and offers it the user's credentials.
+  Only the first rule reads a path not rooted the Windows way. Such a path
+  holds a backslash only to escape a space, so a word ending in one carries it
+  on: `vim /tmp/My\ Big\ Folder/x.txt` keeps `vim`. What remains is a spaced
+  name at the end of a path inside a sentence: `editing C:\Users\Jane Doe`
+  keeps `editing Doe`, and the reverse, a relative path straight after a
+  folder: `git diff C:\work\app src\auth.ts` keeps `git diff`. Looking the
+  path up on disk would settle both, and is ruled out: the title is
+  untrusted, and on Windows a lookup of `\\host\share` connects to that host
+  and offers it the user's credentials.
 - **Program names.** A value that only names a program or a shell — `zsh`,
   `node`, `Claude Code`, `Agent` — says what is running, which is a *kind*, not
   what the user is doing. `pwsh.exe` is the same name as `pwsh`, since a Windows
