@@ -1,0 +1,25 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    ":semanticCommitTypeAll(chore)",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "schedule": ["before 6am on monday"],
+  "postUpdateOptions": ["gomodTidy"],
+  "packageRules": [
+    {
+      "description": "The linter is the one module in tools/go.mod that was chosen, and a tool directive leaves it marked indirect like everything it pulls in. Named in full, its module path makes a subject longer than the 72 characters allowed.",
+      "matchFileNames": ["tools/go.mod"],
+      "matchPackageNames": ["/^github\\.com/golangci/golangci-lint(/v\\d+)?$/"],
+      "enabled": true,
+      "commitMessageTopic": "golangci-lint"
+    },
+    {
+      "description": "Everything arrives together, minors in one pull request and majors in another.",
+      "matchUpdateTypes": ["major", "minor", "patch", "digest"],
+      "groupName": "dependencies"
+    }
+  ]
+}
