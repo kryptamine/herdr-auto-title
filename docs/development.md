@@ -178,6 +178,37 @@ evening goes into it — see [../CONTRIBUTING.md](../CONTRIBUTING.md).
 5. Check the issue's acceptance criteria off. If one turned out to rest on
    something false, correct the issue rather than quietly skipping it.
 
+## Dependency updates
+
+[Renovate](https://docs.renovatebot.com) opens them, once a week, from
+`renovate.json`: one pull request for every minor update there is, and another
+for the majors, so that the one likely to break something does not carry
+everything else.
+
+Each is one commit, and it is `chore(deps)` whatever it holds. A commit has one
+type, the linter and the GitHub Actions never reach the binary, and a `fix`
+would cut a release for them. The cost is that an update to a module in
+`go.mod`, which Herdr does build into the plugin, cuts no release either and
+is not in the changelog: it ships with the next release something else cuts.
+One that has to reach users sooner is a `fix(deps)` commit made by hand.
+
+**The linter is updated although `go mod` marks it indirect.** A `tool`
+directive leaves its module looking like the hundreds it pulls in, which
+Renovate skips, so the configuration names it. A new linter can bring new
+findings: its pull request then fails `make lint`, holds back whatever is
+grouped with it, and wants the fixes pushed onto it rather than a merge.
+
+**Read what an update does to the `go` line.** Renovate does not raise it on
+its own, but `go mod tidy` does when an updated module asks for a newer Go. In
+`tools/go.mod` that is the linter moving and is fine. In `go.mod` it is the
+floor Herdr installs on, and the Go 1.24 job catches it only while
+`GOTOOLCHAIN` is `local` there, which `actions/setup-go` sets from v6 on;
+otherwise Go fetches the newer toolchain and the job passes.
+
+**Actions are pinned to a commit**, in a pull request of their own, with the
+version in a comment beside it, so a tag moved upstream changes nothing here
+until a pull request says so.
+
 ## Reading the logs
 
 `make run` sets `HERDR_AUTO_TITLE_DEBUG=1`. What each line tells you:

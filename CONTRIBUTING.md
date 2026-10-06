@@ -43,8 +43,9 @@ in [docs/architecture](docs/architecture/).
   `<type>(<scope>): <subject>`, imperative and lowercase, no trailing period,
   72 characters at most. Types in use are `feat`, `fix`, `docs`, `test`,
   `refactor`, `perf` and `chore`; the scope is a package or area (`resolver`,
-  `state`, `herdr`, `app`). The body explains **why** — the diff already says
-  what. One logical change per commit, and never a co-author trailer.
+  `state`, `herdr`, `app`), or `deps` for a dependency update. The body
+  explains **why** — the diff already says what. One logical change per
+  commit, and never a co-author trailer.
 - Tests land with the behaviour they cover. `go test -race` is the gate, not
   `go test`: the poll loop and the change history it keeps are exercised
   concurrently.

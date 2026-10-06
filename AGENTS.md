@@ -39,13 +39,17 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org):
 ```
 
 Types in use: `feat`, `fix`, `docs`, `test`, `refactor`, `perf`, `chore`.
-Scope is a package or area (`resolver`, `state`, `herdr`, `app`).
+Scope is a package or area (`resolver`, `state`, `herdr`, `app`), or `deps`
+for a dependency update.
 
 - Subject in the imperative mood, lowercase, no trailing period, ≤72 characters
   ("add manual rename protection", not "Added manual rename protection.").
 - The body explains why, not what — the diff already says what.
 - One logical change per commit.
 - Never add a co-author trailer.
+- **A dependency update is `chore(deps)`, whatever it updates**, and so cuts
+  no release; [docs/development.md](docs/development.md#dependency-updates)
+  says why, and what Renovate is configured to do.
 
 ## Branches and pull requests (mandatory)
 
