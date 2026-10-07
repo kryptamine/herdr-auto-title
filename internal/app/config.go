@@ -197,6 +197,7 @@ func configHomes() (dirs, unreadable []string) {
 		// Cleaning rather than refusing: a trailing slash is what both tab
 		// completion and $PWD produce, and it names the same directory.
 		entry = filepath.Clean(entry)
+		//nolint:gosec // the path is configured, never terminal-derived
 		if info, err := os.Stat(entry); err != nil || !info.IsDir() {
 			unreadable = append(unreadable, entry)
 		}
