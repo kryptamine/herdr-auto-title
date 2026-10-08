@@ -196,6 +196,28 @@ func TestMeaningful(t *testing.T) {
 			"command not found", true,
 		},
 		{"a prompt after a spaced windows path", `C:\Users\Jane Doe> npm test`, "npm test", true},
+		// Windows puts a dash inside the names of the folders it syncs.
+		{"a work onedrive", `C:\Users\jane\OneDrive - Contoso`, "", false},
+		{
+			"an editor title inside a work onedrive",
+			`plan.docx (C:\Users\jane\OneDrive - Contoso\Documents) - Nvim`,
+			"plan.docx - Nvim", true,
+		},
+		{
+			"a work onedrive with a spaced name inside a sentence",
+			`vim C:\Users\jane\OneDrive - Contoso Ltd\Desktop\notes.md now`,
+			"vim now", true,
+		},
+		{
+			"a synced sharepoint library",
+			`C:\Users\jane\Contoso\Marketing - Documents\plan.docx - Nvim`,
+			"Nvim", true,
+		},
+		{
+			"a dash after a program still separates",
+			`C:\WINDOWS\system32\cmd.exe - scripts\build.bat`,
+			`scripts\build.bat`, true,
+		},
 
 		// Herdr's own title for a Windows pane whose program has set none. It
 		// names the shell and the directory, and neither is what the user is
