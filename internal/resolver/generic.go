@@ -129,6 +129,11 @@ func pathTail(words []string, leading bool) int {
 func windowsTail(words []string, tail int, leading bool) int {
 	for i := tail + 1; i < len(words); i++ {
 		word := words[i]
+		if dashJoins(words, i) {
+			tail, i = i+1, i+1
+			continue
+		}
+
 		if isPunctuationOnly(word) || isLocation(strings.Trim(word, punctuation)) ||
 			endsPath(words[tail], leading) {
 			break
@@ -145,6 +150,20 @@ func windowsTail(words []string, tail int, leading bool) int {
 	}
 
 	return tail
+}
+
+// dashJoins reports a lone dash at words[i] inside the folder name before it:
+// Windows names a work OneDrive `OneDrive - Contoso` and a synced library
+// `Site - Documents`. After a file, as in `cmd.exe - make`, it separates.
+func dashJoins(words []string, i int) bool {
+	if words[i] != "-" || i+1 == len(words) || endsPath(words[i-1], false) ||
+		isLocation(strings.Trim(words[i+1], punctuation)) {
+		return false
+	}
+
+	folder := strings.ToLower(strings.TrimLeft(words[i-1], punctuation))
+
+	return folder[strings.LastIndexAny(folder, `\/`)+1:] == "onedrive" || continuesPath(words[i+1])
 }
 
 // continuesPath reports a word that carries a spaced path on, `Files\x` in
@@ -203,7 +222,7 @@ func closedAt(words []string) (int, bool) {
 			return i + 1, true
 		}
 
-		if isPunctuationOnly(word) {
+		if isPunctuationOnly(word) && !dashJoins(words, i+1) {
 			return 0, false
 		}
 	}

@@ -106,6 +106,15 @@ worthless as a title. `Meaningful` and the tables in
   A share is rooted the Windows way only as `\\host\share`, with both parts:
   `\\n` and `\\r\\n` are escaped backslashes in a sentence.
 
+  Windows puts a dash inside the names of the folders it syncs: a work
+  OneDrive is `OneDrive - Contoso`, a SharePoint library
+  `Contoso\Marketing - Documents`. A dash standing alone therefore stays in a
+  Windows path when it follows a folder named `OneDrive`, or when the word
+  after it carries the path on, so `plan.docx (C:\Users\jane\OneDrive -
+  Contoso\Documents) - Nvim` keeps `plan.docx - Nvim`. After a file it still
+  separates: `C:\WINDOWS\system32\cmd.exe - scripts\build.bat` keeps its
+  command.
+
   Only the first rule reads a path not rooted the Windows way. Such a path
   holds a backslash only to escape a space, so a word ending in one carries it
   on: `vim /tmp/My\ Big\ Folder/x.txt` keeps `vim`. What remains is a spaced
