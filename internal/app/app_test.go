@@ -1354,9 +1354,9 @@ func TestRunNamesWhatExistsBeforeTheFirstTick(t *testing.T) {
 func TestAWindowsShellPaneIsNamedAfterItsDirectory(t *testing.T) {
 	t.Parallel()
 
-	// What Herdr reports for an idle pane on Windows: the shell with its
-	// extension, its directory with a trailing separator, and a title of
-	// Herdr's own making that names both. None of it is what the pane is doing.
+	// An idle pane on Windows under oh-my-posh: the shell with its extension,
+	// its directory with a trailing separator, and a title naming both. None
+	// of it is what the pane is doing.
 	h := start(
 		t,
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},

@@ -306,10 +306,12 @@ reads, so this section describes Herdr rather than those types.
   `Set-Location C:\Windows` moved both `cwd` and the process's `cwd` within one
   prompt. Names carry `.exe`, a process's `cwd` carries a trailing backslash
   (`C:\github\x\`), and `foreground_cwd` was null on every pane.
-- **A Windows pane whose program has set no title carries `pwsh in <dir>`**,
-  the shell and the basename of its directory, `pwsh in Windows` after the
-  `Set-Location` above. It is Herdr's own fallback, and the resolver refuses it
-  the way it refuses a shell prompt.
+- **Herdr gives a Windows pane no title of its own.** Its PowerShell
+  integration wraps the prompt only to report the directory, and the console's
+  title reaches `terminal_title` unchanged, so a pane carries whatever its
+  prompt sets. `pwsh in <dir>`, `pwsh in Windows` after the `Set-Location`
+  above, is oh-my-posh's default `console_title_template`; the resolver
+  refuses it the way it refuses a shell prompt.
 - **A PowerShell pane whose prompt sets no title carries the shell's full
   path**, `C:\Program Files\PowerShell\7\pwsh.exe`, which is the console's
   default; the extension can arrive as `.EXE`. Herdr reports the console title
