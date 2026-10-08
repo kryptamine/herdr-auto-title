@@ -45,9 +45,9 @@ var uriPattern = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9+.-]*://`)
 // already says, and never what the user is doing.
 var promptPattern = regexp.MustCompile(`^[^\s@]+@[^\s@:]+:\S*$`)
 
-// fallbackTitlePattern matches the title Herdr gives a Windows pane whose
-// program has set none: `pwsh in dashboard`, which names the shell and where
-// it is, and the context already says where.
+// fallbackTitlePattern matches the title oh-my-posh sets by default,
+// `pwsh in dashboard`, which names the shell and where it is, and the context
+// already says where.
 var fallbackTitlePattern = regexp.MustCompile(`^(\S+) in .+$`)
 
 // punctuation wraps and joins words inside titles such as

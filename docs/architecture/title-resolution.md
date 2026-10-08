@@ -473,7 +473,7 @@ moved on.
 Directories that say nothing — the home directory, the filesystem root, a
 relative path — yield nothing, and a tab left with no name at all becomes
 `Shell`. On Windows the home directory is matched without regard to case, which
-is how Windows spells one, and Herdr's own title for an idle pane there,
+is how Windows spells one. The title oh-my-posh sets by default,
 `pwsh in dashboard`, is refused as a shell prompt is: it names the shell and
 the directory the context already names.
 

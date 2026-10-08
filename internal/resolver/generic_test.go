@@ -219,16 +219,15 @@ func TestMeaningful(t *testing.T) {
 			`scripts\build.bat`, true,
 		},
 
-		// Herdr's own title for a Windows pane whose program has set none. It
-		// names the shell and the directory, and neither is what the user is
-		// doing there.
-		{"herdr's title for an idle windows pane", "pwsh in dashboard", "", false},
+		// oh-my-posh's default title names the shell and the directory, and
+		// neither is what the user is doing there.
+		{"oh-my-posh's default title", "pwsh in dashboard", "", false},
 		{"the same under cmd", "cmd in herdr-auto-title", "", false},
 		{"the same in the home directory", "pwsh in ~", "", false},
 		{"the windows shell by its executable", "pwsh.exe", "", false},
 		{"the oldest windows shell by its executable", "cmd.exe", "", false},
 		{"the older windows shell by its executable", "powershell.exe", "", false},
-		{"herdr's title naming the executable", "pwsh.exe in dashboard", "", false},
+		{"a prompt title naming the executable", "pwsh.exe in dashboard", "", false},
 		{
 			"work that happens to be in something",
 			"Fix login in dashboard",
