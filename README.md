@@ -160,3 +160,5 @@ leave. On Windows the action needs Herdr 0.9.0 or newer.
 <a href="https://github.com/chechunhsu"><img src="https://images.weserv.nl/?url=github.com/chechunhsu.png&w=128&h=128&fit=cover&mask=circle&maxage=7d" width="64" alt="Kelvin Hsu"></a>
 <a href="https://github.com/2451965602"><img src="https://images.weserv.nl/?url=github.com/2451965602.png&w=128&h=128&fit=cover&mask=circle&maxage=7d" width="64" alt="悠然"></a>
 <a href="https://github.com/beefyhalo"><img src="https://images.weserv.nl/?url=github.com/beefyhalo.png&w=128&h=128&fit=cover&mask=circle&maxage=7d" width="64" alt="Kevin Horlick"></a>
+<a href="https://github.com/cliph"><img src="https://images.weserv.nl/?url=github.com/cliph.png&w=128&h=128&fit=cover&mask=circle&maxage=7d" width="64" alt="Cliph (Cliff Flood)"></a>
+<a href="https://github.com/wapenshaw"><img src="https://images.weserv.nl/?url=github.com/wapenshaw.png&w=128&h=128&fit=cover&mask=circle&maxage=7d" width="64" alt="Siddharth Abbineni"></a>
