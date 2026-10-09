@@ -31,6 +31,23 @@ herdr plugin action invoke herdr.auto-title.restart
 > this one now. Reopening the terminal attaches a new client to the same server
 > and does not help; `herdr server stop` would work, at the cost of the session.
 
+That installs the latest commit on `main`, which can be ahead of the latest
+[release](https://github.com/kryptamine/herdr-auto-title/releases). To install
+a release instead, name its tag:
+
+<!-- x-release-please-start-version -->
+
+```sh
+herdr plugin install kryptamine/herdr-auto-title --ref v0.13.0
+herdr plugin action invoke herdr.auto-title.restart
+```
+
+<!-- x-release-please-end -->
+
+Herdr has no update command yet, so run the install again to move to a newer
+commit or tag, then the restart action: the old build keeps running until it
+does. Your configuration is kept.
+
 If you use Claude Code, also run `herdr integration install claude`. Without it,
 a session you opened with a slash command and never prompted stays `claude`.
 

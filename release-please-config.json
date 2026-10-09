@@ -12,7 +12,8 @@
           "type": "toml",
           "path": "herdr-plugin.toml",
           "jsonpath": "$.version"
-        }
+        },
+        "README.md"
       ],
       "changelog-sections": [
         { "type": "feat", "section": "Features" },
