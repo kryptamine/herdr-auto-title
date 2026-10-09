@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.13.1](https://github.com/kryptamine/herdr-auto-title/compare/v0.13.0...v0.13.1) (2026-10-09)
+
+
+### Bug Fixes
+
+* **resolver:** keep the dash in a synced windows folder name ([9ee75e3](https://github.com/kryptamine/herdr-auto-title/commit/9ee75e3abadf2623a6c18ab8e43ca7daeee84654))
+* **resolver:** read a windows path with spaces as one location ([45ed372](https://github.com/kryptamine/herdr-auto-title/commit/45ed3724fe7dfe5866264c57cc1de43ad1a7cac6))
+* **resolver:** read an escaped space as part of a posix path ([6e7a00d](https://github.com/kryptamine/herdr-auto-title/commit/6e7a00d56e7f5a704325f2cf25f7767d9d02ea2d))
+
 ## [0.13.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.12.0...v0.13.0) (2026-10-03)
 
 
