@@ -1,42 +1,54 @@
-package state
+package labels
 
 import (
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
+	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
 
-func newManual(t *testing.T) *Manual {
+func load(path string) *Labels {
+	return Load(path, slog.New(slog.DiscardHandler))
+}
+
+func settledLabels(t *testing.T) *Labels {
 	t.Helper()
-	m := LoadManual(filepath.Join(t.TempDir(), "manual-names.json"))
+	l := load(filepath.Join(t.TempDir(), "manual-names.json"))
 	// Most tests are about a session already under way.
-	m.Settled()
+	l.settle()
 
-	return m
+	return l
 }
 
-// sighting is the common case: the first tab in a workspace, which the
+// tabSighting is the common case: the first tab in a workspace, which the
 // resolver would name `dashboard`.
-func sighting(current string) Sighting {
-	return Sighting{ID: "wE:t1", Current: current, Desired: "dashboard", Default: "1"}
+func tabSighting(current string) sighting {
+	return sighting{id: "wE:t1", current: current, desired: "dashboard", byDefault: "1"}
 }
 
-func TestSightingFromDerivesTheDefaultLabel(t *testing.T) {
+func TestATabSightingCarriesItsPositionAsItsDefault(t *testing.T) {
 	t.Parallel()
 
 	// A tab nobody has named wears its position, so the third tab of a
 	// workspace is `3` however high the ids around it have climbed.
-	tab := TabFrom(herdr.TabInfo{TabID: "wE:t9", Label: "Important work"}, "work", 3, nil, false)
+	tab := state.TabFrom(
+		herdr.TabInfo{TabID: "wE:t9", Label: "Important work"},
+		"work",
+		3,
+		nil,
+		false,
+	)
 
-	got := SightingFrom(tab, "dashboard")
-	want := Sighting{
-		ID:      "wE:t9",
-		Current: "Important work",
-		Desired: "dashboard",
-		Default: "3",
+	got := sightingOfTab(tab, "dashboard")
+	want := sighting{
+		id:        "wE:t9",
+		current:   "Important work",
+		desired:   "dashboard",
+		byDefault: "3",
 	}
 
 	if got != want {
@@ -50,15 +62,15 @@ func TestTheFirstPollNeverLocks(t *testing.T) {
 	// The trap this rule exists for: on the first poll almost every tab carries
 	// a label that is not yet what the resolver would produce. Locking on that
 	// would claim the whole session the moment the plugin starts.
-	m := LoadManual("")
+	l := load("")
 
-	for _, s := range []Sighting{
-		{ID: "wE:t1", Current: "1", Desired: "dashboard", Default: "1"},
-		{ID: "wE:t2", Current: "Important work", Desired: "api", Default: "2"},
-		{ID: "wE:t3", Current: "nvim › stale.go", Desired: "nvim › fresh.go", Default: "3"},
+	for _, s := range []sighting{
+		{id: "wE:t1", current: "1", desired: "dashboard", byDefault: "1"},
+		{id: "wE:t2", current: "Important work", desired: "api", byDefault: "2"},
+		{id: "wE:t3", current: "nvim › stale.go", desired: "nvim › fresh.go", byDefault: "3"},
 	} {
-		if m.Tabs.Observe(s) == VerdictClaimed {
-			t.Errorf("tab %s was locked on the first poll", s.ID)
+		if l.tabs.observe(s) == verdictClaimed {
+			t.Errorf("tab %s was locked on the first poll", s.id)
 		}
 	}
 }
@@ -69,15 +81,15 @@ func TestATabTurningUpAlreadyNamedIsTheUsers(t *testing.T) {
 	// The case that made this rule necessary: a tab created and named faster
 	// than the next poll. Auto Title never saw it carrying its position, so
 	// the name it carries is not Auto Title's.
-	m := newManual(t)
+	l := settledLabels(t)
 
-	if m.Tabs.Observe(
-		Sighting{ID: "wE:t9", Current: "My thing", Desired: "dashboard", Default: "9"},
-	) != VerdictClaimed {
+	if l.tabs.observe(
+		sighting{id: "wE:t9", current: "My thing", desired: "dashboard", byDefault: "9"},
+	) != verdictClaimed {
 		t.Fatal("a tab that appeared already named was not read as the user's")
 	}
 
-	if !m.Tabs.Locked("wE:t9") {
+	if !l.tabs.isLocked("wE:t9") {
 		t.Error("the tab is not locked")
 	}
 }
@@ -86,11 +98,11 @@ func TestATabTurningUpUnnamedIsNotTheUsers(t *testing.T) {
 	t.Parallel()
 
 	// Herdr names a new tab after its position. Nobody has claimed this one.
-	m := newManual(t)
+	l := settledLabels(t)
 
-	if m.Tabs.Observe(
-		Sighting{ID: "wE:t9", Current: "9", Desired: "dashboard", Default: "9"},
-	) == VerdictClaimed {
+	if l.tabs.observe(
+		sighting{id: "wE:t9", current: "9", desired: "dashboard", byDefault: "9"},
+	) == verdictClaimed {
 		t.Error("an unnamed new tab was locked")
 	}
 }
@@ -101,15 +113,15 @@ func TestATabFallingBackToItsDefaultLabelIsNotTheUsers(t *testing.T) {
 	// The default label is not only how a tab starts out: it comes back, and it
 	// slides down for every tab that closes to the left. Locking there would
 	// freeze the tab at a number for the rest of the session.
-	m := newManual(t)
-	m.Tabs.Observe(sighting("1"))
-	m.Tabs.Applied("wE:t1", "dashboard")
+	l := settledLabels(t)
+	l.tabs.observe(tabSighting("1"))
+	l.tabs.applied("wE:t1", "dashboard")
 
-	if m.Tabs.Observe(sighting("1")) == VerdictClaimed {
+	if l.tabs.observe(tabSighting("1")) == verdictClaimed {
 		t.Fatal("a tab back on its default label was read as the user's")
 	}
 
-	if m.Tabs.Locked("wE:t1") {
+	if l.tabs.isLocked("wE:t1") {
 		t.Error("the tab is locked")
 	}
 }
@@ -120,15 +132,15 @@ func TestATabWhoseNameWasClearedIsNotTheUsers(t *testing.T) {
 	// Clearing a tab's name empties its label rather than putting the position
 	// back, so an empty label is Herdr's other way of saying nobody named it —
 	// see docs/architecture/herdr-socket-api.md.
-	m := newManual(t)
-	m.Tabs.Observe(sighting("1"))
-	m.Tabs.Applied("wE:t1", "dashboard")
+	l := settledLabels(t)
+	l.tabs.observe(tabSighting("1"))
+	l.tabs.applied("wE:t1", "dashboard")
 
-	if m.Tabs.Observe(sighting("")) == VerdictClaimed {
+	if l.tabs.observe(tabSighting("")) == verdictClaimed {
 		t.Fatal("a tab whose name was cleared was read as the user's")
 	}
 
-	if m.Tabs.Locked("wE:t1") {
+	if l.tabs.isLocked("wE:t1") {
 		t.Error("the tab is locked")
 	}
 }
@@ -136,15 +148,15 @@ func TestATabWhoseNameWasClearedIsNotTheUsers(t *testing.T) {
 func TestARenameByTheUserLocksTheTab(t *testing.T) {
 	t.Parallel()
 
-	m := newManual(t)
-	m.Tabs.Observe(sighting("1"))
-	m.Tabs.Applied("wE:t1", "dashboard")
+	l := settledLabels(t)
+	l.tabs.observe(tabSighting("1"))
+	l.tabs.applied("wE:t1", "dashboard")
 
-	if m.Tabs.Observe(sighting("Important work")) != VerdictClaimed {
+	if l.tabs.observe(tabSighting("Important work")) != verdictClaimed {
 		t.Fatal("a label the plugin neither set nor wanted was not read as the user's")
 	}
 
-	if !m.Tabs.Locked("wE:t1") {
+	if !l.tabs.isLocked("wE:t1") {
 		t.Error("the tab is not locked")
 	}
 }
@@ -154,15 +166,15 @@ func TestARenameLandingAfterItsCallFailedIsNotTheUsers(t *testing.T) {
 
 	// Herdr can apply a rename seconds after the call gave up on it, by when
 	// the name wanted has moved on. Read as the user's, it froze the tab.
-	m := newManual(t)
-	m.Tabs.Observe(sighting("1"))
-	m.Tabs.Sent("wE:t1", "api")
+	l := settledLabels(t)
+	l.tabs.observe(tabSighting("1"))
+	l.tabs.sent("wE:t1", "api")
 
-	if m.Tabs.Observe(sighting("api")) == VerdictClaimed {
+	if l.tabs.observe(tabSighting("api")) == verdictClaimed {
 		t.Fatal("a label the plugin sent was read as the user's")
 	}
 
-	if m.Tabs.Locked("wE:t1") {
+	if l.tabs.isLocked("wE:t1") {
 		t.Error("the tab is locked")
 	}
 }
@@ -170,11 +182,11 @@ func TestARenameLandingAfterItsCallFailedIsNotTheUsers(t *testing.T) {
 func TestARenameByThePluginDoesNotLock(t *testing.T) {
 	t.Parallel()
 
-	m := newManual(t)
-	m.Tabs.Observe(sighting("1"))
-	m.Tabs.Applied("wE:t1", "dashboard")
+	l := settledLabels(t)
+	l.tabs.observe(tabSighting("1"))
+	l.tabs.applied("wE:t1", "dashboard")
 
-	if m.Tabs.Observe(sighting("dashboard")) == VerdictClaimed {
+	if l.tabs.observe(tabSighting("dashboard")) == verdictClaimed {
 		t.Error("the plugin's own rename was read as the user's")
 	}
 }
@@ -182,11 +194,11 @@ func TestARenameByThePluginDoesNotLock(t *testing.T) {
 func TestALabelThatHasNotMovedIsNobodysDoing(t *testing.T) {
 	t.Parallel()
 
-	m := newManual(t)
-	m.Tabs.Observe(sighting("Important work"))
+	l := settledLabels(t)
+	l.tabs.observe(tabSighting("Important work"))
 
 	// Same label on the next poll: nothing happened, whatever it says.
-	if m.Tabs.Observe(sighting("Important work")) == VerdictClaimed {
+	if l.tabs.observe(tabSighting("Important work")) == verdictClaimed {
 		t.Error("an unchanged label was read as a rename")
 	}
 }
@@ -195,10 +207,10 @@ func TestALabelMatchingWhatWeWouldSetDoesNotLock(t *testing.T) {
 	t.Parallel()
 
 	// Indistinguishable from the plugin's own work, and harmless either way.
-	m := newManual(t)
-	m.Tabs.Observe(sighting("1"))
+	l := settledLabels(t)
+	l.tabs.observe(tabSighting("1"))
 
-	if m.Tabs.Observe(sighting("dashboard")) == VerdictClaimed {
+	if l.tabs.observe(tabSighting("dashboard")) == verdictClaimed {
 		t.Error("a label matching the resolved one locked the tab")
 	}
 }
@@ -208,14 +220,14 @@ func TestLocksSurviveAReload(t *testing.T) {
 
 	path := filepath.Join(t.TempDir(), "manual-names.json")
 
-	m := LoadManual(path)
-	m.Tabs.Observe(sighting("1"))
+	l := load(path)
+	l.tabs.observe(tabSighting("1"))
 
-	if m.Tabs.Observe(sighting("Important work")) != VerdictClaimed {
+	if l.tabs.observe(tabSighting("Important work")) != verdictClaimed {
 		t.Fatal("the tab was not locked")
 	}
 
-	if !LoadManual(path).Tabs.Locked("wE:t1") {
+	if !load(path).tabs.isLocked("wE:t1") {
 		t.Error("the lock did not survive a restart")
 	}
 }
@@ -228,18 +240,18 @@ func TestAReloadedLockIsReleasedWhenTheLabelMovedOn(t *testing.T) {
 	// same tab.
 	path := filepath.Join(t.TempDir(), "manual-names.json")
 
-	m := LoadManual(path)
-	m.Tabs.Observe(sighting("1"))
-	m.Tabs.Observe(sighting("Important work"))
+	l := load(path)
+	l.tabs.observe(tabSighting("1"))
+	l.tabs.observe(tabSighting("Important work"))
 
-	reloaded := LoadManual(path)
-	reloaded.Tabs.Retain(map[string]string{"wE:t1": "2"})
+	reloaded := load(path)
+	reloaded.tabs.retain(map[string]string{"wE:t1": "2"})
 
-	if reloaded.Tabs.Locked("wE:t1") {
+	if reloaded.tabs.isLocked("wE:t1") {
 		t.Error("a lock was kept for a tab that no longer carries its name")
 	}
 
-	if LoadManual(path).Tabs.Locked("wE:t1") {
+	if load(path).tabs.isLocked("wE:t1") {
 		t.Error("the released lock was not written out")
 	}
 }
@@ -247,21 +259,21 @@ func TestAReloadedLockIsReleasedWhenTheLabelMovedOn(t *testing.T) {
 func TestRetainDropsTabsTheSessionNoLongerHolds(t *testing.T) {
 	t.Parallel()
 
-	m := newManual(t)
-	m.Tabs.Observe(sighting("1"))
-	m.Tabs.Observe(sighting("Important work"))
+	l := settledLabels(t)
+	l.tabs.observe(tabSighting("1"))
+	l.tabs.observe(tabSighting("Important work"))
 
-	m.Tabs.Retain(map[string]string{})
+	l.tabs.retain(map[string]string{})
 
-	if m.Tabs.Locked("wE:t1") {
+	if l.tabs.isLocked("wE:t1") {
 		t.Error("a closed tab is still locked")
 	}
 
 	// Its baseline went too, so a tab reusing the id starts clean and is
 	// judged on what it carries rather than on what the old tab did.
-	if m.Tabs.Observe(
-		Sighting{ID: "wE:t1", Current: "1", Desired: "dashboard", Default: "1"},
-	) == VerdictClaimed {
+	if l.tabs.observe(
+		sighting{id: "wE:t1", current: "1", desired: "dashboard", byDefault: "1"},
+	) == verdictClaimed {
 		t.Error("an unnamed tab reusing the id was locked")
 	}
 }
@@ -276,14 +288,14 @@ func TestAnUnreadableStoreIsNotFatal(t *testing.T) {
 		t.Fatalf("write: %v", err)
 	}
 
-	m := LoadManual(path)
-	if m.Tabs.Locked("wE:t1") {
+	l := load(path)
+	if l.tabs.isLocked("wE:t1") {
 		t.Error("a corrupt store produced a lock")
 	}
 	// And it still works from there.
-	m.Tabs.Observe(sighting("1"))
+	l.tabs.observe(tabSighting("1"))
 
-	if m.Tabs.Observe(sighting("Important work")) != VerdictClaimed {
+	if l.tabs.observe(tabSighting("Important work")) != verdictClaimed {
 		t.Error("locking stopped working after a corrupt store")
 	}
 }
@@ -301,12 +313,12 @@ func TestAFileWithWorkspaceLocksStillLoads(t *testing.T) {
 		t.Fatalf("write: %v", err)
 	}
 
-	m := LoadManual(path)
-	if !m.Tabs.Locked("wE:t1") || !m.Panes.Locked("wE:p1") {
+	l := load(path)
+	if !l.tabs.isLocked("wE:t1") || !l.panes.isLocked("wE:p1") {
 		t.Fatal("the tab and pane locks were lost with the workspace keys")
 	}
 
-	m.Tabs.Retain(map[string]string{})
+	l.tabs.retain(map[string]string{})
 
 	raw, err := os.ReadFile(path)
 	if err != nil {
@@ -321,32 +333,32 @@ func TestAFileWithWorkspaceLocksStillLoads(t *testing.T) {
 func TestWithoutAPathLocksStayInMemory(t *testing.T) {
 	t.Parallel()
 
-	m := LoadManual("")
-	m.Tabs.Observe(sighting("1"))
+	l := load("")
+	l.tabs.observe(tabSighting("1"))
 
-	if m.Tabs.Observe(sighting("Important work")) != VerdictClaimed {
+	if l.tabs.observe(tabSighting("Important work")) != verdictClaimed {
 		t.Error("locking needs a file")
 	}
 
-	if !m.Tabs.Locked("wE:t1") {
+	if !l.tabs.isLocked("wE:t1") {
 		t.Error("the lock was not kept")
 	}
 }
 
-// paneSighting is the pane counterpart of sighting: a pane the resolver would
+// paneSighting is the pane counterpart of tabSighting: a pane the resolver would
 // name `dashboard`, and which carries no label until somebody sets one.
-func paneSighting(current string) Sighting {
-	return Sighting{ID: "wE:p1", Current: current, Desired: "dashboard"}
+func paneSighting(current string) sighting {
+	return sighting{id: "wE:p1", current: current, desired: "dashboard"}
 }
 
-func TestPaneSightingFromHasNoDefaultLabel(t *testing.T) {
+func TestAPaneSightingHasNoDefaultLabel(t *testing.T) {
 	t.Parallel()
 
 	// A pane has one spelling for unnamed and no second one. pane.rename clears
 	// an empty label rather than storing it, and Herdr omits the field entirely
 	// until a pane is named, so there is no position to compare against.
-	got := PaneSightingFrom(&PaneState{ID: "wE:p1", CurrentName: "Important work"}, "dashboard")
-	want := Sighting{ID: "wE:p1", Current: "Important work", Desired: "dashboard"}
+	got := sightingOfPane(&state.PaneState{ID: "wE:p1", CurrentName: "Important work"}, "dashboard")
+	want := sighting{id: "wE:p1", current: "Important work", desired: "dashboard"}
 
 	if got != want {
 		t.Errorf("sighting = %+v, want %+v", got, want)
@@ -356,19 +368,19 @@ func TestPaneSightingFromHasNoDefaultLabel(t *testing.T) {
 func TestAPaneTheUserRenamedIsLocked(t *testing.T) {
 	t.Parallel()
 
-	m := LoadManual("")
-	m.Settled()
+	l := load("")
+	l.settle()
 
-	if m.Panes.Observe(paneSighting("Important work")) != VerdictClaimed {
+	if l.panes.observe(paneSighting("Important work")) != verdictClaimed {
 		t.Fatal("a pane carrying a name nobody set was not claimed")
 	}
 
-	if !m.Panes.Locked("wE:p1") {
+	if !l.panes.isLocked("wE:p1") {
 		t.Error("the pane was not locked")
 	}
 	// The tab of the same poll is a claim of its own: locking one must not
 	// lock the other, and the two id spaces are Herdr's, not this package's.
-	if m.Tabs.Locked("wE:p1") {
+	if l.tabs.isLocked("wE:p1") {
 		t.Error("claiming a pane claimed a tab of the same id")
 	}
 }
@@ -376,11 +388,11 @@ func TestAPaneTheUserRenamedIsLocked(t *testing.T) {
 func TestAPaneAutoTitleNamedIsNotTheUsers(t *testing.T) {
 	t.Parallel()
 
-	m := LoadManual("")
-	m.Settled()
-	m.Panes.Applied("wE:p1", "dashboard")
+	l := load("")
+	l.settle()
+	l.panes.applied("wE:p1", "dashboard")
 
-	if m.Panes.Observe(paneSighting("dashboard")) == VerdictClaimed {
+	if l.panes.observe(paneSighting("dashboard")) == verdictClaimed {
 		t.Error("the plugin's own pane rename read as the user's")
 	}
 }
@@ -388,14 +400,14 @@ func TestAPaneAutoTitleNamedIsNotTheUsers(t *testing.T) {
 func TestClearingAPaneLabelHandsItBack(t *testing.T) {
 	t.Parallel()
 
-	m := LoadManual("")
-	m.Settled()
-	m.Panes.Observe(paneSighting("Important work"))
+	l := load("")
+	l.settle()
+	l.panes.observe(paneSighting("Important work"))
 
 	// Herdr reports a cleared pane as carrying no label at all.
-	m.Panes.Retain(map[string]string{"wE:p1": ""})
+	l.panes.retain(map[string]string{"wE:p1": ""})
 
-	if m.Panes.Locked("wE:p1") {
+	if l.panes.isLocked("wE:p1") {
 		t.Error("clearing the label did not hand the pane back")
 	}
 }
@@ -405,28 +417,28 @@ func TestPaneLocksSurviveAReload(t *testing.T) {
 
 	path := filepath.Join(t.TempDir(), "manual-names.json")
 
-	m := LoadManual(path)
-	m.Settled()
-	m.Panes.Observe(paneSighting("Important work"))
+	l := load(path)
+	l.settle()
+	l.panes.observe(paneSighting("Important work"))
 
-	if !LoadManual(path).Panes.Locked("wE:p1") {
+	if !load(path).panes.isLocked("wE:p1") {
 		t.Error("the pane lock was not persisted")
 	}
 	// Tab locks are written under a key of their own, so a store holding one
 	// kind still reads back the other.
-	m.Tabs.Observe(sighting("1"))
-	m.Tabs.Observe(sighting("My tab"))
+	l.tabs.observe(tabSighting("1"))
+	l.tabs.observe(tabSighting("My tab"))
 
-	reloaded := LoadManual(path)
-	if !reloaded.Tabs.Locked("wE:t1") || !reloaded.Panes.Locked("wE:p1") {
+	reloaded := load(path)
+	if !reloaded.tabs.isLocked("wE:t1") || !reloaded.panes.isLocked("wE:p1") {
 		t.Error("the two kinds of lock did not survive the same store")
 	}
 }
 
 // moved is a pane seen again under the id Herdr gave it in another workspace,
 // wearing the label it carried under wE:p1.
-func moved() Sighting {
-	return Sighting{ID: "wV:p9", Current: "[wE:p1] api", Desired: "[wV:p9] api"}
+func moved() sighting {
+	return sighting{id: "wV:p9", current: "[wE:p1] api", desired: "[wV:p9] api"}
 }
 
 func TestAMovedPaneOutlivesAPollCutShort(t *testing.T) {
@@ -434,13 +446,13 @@ func TestAMovedPaneOutlivesAPollCutShort(t *testing.T) {
 
 	// A poll that times out before reaching the moved pane never settles, and
 	// the label it left must still be there for the poll that does reach it.
-	m := newManual(t)
-	m.Panes.Observe(Sighting{ID: "wE:p1", Current: "[wE:p1] api", Desired: "[wE:p1] api"})
+	l := settledLabels(t)
+	l.panes.observe(sighting{id: "wE:p1", current: "[wE:p1] api", desired: "[wE:p1] api"})
 
-	m.Panes.Retain(map[string]string{"wV:p9": "[wE:p1] api"})
-	m.Panes.Retain(map[string]string{"wV:p9": "[wE:p1] api"})
+	l.panes.retain(map[string]string{"wV:p9": "[wE:p1] api"})
+	l.panes.retain(map[string]string{"wV:p9": "[wE:p1] api"})
 
-	if m.Panes.Observe(moved()) != VerdictName {
+	if l.panes.observe(moved()) != verdictName {
 		t.Error("a moved pane was claimed for the user after a poll cut short")
 	}
 }
@@ -450,14 +462,14 @@ func TestAMovedPaneIsForgottenOnceEverythingWasSeen(t *testing.T) {
 
 	// A poll that saw everything has seen any pane that moved, so a label worn
 	// by a pane appearing later is somebody else's.
-	m := newManual(t)
-	m.Panes.Observe(Sighting{ID: "wE:p1", Current: "[wE:p1] api", Desired: "[wE:p1] api"})
+	l := settledLabels(t)
+	l.panes.observe(sighting{id: "wE:p1", current: "[wE:p1] api", desired: "[wE:p1] api"})
 
-	m.Panes.Retain(map[string]string{})
-	m.Settled()
-	m.Panes.Retain(map[string]string{"wV:p9": "[wE:p1] api"})
+	l.panes.retain(map[string]string{})
+	l.settle()
+	l.panes.retain(map[string]string{"wV:p9": "[wE:p1] api"})
 
-	if m.Panes.Observe(moved()) != VerdictClaimed {
+	if l.panes.observe(moved()) != verdictClaimed {
 		t.Error("a departed label was still taken as moved after a settled poll")
 	}
 }
@@ -467,14 +479,14 @@ func TestATabIsNotFollowedAcrossIDs(t *testing.T) {
 
 	// Herdr moves a tab only within its workspace and keeps its id, so a tab
 	// wearing a departed tab's label is judged as any tab turning up named.
-	m := newManual(t)
-	m.Tabs.Observe(Sighting{ID: "wE:t1", Current: "api", Desired: "api", Default: "1"})
+	l := settledLabels(t)
+	l.tabs.observe(sighting{id: "wE:t1", current: "api", desired: "api", byDefault: "1"})
 
-	m.Tabs.Retain(map[string]string{"wV:t9": "api"})
+	l.tabs.retain(map[string]string{"wV:t9": "api"})
 
-	if m.Tabs.Observe(
-		Sighting{ID: "wV:t9", Current: "api", Desired: "web", Default: "1"},
-	) != VerdictClaimed {
+	if l.tabs.observe(
+		sighting{id: "wV:t9", current: "api", desired: "web", byDefault: "1"},
+	) != verdictClaimed {
 		t.Error("a tab was taken as moved")
 	}
 }

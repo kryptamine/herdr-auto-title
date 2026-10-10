@@ -13,6 +13,7 @@ internal/herdr        the socket client; herdrtest beside it is its stub
 internal/state        a session snapshot turned into what each tab is doing
 internal/reads        what a snapshot cannot say about a pane, once per poll
 internal/resolver     that state turned into a title, one source at a time
+internal/labels       that title put on, unless the label is the user's own
 internal/claude       what a Claude Code session is about, from its transcript
 internal/git          what a repository has checked out, read from .git
 scripts/              the Python probes
@@ -153,7 +154,7 @@ are only the facts that would otherwise mislead the code in silence.
   request it has read even after the caller hangs up, so a stalled server can
   apply a `tab.rename` seconds after the poll's deadline. That label is still
   Auto Title's own when it lands, so `Call` marks a failure after sending
-  `ErrUnanswered`, and `Claims.Sent` keeps that label.
+  `ErrUnanswered`, and `claims.sent` keeps that label.
 - **On Windows the socket is a named pipe**, `\\.\pipe\` followed by the whole
   of `HERDR_SOCKET_PATH`. The path itself names a small text file, and dialing
   it as a Unix socket is refused; `dial_windows.go` opens the pipe, and nothing

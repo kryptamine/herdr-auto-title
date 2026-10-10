@@ -15,13 +15,17 @@ holds for a pane, which Auto Title names too unless that is turned off.
 There is nothing to correlate a rename with. The plugin polls rather than
 subscribing, so a rename is not an event that arrives but **a label that has
 changed between two polls**. The whole design follows from that, and it lives in
-`internal/state/manual.go`.
+`internal/labels`: the rule in `claims.go`, and in `labels.go` the pass that
+runs it over one poll, sends the renames and records what became of them. The
+poll loop asks it only for a tab or a pane to be named, and keeps two rules of
+its own: a pane is read before it is judged, and a pass is settled only once
+every tab and pane was seen.
 
 ## The rule
 
 A tab is the user's work when its label moved to something Auto Title neither
 set nor would have set. Three things are compared on every poll
-(`Claims.Observe`):
+(`claims.observe`):
 
 - **Current** — the label the snapshot reports.
 - **Desired** — what the resolver would name the tab right now.
@@ -32,7 +36,7 @@ Title's own work, and it is harmless either way. A label equal to *Seen*
 has not moved, so nobody did anything. Anything else moved, and whoever moved
 it was not the plugin.
 
-`Claims.Applied` records each successful rename, so the plugin's own work never
+`claims.applied` records each successful rename, so the plugin's own work never
 reads as the user's on the next poll.
 
 ## Two traps this design walked into
@@ -86,7 +90,7 @@ position.
 
 ### A rename can land after its call has failed
 
-`Claims.Applied` runs only when `tab.rename` answers. A call can also give up —
+`claims.applied` runs only when `tab.rename` answers. A call can also give up —
 the poll's deadline passes while Herdr is stalled — after Herdr has already
 read the request, and Herdr then applies it whenever it gets to it. Measured, a
 stalled server applied renames 3 to 18 seconds after receiving them, while
@@ -100,7 +104,7 @@ where it was found, ten of twelve locked tabs had a late rename as their last
 one.
 
 So the label of a rename whose request was sent but got no answer
-(`herdr.ErrUnanswered`) is kept per tab (`Claims.Sent`), and a tab found wearing
+(`herdr.ErrUnanswered`) is kept per tab (`claims.sent`), and a tab found wearing
 one is Auto Title's, like one wearing *Desired*, and is renamed on. The label is
 forgotten once it lands or the tab closes. Recording the label as *Seen* up
 front instead would be wrong the other way: a rename that never lands would
@@ -121,7 +125,7 @@ a worse surprise than the plugin briefly stopping. Locks are therefore persisted
 
 But Herdr's tab ids belong to a session, so a stored `wE:t2` may be an unrelated
 tab by the time it is read back. **A lock records the label it was taken with**
-and is released if the tab no longer carries it (`Claims.Retain`, which also
+and is released if the tab no longer carries it (`claims.retain`, which also
 drops everything about tabs the session no longer holds).
 
 The cost of that guard is stated plainly: **a rename made while the plugin is
@@ -132,8 +136,8 @@ a rename made in the seconds the plugin was down.
 ## Handing a tab back
 
 **Clear the tab's name and Auto Title takes it again**, on the next poll, with
-the plugin running. Nothing implements that: `Retain` releases the lock because
-the label moved off the one it was taken with, and `Observe` declines to take a
+the plugin running. Nothing implements that: `retain` releases the lock because
+the label moved off the one it was taken with, and `observe` declines to take a
 new one because an unnamed tab is nobody's. Renaming the tab to its position
 does the same thing for the same reason.
 
@@ -154,12 +158,12 @@ its own is specified and not built.
 
 Auto Title can name panes as well as tabs
 ([configuration](./configuration.md)), and a pane it names is a pane the user
-can rename back. The rule above is the same rule: `Manual` holds one `Claims`
-per kind — `Manual.Tabs` and `Manual.Panes` — and each runs it over ids of its
-own. Locks for both live in the same file, panes under `locked_panes`, so a
-store written by an older version reads back unchanged. A store from a version
-that named workspaces also carries `locked_workspaces` and `written_workspaces`;
-those are ignored on load and gone from the next save.
+can rename back. The rule above is the same rule: `Labels` holds one `claims`
+per kind — `tabs` and `panes` — and each runs it over ids of its own. Locks for
+both live in the same file, panes under `locked_panes`, so a store written by an
+older version reads back unchanged. A store from a version that named
+workspaces also carries `locked_workspaces` and `written_workspaces`; those are
+ignored on load and gone from the next save.
 
 Two things differ, both because Herdr labels a pane differently from a tab.
 
@@ -167,7 +171,7 @@ Two things differ, both because Herdr labels a pane differently from a tab.
 label rather than storing it, and Herdr omits the field entirely until a pane
 has a label, so an unnamed pane is `""` and nothing else. There is no position
 to compare against and no `TabInfo.number` trap to walk into — the whole of
-`PaneSightingFrom` is the pane's id, its label and what the resolver wants.
+`sightingOfPane` is the pane's id, its label and what the resolver wants.
 
 **Claiming a tab does not claim its panes.** The two are separate locks on
 purpose: naming a tab by hand says what the tab bar should read, and says
@@ -187,14 +191,14 @@ is neither wanted now nor one Auto Title sent, so the rule above would claim it
 for the user — and with `HERDR_AUTO_TITLE_PANE_ID=true` the label names an id
 the pane no longer has, so the stale id would stay for good.
 
-`Retain` therefore keeps the labels of panes that vanished without being
+`claims.retain` therefore keeps the labels of panes that vanished without being
 claimed, and a pane sighted for the first time wearing one of them is Auto
 Title's own, moved. The labels are kept until a poll has seen every tab —
-`Settled` clears them — because a poll cut short may never reach the moved
+`settle` clears them — because a poll cut short may never reach the moved
 pane, and the next one no longer knows the old id. A label the user had claimed
 is not kept, so a moved pane the user named stays theirs.
 
-This applies to panes and to nothing else. A tab shares `Claims`, but Herdr
+This applies to panes and to nothing else. A tab shares `claims`, but Herdr
 does not move one under a new id — `tab.move` only reorders — so one turning up
 wearing a departed label is judged like any other.
 
