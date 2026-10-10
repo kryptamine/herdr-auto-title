@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"path/filepath"
 	"testing"
 
@@ -456,5 +457,60 @@ func TestAMovedPaneKeepsTheNameTheUserGaveIt(t *testing.T) {
 
 	if got := labelsOf(h, "wE:p9"); len(got) != 0 {
 		t.Errorf("moved pane = %v, want the user's name left alone", got)
+	}
+}
+
+// cancelOn is a Herdr session that cancels the poll the moment the plugin asks
+// what one pane is running, which is how a deadline lands inside a tab's panes.
+type cancelOn struct {
+	*herdrtest.Client
+
+	paneID string
+	cancel context.CancelFunc
+}
+
+func (c *cancelOn) Call(ctx context.Context, method string, params any, result any) error {
+	if target, ok := params.(herdr.PaneTarget); ok &&
+		method == herdr.MethodPaneProcessInfo && target.PaneID == c.paneID {
+		c.cancel()
+
+		return ctx.Err()
+	}
+
+	return c.Client.Call(ctx, method, params, result)
+}
+
+// A poll cut short inside the last tab's panes has not seen every pane, so it
+// must not settle: settling forgets the label a moved pane left behind, and the
+// pane would be locked as the user's under a label Auto Title wrote.
+func TestAPollCutShortInsideTheLastTabsPanesDoesNotSettle(t *testing.T) {
+	t.Parallel()
+
+	cfg := paneConfig()
+	cfg.ShowPaneID = true
+	h := &harness{
+		t: t, app: appFromConfig(t, cfg),
+		client: herdrtest.New(oneTab(), split()), instance: &fakeInstance{},
+	}
+	h.poll()
+
+	h.client.ClosePane("wE:p2")
+	h.client.SetPane(herdr.PaneInfo{
+		PaneID: "wE:p9", TabID: "wE:t1", CWD: api, Label: "[wE:p2] api",
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	h.app.poll(ctx, &cancelOn{Client: h.client, paneID: "wE:p9", cancel: cancel})
+
+	if got := labelsOf(h, "wE:p9"); len(got) != 0 {
+		t.Fatalf("moved pane = %v, want the cut-short poll to leave it unjudged", got)
+	}
+
+	h.poll()
+
+	if got := labelsOf(h, "wE:p9"); len(got) != 1 || got[0] != "[wE:p9] api" {
+		t.Errorf("moved pane = %v, want it renamed to its new ID", got)
 	}
 }

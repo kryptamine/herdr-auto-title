@@ -189,9 +189,10 @@ the pane no longer has, so the stale id would stay for good.
 
 `Retain` therefore keeps the labels of panes that vanished without being
 claimed, and a pane sighted for the first time wearing one of them is Auto
-Title's own, moved. The labels are kept until a poll has seen every tab —
-`Settled` clears them — because a poll cut short may never reach the moved
-pane, and the next one no longer knows the old id. A label the user had claimed
+Title's own, moved. The labels are kept until a poll has seen every tab and
+every pane — `Settled` clears them — because a poll cut short may never reach
+the moved pane, and the next one no longer knows the old id. A poll whose
+deadline lands among the last tab's panes is cut short too, and does not settle. A label the user had claimed
 is not kept, so a moved pane the user named stays theirs.
 
 This applies to panes and to nothing else. A tab shares `Claims`, but Herdr
