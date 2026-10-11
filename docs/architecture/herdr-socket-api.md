@@ -364,7 +364,11 @@ reads, so this section describes Herdr rather than those types.
   the first had set. The snapshot returns that one flat map, with neither source
   nor expiry. A closed workspace answers `workspace_not_found`, and `ttl_ms`
   must lie in 1..86400000. A `$name` entry in `ui.sidebar.spaces.rows` draws a
-  token.
+  token. Rendered on 0.9.1: an entry may be a table, `{ token = "$topic", bold
+  = true, dim = false, fg = "#cdd6f4" }`, and a bare `"$topic"` draws dim gray;
+  a row whose tokens are all empty is dropped rather than left blank; and each
+  client draws its sidebar from its own `config.toml`, so a client attached
+  from another machine shows none of the server machine's rows.
 - **`agent_status` is `idle | working | blocked | done | unknown`.** Every pane
   carries one, and a pane with no agent reports `unknown`. `TabInfo` carries one
   as well, aggregated over the tab's panes: with a single Claude Code pane

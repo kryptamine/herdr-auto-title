@@ -56,15 +56,23 @@ $HOME                                  →  7 · Shell
   longer lists every Claude Code pane as `claude`.
 - Rename a tab or a pane yourself and Auto Title stops touching it. Clear the
   name to hand it back.
-- The sidebar can say what each workspace is doing, under its name. Auto Title
-  reports its active tab's topic -- what the agent or program there is working
-  on, never the directory or the branch -- and leaves the workspace's name
-  alone. Add a `$topic` row to Herdr's `config.toml` to see it:
+- The sidebar can say what each workspace is doing. Auto Title reports its
+  active tab's topic -- what the agent or program there is working on, never
+  the directory or the branch -- and leaves the workspace's name alone. Add a
+  `$topic` row to Herdr's `config.toml` to see it. This one keeps the name and
+  branch on top, as Herdr draws them, with the topic in bold under them:
 
   ```toml
   [ui.sidebar.spaces]
-  rows = [["state_icon", "workspace"], ["$topic"]]
+  rows = [
+    ["state_icon", "workspace", "branch", "git_status"],
+    [{ token = "$topic", bold = true, dim = false }],
+  ]
   ```
+
+  Herdr draws a topic dim unless the row says otherwise, and drops the row of a
+  workspace that has none. Each client reads its own `config.toml`, so set the
+  rows on every machine you attach from.
 
   A topic fades within a minute of Auto Title stopping or of
   `HERDR_AUTO_TITLE_WORKSPACES=false`. A workspace name that an earlier Auto
