@@ -16,6 +16,7 @@ internal/resolver     that state turned into a title, one source at a time
 internal/labels       that title put on, unless the label is the user's own
 internal/claude       what a Claude Code session is about, from its transcript
 internal/git          what a repository has checked out, read from .git
+internal/instance     one Auto Title per session, and the restart handoff
 scripts/              the Python probes
 docs/architecture/    how the plugin works and why
 ```
