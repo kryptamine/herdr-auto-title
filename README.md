@@ -38,7 +38,7 @@ a release instead, name its tag:
 <!-- x-release-please-start-version -->
 
 ```sh
-herdr plugin install kryptamine/herdr-auto-title --ref v0.13.0
+herdr plugin install kryptamine/herdr-auto-title --ref v0.13.2
 herdr plugin action invoke herdr.auto-title.restart
 ```
 

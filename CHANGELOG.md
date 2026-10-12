@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.13.2](https://github.com/kryptamine/herdr-auto-title/compare/v0.13.1...v0.13.2) (2026-10-12)
+
+
+### Bug Fixes
+
+* **app:** settle a pass only once every pane was seen ([bb5f2f9](https://github.com/kryptamine/herdr-auto-title/commit/bb5f2f9a3d6bfe02e791790541070fcf44549470))
+
+
+### Refactoring
+
+* **labels:** keep a label's whole life in a package of its own ([67fa3e2](https://github.com/kryptamine/herdr-auto-title/commit/67fa3e24f319e8c88d9a55b46563d341fb055e55))
+
 ## [0.13.1](https://github.com/kryptamine/herdr-auto-title/compare/v0.13.0...v0.13.1) (2026-10-09)
 
 
