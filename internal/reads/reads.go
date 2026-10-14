@@ -91,12 +91,19 @@ func (p *Poll) Fill(ctx context.Context, pane *state.PaneState) {
 		return
 	}
 
-	// A read that failed with time left is asked again by the next Fill, so a
-	// second reader of the pane in this poll is not left with the snapshot's guess.
 	processes, read := p.reader.processesOf(ctx, p.client, pane.ID)
-	if read || spent(ctx) {
-		p.filled[pane] = struct{}{}
+	if !read {
+		// A failed read is a failed read, not an answer: leave what is
+		// already known (for a known foreign pane, its process) in place
+		// and ask again next Fill, unless the deadline left anyway.
+		if spent(ctx) {
+			p.filled[pane] = struct{}{}
+		}
+
+		return
 	}
+
+	p.filled[pane] = struct{}{}
 
 	dir := state.PaneDir(processes, pane.Dir)
 
@@ -137,6 +144,10 @@ func (r *Reader) processesOf(
 				"pane_id", paneID,
 				"error", err,
 			)
+		}
+
+		if cached, ok := r.processes.fallbackRead(paneID); ok {
+			return cached, true
 		}
 
 		return nil, false

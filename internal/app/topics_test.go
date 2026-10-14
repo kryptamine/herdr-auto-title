@@ -127,6 +127,28 @@ func fakeClock(h *harness) func(time.Duration) {
 	return func(d time.Duration) { now = now.Add(d) }
 }
 
+// A tab driven by a program that owns its own labels is not named and its
+// workspace topic is neither reported nor cleared.
+func TestAForeignTabIsNotNamedAndHasNoTopic(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+
+	h := oneTabWorkspace(t, topicConfig(), "dashboard", herdr.PaneInfo{CWD: dir})
+	h.client.SetProcesses("wE:p1", herdr.PaneProcessInfoProcess{
+		Name: "herdr-mirror",
+		Argv: []string{"/bin/herdr-mirror", "pane", "host", "w1:p1"},
+		CWD:  dir,
+	})
+	h.polls(2)
+
+	if len(h.client.Renames()) != 0 {
+		t.Errorf("renamed a foreign tab: %v", h.client.Renames())
+	}
+
+	wantTopics(t, h)
+}
+
 // Whatever the label says -- Herdr's directory basename, a name the user gave,
 // or a row an earlier version wrote -- it is left alone and the topic reported.
 func TestATopicIsReportedWhateverTheLabel(t *testing.T) {

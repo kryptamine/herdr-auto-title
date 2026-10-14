@@ -39,7 +39,7 @@ func isolate(t *testing.T) {
 		EnvPreferAgent, EnvPaneID, EnvAgentHandle, EnvWorkspaces, EnvWorkspaceMaxLength,
 		// Claude Code's own variable is cleared with ours: it now decides a
 		// Config field, so a developer's real home would otherwise be read.
-		EnvClaudeDirs, EnvClaudeConfigDir,
+		EnvClaudeDirs, EnvClaudeConfigDir, EnvForeignProcesses,
 	}
 
 	for _, name := range names {
@@ -567,5 +567,19 @@ func TestLoadConfigAcceptsConfigHomesItCanUse(t *testing.T) {
 
 	if _, warnings := LoadConfig(); len(warnings) != 0 {
 		t.Errorf("warnings = %v, want none", warnings)
+	}
+}
+
+func TestForeignProcessesFromEnv(t *testing.T) {
+	isolate(t)
+	t.Setenv(EnvForeignProcesses, "foo"+string(filepath.ListSeparator)+"bar")
+
+	cfg, warnings := LoadConfig()
+	if len(warnings) != 0 {
+		t.Fatalf("warnings = %v, want none", warnings)
+	}
+
+	if want := []string{"foo", "bar"}; !slices.Equal(cfg.ForeignProcesses, want) {
+		t.Errorf("ForeignProcesses = %v, want %v", cfg.ForeignProcesses, want)
 	}
 }

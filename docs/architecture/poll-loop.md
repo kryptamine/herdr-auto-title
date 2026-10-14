@@ -161,6 +161,10 @@ rather than once per tab, which is what stops the tabs of one project — and tw
 panes whose agents share a worktree — walking the same tree once each; see
 [title resolution](./title-resolution.md#the-git-branch).
 
+A tab owned by a program that owns its own labels is decided per pane, so checking
+ownership reads every pane of that tab while topics are on; a failed process
+read also stops being a reason to drop the branch or topic it already had.
+
 The reads are left out rather than made and discarded because a tab is named
 from one pane (`TabState.Context`) and a locked tab is not named at all. A
 four-pane tab therefore costs one process request rather than four, and a
