@@ -10,13 +10,14 @@ import (
 // request or a file, and the reads are spent on the panes that earn them.
 func (a *App) tabsIn(snapshot herdr.Snapshot) []state.TabState {
 	workspaces := workspaceLabelsIn(snapshot.Workspaces)
+	handles := handlesIn(snapshot.Agents)
 
 	byTab := make(map[string][]*state.PaneState, len(snapshot.Tabs))
 
 	for _, pane := range snapshot.Panes {
 		byTab[pane.TabID] = append(
 			byTab[pane.TabID],
-			state.PaneFrom(pane, a.changes.ChangedAt(pane.PaneID)),
+			state.PaneFrom(pane, handles[pane.PaneID], a.changes.ChangedAt(pane.PaneID)),
 		)
 	}
 
@@ -41,4 +42,17 @@ func (a *App) tabsIn(snapshot herdr.Snapshot) []state.TabState {
 	}
 
 	return tabs
+}
+
+// handlesIn maps each pane to the name its agent was given, leaving out the
+// agents nobody named: Herdr omits their name rather than sending it empty.
+func handlesIn(agents []herdr.AgentInfo) map[string]string {
+	handles := make(map[string]string, len(agents))
+	for _, agent := range agents {
+		if agent.Name != "" {
+			handles[agent.PaneID] = agent.Name
+		}
+	}
+
+	return handles
 }

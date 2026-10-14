@@ -330,6 +330,34 @@ func TestTheSettingsThatShapeATitleShapeAPaneLabel(t *testing.T) {
 	}
 }
 
+func TestAnAgentHandleLeadsItsPaneAfterTheID(t *testing.T) {
+	t.Parallel()
+
+	// The handle is the user's word for the agent, so it shows with the
+	// agent's kind left out, and only on the pane: the tab keeps its title.
+	cfg := paneConfig()
+	cfg.ShowAgentHandle = true
+	cfg.ShowPaneID = true
+
+	client := herdrtest.New(oneTab(), []herdr.PaneInfo{
+		{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true, Agent: "claude"},
+		{PaneID: "wE:p2", TabID: "wE:t1", CWD: billing, Agent: "claude"},
+	})
+	client.SetHandle("wE:p2", "driver")
+	appFromConfig(t, cfg).poll(t.Context(), client)
+
+	want := map[string]string{"wE:p1": "[wE:p1] dashboard", "wE:p2": "[wE:p2] driver › billing"}
+	for _, call := range client.PaneRenames() {
+		if call.Label != want[call.PaneID] {
+			t.Errorf("pane %s = %q, want %q", call.PaneID, call.Label, want[call.PaneID])
+		}
+	}
+
+	if tabs := client.Renames(); len(tabs) != 1 || tabs[0].Label != "dashboard" {
+		t.Errorf("tab = %v, want %q", tabs, "dashboard")
+	}
+}
+
 func TestAPaneKeepsItsNameWhenItsTabIsClaimed(t *testing.T) {
 	t.Parallel()
 

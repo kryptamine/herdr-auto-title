@@ -53,7 +53,7 @@ func transcript(t *testing.T, lines ...string) string {
 // paneAt is a pane sitting in dir and running nothing Herdr will answer for,
 // so that a read of it finds only what the directory holds.
 func paneAt(paneID, dir string) *state.PaneState {
-	return state.PaneFrom(herdr.PaneInfo{PaneID: paneID, TabID: "wE:t1", CWD: dir}, time.Time{})
+	return state.PaneFrom(herdr.PaneInfo{PaneID: paneID, TabID: "wE:t1", CWD: dir}, "", time.Time{})
 }
 
 // agentPaneAt is a pane sitting in dir and holding a Claude Code session, so a
@@ -64,7 +64,7 @@ func agentPaneAt(paneID, sessionID, dir string) *state.PaneState {
 		AgentSession: &herdr.AgentSessionInfo{
 			Agent: "claude", Kind: herdr.SessionRefID, Value: sessionID,
 		},
-	}, time.Time{})
+	}, "", time.Time{})
 }
 
 // readOne fills one pane in a poll of its own, on options of its own.
@@ -88,7 +88,7 @@ func TestAPaneFilledTwiceInOnePollIsReadOnce(t *testing.T) {
 	client := herdrtest.New([]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}}, []herdr.PaneInfo{info})
 
 	poll := newReader(branchOptions()).Poll(client, []herdr.PaneInfo{info}, nil)
-	pane := state.PaneFrom(info, time.Time{})
+	pane := state.PaneFrom(info, "", time.Time{})
 
 	poll.Fill(context.Background(), pane)
 	poll.Fill(context.Background(), pane)
@@ -107,7 +107,7 @@ func TestAReadThatFailedIsMadeAgainInTheSamePoll(t *testing.T) {
 	client := herdrtest.New([]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}}, []herdr.PaneInfo{info})
 
 	poll := newReader(branchOptions()).Poll(client, []herdr.PaneInfo{info}, nil)
-	pane := state.PaneFrom(info, time.Time{})
+	pane := state.PaneFrom(info, "", time.Time{})
 
 	client.SetProcessError(errors.New("herdr is busy"))
 	poll.Fill(context.Background(), pane)
@@ -144,7 +144,7 @@ func TestAReadPastTheDeadlineKeepsWhatTheFirstFound(t *testing.T) {
 	client := herdrtest.New([]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}}, []herdr.PaneInfo{info})
 
 	poll := newReader(transcriptOptions(home)).Poll(client, []herdr.PaneInfo{info}, nil)
-	pane := state.PaneFrom(info, time.Time{})
+	pane := state.PaneFrom(info, "", time.Time{})
 
 	poll.Fill(context.Background(), pane)
 
@@ -172,14 +172,14 @@ func TestAPaneThatMovedIsAskedAboutAgain(t *testing.T) {
 	reader := newReader(branchOptions())
 
 	reader.Poll(client, []herdr.PaneInfo{info}, nil).
-		Fill(context.Background(), state.PaneFrom(info, time.Time{}))
+		Fill(context.Background(), state.PaneFrom(info, "", time.Time{}))
 
 	client.SetProcesses(
 		"wE:p1",
 		herdr.PaneProcessInfoProcess{Name: "nvim", Argv: []string{"nvim"}},
 	)
 
-	pane := state.PaneFrom(info, time.Time{})
+	pane := state.PaneFrom(info, "", time.Time{})
 	reader.Poll(client, []herdr.PaneInfo{info}, map[string]bool{"wE:p1": true}).
 		Fill(context.Background(), pane)
 
@@ -198,7 +198,7 @@ func TestAPaneThatCannotBeReadIsAskedAgain(t *testing.T) {
 
 	client.SetProcessError(errors.New("herdr is busy"))
 	reader.Poll(client, []herdr.PaneInfo{info}, nil).
-		Fill(context.Background(), state.PaneFrom(info, time.Time{}))
+		Fill(context.Background(), state.PaneFrom(info, "", time.Time{}))
 
 	client.SetProcesses(
 		"wE:p1",
@@ -206,7 +206,7 @@ func TestAPaneThatCannotBeReadIsAskedAgain(t *testing.T) {
 	)
 	client.SetProcessError(nil)
 
-	pane := state.PaneFrom(info, time.Time{})
+	pane := state.PaneFrom(info, "", time.Time{})
 	reader.Poll(client, []herdr.PaneInfo{info}, nil).Fill(context.Background(), pane)
 
 	if foreground, ok := pane.Foreground(); !ok || foreground.Name != "nvim" {
@@ -343,7 +343,7 @@ func TestAPaneIsReadFromItsForegroundProcessesDirectory(t *testing.T) {
 		herdr.PaneProcessInfoProcess{Name: "claude", CWD: repo},
 	)
 
-	pane := state.PaneFrom(info, time.Time{})
+	pane := state.PaneFrom(info, "", time.Time{})
 	newReader(
 		branchOptions(),
 	).Poll(client, []herdr.PaneInfo{info}, nil).
@@ -626,7 +626,7 @@ func TestAPaneWhoseAgentHoldsNoSessionKeepsItsBranch(t *testing.T) {
 		"no agent": paneAt("wE:p1", repo),
 		"no session": state.PaneFrom(
 			herdr.PaneInfo{PaneID: "wE:p2", TabID: "wE:t1", CWD: repo, Agent: "claude"},
-			time.Time{},
+			"", time.Time{},
 		),
 	} {
 		readOne(opts, pane)

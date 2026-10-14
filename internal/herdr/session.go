@@ -101,12 +101,20 @@ type PaneProcessInfo struct {
 	ForegroundProcesses      []PaneProcessInfoProcess `json:"foreground_processes"`
 }
 
+// AgentInfo is one entry of the snapshot's agents list, the only place the
+// name `herdr agent rename` gives an agent appears: no pane object carries it.
+type AgentInfo struct {
+	PaneID string `json:"pane_id"`
+	Name   string `json:"name"`
+}
+
 // Snapshot is the whole session as session.snapshot reports it.
 type Snapshot struct {
 	Workspaces []WorkspaceInfo `json:"workspaces"`
 
-	Tabs  []TabInfo  `json:"tabs"`
-	Panes []PaneInfo `json:"panes"`
+	Tabs   []TabInfo   `json:"tabs"`
+	Panes  []PaneInfo  `json:"panes"`
+	Agents []AgentInfo `json:"agents"`
 }
 
 type snapshotResult struct {
