@@ -38,6 +38,9 @@ type PaneState struct {
 	// the transcript Herdr pointed at. Empty unless the agent's integration
 	// hook is installed — see docs/architecture/title-resolution.md.
 	AgentTopic string
+	// StableTopic is a session name that outranks the terminal title. Grok's
+	// window title is a live status line, so its summary is one.
+	StableTopic bool
 	// AgentSession names the conversation that agent holds, which is how the
 	// transcript behind AgentTopic is found. Nil until the agent's integration
 	// reports one.

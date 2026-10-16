@@ -22,6 +22,7 @@ func NewTopics(opts Options, maxLen int) *Topics {
 func topicChain(opts Options) *Deterministic {
 	return New(opts,
 		NewAgent(),
+		NewStableTopic(),
 		NewUnboundTerminalTitle(),
 		NewTranscript(),
 		NewRemote(),
