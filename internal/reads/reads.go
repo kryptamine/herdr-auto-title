@@ -9,6 +9,7 @@ import (
 
 	"github.com/kryptamine/herdr-auto-title/internal/claude"
 	"github.com/kryptamine/herdr-auto-title/internal/git"
+	"github.com/kryptamine/herdr-auto-title/internal/grok"
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
 	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
@@ -18,6 +19,8 @@ import (
 type Options struct {
 	// ClaudeDirs are the Claude Code configuration homes transcripts are found in.
 	ClaudeDirs []string
+	// GrokDirs are the Grok homes session summaries are found in.
+	GrokDirs []string
 	// BranchMax of zero or less turns branches off, and then no checkout is read.
 	BranchMax       int
 	ReadTranscripts bool
@@ -28,6 +31,7 @@ type Options struct {
 type Reader struct {
 	processes       *processCache
 	topics          *claude.Reader
+	grokTopics      *grok.Reader
 	log             *slog.Logger
 	readBranches    bool
 	readTranscripts bool
@@ -37,6 +41,7 @@ func New(opts Options, log *slog.Logger) *Reader {
 	return &Reader{
 		processes:       newProcessCache(),
 		topics:          claude.NewReader(opts.ClaudeDirs...),
+		grokTopics:      grok.NewReader(opts.GrokDirs...),
 		log:             log,
 		readBranches:    opts.BranchMax > 0,
 		readTranscripts: opts.ReadTranscripts,
@@ -49,6 +54,7 @@ func New(opts Options, log *slog.Logger) *Reader {
 func (r *Reader) Poll(client herdr.Client, panes []herdr.PaneInfo, drew map[string]bool) *Poll {
 	r.processes.observe(panes, drew)
 	r.topics.Retain(sessionsIn(panes))
+	r.grokTopics.Retain(sessionsIn(panes))
 
 	return &Poll{
 		reader:    r,
@@ -93,7 +99,8 @@ func (p *Poll) Fill(ctx context.Context, pane *state.PaneState) {
 	// The transcript is read before the checkout because it says where the
 	// agent is working, and that is where the branch is read from.
 	topic := p.reader.topic(ctx, pane, dir)
-	pane.AgentTopic = topic.Text()
+	pane.AgentTopic = topic.Title
+	pane.StableTopic = topic.Stable
 	pane.Git = p.checkout(ctx, dir)
 	pane.AgentGit = p.checkout(ctx, topic.Dir)
 	pane.AgentDir = topic.Dir
@@ -155,19 +162,33 @@ func (p *Poll) checkout(ctx context.Context, dir string) git.Checkout {
 }
 
 // topic reports what the session the pane's agent is holding says it is about,
-// and where that agent is working. Only Claude Code's transcripts are
-// understood, and only Herdr's integration hook says which session a pane holds.
-func (r *Reader) topic(ctx context.Context, pane *state.PaneState, dir string) claude.Topic {
+// and where that agent is working. Only Herdr's integration hook says which
+// session a pane holds. See docs/architecture/title-resolution.md.
+func (r *Reader) topic(ctx context.Context, pane *state.PaneState, dir string) agentTopic {
 	if !r.readTranscripts || spent(ctx) {
-		return claude.Topic{}
+		return agentTopic{}
 	}
 
-	sessionID, ok := pane.AgentSession.IDFor(claude.Agent)
-	if !ok {
-		return claude.Topic{}
+	if sessionID, ok := pane.AgentSession.IDFor(claude.Agent); ok {
+		found := r.topics.Topic(sessionID, dir)
+
+		return agentTopic{Title: found.Text(), Dir: found.Dir}
 	}
 
-	return r.topics.Topic(sessionID, dir)
+	if sessionID, ok := pane.AgentSession.IDFor(grok.Agent); ok {
+		// Grok's window title is the live status line, so the summary outranks it.
+		return agentTopic{Title: r.grokTopics.Topic(sessionID, dir).Text(), Stable: true}
+	}
+
+	return agentTopic{}
+}
+
+// agentTopic is what any agent's session contributed. Stable is a name that
+// should outrank the terminal title; see docs/architecture/title-resolution.md.
+type agentTopic struct {
+	Title  string
+	Dir    string
+	Stable bool
 }
 
 // spent reports that the poll is past its deadline. The reads it guards go to

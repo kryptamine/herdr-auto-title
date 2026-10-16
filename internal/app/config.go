@@ -34,7 +34,12 @@ const (
 	EnvWorkspaceMaxLength = "HERDR_AUTO_TITLE_WORKSPACE_MAX_LENGTH"
 
 	EnvClaudeDirs = "HERDR_AUTO_TITLE_CLAUDE_DIRS"
+	EnvGrokDirs   = "HERDR_AUTO_TITLE_GROK_DIRS"
 )
+
+// EnvGrokConfigDir is Grok's own variable, naming the home it files sessions
+// under. Empty means ~/.grok, which is where Grok writes when it is unset.
+const EnvGrokConfigDir = "GROK_CONFIG_DIR"
 
 // EnvClaudeConfigDir is Claude Code's own variable, not one of ours: it names
 // the configuration home Claude Code files its sessions under, and Herdr's
@@ -94,6 +99,9 @@ type Config struct {
 	// adds. A home the user's shell picks per directory cannot be discovered,
 	// so it is named.
 	ClaudeDirs []string
+	// GrokDirs are the homes Grok session summaries are read from, in the same
+	// shape as ClaudeDirs: GROK_CONFIG_DIR, then EnvGrokDirs.
+	GrokDirs []string
 	// Home is the user's home directory, or "" when there is none.
 	Home string
 }
@@ -108,13 +116,10 @@ func LoadConfig() (Config, []string) {
 	}
 
 	homes, unreadable := configHomes()
-	for _, dir := range unreadable {
-		warnings = append(
-			warnings,
-			fmt.Sprintf("%s=%q is not a directory, so there is nothing to read in it yet",
-				EnvClaudeDirs, dir),
-		)
-	}
+	grokHomes, grokUnreadable := grokConfigHomes()
+
+	warnUnreadable(&warnings, EnvClaudeDirs, unreadable)
+	warnUnreadable(&warnings, EnvGrokDirs, grokUnreadable)
 
 	cfg := Config{
 		Poll:             DefaultPoll,
@@ -126,6 +131,7 @@ func LoadConfig() (Config, []string) {
 		RenamePanes:      true,
 		ReportWorkspaces: true,
 		ClaudeDirs:       homes,
+		GrokDirs:         grokHomes,
 		Home:             userHome(),
 		// ShowAgentName stays false: most sessions run one agent, whose name
 		// would repeat on every tab.
@@ -184,6 +190,16 @@ func readConfigFile() string {
 // after the plugin starts, and the search costs one miss until it is — so the
 // second list only feeds a warning. The first home is never warned about: an
 // installation with no sessions yet is ordinary, not a typo.
+func warnUnreadable(warnings *[]string, name string, dirs []string) {
+	for _, dir := range dirs {
+		*warnings = append(
+			*warnings,
+			fmt.Sprintf("%s=%q is not a directory, so there is nothing to read in it yet",
+				name, dir),
+		)
+	}
+}
+
 func configHomes() (dirs, unreadable []string) {
 	if base := claudeHome(); base != "" {
 		dirs = append(dirs, base)
@@ -211,6 +227,46 @@ func configHomes() (dirs, unreadable []string) {
 // claudeHome is the configuration directory Claude Code names itself, and the
 // default it uses when the variable says nothing. It is empty only when there
 // is no home directory to fall back to, which leaves nothing to read.
+// grokConfigHomes is every Grok home a summary is looked for in: the one Grok
+// names itself, then the entries EnvGrokDirs adds. The shape matches
+// configHomes, including keeping an entry that is not a directory yet.
+func grokConfigHomes() (dirs, unreadable []string) {
+	if base := grokHome(); base != "" {
+		dirs = append(dirs, base)
+	}
+
+	for _, entry := range filepath.SplitList(os.Getenv(EnvGrokDirs)) {
+		entry = strings.TrimSpace(entry)
+		if entry == "" {
+			continue
+		}
+
+		entry = filepath.Clean(entry)
+		//nolint:gosec // the path is configured, never terminal-derived
+		if info, err := os.Stat(entry); err != nil || !info.IsDir() {
+			unreadable = append(unreadable, entry)
+		}
+
+		dirs = append(dirs, entry)
+	}
+
+	return dirs, unreadable
+}
+
+// grokHome is the directory Grok names itself, else ~/.grok.
+func grokHome() string {
+	if dir := os.Getenv(EnvGrokConfigDir); dir != "" {
+		return dir
+	}
+
+	home := userHome()
+	if home == "" {
+		return ""
+	}
+
+	return filepath.Join(home, ".grok")
+}
+
 func claudeHome() string {
 	if dir := os.Getenv(EnvClaudeConfigDir); dir != "" {
 		return dir

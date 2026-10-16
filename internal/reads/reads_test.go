@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -36,6 +37,14 @@ func transcriptOptions(homes ...string) reads.Options {
 	opts := branchOptions()
 	opts.ReadTranscripts = true
 	opts.ClaudeDirs = homes
+
+	return opts
+}
+
+func grokOptions(homes ...string) reads.Options {
+	opts := branchOptions()
+	opts.ReadTranscripts = true
+	opts.GrokDirs = homes
 
 	return opts
 }
@@ -161,6 +170,44 @@ func TestAReadPastTheDeadlineKeepsWhatTheFirstFound(t *testing.T) {
 	if pane.Git.Branch != "feat/oauth" || pane.AgentTopic != "Poll loop rework" {
 		t.Errorf("branch %q, topic %q, want the first fill's answers kept",
 			pane.Git.Branch, pane.AgentTopic)
+	}
+}
+
+func TestAGrokSummaryNamesThePane(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	home := t.TempDir()
+	writeGrokSummary(t, home, dir, testSession, "Fix the login redirect")
+
+	pane := state.PaneFrom(herdr.PaneInfo{
+		PaneID: "wE:p1", TabID: "wE:t1", CWD: dir, Agent: "grok",
+		AgentSession: &herdr.AgentSessionInfo{
+			Agent: "grok", Kind: herdr.SessionRefID, Value: testSession,
+		},
+	}, time.Time{})
+
+	readOne(grokOptions(home), pane)
+
+	if pane.AgentTopic != "Fix the login redirect" || !pane.StableTopic {
+		t.Errorf("topic %q stable %v, want the summary to outrank the window title",
+			pane.AgentTopic, pane.StableTopic)
+	}
+}
+
+func writeGrokSummary(t *testing.T, home, dir, sessionID, title string) {
+	t.Helper()
+
+	slug := strings.NewReplacer("/", "%2F", "\\", "%2F").Replace(filepath.Clean(dir))
+
+	path := filepath.Join(home, "sessions", slug, sessionID, "summary.json")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	body := `{"generated_title":"` + title + `"}`
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
 	}
 }
 
