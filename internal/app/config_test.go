@@ -551,3 +551,16 @@ func TestLoadConfigAcceptsConfigHomesItCanUse(t *testing.T) {
 		t.Errorf("warnings = %v, want none", warnings)
 	}
 }
+
+//nolint:paralleltest // isolate sets the environment, which t.Setenv refuses in parallel
+func TestAntigravityAnnotationsAreReadFromTheUsersHome(t *testing.T) {
+	isolate(t)
+	home := t.TempDir()
+	setHome(t, home)
+
+	cfg, _ := LoadConfig()
+
+	if want := filepath.Join(home, ".gemini", "antigravity-cli"); cfg.AntigravityDir != want {
+		t.Errorf("AntigravityDir = %q, want %q", cfg.AntigravityDir, want)
+	}
+}

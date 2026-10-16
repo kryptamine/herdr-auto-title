@@ -7,6 +7,7 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/kryptamine/herdr-auto-title/internal/antigravity"
 	"github.com/kryptamine/herdr-auto-title/internal/claude"
 	"github.com/kryptamine/herdr-auto-title/internal/git"
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
@@ -18,6 +19,8 @@ import (
 type Options struct {
 	// ClaudeDirs are the Claude Code configuration homes transcripts are found in.
 	ClaudeDirs []string
+	// AntigravityDir is the Antigravity CLI state directory annotations are read from.
+	AntigravityDir string
 	// BranchMax of zero or less turns branches off, and then no checkout is read.
 	BranchMax       int
 	ReadTranscripts bool
@@ -28,6 +31,7 @@ type Options struct {
 type Reader struct {
 	processes       *processCache
 	topics          *claude.Reader
+	annotations     *antigravity.Reader
 	log             *slog.Logger
 	readBranches    bool
 	readTranscripts bool
@@ -37,6 +41,7 @@ func New(opts Options, log *slog.Logger) *Reader {
 	return &Reader{
 		processes:       newProcessCache(),
 		topics:          claude.NewReader(opts.ClaudeDirs...),
+		annotations:     antigravity.NewReader(opts.AntigravityDir),
 		log:             log,
 		readBranches:    opts.BranchMax > 0,
 		readTranscripts: opts.ReadTranscripts,
@@ -155,11 +160,18 @@ func (p *Poll) checkout(ctx context.Context, dir string) git.Checkout {
 }
 
 // topic reports what the session the pane's agent is holding says it is about,
-// and where that agent is working. Only Claude Code's transcripts are
-// understood, and only Herdr's integration hook says which session a pane holds.
+// and where that agent is working. Claude Code's transcripts and Antigravity
+// CLI's annotations are understood, and only Herdr's integration hook says
+// which session a pane holds.
 func (r *Reader) topic(ctx context.Context, pane *state.PaneState, dir string) claude.Topic {
 	if !r.readTranscripts || spent(ctx) {
 		return claude.Topic{}
+	}
+
+	// An annotation names the session and nothing else: it says nothing of where
+	// the agent is working, so the pane's own directory keeps the branch.
+	if sessionID, ok := pane.AgentSession.IDFor(antigravity.Agent); ok {
+		return claude.Topic{Title: r.annotations.Title(sessionID)}
 	}
 
 	sessionID, ok := pane.AgentSession.IDFor(claude.Agent)

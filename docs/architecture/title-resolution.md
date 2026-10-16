@@ -164,6 +164,29 @@ Three costs are worth stating plainly:
 - **The session id becomes part of a path.** It arrives over the socket, so it
   is refused unless it is shaped like a UUID rather than cleaned.
 
+#### Antigravity CLI annotations
+
+Antigravity CLI sets no terminal title at all, so without this source its tab
+carries nothing but the agent's name. Herdr's `agy` integration reports the
+session id the same way the Claude hook does, as `agent_session` with
+`agent: "agy"`, and the agent keeps a title it generated for every session in
+`~/.gemini/antigravity-cli/annotations/<id>.pbtxt`: protobuf text format
+holding one field, `title:"Casual Greeting And Request"`.
+
+`internal/antigravity` reads that field and nothing else. The agent's state
+directory is not configurable, so `Config.AntigravityDir` is derived from the
+home directory rather than read from a variable. The same switch turns it off,
+`HERDR_AUTO_TITLE_TRANSCRIPT=false`, and the session id is refused unless it is
+shaped like a UUID, for the reason above.
+
+Two differences from the transcript are worth knowing:
+
+- **The title is written once**, when the session opens, and is not revised as
+  the conversation moves on. A tab names what the session started as.
+- **It says nothing of where the agent works**, so `Topic.Dir` stays empty and
+  the branch is the pane's own. The file is a few dozen bytes and is read whole
+  on every poll; nothing is remembered between polls.
+
 ### Foreground process
 
 Only a lone process names a pane. An editor reports as `nvim`; a build tool
