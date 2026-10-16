@@ -10,6 +10,7 @@ import (
 	"github.com/kryptamine/herdr-auto-title/internal/claude"
 	"github.com/kryptamine/herdr-auto-title/internal/git"
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
+	"github.com/kryptamine/herdr-auto-title/internal/pi"
 	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
 
@@ -18,6 +19,8 @@ import (
 type Options struct {
 	// ClaudeDirs are the Claude Code configuration homes transcripts are found in.
 	ClaudeDirs []string
+	// PiDirs are the Pi agent homes session files are found in.
+	PiDirs []string
 	// BranchMax of zero or less turns branches off, and then no checkout is read.
 	BranchMax       int
 	ReadTranscripts bool
@@ -28,6 +31,7 @@ type Options struct {
 type Reader struct {
 	processes       *processCache
 	topics          *claude.Reader
+	piTopics        *pi.Reader
 	log             *slog.Logger
 	readBranches    bool
 	readTranscripts bool
@@ -37,6 +41,7 @@ func New(opts Options, log *slog.Logger) *Reader {
 	return &Reader{
 		processes:       newProcessCache(),
 		topics:          claude.NewReader(opts.ClaudeDirs...),
+		piTopics:        pi.NewReader(opts.PiDirs...),
 		log:             log,
 		readBranches:    opts.BranchMax > 0,
 		readTranscripts: opts.ReadTranscripts,
@@ -49,6 +54,7 @@ func New(opts Options, log *slog.Logger) *Reader {
 func (r *Reader) Poll(client herdr.Client, panes []herdr.PaneInfo, drew map[string]bool) *Poll {
 	r.processes.observe(panes, drew)
 	r.topics.Retain(sessionsIn(panes))
+	r.piTopics.Retain(sessionsIn(panes))
 
 	return &Poll{
 		reader:    r,
@@ -155,19 +161,30 @@ func (p *Poll) checkout(ctx context.Context, dir string) git.Checkout {
 }
 
 // topic reports what the session the pane's agent is holding says it is about,
-// and where that agent is working. Only Claude Code's transcripts are
-// understood, and only Herdr's integration hook says which session a pane holds.
+// and where that agent is working. Claude Code's transcripts and Pi's session
+// files are understood, and only Herdr's integration hook says which session
+// a pane holds.
 func (r *Reader) topic(ctx context.Context, pane *state.PaneState, dir string) claude.Topic {
 	if !r.readTranscripts || spent(ctx) {
 		return claude.Topic{}
 	}
 
-	sessionID, ok := pane.AgentSession.IDFor(claude.Agent)
-	if !ok {
-		return claude.Topic{}
+	if sessionID, ok := pane.AgentSession.IDFor(claude.Agent); ok {
+		return r.topics.Topic(sessionID, dir)
 	}
 
-	return r.topics.Topic(sessionID, dir)
+	if sessionID, ok := pane.AgentSession.IDFor(pi.Agent); ok {
+		return topicFromPi(r.piTopics.Topic(sessionID, dir))
+	}
+
+	return claude.Topic{}
+}
+
+// topicFromPi restates a Pi topic as the one the rest of the read speaks.
+// The two readers keep a type each because each answers to its own
+// session format; what a topic is does not differ.
+func topicFromPi(topic pi.Topic) claude.Topic {
+	return claude.Topic{Title: topic.Title, Opening: topic.Opening, Dir: topic.Dir}
 }
 
 // spent reports that the poll is past its deadline. The reads it guards go to

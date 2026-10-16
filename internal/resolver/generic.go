@@ -18,6 +18,7 @@ var genericValues = map[string]struct{}{
 	// Agents naming themselves instead of their work.
 	"claude":       {},
 	"claude code":  {},
+	"pi":           {},
 	"agent":        {},
 	"coding agent": {},
 }

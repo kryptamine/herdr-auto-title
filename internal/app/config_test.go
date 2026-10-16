@@ -40,6 +40,8 @@ func isolate(t *testing.T) {
 		// Claude Code's own variable is cleared with ours: it now decides a
 		// Config field, so a developer's real home would otherwise be read.
 		EnvClaudeDirs, EnvClaudeConfigDir,
+		// Pi's own variables are cleared with ours, for the same reason.
+		EnvPiDirs, EnvPiConfigDir, EnvPiSessionDir, envPiAgentDir,
 	}
 
 	for _, name := range names {
@@ -549,5 +551,52 @@ func TestLoadConfigAcceptsConfigHomesItCanUse(t *testing.T) {
 
 	if _, warnings := LoadConfig(); len(warnings) != 0 {
 		t.Errorf("warnings = %v, want none", warnings)
+	}
+}
+
+func TestLoadConfigReadsPiHomes(t *testing.T) {
+	// The home Pi names itself comes first, then the entries EnvPiDirs
+	// adds, and an unusable one is reported in the same words as a
+	// Claude home and searched anyway.
+	isolate(t)
+	named := t.TempDir()
+	usable := t.TempDir()
+	missing := filepath.Join(t.TempDir(), "never-created")
+	t.Setenv(EnvPiConfigDir, named)
+	t.Setenv(EnvPiDirs, strings.Join(
+		[]string{missing, usable},
+		string(os.PathListSeparator),
+	))
+
+	cfg, warnings := LoadConfig()
+	if len(warnings) != 1 {
+		t.Fatalf("warnings = %v, want the unusable home alone reported", warnings)
+	}
+
+	if !strings.Contains(warnings[0], strconv.Quote(missing)) {
+		t.Errorf("warning = %q, want the home it cannot read named", warnings[0])
+	}
+
+	if want := []string{named, missing, usable}; !slices.Equal(cfg.PiDirs, want) {
+		t.Errorf("PiDirs = %q, want %q", cfg.PiDirs, want)
+	}
+}
+
+//nolint:paralleltest // configuration is read from the environment
+func TestLoadConfigDefaultsToPisOwnHome(t *testing.T) {
+	isolate(t)
+
+	cfg, warnings := LoadConfig()
+	if len(warnings) != 0 {
+		t.Fatalf("warnings = %v, want none", warnings)
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if want := []string{filepath.Join(home, ".pi", "agent")}; !slices.Equal(cfg.PiDirs, want) {
+		t.Errorf("PiDirs = %q, want Pi's default home in %q", cfg.PiDirs, want)
 	}
 }

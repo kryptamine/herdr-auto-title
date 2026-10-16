@@ -152,6 +152,22 @@ a caveat block written by the tool; either would name a tab after the plumbing.
 The transcript marks what the user typed with `origin.kind: "human"`, and only
 those lines are read.
 
+Pi is read the same way, by a reader of its own (`internal/pi/transcript.go`),
+and the differences are Pi's. Herdr's hook reports a Pi session as it does a
+Claude Code one, so only the file differs: Pi files its sessions under its agent
+home — `PI_CODING_AGENT_DIR`, `~/.pi/agent` by default — in a directory named
+for the directory the session was opened in, in a file named for its start time
+and the id it was given, so `locate` searches by the id the name ends with, in
+that directory first and then across the home. A session directory Pi is pointed
+at instead holds its files flat. Two lines name a session there: a
+`session_info` entry, whose `name` is the name the user gave the session with
+`/name` or `--name` — the last one wins, and one carrying no name is a name
+cleared — and failing that the first prompt the user typed, which is what Pi's
+own session list shows for an unnamed session. Where the agent is working is
+the `cwd` in the file's header, its first line. One refusal differs from Claude
+Code's: Pi lets a caller choose a session id, so the reader accepts any id that
+could sit in a file name and refuses the rest, rather than demanding a UUID.
+
 Three costs are worth stating plainly:
 
 - **It reads what the user said to their agent.** That is why it can be turned

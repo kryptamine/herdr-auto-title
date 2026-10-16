@@ -34,6 +34,7 @@ const (
 	EnvWorkspaceMaxLength = "HERDR_AUTO_TITLE_WORKSPACE_MAX_LENGTH"
 
 	EnvClaudeDirs = "HERDR_AUTO_TITLE_CLAUDE_DIRS"
+	EnvPiDirs     = "HERDR_AUTO_TITLE_PI_DIRS"
 )
 
 // EnvClaudeConfigDir is Claude Code's own variable, not one of ours: it names
@@ -41,6 +42,18 @@ const (
 // server passes it through to the plugin. It is read here with every other
 // setting so that nothing downstream goes to the environment on its own.
 const EnvClaudeConfigDir = "CLAUDE_CONFIG_DIR"
+
+// EnvPiConfigDir and EnvPiSessionDir are Pi's own variables, not ours:
+// the first names the agent home Pi files its sessions under, and the
+// second a session directory to use instead, which Pi keeps flat.
+const (
+	EnvPiConfigDir  = "PI_CODING_AGENT_DIR"
+	EnvPiSessionDir = "PI_CODING_AGENT_SESSION_DIR"
+)
+
+// envPiAgentDir is the spelling Pi's agent home variable had before
+// PI_CODING_AGENT_DIR, which an install that set it then still sets now.
+const envPiAgentDir = "PI_AGENT_DIR"
 
 // DefaultPoll is how often the session is read. A six-pane snapshot measured
 // 0.47 ms and 6 KB, so twice a second costs about a thousandth of a core, and
@@ -94,6 +107,10 @@ type Config struct {
 	// adds. A home the user's shell picks per directory cannot be discovered,
 	// so it is named.
 	ClaudeDirs []string
+	// PiDirs are the homes to read Pi session files from, in search
+	// order: the one PI_CODING_AGENT_DIR gives, then any EnvPiDirs adds,
+	// then the session directory EnvPiSessionDir names.
+	PiDirs []string
 	// Home is the user's home directory, or "" when there is none.
 	Home string
 }
@@ -116,6 +133,15 @@ func LoadConfig() (Config, []string) {
 		)
 	}
 
+	piHomes, piUnreadable := piConfigHomes()
+	for _, dir := range piUnreadable {
+		warnings = append(
+			warnings,
+			fmt.Sprintf("%s=%q is not a directory, so there is nothing to read in it yet",
+				EnvPiDirs, dir),
+		)
+	}
+
 	cfg := Config{
 		Poll:             DefaultPoll,
 		MaxLength:        resolver.DefaultMaxLength,
@@ -126,6 +152,7 @@ func LoadConfig() (Config, []string) {
 		RenamePanes:      true,
 		ReportWorkspaces: true,
 		ClaudeDirs:       homes,
+		PiDirs:           piHomes,
 		Home:             userHome(),
 		// ShowAgentName stays false: most sessions run one agent, whose name
 		// would repeat on every tab.
@@ -189,7 +216,35 @@ func configHomes() (dirs, unreadable []string) {
 		dirs = append(dirs, base)
 	}
 
-	for _, entry := range filepath.SplitList(os.Getenv(EnvClaudeDirs)) {
+	return extraHomes(dirs, os.Getenv(EnvClaudeDirs))
+}
+
+// piConfigHomes is every Pi home to look for a session file in, on the
+// same terms as configHomes: the home Pi names itself first, then the
+// entries EnvPiDirs adds. The session directory EnvPiSessionDir names
+// comes last and is never warned about, as a first home is not.
+func piConfigHomes() (dirs, unreadable []string) {
+	if base := piHome(); base != "" {
+		dirs = append(dirs, base)
+	}
+
+	dirs, unreadable = extraHomes(dirs, os.Getenv(EnvPiDirs))
+
+	if dir := os.Getenv(EnvPiSessionDir); dir != "" {
+		dirs = append(dirs, dir)
+	}
+
+	return dirs, unreadable
+}
+
+// extraHomes appends the entries of a path list to dirs, cleaned.
+// unreadable are those entries that are not directories right now, on
+// the terms configHomes sets out: an entry is kept either way, so the
+// second list only feeds a warning.
+func extraHomes(dirs []string, raw string) (out, unreadable []string) {
+	out = dirs
+
+	for _, entry := range filepath.SplitList(raw) {
 		entry = strings.TrimSpace(entry)
 		if entry == "" {
 			continue
@@ -202,10 +257,10 @@ func configHomes() (dirs, unreadable []string) {
 			unreadable = append(unreadable, entry)
 		}
 
-		dirs = append(dirs, entry)
+		out = append(out, entry)
 	}
 
-	return dirs, unreadable
+	return out, unreadable
 }
 
 // claudeHome is the configuration directory Claude Code names itself, and the
@@ -222,6 +277,26 @@ func claudeHome() string {
 	}
 
 	return filepath.Join(home, ".claude")
+}
+
+// piHome is the agent home Pi names itself, and the default it uses
+// when the variable says nothing. It is empty only when there is no
+// home directory to fall back to, which leaves nothing to read.
+func piHome() string {
+	if dir := os.Getenv(EnvPiConfigDir); dir != "" {
+		return dir
+	}
+
+	if dir := os.Getenv(envPiAgentDir); dir != "" {
+		return dir
+	}
+
+	home := userHome()
+	if home == "" {
+		return ""
+	}
+
+	return filepath.Join(home, ".pi", "agent")
 }
 
 func userHome() string {

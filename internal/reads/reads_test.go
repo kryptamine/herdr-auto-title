@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -50,6 +51,37 @@ func transcript(t *testing.T, lines ...string) string {
 	return home
 }
 
+func piTranscriptOptions(homes ...string) reads.Options {
+	opts := branchOptions()
+	opts.ReadTranscripts = true
+	opts.PiDirs = homes
+
+	return opts
+}
+
+// piTranscript lays down the test session's Pi session file in a home of
+// its own.
+func piTranscript(t *testing.T, lines ...string) string {
+	t.Helper()
+
+	home := t.TempDir()
+	readstest.PiTranscript(t, home, testSession, lines...)
+
+	return home
+}
+
+// piHeader is a Pi session file's first line, recording where the
+// session was opened.
+func piHeader(dir string) string {
+	return `{"type":"session","version":3,"id":"` + testSession +
+		`","cwd":` + strconv.Quote(dir) + `}`
+}
+
+// piNamed is the line a Pi session gains when its user names it.
+func piNamed(name string) string {
+	return `{"type":"session_info","name":` + strconv.Quote(name) + `}`
+}
+
 // paneAt is a pane sitting in dir and running nothing Herdr will answer for,
 // so that a read of it finds only what the directory holds.
 func paneAt(paneID, dir string) *state.PaneState {
@@ -63,6 +95,17 @@ func agentPaneAt(paneID, sessionID, dir string) *state.PaneState {
 		PaneID: paneID, TabID: "wE:t1", CWD: dir, Agent: "claude",
 		AgentSession: &herdr.AgentSessionInfo{
 			Agent: "claude", Kind: herdr.SessionRefID, Value: sessionID,
+		},
+	}, time.Time{})
+}
+
+// piAgentPaneAt is a pane sitting in dir and holding a Pi session, so a
+// read of it goes to the session file as well as to the directory.
+func piAgentPaneAt(paneID, sessionID, dir string) *state.PaneState {
+	return state.PaneFrom(herdr.PaneInfo{
+		PaneID: paneID, TabID: "wE:t1", CWD: dir, Agent: "pi",
+		AgentSession: &herdr.AgentSessionInfo{
+			Agent: "pi", Kind: herdr.SessionRefID, Value: sessionID,
 		},
 	}, time.Time{})
 }
@@ -161,6 +204,27 @@ func TestAReadPastTheDeadlineKeepsWhatTheFirstFound(t *testing.T) {
 	if pane.Git.Branch != "feat/oauth" || pane.AgentTopic != "Poll loop rework" {
 		t.Errorf("branch %q, topic %q, want the first fill's answers kept",
 			pane.Git.Branch, pane.AgentTopic)
+	}
+}
+
+func TestAPiSessionNamesItsPaneAndLocatesItsWork(t *testing.T) {
+	t.Parallel()
+
+	// A Pi pane is named by the name its user gave the session, and the
+	// branch is read where the session's header says it was opened.
+	repo := readstest.Repo(t, "feat/oauth")
+	home := piTranscript(t, piHeader(repo), piNamed("Poll loop rework"))
+	pane := piAgentPaneAt("wE:p1", testSession, repo)
+
+	readOne(piTranscriptOptions(home), pane)
+
+	if pane.AgentTopic != "Poll loop rework" {
+		t.Errorf("topic = %q, want the name the session was given", pane.AgentTopic)
+	}
+
+	if pane.AgentDir != repo || pane.AgentGit.Branch != "feat/oauth" {
+		t.Errorf("agent dir %q on branch %q, want %q on feat/oauth",
+			pane.AgentDir, pane.AgentGit.Branch, repo)
 	}
 }
 

@@ -1,5 +1,5 @@
 // Package readstest lays down on disk what a pane read goes to: repositories,
-// their worktrees, and the Claude Code transcripts that say where an agent is.
+// their worktrees, and the agent transcripts that say where an agent is.
 package readstest
 
 import (
@@ -82,6 +82,21 @@ func Transcript(t *testing.T, home, sessionID string, lines ...string) {
 // directory is read out of it, and a Windows path is full of escapes.
 func AgentIn(dir string) string {
 	return `{"type":"assistant","cwd":` + strconv.Quote(dir) + `}`
+}
+
+// PiTranscript lays down one session's file under a Pi agent home. The
+// timestamp in its name is Pi's own spelling of when the session
+// started; the reader finds the file by the session id it ends with.
+func PiTranscript(t *testing.T, home, sessionID string, lines ...string) {
+	t.Helper()
+
+	path := filepath.Join(
+		home, "sessions", "any-project",
+		"2026-10-16T02-00-00-000Z_"+sessionID+".jsonl",
+	)
+
+	mkdir(t, filepath.Dir(path))
+	write(t, path, strings.Join(lines, "\n")+"\n")
 }
 
 func mkdir(t *testing.T, dir string) {
