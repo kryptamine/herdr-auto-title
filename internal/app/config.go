@@ -94,6 +94,9 @@ type Config struct {
 	// adds. A home the user's shell picks per directory cannot be discovered,
 	// so it is named.
 	ClaudeDirs []string
+	// AntigravityDir is the Antigravity CLI state directory session titles are
+	// read from, or "" when there is no home directory to find it under.
+	AntigravityDir string
 	// Home is the user's home directory, or "" when there is none.
 	Home string
 }
@@ -126,6 +129,7 @@ func LoadConfig() (Config, []string) {
 		RenamePanes:      true,
 		ReportWorkspaces: true,
 		ClaudeDirs:       homes,
+		AntigravityDir:   antigravityHome(),
 		Home:             userHome(),
 		// ShowAgentName stays false: most sessions run one agent, whose name
 		// would repeat on every tab.
@@ -222,6 +226,17 @@ func claudeHome() string {
 	}
 
 	return filepath.Join(home, ".claude")
+}
+
+// antigravityHome is where Antigravity CLI keeps its state, which it does not
+// let the user move.
+func antigravityHome() string {
+	home := userHome()
+	if home == "" {
+		return ""
+	}
+
+	return filepath.Join(home, ".gemini", "antigravity-cli")
 }
 
 func userHome() string {

@@ -334,6 +334,10 @@ reads, so this section describes Herdr rather than those types.
   both were reported, so a reader that wants the file finds it by id. Auto Title
   reads it from the snapshot — no extra request — and what it does with it is in
   [title resolution](./title-resolution.md).
+- **An Antigravity CLI pane reports `agent: "agy"`** and, with its integration
+  installed, an `agent_session` of `agent: "agy"`, `kind: "id"` and
+  `source: "herdr:antigravity_cli"`. It sets no terminal title, so
+  `terminal_title` is absent from its pane object. Measured on Herdr 0.9.0.
 - **`pane.report_metadata` is how anything outside Herdr sets `PaneInfo.title`.**
   Probed directly: `herdr pane report-metadata <pane> --source X --title T` put
   `T` in the snapshot's `title` and a tab bearing it appeared within one poll;

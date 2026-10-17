@@ -763,3 +763,63 @@ func TestADirectoryNamedLikeThePanesIsNotInsideIt(t *testing.T) {
 		t.Errorf("branch = %q, want none", got)
 	}
 }
+
+// antigravityPaneAt is a pane sitting in dir and holding an Antigravity CLI
+// session, which Herdr labels `agy`.
+func antigravityPaneAt(paneID, sessionID, dir string) *state.PaneState {
+	return state.PaneFrom(herdr.PaneInfo{
+		PaneID: paneID, TabID: "wE:t1", CWD: dir, Agent: "agy",
+		AgentSession: &herdr.AgentSessionInfo{
+			Agent: "agy", Kind: herdr.SessionRefID, Value: sessionID,
+		},
+	}, time.Time{})
+}
+
+// annotation lays down the test session's Antigravity annotation in a home of
+// its own.
+func annotation(t *testing.T, content string) string {
+	t.Helper()
+
+	home := t.TempDir()
+	path := filepath.Join(home, "annotations", testSession+".pbtxt")
+
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	return home
+}
+
+func TestAnAntigravitySessionIsNamedByItsAnnotation(t *testing.T) {
+	t.Parallel()
+
+	// The agent sets no terminal title, so the annotation is the only place
+	// its pane says what it is about.
+	opts := transcriptOptions()
+	opts.AntigravityDir = annotation(t, `title:"Casual Greeting And Request"`)
+
+	pane := antigravityPaneAt("wE:p1", testSession, t.TempDir())
+	readOne(opts, pane)
+
+	if pane.AgentTopic != "Casual Greeting And Request" {
+		t.Errorf("topic = %q, want the annotated title", pane.AgentTopic)
+	}
+}
+
+func TestTranscriptsSwitchedOffLeaveAnAntigravitySessionUnread(t *testing.T) {
+	t.Parallel()
+
+	opts := branchOptions()
+	opts.AntigravityDir = annotation(t, `title:"Casual Greeting And Request"`)
+
+	pane := antigravityPaneAt("wE:p1", testSession, t.TempDir())
+	readOne(opts, pane)
+
+	if pane.AgentTopic != "" {
+		t.Errorf("topic = %q, want nothing read", pane.AgentTopic)
+	}
+}
