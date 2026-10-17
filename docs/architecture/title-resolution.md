@@ -116,6 +116,18 @@ The richest source in practice, and the one that carries most agent context. Its
 value is cleaned hard before it is trusted — see
 [sanitization](./sanitization.md).
 
+Pi is read with one more step, because its title has a grammar of its own: Pi
+titles its terminal `π - <dir>` and, once `/name` has given the session a name,
+`π - <name> - <dir>`. The first says which program sits where, and the context
+already says where; the second carries the name inside that frame.
+`withoutPiFrame` (`internal/resolver/pi.go`) takes the glyph and the directory
+off a Pi pane's title before it is read, so an unnamed session declines here and
+falls through to [the transcript](#the-session-transcript), and a named one is
+titled by its name alone. The directory is matched against the pane's own,
+which is Pi's working directory; a title Pi did not frame — one an extension set
+— is read as it is, and so is any other agent's title that happens to start the
+same way.
+
 ### The session transcript
 
 An agent that has titled its terminal has already said what it is doing, sooner
@@ -173,6 +185,26 @@ into the conversation as further user messages, and a resumed session opens with
 a caveat block written by the tool; either would name a tab after the plumbing.
 The transcript marks what the user typed with `origin.kind: "human"`, and only
 those lines are read.
+
+Pi's session file is read the same way (`internal/pi/transcript.go`), with the
+differences that follow from how Herdr and Pi behave. Herdr reports a Pi session
+as `kind: "path"` — the absolute path of the `.jsonl` file the pane's Pi holds —
+so there is no home to search and nothing to configure: the path is refused
+unless it is absolute, already clean and ends in `.jsonl`, and is then opened as
+it is. Pi derives no title of its own, so two lines can name a session:
+
+- `session_info`, which `/name` and `--name` write. The last one wins, and one
+  without a name is the user clearing it.
+- failing that, the first prompt the user typed, which is what Pi's own session
+  picker shows for an unnamed session. Only its first line is kept.
+
+The header line says where the session was started, which is where its branch
+is read from. Pi documents its format (`docs/session-format.md` in its package),
+so unlike Claude Code's it is not expected to change without notice. A session
+first seen long after it started is read at both ends — the head for where it
+started and its first prompt, the tail for the name it was last given — and
+from wherever it grows after that; the Claude reader reads the tail alone,
+because a title Claude Code has given a session is repeated there.
 
 Three costs are worth stating plainly:
 

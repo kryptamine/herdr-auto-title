@@ -11,6 +11,7 @@ import (
 	"github.com/kryptamine/herdr-auto-title/internal/claude"
 	"github.com/kryptamine/herdr-auto-title/internal/git"
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
+	"github.com/kryptamine/herdr-auto-title/internal/pi"
 	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
 
@@ -32,6 +33,7 @@ type Reader struct {
 	processes       *processCache
 	topics          *claude.Reader
 	annotations     *antigravity.Reader
+	sessions        *pi.Reader
 	log             *slog.Logger
 	readBranches    bool
 	readTranscripts bool
@@ -42,6 +44,7 @@ func New(opts Options, log *slog.Logger) *Reader {
 		processes:       newProcessCache(),
 		topics:          claude.NewReader(opts.ClaudeDirs...),
 		annotations:     antigravity.NewReader(opts.Home),
+		sessions:        pi.NewReader(),
 		log:             log,
 		readBranches:    opts.BranchMax > 0,
 		readTranscripts: opts.ReadTranscripts,
@@ -53,7 +56,12 @@ func New(opts Options, log *slog.Logger) *Reader {
 // snapshot no longer holds.
 func (r *Reader) Poll(client herdr.Client, panes []herdr.PaneInfo, drew map[string]bool) *Poll {
 	r.processes.observe(panes, drew)
-	r.topics.Retain(sessionsIn(panes))
+
+	// Each reader keeps only the references it knows, so both can be handed
+	// every session the snapshot holds without being told which is whose.
+	held := sessionsIn(panes)
+	r.topics.Retain(held)
+	r.sessions.Retain(held)
 
 	return &Poll{
 		reader:    r,
@@ -196,6 +204,15 @@ func (r *Reader) topic(ctx context.Context, pane *state.PaneState, dir string) s
 		// An annotation says nothing of where the agent works, so the pane's own
 		// directory keeps the branch.
 		return sessionTopic{text: r.annotations.Title(sessionID)}
+	case pi.Agent:
+		path, ok := pane.AgentSession.Path()
+		if !ok {
+			return sessionTopic{}
+		}
+
+		topic := r.sessions.Topic(path)
+
+		return sessionTopic{text: topic.Text(), dir: topic.Dir}
 	}
 
 	return sessionTopic{}

@@ -823,3 +823,70 @@ func TestTranscriptsSwitchedOffLeaveAnAntigravitySessionUnread(t *testing.T) {
 		t.Errorf("topic = %q, want nothing read", pane.AgentTopic)
 	}
 }
+
+// piPaneAt is a pane sitting in dir and holding a Pi session, which Herdr
+// reports by the path of its file rather than by an id.
+func piPaneAt(paneID, path, dir string) *state.PaneState {
+	return state.PaneFrom(herdr.PaneInfo{
+		PaneID: paneID, TabID: "wE:t1", CWD: dir, Agent: "pi",
+		AgentSession: &herdr.AgentSessionInfo{
+			Agent: "pi", Kind: herdr.SessionRefPath, Value: path,
+		},
+	}, "", time.Time{})
+}
+
+func TestAPiPaneIsNamedFromItsSessionFile(t *testing.T) {
+	t.Parallel()
+
+	repo := readstest.Repo(t, "main")
+	path := readstest.PiSession(
+		t,
+		readstest.PiStartedIn(repo),
+		readstest.PiPrompt("rework the poll loop"),
+	)
+
+	pane := piPaneAt("wE:p1", path, repo)
+	readOne(transcriptOptions(), pane)
+
+	if pane.AgentTopic != "rework the poll loop" {
+		t.Errorf("topic = %q, want the session's first prompt", pane.AgentTopic)
+	}
+
+	if pane.AgentDir != repo {
+		t.Errorf("agent dir = %q, want where the session started, %q", pane.AgentDir, repo)
+	}
+}
+
+func TestAPiSessionInAWorktreeNamesItsBranch(t *testing.T) {
+	t.Parallel()
+
+	// The pane sits at the repository root on the trunk while its Pi was
+	// started in a worktree, so the branch worth showing is the session's.
+	repo := readstest.Repo(t, "main")
+	worktree := readstest.Worktree(t, repo, "oauth", "feat/oauth")
+	path := readstest.PiSession(t, readstest.PiStartedIn(worktree))
+
+	pane := piPaneAt("wE:p1", path, repo)
+	readOne(transcriptOptions(), pane)
+
+	if got := branchFor(pane); got != "feat/oauth" {
+		t.Errorf("branch = %q, want feat/oauth", got)
+	}
+}
+
+func TestTranscriptsSwitchedOffLeaveAPiSessionUnread(t *testing.T) {
+	t.Parallel()
+
+	path := readstest.PiSession(
+		t,
+		readstest.PiStartedIn(t.TempDir()),
+		readstest.PiPrompt("rework the poll loop"),
+	)
+
+	pane := piPaneAt("wE:p1", path, t.TempDir())
+	readOne(branchOptions(), pane)
+
+	if pane.AgentTopic != "" || pane.AgentDir != "" {
+		t.Errorf("topic = %q, dir = %q, want neither read", pane.AgentTopic, pane.AgentDir)
+	}
+}

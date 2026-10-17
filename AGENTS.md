@@ -217,6 +217,10 @@ are only the facts that would otherwise mislead the code in silence.
 - **`PaneInfo.title` is the agent's own title, and is null in practice.** Claude
   Code reports its topic through `terminal_title_stripped` instead, and
   `agent_session` stays null until that agent's integration is installed.
+- **`agent_session.kind` is decided per agent.** Claude Code's session arrives
+  as `id` even when its hook reported the path too; Pi's arrives as `path`, the
+  absolute path of its session file. A reader keyed on one kind reads nothing
+  for the other.
 - **A plugin the server starts inherits the server's environment**, not the
   shell of whoever installed it, which is why `HERDR_AUTO_TITLE_*` settings
   arrive through `config.env` (see
