@@ -59,9 +59,13 @@ type PaneInfo struct {
 	AgentSession *AgentSessionInfo `json:"agent_session"`
 }
 
-// SessionRefID is the only reference kind Herdr has been seen to answer with.
-// It accepts a path from an integration and reports the id anyway.
-const SessionRefID = "id"
+// The reference kinds Herdr answers with, decided per agent: Claude Code's
+// session arrives by id even when its hook reported the path too, and Pi's by
+// the path to its session file — see docs/architecture/herdr-socket-api.md.
+const (
+	SessionRefID   = "id"
+	SessionRefPath = "path"
+)
 
 // AgentSessionInfo identifies an agent's own session, as its integration hook
 // reported it. Which agent reported it decides how the reference is read, so
@@ -76,7 +80,17 @@ type AgentSessionInfo struct {
 // a session of the given agent by id. A nil reference is a pane whose agent has
 // reported nothing, which is every pane until an integration is installed.
 func (s *AgentSessionInfo) IDFor(agent string) (string, bool) {
-	if s == nil || s.Agent != agent || s.Kind != SessionRefID {
+	return s.valueFor(agent, SessionRefID)
+}
+
+// PathFor reports the session file this reference holds, and false unless it
+// names a session of the given agent by path.
+func (s *AgentSessionInfo) PathFor(agent string) (string, bool) {
+	return s.valueFor(agent, SessionRefPath)
+}
+
+func (s *AgentSessionInfo) valueFor(agent, kind string) (string, bool) {
+	if s == nil || s.Agent != agent || s.Kind != kind {
 		return "", false
 	}
 

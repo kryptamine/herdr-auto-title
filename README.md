@@ -51,6 +51,11 @@ does. Your configuration is kept.
 If you use Claude Code, also run `herdr integration install claude`. Without it,
 a session you opened with a slash command and never prompted stays `claude`.
 
+If you use Pi, also run `herdr integration install pi`. Pi titles its terminal
+after its directory, so without the hook an unnamed session stays `pi`; with it
+the tab reads the session's first prompt. A session you name with `/name` is
+titled by that name either way.
+
 ## What you get
 
 ```
@@ -130,7 +135,7 @@ change. It does not read the config directory that `herdr plugin list` prints.
 | `HERDR_AUTO_TITLE_BRANCH_MAX`   | `12`                                     | Longest branch in a title, in columns; `0` hides branches          |
 | `HERDR_AUTO_TITLE_POSITION`     | `true`                                   | Put the tab's position in front of its title                       |
 | `HERDR_AUTO_TITLE_MANUAL_FILE`  | `manual-names.json`, found the same way  | Where names you set by hand are kept; empty keeps them in memory   |
-| `HERDR_AUTO_TITLE_TRANSCRIPT`   | `true`                                   | Read Claude Code's transcript: what an agent is doing, and where     |
+| `HERDR_AUTO_TITLE_TRANSCRIPT`   | `true`                                   | Read the agent's own session (Claude Code, Pi): what it is doing, and where |
 | `HERDR_AUTO_TITLE_AGENT_NAME`   | `false`                                  | Put the agent's name in front of what it is doing                  |
 | `HERDR_AUTO_TITLE_PANES`        | `true`                                   | Name panes as well as tabs                                         |
 | `HERDR_AUTO_TITLE_PREFER_AGENT` | `false`                                  | Name a tab after its agent pane even while another pane is focused |

@@ -10,6 +10,7 @@ import (
 	"github.com/kryptamine/herdr-auto-title/internal/claude"
 	"github.com/kryptamine/herdr-auto-title/internal/git"
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
+	"github.com/kryptamine/herdr-auto-title/internal/pi"
 	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
 
@@ -28,6 +29,7 @@ type Options struct {
 type Reader struct {
 	processes       *processCache
 	topics          *claude.Reader
+	sessions        *pi.Reader
 	log             *slog.Logger
 	readBranches    bool
 	readTranscripts bool
@@ -37,6 +39,7 @@ func New(opts Options, log *slog.Logger) *Reader {
 	return &Reader{
 		processes:       newProcessCache(),
 		topics:          claude.NewReader(opts.ClaudeDirs...),
+		sessions:        pi.NewReader(),
 		log:             log,
 		readBranches:    opts.BranchMax > 0,
 		readTranscripts: opts.ReadTranscripts,
@@ -48,7 +51,12 @@ func New(opts Options, log *slog.Logger) *Reader {
 // snapshot no longer holds.
 func (r *Reader) Poll(client herdr.Client, panes []herdr.PaneInfo, drew map[string]bool) *Poll {
 	r.processes.observe(panes, drew)
-	r.topics.Retain(sessionsIn(panes))
+
+	// Each reader keeps only the references it knows, so both can be handed
+	// every session the snapshot holds without being told which is whose.
+	held := sessionsIn(panes)
+	r.topics.Retain(held)
+	r.sessions.Retain(held)
 
 	return &Poll{
 		reader:    r,
@@ -92,11 +100,11 @@ func (p *Poll) Fill(ctx context.Context, pane *state.PaneState) {
 
 	// The transcript is read before the checkout because it says where the
 	// agent is working, and that is where the branch is read from.
-	topic := p.reader.topic(ctx, pane, dir)
-	pane.AgentTopic = topic.Text()
+	topic, agentDir := p.reader.topic(ctx, pane, dir)
+	pane.AgentTopic = topic
 	pane.Git = p.checkout(ctx, dir)
-	pane.AgentGit = p.checkout(ctx, topic.Dir)
-	pane.AgentDir = topic.Dir
+	pane.AgentGit = p.checkout(ctx, agentDir)
+	pane.AgentDir = agentDir
 }
 
 // processesOf reports what a pane is running, or false when Herdr gave no
@@ -154,20 +162,27 @@ func (p *Poll) checkout(ctx context.Context, dir string) git.Checkout {
 	return checkout
 }
 
-// topic reports what the session the pane's agent is holding says it is about,
-// and where that agent is working. Only Claude Code's transcripts are
-// understood, and only Herdr's integration hook says which session a pane holds.
-func (r *Reader) topic(ctx context.Context, pane *state.PaneState, dir string) claude.Topic {
+// topic reports what the session the pane's agent holds says it is about, and
+// where that agent works. Claude Code's transcript is found by the id Herdr
+// reports and Pi's session file by the path; any other agent says nothing.
+func (r *Reader) topic(ctx context.Context, pane *state.PaneState, dir string) (string, string) {
 	if !r.readTranscripts || spent(ctx) {
-		return claude.Topic{}
+		return "", ""
 	}
 
-	sessionID, ok := pane.AgentSession.IDFor(claude.Agent)
-	if !ok {
-		return claude.Topic{}
+	if sessionID, ok := pane.AgentSession.IDFor(claude.Agent); ok {
+		topic := r.topics.Topic(sessionID, dir)
+
+		return topic.Text(), topic.Dir
 	}
 
-	return r.topics.Topic(sessionID, dir)
+	if path, ok := pane.AgentSession.PathFor(pi.Agent); ok {
+		topic := r.sessions.Topic(path)
+
+		return topic.Text(), topic.Dir
+	}
+
+	return "", ""
 }
 
 // spent reports that the poll is past its deadline. The reads it guards go to
