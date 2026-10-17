@@ -330,10 +330,17 @@ reads, so this section describes Herdr rather than those types.
   one for seventeen agents, Claude Code among them, and `herdr integration
   status` lists them with the path each is written to. The Claude hook runs on
   `SessionStart` and calls `pane.report_agent_session` with the session id and
-  the transcript path; Herdr keeps only the id, answering `kind: "id"` even when
-  both were reported, so a reader that wants the file finds it by id. Auto Title
-  reads it from the snapshot — no extra request — and what it does with it is in
-  [title resolution](./title-resolution.md).
+  the transcript path; for Claude Code Herdr keeps only the id, answering
+  `kind: "id"` even when both were reported, so a reader that wants the file
+  finds it by id. Auto Title reads it from the snapshot — no extra request — and
+  what it does with it is in [title resolution](./title-resolution.md).
+- **The kind of `agent_session` is decided per agent.** Pi's hook reports the
+  session file, and Herdr 0.9.5 answered `{"agent": "pi", "kind": "path",
+  "source": "herdr:pi", "value": "<absolute path to the .jsonl>"}` for a Pi pane
+  (`herdr pane get <pane>`), so a reader keyed on `kind: "id"` reads nothing for
+  Pi. The same pane carried `title: null`, `display_agent: null` and, in
+  `terminal_title_stripped`, Pi's own title unchanged: `π - <dir>` for an
+  unnamed session, `π - <name> - <dir>` once `/name` has named it.
 - **`pane.report_metadata` is how anything outside Herdr sets `PaneInfo.title`.**
   Probed directly: `herdr pane report-metadata <pane> --source X --title T` put
   `T` in the snapshot's `title` and a tab bearing it appeared within one poll;

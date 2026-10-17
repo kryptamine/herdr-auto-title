@@ -1632,3 +1632,34 @@ func TestResolversKeepAPaneInTheHomeFromNamingATab(t *testing.T) {
 		t.Errorf("tab named %q, want %q", got, resolver.GenericFallback)
 	}
 }
+
+func TestATabIsNamedFromAPiSessionsFirstPrompt(t *testing.T) {
+	t.Parallel()
+
+	// Pi titles its terminal after its directory until the session is named,
+	// so the session file Herdr pointed at is what says what the tab is for.
+	path := readstest.PiSession(
+		t,
+		readstest.PiStartedIn(dashboard),
+		readstest.PiPrompt("rework the poll loop"),
+	)
+
+	h := startConfigured(t, herdrtest.New(
+		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
+		[]herdr.PaneInfo{{
+			PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true,
+			TerminalTitleStripped: "π - dashboard",
+			Agent:                 "pi",
+			AgentStatus:           "working",
+			AgentSession: &herdr.AgentSessionInfo{
+				Agent: "pi", Kind: herdr.SessionRefPath, Value: path,
+			},
+		}},
+	), transcriptConfig())
+	h.poll()
+
+	got := h.client.Renames()[0].Label
+	if want := "dashboard › pi › rework the poll loop"; got != want {
+		t.Errorf("rename = %q, want %q", got, want)
+	}
+}

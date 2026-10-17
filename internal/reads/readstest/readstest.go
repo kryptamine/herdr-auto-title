@@ -1,5 +1,5 @@
 // Package readstest lays down on disk what a pane read goes to: repositories,
-// their worktrees, and the Claude Code transcripts that say where an agent is.
+// their worktrees, and the agent transcripts that say where an agent is.
 package readstest
 
 import (
@@ -82,6 +82,30 @@ func Transcript(t *testing.T, home, sessionID string, lines ...string) {
 // directory is read out of it, and a Windows path is full of escapes.
 func AgentIn(dir string) string {
 	return `{"type":"assistant","cwd":` + strconv.Quote(dir) + `}`
+}
+
+// PiSession lays down one Pi session file in a directory of its own and
+// reports its path, which is what Herdr hands the plugin for a Pi pane.
+func PiSession(t *testing.T, lines ...string) string {
+	t.Helper()
+
+	path := filepath.Join(t.TempDir(), "2026-10-12T04-22-57-889Z_01a12e59.jsonl")
+	write(t, path, strings.Join(lines, "\n")+"\n")
+
+	return path
+}
+
+// PiStartedIn is the header line of a Pi session, which is where the file says
+// what directory the session was opened in.
+func PiStartedIn(dir string) string {
+	return `{"type":"session","version":3,"id":"01a12e59","cwd":` + strconv.Quote(dir) + `}`
+}
+
+// PiPrompt is a prompt the user typed into a Pi session.
+func PiPrompt(text string) string {
+	return `{"type":"message","id":"a1b2c3d4","message":{"role":"user","content":` + strconv.Quote(
+		text,
+	) + `}}`
 }
 
 func mkdir(t *testing.T, dir string) {
