@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.3](https://github.com/kryptamine/herdr-auto-title/compare/v0.13.2...v0.13.3) (2026-10-17)
+
+
+### Bug Fixes
+
+* **claude:** prefer a session's given name over its generated title ([5b1145e](https://github.com/kryptamine/herdr-auto-title/commit/5b1145e5974e308d7c94f97a375c77b449da7720))
+
 ## [0.13.2](https://github.com/kryptamine/herdr-auto-title/compare/v0.13.1...v0.13.2) (2026-10-12)
 
 
