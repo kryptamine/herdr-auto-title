@@ -1135,8 +1135,11 @@ func TestAPaneThatDoesNotNameItsTabIsNotRead(t *testing.T) {
 	)
 	h.polls(10)
 
-	if reads := h.client.ProcessReads(); reads != 1 {
-		t.Errorf("read %d panes, want only the one the tab is named from", reads)
+	// Each pane is read once, because a tab is now checked for a pane that
+	// owns its own label (herdr-mirror, and anything in the foreign list)
+	// before it is named, which also tells whether the others are that.
+	if reads := h.client.ProcessReads(); reads != 3 {
+		t.Errorf("read %d panes, want all three checked for a foreign owner", reads)
 	}
 }
 

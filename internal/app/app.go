@@ -54,6 +54,9 @@ type App struct {
 	// failures is the run of polls that have failed in a row, which decides
 	// how loudly the next one is reported.
 	failures failureLog
+	// owners are programs that own their tab and pane labels, so Auto Title
+	// leaves them alone. herdr-mirror is built in.
+	owners resolver.Owners
 	// server identifies the Herdr this instance answers to, learned from the
 	// first poll that could read it. Another server on the socket has started
 	// an instance of its own, and this one leaves rather than double it.
@@ -87,6 +90,7 @@ func New(
 			BranchMax:       cfg.BranchMax,
 			ReadTranscripts: cfg.ReadTranscripts,
 		}, log),
+		owners:   resolver.NewOwners(cfg.ForeignProcesses),
 		instance: instance,
 	}
 }
@@ -242,12 +246,19 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 	tabs := a.tabsIn(snapshot)
 	poll := a.reads.Poll(client, snapshot.Panes, drew)
 
+	owned := a.ownedTabs(ctx, poll, tabs)
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
 	for _, tab := range tabs {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
 
-		a.nameTab(ctx, pass, poll, tab)
+		if owned == nil || !owned[tab.ID] {
+			a.nameTab(ctx, pass, poll, tab)
+		}
 
 		if a.panes != nil {
 			a.namePanes(ctx, pass, poll, tab)
@@ -265,7 +276,7 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 
 	if a.topics != nil {
 		// Last, so a poll cut short gives up a topic rather than a tab.
-		a.reportTopics(ctx, client, poll, snapshot, tabs)
+		a.reportTopics(ctx, client, poll, snapshot, tabs, owned)
 	}
 
 	return nil
@@ -280,6 +291,7 @@ func (a *App) reportTopics(
 	poll *reads.Poll,
 	snapshot herdr.Snapshot,
 	tabs []state.TabState,
+	owned map[string]bool,
 ) {
 	first := firstTabs(snapshot.Tabs)
 
@@ -307,7 +319,15 @@ func (a *App) reportTopics(
 		}
 
 		pane := contexts[active]
+		if owned[active] {
+			continue
+		}
+
 		poll.Fill(ctx, pane)
+
+		if pane != nil && a.owners.Owns(pane) {
+			continue
+		}
 
 		topic := a.topics.Topic(pane)
 		if a.reported.due(workspace, topic) {
@@ -378,6 +398,54 @@ func firstTabs(tabs []herdr.TabInfo) map[string]string {
 	return first
 }
 
+// ownedTabs reports which tabs are driven by a foreign process, when topics are
+// reported. Without topics there is nothing to skip, so it stays empty.
+func (a *App) ownedTabs(
+	ctx context.Context,
+	poll *reads.Poll,
+	tabs []state.TabState,
+) map[string]bool {
+	if a.topics == nil {
+		return nil
+	}
+
+	owned := make(map[string]bool, len(tabs))
+	for _, tab := range tabs {
+		if ctx.Err() != nil {
+			return owned
+		}
+
+		if a.tabIsForeign(ctx, poll, tab) {
+			owned[tab.ID] = true
+		}
+	}
+
+	return owned
+}
+
+// tabIsForeign reports whether any pane of tab belongs to a program that owns
+// its labels. The tab's label may not be written while one does.
+func (a *App) tabIsForeign(ctx context.Context, poll *reads.Poll, tab state.TabState) bool {
+	for _, pane := range tab.Panes {
+		if pane == nil {
+			continue
+		}
+
+		poll.Fill(ctx, pane)
+
+		if a.owners.Owns(pane) {
+			return true
+		}
+	}
+
+	if tab.Context != nil {
+		poll.Fill(ctx, tab.Context)
+		return a.owners.Owns(tab.Context)
+	}
+
+	return false
+}
+
 // nameTab keeps one tab's label in step with what the tab is doing.
 func (a *App) nameTab(
 	ctx context.Context,
@@ -390,8 +458,31 @@ func (a *App) nameTab(
 	}
 
 	// Read here rather than during assembly: the reads are what a poll
-	// spends, and only a tab that will be renamed is worth them.
+	// spends, and only a tab that will be renamed is worth them. A tab is
+	// skipped when any of its panes belongs to a program that owns its
+	// labels, not just its focused one: a split of a mirror tab must not
+	// be written through and pushed to the remote.
+	for _, pane := range tab.Panes {
+		if pane == nil {
+			continue
+		}
+
+		if pane == tab.Context {
+			continue
+		}
+
+		poll.Fill(ctx, pane)
+
+		if a.owners.Owns(pane) {
+			return
+		}
+	}
+
 	poll.Fill(ctx, tab.Context)
+
+	if tab.Context != nil && a.owners.Owns(tab.Context) {
+		return
+	}
 
 	pass.Tab(ctx, tab, a.titles.Resolve(tab))
 }
@@ -418,6 +509,14 @@ func (a *App) namePanes(
 	for i, decision := range a.panes.ResolvePanes(tab) {
 		if ctx.Err() != nil {
 			return
+		}
+
+		if tab.Panes[i] == nil {
+			continue
+		}
+
+		if a.owners.Owns(tab.Panes[i]) {
+			continue
 		}
 
 		pass.Pane(ctx, tab.Panes[i], decision)

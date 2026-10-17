@@ -30,6 +30,8 @@ const (
 	EnvPreferAgent = "HERDR_AUTO_TITLE_PREFER_AGENT"
 	EnvPaneID      = "HERDR_AUTO_TITLE_PANE_ID"
 
+	EnvForeignProcesses = "HERDR_AUTO_TITLE_FOREIGN_PROCESSES"
+
 	EnvWorkspaces         = "HERDR_AUTO_TITLE_WORKSPACES"
 	EnvWorkspaceMaxLength = "HERDR_AUTO_TITLE_WORKSPACE_MAX_LENGTH"
 
@@ -96,6 +98,10 @@ type Config struct {
 	ClaudeDirs []string
 	// Home is the user's home directory, or "" when there is none.
 	Home string
+	// ForeignProcesses are programs that own their tab and pane labels; Auto
+	// Title leaves them alone. herdr-mirror is built in, so this only adds to
+	// it.
+	ForeignProcesses []string
 }
 
 // LoadConfig reads configuration from the configuration file and the
@@ -154,6 +160,10 @@ func LoadConfig() (Config, []string) {
 	// one asks for locks that do not outlive the process.
 	if raw, set := os.LookupEnv(EnvManual); set {
 		cfg.ManualPath = raw
+	}
+
+	if raw := os.Getenv(EnvForeignProcesses); raw != "" {
+		cfg.ForeignProcesses = filepath.SplitList(raw)
 	}
 
 	return cfg, warnings
