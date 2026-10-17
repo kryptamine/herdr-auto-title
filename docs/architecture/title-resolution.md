@@ -31,6 +31,17 @@ thing. The agent's name is a field rather than a prefix on the activity because
 because holding it apart is what lets the repetition check see the activity as
 it is.
 
+A pane label can lead with a fifth field, `Handle`: the name the user gave the
+pane's agent with `herdr agent rename`, read from the snapshot's `agents` list
+and set only when `HERDR_AUTO_TITLE_AGENT_HANDLE` asks for it. No source
+supplies it and `Resolve` never sets it, so tab titles never carry one. It is
+sanitized as it is read, so the checks below compare what is shown. When the
+handle equals the context, the context goes rather than the handle: a
+worktree is often named after the ticket its agent holds, and the tab above
+often drops that context, so dropping the handle as its repeat would leave the
+label naming neither. When it equals the agent's kind, the kind goes. When it
+equals the activity, the handle goes and the activity stays.
+
 ## One pane speaks for the tab
 
 A tab holding several panes is named after one of them, never after a blend of

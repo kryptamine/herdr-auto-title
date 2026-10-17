@@ -56,6 +56,7 @@ type Client struct {
 	tabs             map[string]herdr.TabInfo
 	panes            map[string]herdr.PaneInfo
 	processes        map[string][]herdr.PaneProcessInfoProcess
+	handles          map[string]string
 	renames          []RenameCall
 	paneRenames      []PaneRenameCall
 	workspaceReports []WorkspaceReportCall
@@ -75,6 +76,7 @@ func New(tabs []herdr.TabInfo, panes []herdr.PaneInfo) *Client {
 		tabs:      make(map[string]herdr.TabInfo, len(tabs)),
 		panes:     make(map[string]herdr.PaneInfo, len(panes)),
 		processes: make(map[string][]herdr.PaneProcessInfoProcess),
+		handles:   make(map[string]string),
 		server:    "herdrtest",
 	}
 	for _, tab := range tabs {
@@ -123,6 +125,15 @@ func (s *Client) SetProcesses(paneID string, processes ...herdr.PaneProcessInfoP
 	defer s.mu.Unlock()
 
 	s.processes[paneID] = processes
+}
+
+// SetHandle names the agent in a pane, as `herdr agent rename` does; "" clears
+// the name.
+func (s *Client) SetHandle(paneID, name string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.handles[paneID] = name
 }
 
 func (s *Client) SetPane(pane herdr.PaneInfo) {
@@ -237,6 +248,7 @@ func (s *Client) Call(ctx context.Context, method string, params any, result any
 			Workspaces: slices.Clone(s.workspaces),
 			Tabs:       sorted(s.tabs, func(t herdr.TabInfo) string { return t.TabID }),
 			Panes:      sorted(s.panes, func(p herdr.PaneInfo) string { return p.PaneID }),
+			Agents:     s.agents(),
 		}})
 
 	case herdr.MethodPaneProcessInfo:
@@ -426,4 +438,21 @@ func sorted[T any](items map[string]T, id func(T) string) []T {
 	slices.SortFunc(out, func(a, b T) int { return strings.Compare(id(a), id(b)) })
 
 	return out
+}
+
+// agents lists every pane running an agent, as Herdr does, with the name only
+// where one was given.
+func (s *Client) agents() []herdr.AgentInfo {
+	var agents []herdr.AgentInfo
+
+	for _, pane := range sorted(s.panes, func(p herdr.PaneInfo) string { return p.PaneID }) {
+		if pane.Agent != "" {
+			agents = append(
+				agents,
+				herdr.AgentInfo{PaneID: pane.PaneID, Name: s.handles[pane.PaneID]},
+			)
+		}
+	}
+
+	return agents
 }

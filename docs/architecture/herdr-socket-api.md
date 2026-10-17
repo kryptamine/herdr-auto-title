@@ -160,7 +160,11 @@ unless workspace topics are turned off:
 
 - **`session.snapshot`** returns the whole session — every tab with its label,
   every pane with its directory, terminal title, agent and agent status.
-  Measured at 0.47 ms and 6 KB for six panes.
+  Measured at 0.47 ms and 6 KB for six panes. Beside `panes` it carries an
+  `agents` list, one entry per pane running an agent, and only there does the
+  name `herdr agent rename` gave that agent appear, as `name`; an unnamed agent
+  has no `name` key, and `agent` still reads `claude` after a rename. Seen on
+  0.9.2-preview and 0.9.3 (#144).
 - **`pane.process_info`** returns what is running in one pane. Measured at
   0.11 ms — less than the snapshot itself, because it reads the process table
   rather than serializing the session. It is one request *per pane* though, so

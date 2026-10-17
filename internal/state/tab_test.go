@@ -80,7 +80,7 @@ func TestPaneFromReadsAgentContext(t *testing.T) {
 		Agent:                 "claude",
 		DisplayAgent:          "Claude Code",
 		AgentStatus:           herdr.AgentStatusWorking,
-	}, stamp)
+	}, "", stamp)
 	pane.AgentTopic = "Rework the poll loop"
 
 	switch {
@@ -104,7 +104,7 @@ func TestPaneWithoutAnAgent(t *testing.T) {
 
 	pane := PaneFrom(
 		herdr.PaneInfo{PaneID: "wE:p1", AgentStatus: "unknown"},
-		time.Time{},
+		"", time.Time{},
 	)
 	if pane.HasAgent() || pane.AgentIsActive() {
 		t.Errorf("pane %+v reported an agent", pane)
@@ -225,14 +225,14 @@ func TestPaneFromPrefersTheForegroundDirectory(t *testing.T) {
 
 	both := PaneFrom(herdr.PaneInfo{
 		PaneID: "wE:p1", CWD: dashboard, ForegroundCWD: chezmoi,
-	}, time.Time{})
+	}, "", time.Time{})
 	if both.Dir != chezmoi {
 		t.Errorf("dir = %q, want the foreground process's", both.Dir)
 	}
 
 	api := herdrtest.Dir("work", "api")
 
-	shell := PaneFrom(herdr.PaneInfo{PaneID: "wE:p1", CWD: api}, time.Time{})
+	shell := PaneFrom(herdr.PaneInfo{PaneID: "wE:p1", CWD: api}, "", time.Time{})
 	if shell.Dir != api {
 		t.Errorf("dir = %q, want the shell's own", shell.Dir)
 	}
@@ -252,7 +252,7 @@ func TestPaneDirTakesTheForegroundProcessesOwnDirectory(t *testing.T) {
 	pane := PaneFrom(herdr.PaneInfo{
 		PaneID: "wE:p1", Agent: "claude",
 		CWD: herdrtest.Dir("work", "dashboard"), ForegroundCWD: server,
-	}, time.Time{})
+	}, "", time.Time{})
 	pane.Dir = PaneDir(processes, pane.Dir)
 	pane.Processes = ProcessesFrom(processes)
 
@@ -310,7 +310,7 @@ func TestAPaneDirectoryIsCleanedAsItArrives(t *testing.T) {
 	dir := herdrtest.Dir("work", "dashboard")
 	trailing := dir + string(filepath.Separator)
 
-	pane := PaneFrom(herdr.PaneInfo{PaneID: "wE:p1", CWD: trailing}, time.Time{})
+	pane := PaneFrom(herdr.PaneInfo{PaneID: "wE:p1", CWD: trailing}, "", time.Time{})
 	if pane.Dir != dir {
 		t.Errorf("dir = %q from the snapshot, want %q", pane.Dir, dir)
 	}
@@ -320,7 +320,7 @@ func TestAPaneDirectoryIsCleanedAsItArrives(t *testing.T) {
 		t.Errorf("dir = %q from a process read, want %q", got, dir)
 	}
 
-	if none := PaneFrom(herdr.PaneInfo{PaneID: "wE:p2"}, time.Time{}); none.Dir != "" {
+	if none := PaneFrom(herdr.PaneInfo{PaneID: "wE:p2"}, "", time.Time{}); none.Dir != "" {
 		t.Errorf("dir = %q for a pane without one, want it empty", none.Dir)
 	}
 }

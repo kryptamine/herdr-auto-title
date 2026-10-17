@@ -32,9 +32,12 @@ const (
 )
 
 // Parts are the components a source contributes to a title, formatted as
-// "<context> › <branch> › <agent> › <activity>". A source may supply any of
-// them.
+// "<handle> › <context> › <branch> › <agent> › <activity>". A source may
+// supply any of them but the handle, which only a pane label carries.
 type Parts struct {
+	// Handle is the name the user gave the pane's agent. Only pane labels
+	// carry one; a tab title never does.
+	Handle  string
 	Context string
 	// Branch qualifies the context rather than standing on its own: a branch
 	// is part of where the user is, not of what they are doing.
@@ -127,6 +130,8 @@ type Options struct {
 	// way round so that the zero value keeps the name, which is what a resolver
 	// built without options wants.
 	HideAgentName bool
+	// ShowHandle leads a pane label with the name the user gave its agent.
+	ShowHandle bool
 	// Home is the user's home directory, which names no project.
 	Home string
 }
@@ -136,6 +141,7 @@ type Deterministic struct {
 	sources       []Source
 	maxLength     int
 	hideAgentName bool
+	showHandle    bool
 }
 
 var (
@@ -159,6 +165,7 @@ func New(opts Options, sources ...Source) *Deterministic {
 		sources:       ordered,
 		maxLength:     opts.MaxLength,
 		hideAgentName: opts.HideAgentName,
+		showHandle:    opts.ShowHandle,
 	}
 }
 
@@ -190,7 +197,13 @@ func (d *Deterministic) ResolvePanes(tab state.TabState) []Decision {
 
 	decisions := make([]Decision, len(tab.Panes))
 	for i, pane := range tab.Panes {
-		decisions[i] = d.nameUnder(d.collect(pane), tab.WorkspaceName, above)
+		found := d.collect(pane)
+		if d.showHandle {
+			// Sanitized here so the repetition checks compare what is shown.
+			found.parts.Handle = Sanitize(pane.Handle, 0)
+		}
+
+		decisions[i] = d.nameUnder(found, tab.WorkspaceName, above)
 	}
 
 	return decisions
@@ -325,6 +338,23 @@ func withoutRepetition(parts Parts) Parts {
 		parts.Branch = ""
 	}
 
+	// An agent named after its directory, a worktree named after the ticket
+	// its agent holds, says it once as the handle: the tab above may drop the
+	// context, and the handle would go with it.
+	if strings.EqualFold(parts.Handle, parts.Context) {
+		parts.Context = ""
+	}
+
+	// An agent named after its kind says it once: the handle is the user's word.
+	if strings.EqualFold(parts.Handle, parts.Agent) {
+		parts.Agent = ""
+	}
+
+	// An agent named after its task would say it twice; the activity stays.
+	if strings.EqualFold(parts.Handle, parts.Activity) {
+		parts.Handle = ""
+	}
+
 	return parts
 }
 
@@ -346,7 +376,8 @@ func withoutAbove(parts, above Parts) Parts {
 		kept.Agent = ""
 	}
 
-	if kept == (Parts{}) {
+	// The handle is never above a pane, so it alone does not count as kept.
+	if kept == (Parts{Handle: kept.Handle}) {
 		return parts
 	}
 

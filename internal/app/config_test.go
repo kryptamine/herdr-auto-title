@@ -36,7 +36,7 @@ func isolate(t *testing.T) {
 	names := []string{
 		EnvDebug, EnvPoll, EnvMaxLength, EnvBranchMax,
 		EnvPosition, EnvManual, EnvTranscript, EnvAgentName, EnvPanes,
-		EnvPreferAgent, EnvPaneID, EnvWorkspaces, EnvWorkspaceMaxLength,
+		EnvPreferAgent, EnvPaneID, EnvAgentHandle, EnvWorkspaces, EnvWorkspaceMaxLength,
 		// Claude Code's own variable is cleared with ours: it now decides a
 		// Config field, so a developer's real home would otherwise be read.
 		EnvClaudeDirs, EnvClaudeConfigDir,
@@ -112,6 +112,10 @@ func TestLoadConfigDefaults(t *testing.T) {
 		t.Error("pane IDs are shown by default")
 	}
 
+	if cfg.ShowAgentHandle {
+		t.Error("agent handles are shown by default")
+	}
+
 	if home, _ := os.UserHomeDir(); cfg.Home != home {
 		t.Errorf("home = %q, want %q", cfg.Home, home)
 	}
@@ -172,6 +176,20 @@ func TestLoadConfigTurnsPaneIDsOn(t *testing.T) {
 
 	if !cfg.ShowPaneID {
 		t.Error("pane IDs are hidden despite being turned on")
+	}
+}
+
+func TestLoadConfigTurnsAgentHandlesOn(t *testing.T) {
+	isolate(t)
+	t.Setenv(EnvAgentHandle, "true")
+
+	cfg, warnings := LoadConfig()
+	if len(warnings) != 0 {
+		t.Errorf("warnings = %v, want none", warnings)
+	}
+
+	if !cfg.ShowAgentHandle {
+		t.Error("agent handles are hidden despite being turned on")
 	}
 }
 

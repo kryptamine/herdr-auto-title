@@ -42,6 +42,9 @@ type PaneState struct {
 	// transcript behind AgentTopic is found. Nil until the agent's integration
 	// reports one.
 	AgentSession *herdr.AgentSessionInfo
+	// Handle is the name the user gave the pane's agent with `herdr agent
+	// rename`, empty while it has none.
+	Handle string
 
 	// Processes are the pane's foreground process and its descendants.
 	Processes []Process
@@ -105,7 +108,7 @@ func cleanDir(dir string) string {
 // PaneFrom builds pane context from a snapshot entry and when a poll last saw
 // the pane's revision move. What the snapshot cannot say is filled in by Read,
 // and for most panes never is.
-func PaneFrom(info herdr.PaneInfo, changedAt time.Time) *PaneState {
+func PaneFrom(info herdr.PaneInfo, handle string, changedAt time.Time) *PaneState {
 	return &PaneState{
 		ID:               info.PaneID,
 		CurrentName:      info.Label,
@@ -117,6 +120,7 @@ func PaneFrom(info herdr.PaneInfo, changedAt time.Time) *PaneState {
 		AgentTitle:       info.Title,
 		AgentStatus:      info.AgentStatus,
 		AgentSession:     info.AgentSession,
+		Handle:           handle,
 		Focused:          info.Focused,
 		ChangedAt:        changedAt,
 	}
