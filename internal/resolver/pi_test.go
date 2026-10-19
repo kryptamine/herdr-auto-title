@@ -106,3 +106,18 @@ func TestAnotherAgentsTitleIsNotReadAsPis(t *testing.T) {
 		t.Errorf("name = %q, want %q", got.Name, want)
 	}
 }
+
+func TestAPiTitleIsDeclinedWhenThePanesDirectoryIsUnknown(t *testing.T) {
+	t.Parallel()
+
+	// Without the directory the frame's tail would stay on the name and put
+	// the directory Pi appended into the tab.
+	pane := piPane("π - Rework the poll loop - dashboard")
+	pane.Dir = ""
+
+	got := defaultChain().Resolve(tabWithPane(pane))
+
+	if got.Reason == "terminal_title" {
+		t.Errorf("reason = %q, name = %q, want the title declined", got.Reason, got.Name)
+	}
+}

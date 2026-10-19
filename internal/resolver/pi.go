@@ -28,15 +28,19 @@ func withoutPiFrame(pane *state.PaneState, title string) (string, bool) {
 		return title, true
 	}
 
-	if pane.Dir != "" {
-		dir := filepath.Base(pane.Dir)
-		if rest == dir {
-			return "", false
-		}
+	// Without the pane's directory the frame's tail cannot be told from the
+	// name, so the session file names the pane instead.
+	if pane.Dir == "" {
+		return "", false
+	}
 
-		if name, named := strings.CutSuffix(rest, piJoin+dir); named {
-			rest = name
-		}
+	dir := filepath.Base(pane.Dir)
+	if rest == dir {
+		return "", false
+	}
+
+	if name, named := strings.CutSuffix(rest, piJoin+dir); named {
+		rest = name
 	}
 
 	return rest, rest != ""
