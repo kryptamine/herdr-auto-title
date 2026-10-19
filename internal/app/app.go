@@ -83,10 +83,10 @@ func New(
 		changes:     state.NewChanges(),
 		labels:      labels.Load(cfg.ManualPath, log),
 		reads: reads.New(reads.Options{
-			ClaudeDirs:      cfg.ClaudeDirs,
-			Home:            cfg.Home,
-			BranchMax:       cfg.BranchMax,
-			ReadTranscripts: cfg.ReadTranscripts,
+			ClaudeDirs:   cfg.ClaudeDirs,
+			Home:         cfg.Home,
+			BranchMax:    cfg.BranchMax,
+			ReadSessions: cfg.ReadSessions,
 		}, log),
 		instance: instance,
 	}

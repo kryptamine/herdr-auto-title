@@ -340,7 +340,7 @@ HERDR_AUTO_TITLE_MANUAL_FILE=/tmp/names.json
 		t.Error("positions are on despite the file turning them off")
 	}
 
-	if cfg.ReadTranscripts {
+	if cfg.ReadSessions {
 		t.Error("transcripts are read despite the file turning them off")
 	}
 

@@ -1386,7 +1386,7 @@ func stateDir(t *testing.T) string {
 
 func transcriptConfig(homes ...string) Config {
 	cfg := testConfig()
-	cfg.ReadTranscripts = true
+	cfg.ReadSessions = true
 	cfg.ClaudeDirs = homes
 
 	return cfg

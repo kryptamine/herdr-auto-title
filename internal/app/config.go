@@ -64,10 +64,10 @@ type Config struct {
 	// ManualPath is where tabs the user renamed by hand are remembered across
 	// restarts. Empty keeps them in memory only.
 	ManualPath string
-	// ReadTranscripts lets a title come from an agent's own session files when
+	// ReadSessions lets a title come from an agent's own session files when
 	// the agent has not titled its terminal. They hold what the user has been
 	// saying to that agent, so the read can be turned off.
-	ReadTranscripts bool
+	ReadSessions bool
 	// ShowAgentName puts the name of the agent running in a pane in front of
 	// what it is working on. Turned off, a pane whose agent has said nothing
 	// is named like any other pane in that directory.
@@ -127,7 +127,7 @@ func LoadConfig() (Config, []string) {
 		BranchMax:        resolver.DefaultBranchMaxLength,
 		ShowPosition:     true,
 		ManualPath:       ownPath(manualFile),
-		ReadTranscripts:  true,
+		ReadSessions:     true,
 		RenamePanes:      true,
 		ReportWorkspaces: true,
 		ClaudeDirs:       homes,
@@ -142,7 +142,7 @@ func LoadConfig() (Config, []string) {
 	// Zero is meaningful here, and only here: it leaves branches out of titles.
 	cfg.BranchMax = fromEnv(&warnings, EnvBranchMax, cfg.BranchMax, countOrNone)
 	cfg.ShowPosition = fromEnv(&warnings, EnvPosition, cfg.ShowPosition, boolean)
-	cfg.ReadTranscripts = fromEnv(&warnings, EnvTranscript, cfg.ReadTranscripts, boolean)
+	cfg.ReadSessions = fromEnv(&warnings, EnvTranscript, cfg.ReadSessions, boolean)
 	cfg.ShowAgentName = fromEnv(&warnings, EnvAgentName, cfg.ShowAgentName, boolean)
 	cfg.RenamePanes = fromEnv(&warnings, EnvPanes, cfg.RenamePanes, boolean)
 	cfg.PreferAgentPane = fromEnv(&warnings, EnvPreferAgent, cfg.PreferAgentPane, boolean)

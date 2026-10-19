@@ -23,31 +23,31 @@ type Options struct {
 	// Home is the user's home directory, where Antigravity CLI keeps its state.
 	Home string
 	// BranchMax of zero or less turns branches off, and then no checkout is read.
-	BranchMax       int
-	ReadTranscripts bool
+	BranchMax    int
+	ReadSessions bool
 }
 
 // Reader outlives a poll because what it remembers does: what each pane was
 // last seen running, and how far each agent's transcript has been read.
 type Reader struct {
-	processes       *processCache
-	topics          *claude.Reader
-	annotations     *antigravity.Reader
-	sessions        *pi.Reader
-	log             *slog.Logger
-	readBranches    bool
-	readTranscripts bool
+	processes    *processCache
+	topics       *claude.Reader
+	annotations  *antigravity.Reader
+	sessions     *pi.Reader
+	log          *slog.Logger
+	readBranches bool
+	readSessions bool
 }
 
 func New(opts Options, log *slog.Logger) *Reader {
 	return &Reader{
-		processes:       newProcessCache(),
-		topics:          claude.NewReader(opts.ClaudeDirs...),
-		annotations:     antigravity.NewReader(opts.Home),
-		sessions:        pi.NewReader(),
-		log:             log,
-		readBranches:    opts.BranchMax > 0,
-		readTranscripts: opts.ReadTranscripts,
+		processes:    newProcessCache(),
+		topics:       claude.NewReader(opts.ClaudeDirs...),
+		annotations:  antigravity.NewReader(opts.Home),
+		sessions:     pi.NewReader(),
+		log:          log,
+		readBranches: opts.BranchMax > 0,
+		readSessions: opts.ReadSessions,
 	}
 }
 
@@ -103,8 +103,8 @@ func (p *Poll) Fill(ctx context.Context, pane *state.PaneState) {
 	pane.Processes = state.ProcessesFrom(processes)
 	pane.Dir = dir
 
-	// The transcript is read before the checkout because it says where the
-	// agent is working, and that is where the branch is read from.
+	// The agent's session is read before the checkout because it can say where
+	// the agent is working, and that is where the branch is read from.
 	topic := p.reader.topic(ctx, pane, dir)
 	pane.AgentTopic = topic.text
 	pane.Git = p.checkout(ctx, dir)
@@ -177,7 +177,7 @@ type sessionTopic struct {
 // topic reports what the session the pane's agent is holding says it is about.
 // Only Herdr's integration hook says which session a pane holds.
 func (r *Reader) topic(ctx context.Context, pane *state.PaneState, dir string) sessionTopic {
-	if !r.readTranscripts || spent(ctx) {
+	if !r.readSessions || spent(ctx) {
 		return sessionTopic{}
 	}
 

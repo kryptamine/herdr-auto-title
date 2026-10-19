@@ -410,7 +410,7 @@ func TestOnlyOnePaneOfATabCarriesTheBranchTheTabShows(t *testing.T) {
 		`{"type":"ai-title","aiTitle":"Token refresh","sessionId":"`+otherSession+`"}`)
 
 	cfg := paneConfig()
-	cfg.ReadTranscripts = true
+	cfg.ReadSessions = true
 	cfg.ClaudeDirs = []string{root}
 
 	h := startConfigured(t, herdrtest.New(oneTab(), []herdr.PaneInfo{
