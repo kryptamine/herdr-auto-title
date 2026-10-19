@@ -4,13 +4,13 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/kryptamine/herdr-auto-title/internal/pi"
 	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
 
-// piAgent is the label Herdr gives Pi. piGlyph and piJoin are how Pi frames
-// the one title it sets: `π - <dir>` unnamed, `π - <name> - <dir>` once named.
+// piGlyph and piJoin are how Pi frames the one title it sets: `π - <dir>`
+// unnamed, `π - <name> - <dir>` once named.
 const (
-	piAgent = "pi"
 	piGlyph = "π"
 	piJoin  = " - "
 )
@@ -19,7 +19,7 @@ const (
 // its directory, and false while it says nothing else. A title Pi did not
 // frame, or any other agent's, passes through as it is.
 func withoutPiFrame(pane *state.PaneState, title string) (string, bool) {
-	if pane.Agent != piAgent {
+	if pane.Agent != pi.Agent {
 		return title, true
 	}
 
