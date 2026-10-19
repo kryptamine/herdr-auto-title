@@ -89,6 +89,17 @@ func Annotation(t *testing.T, home, sessionID, content string) {
 	write(t, path, content)
 }
 
+// GrokSummary lays down the summary Grok Build keeps for one session under its
+// home. Which project directory it lands in is the summary reader's business.
+func GrokSummary(t *testing.T, home, sessionID, title string) {
+	t.Helper()
+
+	path := filepath.Join(home, "sessions", "any-project", sessionID, "summary.json")
+
+	mkdir(t, filepath.Dir(path))
+	write(t, path, `{"generated_title":`+strconv.Quote(title)+`}`)
+}
+
 // AgentIn is a transcript line saying where the agent is working. Only the
 // directory is read out of it, and a Windows path is full of escapes.
 func AgentIn(dir string) string {

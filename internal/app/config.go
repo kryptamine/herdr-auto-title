@@ -43,6 +43,10 @@ const (
 // setting so that nothing downstream goes to the environment on its own.
 const EnvClaudeConfigDir = "CLAUDE_CONFIG_DIR"
 
+// EnvGrokConfigDir is Grok Build's own variable, naming the home it files
+// sessions under, and read here for the same reason.
+const EnvGrokConfigDir = "GROK_CONFIG_DIR"
+
 // DefaultPoll is how often the session is read. A six-pane snapshot measured
 // 0.47 ms and 6 KB, so twice a second costs about a thousandth of a core, and
 // a rename lands while the user is still looking at the tab.
@@ -99,6 +103,9 @@ type Config struct {
 	// adds. A home the user's shell picks per directory cannot be discovered,
 	// so it is named.
 	ClaudeDirs []string
+	// GrokHome is the Grok Build home session summaries are read from, or ""
+	// when there is no home directory to find it under.
+	GrokHome string
 	// Home is the user's home directory, or "" when there is none.
 	Home string
 }
@@ -131,6 +138,7 @@ func LoadConfig() (Config, []string) {
 		RenamePanes:      true,
 		ReportWorkspaces: true,
 		ClaudeDirs:       homes,
+		GrokHome:         grokHome(),
 		Home:             userHome(),
 		// ShowAgentName stays false: most sessions run one agent, whose name
 		// would repeat on every tab.
@@ -228,6 +236,20 @@ func claudeHome() string {
 	}
 
 	return filepath.Join(home, ".claude")
+}
+
+// grokHome is the home Grok Build names itself, else the one it defaults to.
+func grokHome() string {
+	if dir := os.Getenv(EnvGrokConfigDir); dir != "" {
+		return dir
+	}
+
+	home := userHome()
+	if home == "" {
+		return ""
+	}
+
+	return filepath.Join(home, ".grok")
 }
 
 func userHome() string {

@@ -116,6 +116,21 @@ The richest source in practice, and the one that carries most agent context. Its
 value is cleaned hard before it is trusted — see
 [sanitization](./sanitization.md).
 
+Some agents use their title for something other than the work, so
+`agentTitle` (`internal/resolver/agenttitle.go`) decides per agent what the
+title is worth before it is read; a pane it declines is named by its session
+[one rung down](#the-session-transcript).
+
+Grok Build titles its terminal `<name> - grok` while idle and
+`<spinner> - <status> - <name> - grok` while it works, the status being
+`Thinking`, `Responding` or `Waiting for response…`. `withoutGrokFrame`
+(`internal/resolver/grok.go`) keeps only the name, so the tab does not change
+with every step Grok takes, and declines a title in any other shape. The title
+follows `/resume` at once, which Herdr's session id does not (see
+[the socket API](./herdr-socket-api.md)). Grok cuts a long name with `…`; when
+the summary below has the whole of that name, the title declines and the
+summary names the pane.
+
 Pi is read with one more step, because its title has a grammar of its own: Pi
 titles its terminal `π - <dir>` and, once `/name` has given the session a name,
 `π - <name> - <dir>`. The first says which program sits where, and the context
@@ -142,16 +157,20 @@ session id through `pane.report_agent_session`, and it arrives in the snapshot
 as `PaneInfo.agent_session` — no extra request. Without the hook the field is
 null, this source declines, and every other rung works as it always did.
 
+`herdr integration install grok` reports a Grok Build session id the same way,
+and its name is `generated_title` in `summary.json` under the Grok home
+(`internal/grok/summary.go`), which is `GROK_CONFIG_DIR`, else `~/.grok`.
+
 The transcript is then read from disk (`internal/claude/transcript.go`). Claude
 Code files its sessions under the configuration home `CLAUDE_CONFIG_DIR` names,
 and a user may have more than one — a second home for work under one client,
 say, whose sessions are invisible to a plugin reading only the first.
-`HERDR_AUTO_TITLE_CLAUDE_DIRS` names the others, and `locate` tries each home in
-order, `locateUnder` doing one home's own two-step lookup, so a session found in
-the first costs what it cost before the setting existed. The homes are named
-rather than discovered: a scan for anything shaped like a configuration home
-would read directories the user never pointed the plugin at, which is the one
-thing this source does not do. Both settings are read in
+`HERDR_AUTO_TITLE_CLAUDE_DIRS` names the others, and `transcript.Layout.Find`
+tries each home in order, with its own two-step lookup inside each, so a session
+found in the first costs what it cost before the setting existed. The homes are
+named rather than discovered: a scan for anything shaped like a configuration
+home would read directories the user never pointed the plugin at, which is the
+one thing this source does not do. Both settings are read in
 `internal/app/config.go` with every other one and reach the reader as
 `Config.ClaudeDirs`, already in search order, so `internal/claude` reads no
 environment at all: a reader is built over the homes it is handed, and no home

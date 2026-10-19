@@ -100,7 +100,7 @@ cannot express it:
   repeated — but finding the file means scanning every project directory the
   user has, and doing that twice a second for the life of a pane costs more than
   every other read in the loop. A failed search is therefore left alone for
-  `locateRetry` (10 s).
+  `transcript.LocateRetry` (10 s).
 - **What Auto Title last named each tab** (`internal/labels`), which is
   how a rename by the user is told from the plugin's own work. That is a design
   of its own: [manual rename protection](./manual-rename-protection.md).

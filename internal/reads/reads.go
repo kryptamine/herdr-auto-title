@@ -10,6 +10,7 @@ import (
 	"github.com/kryptamine/herdr-auto-title/internal/antigravity"
 	"github.com/kryptamine/herdr-auto-title/internal/claude"
 	"github.com/kryptamine/herdr-auto-title/internal/git"
+	"github.com/kryptamine/herdr-auto-title/internal/grok"
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
 	"github.com/kryptamine/herdr-auto-title/internal/pi"
 	"github.com/kryptamine/herdr-auto-title/internal/state"
@@ -22,6 +23,8 @@ type Options struct {
 	ClaudeDirs []string
 	// Home is the user's home directory, where Antigravity CLI keeps its state.
 	Home string
+	// GrokHome is the Grok Build home session summaries are found in.
+	GrokHome string
 	// BranchMax of zero or less turns branches off, and then no checkout is read.
 	BranchMax    int
 	ReadSessions bool
@@ -33,6 +36,7 @@ type Reader struct {
 	processes         *processCache
 	claudeTopics      *claude.Reader
 	antigravityTitles *antigravity.Reader
+	grokTitles        *grok.Reader
 	piTopics          *pi.Reader
 	log               *slog.Logger
 	readBranches      bool
@@ -44,6 +48,7 @@ func New(opts Options, log *slog.Logger) *Reader {
 		processes:         newProcessCache(),
 		claudeTopics:      claude.NewReader(opts.ClaudeDirs...),
 		antigravityTitles: antigravity.NewReader(opts.Home),
+		grokTitles:        grok.NewReader(opts.GrokHome),
 		piTopics:          pi.NewReader(),
 		log:               log,
 		readBranches:      opts.BranchMax > 0,
@@ -61,6 +66,7 @@ func (r *Reader) Poll(client herdr.Client, panes []herdr.PaneInfo, drew map[stri
 	// session the snapshot holds without being told which is whose.
 	held := sessionsIn(panes)
 	r.claudeTopics.Retain(held)
+	r.grokTitles.Retain(held)
 	r.piTopics.Retain(held)
 
 	return &Poll{
@@ -204,6 +210,13 @@ func (r *Reader) topic(ctx context.Context, pane *state.PaneState, dir string) s
 		// An annotation says nothing of where the agent works, so the pane's own
 		// directory keeps the branch.
 		return sessionTopic{text: r.antigravityTitles.Title(sessionID)}
+	case grok.Agent:
+		sessionID, ok := pane.AgentSession.ID()
+		if !ok {
+			return sessionTopic{}
+		}
+
+		return sessionTopic{text: r.grokTitles.Title(sessionID, dir)}
 	case pi.Agent:
 		path, ok := pane.AgentSession.Path()
 		if !ok {

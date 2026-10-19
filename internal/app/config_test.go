@@ -39,7 +39,7 @@ func isolate(t *testing.T) {
 		EnvPreferAgent, EnvPaneID, EnvAgentHandle, EnvWorkspaces, EnvWorkspaceMaxLength,
 		// Claude Code's own variable is cleared with ours: it now decides a
 		// Config field, so a developer's real home would otherwise be read.
-		EnvClaudeDirs, EnvClaudeConfigDir,
+		EnvClaudeDirs, EnvClaudeConfigDir, EnvGrokConfigDir,
 	}
 
 	for _, name := range names {

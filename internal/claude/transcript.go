@@ -5,7 +5,6 @@ package claude
 
 import (
 	"encoding/json"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -22,11 +21,6 @@ const Agent = "claude"
 // maxOpening bounds what an opening prompt contributes. It is generous because
 // the cut that matters is made later, against the width of the tab bar.
 const maxOpening = 200
-
-// locateRetry is how long a session whose transcript was not found is left
-// alone. Herdr can name a session before the agent has written its first line,
-// so the search is repeated — just not twice a second for the pane's whole life.
-const locateRetry = 10 * time.Second
 
 // Topic is what a session says it is about.
 type Topic struct {
@@ -71,14 +65,11 @@ type Reader struct {
 	now      func() time.Time
 }
 
-// followed is one session's transcript and what has been read out of it. A path
-// that is still empty is a session whose transcript has been looked for and not
-// found, and searchedAt is when that search last ran.
+// followed is one session's transcript and what has been read out of it.
 type followed struct {
-	path       string
-	follower   transcript.Follower
-	topic      Topic
-	searchedAt time.Time
+	search   transcript.Search
+	follower transcript.Follower
+	topic    Topic
 }
 
 // NewReader builds a reader over homes, the Claude Code configuration
@@ -110,7 +101,7 @@ func (r *Reader) Topic(sessionID, dir string) Topic {
 		r.sessions[sessionID] = held
 	}
 
-	if held.path == "" && !r.find(held, sessionID, dir) {
+	if !layout.Find(&held.search, r.roots, sessionID, dir, r.now()) {
 		// What was read before a transcript went missing still names the
 		// session better than nothing does.
 		return held.topic
@@ -137,62 +128,15 @@ func (r *Reader) Retain(sessionIDs []string) {
 	r.sessions = kept
 }
 
-// find fills in the session's transcript path, and reports whether there is one
-// to read. A search that came up empty is not repeated until locateRetry has
-// passed, because the scan behind it walks every project directory.
-func (r *Reader) find(held *followed, sessionID, dir string) bool {
-	now := r.now()
-	if !held.searchedAt.IsZero() && now.Sub(held.searchedAt) < locateRetry {
-		return false
-	}
-
-	held.searchedAt = now
-
-	path, found := r.locate(sessionID, dir)
-	if !found {
-		return false
-	}
-
-	held.path = path
-
-	return true
-}
-
-// locate finds the transcript in the first configuration directory that holds
-// the session, so a session in the first costs no search of the ones after it.
-func (r *Reader) locate(sessionID, dir string) (string, bool) {
-	name := sessionID + ".jsonl"
-
-	for _, root := range r.roots {
-		if path, found := locateUnder(root, name, dir); found {
-			return path, true
-		}
-	}
-
-	return "", false
-}
-
-// locateUnder finds the transcript in one configuration directory. Claude Code
-// files a session under the directory it was started in, which is usually the
-// pane's, so that is tried before the scan across every project.
-func locateUnder(root, name, dir string) (string, bool) {
-	projects := filepath.Join(root, "projects")
-
-	if dir != "" {
-		candidate := filepath.Join(projects, slugOf(dir), name)
-		if info, err := os.Stat(candidate); err == nil && info.Mode().IsRegular() {
-			return candidate, true
-		}
-	}
-
-	// A pane that has changed directory since the session started files it
-	// elsewhere, and only the whole projects directory says where.
-	matches, err := filepath.Glob(filepath.Join(projects, "*", name))
-	if err != nil || len(matches) == 0 {
-		return "", false
-	}
-
-	return matches[0], true
+// layout is where Claude Code files a session: under the directory it started
+// in, which is usually the pane's, else under whichever project it moved to.
+var layout = transcript.Layout{
+	Filed: func(root, dir, sessionID string) string {
+		return filepath.Join(root, "projects", slugOf(dir), sessionID+".jsonl")
+	},
+	Anywhere: func(root, sessionID string) string {
+		return filepath.Join(root, "projects", "*", sessionID+".jsonl")
+	},
 }
 
 // slugOf is how Claude Code names a project directory: every character that is
@@ -215,11 +159,11 @@ func slugOf(dir string) string {
 
 // read updates the topic from what the transcript has had appended since the
 // last read. A transcript that is gone was rotated, deleted or refiled, and
-// letting its path go puts the session back behind locateRetry.
+// letting its path go puts the session back behind the search's retry.
 func (s *followed) read() {
 	reset := func() { s.topic = Topic{} }
-	if !s.follower.Follow(s.path, reset, s.absorb) {
-		s.path = ""
+	if !s.follower.Follow(s.search.Path, reset, s.absorb) {
+		s.search.Path = ""
 	}
 }
 

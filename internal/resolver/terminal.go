@@ -39,9 +39,7 @@ func (s TerminalTitle) Resolve(pane *state.PaneState) (Parts, bool) {
 		}
 	}
 
-	// Pi frames its title with its glyph and the pane's directory, so until the
-	// session is named the title only repeats what the context says.
-	title, said := withoutPiFrame(pane, title)
+	title, said := agentTitle(pane, title)
 	if !said {
 		return Parts{}, false
 	}

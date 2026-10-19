@@ -84,6 +84,7 @@ func New(
 		labels:      labels.Load(cfg.ManualPath, log),
 		reads: reads.New(reads.Options{
 			ClaudeDirs:   cfg.ClaudeDirs,
+			GrokHome:     cfg.GrokHome,
 			Home:         cfg.Home,
 			BranchMax:    cfg.BranchMax,
 			ReadSessions: cfg.ReadSessions,

@@ -349,6 +349,14 @@ reads, so this section describes Herdr rather than those types.
   resume `agent_session` keeps naming the session left behind until a prompt is
   sent, and the tab keeps that session's title until then. Measured on Herdr
   0.9.5 with integration version 4.
+- **A Grok Build pane's `agent_session` can name a session Grok left behind.**
+  The integration's hook runs only on `SessionStart`, which Grok fires for the
+  fresh session it opens at launch; `/resume` then switches to another without
+  a new report, so the pane keeps naming a session that has no files at all,
+  through prompts sent in the resumed one. The id is a UUIDv7. Grok's terminal
+  title names the current session either way: `<name> - grok` idle,
+  `⠙ - <status> - <name> - grok` working, the name cut with `…` past about
+  forty characters. Measured on Herdr 0.9.5.
 - **The kind of `agent_session` is decided per agent.** Pi's hook reports the
   session file, and Herdr 0.9.5 answered `{"agent": "pi", "kind": "path",
   "source": "herdr:pi", "value": "<absolute path to the .jsonl>"}` for a Pi pane
