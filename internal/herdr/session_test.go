@@ -70,11 +70,7 @@ func TestAPathThatIsNotAbsoluteAndCleanIsRefused(t *testing.T) {
 
 	// The path arrives over the socket and a reader opens it as it is.
 	path := filepath.Join(t.TempDir(), "session.jsonl")
-
-	relative, err := filepath.Rel(string(filepath.Separator), path)
-	if err != nil {
-		t.Fatal(err)
-	}
+	relative := filepath.Join("sessions", "session.jsonl")
 
 	// Spelled by hand: filepath.Join would clean the dot-dot away.
 	dir, sep := filepath.Dir(path), string(filepath.Separator)
