@@ -55,10 +55,12 @@ func (f *Follower) Follow(path string, reset func(), absorb func(line string)) b
 	// where a name it was given is repeated; what lies between says nothing.
 	if f.Head && f.offset == 0 && size > MaxScan {
 		next, err := readLines(file, 0, false, absorb)
-		if err != nil || next == 0 {
+		if err != nil {
 			return true
 		}
 
+		// A head with no whole line leaves next at zero, and the tail is read
+		// anyway rather than the same head again every poll.
 		f.offset = next
 	}
 
