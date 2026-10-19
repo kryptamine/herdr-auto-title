@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.14.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.13.2...v0.14.0) (2026-10-19)
+
+
+### Features
+
+* **resolver:** put the agent's handle in front of its pane label ([e7af9c8](https://github.com/kryptamine/herdr-auto-title/commit/e7af9c82c97c47a96ee4c4f0e790d528e69ba60d))
+
+
+### Bug Fixes
+
+* **claude:** prefer a session's given name over its generated title ([5b1145e](https://github.com/kryptamine/herdr-auto-title/commit/5b1145e5974e308d7c94f97a375c77b449da7720))
+
 ## [0.13.2](https://github.com/kryptamine/herdr-auto-title/compare/v0.13.1...v0.13.2) (2026-10-12)
 
 
