@@ -30,24 +30,24 @@ type Options struct {
 // Reader outlives a poll because what it remembers does: what each pane was
 // last seen running, and how far each agent's transcript has been read.
 type Reader struct {
-	processes    *processCache
-	topics       *claude.Reader
-	annotations  *antigravity.Reader
-	sessions     *pi.Reader
-	log          *slog.Logger
-	readBranches bool
-	readSessions bool
+	processes         *processCache
+	claudeTopics      *claude.Reader
+	antigravityTitles *antigravity.Reader
+	piTopics          *pi.Reader
+	log               *slog.Logger
+	readBranches      bool
+	readSessions      bool
 }
 
 func New(opts Options, log *slog.Logger) *Reader {
 	return &Reader{
-		processes:    newProcessCache(),
-		topics:       claude.NewReader(opts.ClaudeDirs...),
-		annotations:  antigravity.NewReader(opts.Home),
-		sessions:     pi.NewReader(),
-		log:          log,
-		readBranches: opts.BranchMax > 0,
-		readSessions: opts.ReadSessions,
+		processes:         newProcessCache(),
+		claudeTopics:      claude.NewReader(opts.ClaudeDirs...),
+		antigravityTitles: antigravity.NewReader(opts.Home),
+		piTopics:          pi.NewReader(),
+		log:               log,
+		readBranches:      opts.BranchMax > 0,
+		readSessions:      opts.ReadSessions,
 	}
 }
 
@@ -57,11 +57,11 @@ func New(opts Options, log *slog.Logger) *Reader {
 func (r *Reader) Poll(client herdr.Client, panes []herdr.PaneInfo, drew map[string]bool) *Poll {
 	r.processes.observe(panes, drew)
 
-	// Each reader keeps only the references it knows, so both can be handed
-	// every session the snapshot holds without being told which is whose.
+	// Each reader keeps only the references it knows, so all are handed every
+	// session the snapshot holds without being told which is whose.
 	held := sessionsIn(panes)
-	r.topics.Retain(held)
-	r.sessions.Retain(held)
+	r.claudeTopics.Retain(held)
+	r.piTopics.Retain(held)
 
 	return &Poll{
 		reader:    r,
@@ -192,7 +192,7 @@ func (r *Reader) topic(ctx context.Context, pane *state.PaneState, dir string) s
 			return sessionTopic{}
 		}
 
-		topic := r.topics.Topic(sessionID, dir)
+		topic := r.claudeTopics.Topic(sessionID, dir)
 
 		return sessionTopic{text: topic.Text(), dir: topic.Dir}
 	case antigravity.Agent:
@@ -203,14 +203,14 @@ func (r *Reader) topic(ctx context.Context, pane *state.PaneState, dir string) s
 
 		// An annotation says nothing of where the agent works, so the pane's own
 		// directory keeps the branch.
-		return sessionTopic{text: r.annotations.Title(sessionID)}
+		return sessionTopic{text: r.antigravityTitles.Title(sessionID)}
 	case pi.Agent:
 		path, ok := pane.AgentSession.Path()
 		if !ok {
 			return sessionTopic{}
 		}
 
-		topic := r.sessions.Topic(path)
+		topic := r.piTopics.Topic(path)
 
 		return sessionTopic{text: topic.Text(), dir: topic.Dir}
 	}
