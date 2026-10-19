@@ -189,9 +189,10 @@ those lines are read.
 Pi's session file is read the same way (`internal/pi/transcript.go`), with the
 differences that follow from how Herdr and Pi behave. Herdr reports a Pi session
 as `kind: "path"` — the absolute path of the `.jsonl` file the pane's Pi holds —
-so there is no home to search and nothing to configure: the path is refused
-unless it is absolute, already clean and ends in `.jsonl`, and is then opened as
-it is. Pi derives no title of its own, so two lines can name a session:
+so there is no home to search and nothing to configure:
+`herdr.AgentSessionInfo.Path` refuses a path unless it is absolute and already
+clean, `internal/pi` refuses one that does not end in `.jsonl`, and it is then
+opened as it is. Pi derives no title of its own, so two lines can name a session:
 
 - `session_info`, which `/name` and `--name` write. The last one wins, and one
   without a name is the user clearing it.

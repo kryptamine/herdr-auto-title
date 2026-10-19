@@ -62,10 +62,10 @@ func NewReader() *Reader {
 }
 
 // Topic reports what the session in the file at path is about, and the zero
-// topic when nothing can be read. The path arrives over the socket, so only an
-// absolute, already clean path to a .jsonl file is opened.
+// topic when nothing can be read. Only a .jsonl file is opened, and the path
+// must be one herdr.AgentSessionInfo.Path accepted.
 func (r *Reader) Topic(path string) Topic {
-	if !isSessionPath(path) {
+	if filepath.Ext(path) != ".jsonl" {
 		return Topic{}
 	}
 
@@ -98,10 +98,6 @@ func (r *Reader) Retain(paths []string) {
 	}
 
 	r.sessions = kept
-}
-
-func isSessionPath(path string) bool {
-	return filepath.IsAbs(path) && filepath.Clean(path) == path && filepath.Ext(path) == ".jsonl"
 }
 
 // entry is one session line. The file carries far more per line — ids,

@@ -1,6 +1,9 @@
 package herdr
 
-import "regexp"
+import (
+	"path/filepath"
+	"regexp"
+)
 
 // Agent statuses a tab is named differently for. Herdr reports three more —
 // idle, done and unknown — and none of them changes what a tab says, so
@@ -94,9 +97,11 @@ func (s *AgentSessionInfo) ID() (string, bool) {
 }
 
 // Path reports the session file this reference holds, and false unless it
-// names a session by path.
+// names a session by an absolute, already clean path. A reader opens it as it
+// is, so anything else is refused rather than cleaned.
 func (s *AgentSessionInfo) Path() (string, bool) {
-	if s == nil || s.Kind != SessionRefPath {
+	if s == nil || s.Kind != SessionRefPath || !filepath.IsAbs(s.Value) ||
+		filepath.Clean(s.Value) != s.Value {
 		return "", false
 	}
 

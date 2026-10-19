@@ -315,20 +315,8 @@ func TestAPathThatIsNotASessionFileIsRefused(t *testing.T) {
 	f := newSessionFile(t)
 	f.write(header(), named("Poll loop rework"))
 
-	// Each of these names a file that may exist, and none is opened: the path
-	// arrives over the socket and is trusted only in the one shape Pi reports.
-	relative, err := filepath.Rel(string(filepath.Separator), f.path)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Spelled by hand: filepath.Join would clean the dot-dot away.
-	dir, sep := filepath.Dir(f.path), string(filepath.Separator)
-	unclean := dir + sep + ".." + sep + filepath.Base(dir) + sep + filepath.Base(f.path)
-
+	// Only Pi's own format is parsed, so a file of any other kind is not opened.
 	for name, path := range map[string]string{
-		"relative":      relative,
-		"unclean":       unclean,
 		"not a session": strings.TrimSuffix(f.path, ".jsonl") + ".txt",
 		"empty":         "",
 	} {

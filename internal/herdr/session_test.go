@@ -1,6 +1,7 @@
 package herdr_test
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -50,5 +51,53 @@ func TestAPaneWithNoSessionHasNoID(t *testing.T) {
 
 	if got, ok := ref.ID(); ok {
 		t.Errorf("ID() = %q, want none for a nil reference", got)
+	}
+}
+
+func TestASessionPathIsReported(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "session.jsonl")
+	ref := &herdr.AgentSessionInfo{Agent: "pi", Kind: herdr.SessionRefPath, Value: path}
+
+	if got, ok := ref.Path(); !ok || got != path {
+		t.Errorf("Path() = %q, %v, want %q", got, ok, path)
+	}
+}
+
+func TestAPathThatIsNotAbsoluteAndCleanIsRefused(t *testing.T) {
+	t.Parallel()
+
+	// The path arrives over the socket and a reader opens it as it is.
+	path := filepath.Join(t.TempDir(), "session.jsonl")
+
+	relative, err := filepath.Rel(string(filepath.Separator), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Spelled by hand: filepath.Join would clean the dot-dot away.
+	dir, sep := filepath.Dir(path), string(filepath.Separator)
+	unclean := dir + sep + ".." + sep + filepath.Base(dir) + sep + filepath.Base(path)
+
+	for name, value := range map[string]string{
+		"relative": relative,
+		"unclean":  unclean,
+		"empty":    "",
+	} {
+		ref := &herdr.AgentSessionInfo{Agent: "pi", Kind: herdr.SessionRefPath, Value: value}
+		if got, ok := ref.Path(); ok {
+			t.Errorf("%s value %q reported as path %q", name, value, got)
+		}
+	}
+}
+
+func TestAnIDIsNotAPath(t *testing.T) {
+	t.Parallel()
+
+	ref := &herdr.AgentSessionInfo{Agent: "claude", Kind: herdr.SessionRefID, Value: session}
+
+	if got, ok := ref.Path(); ok {
+		t.Errorf("Path() = %q, want none for kind %q", got, ref.Kind)
 	}
 }
