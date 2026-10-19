@@ -34,7 +34,7 @@ func branchOptions() reads.Options {
 
 func transcriptOptions(homes ...string) reads.Options {
 	opts := branchOptions()
-	opts.ReadTranscripts = true
+	opts.ReadSessions = true
 	opts.ClaudeDirs = homes
 
 	return opts
@@ -775,32 +775,14 @@ func antigravityPaneAt(paneID, sessionID, dir string) *state.PaneState {
 	}, "", time.Time{})
 }
 
-// annotation lays down the test session's Antigravity annotation in a home of
-// its own.
-func annotation(t *testing.T, content string) string {
-	t.Helper()
-
-	home := t.TempDir()
-	path := filepath.Join(home, ".gemini", "antigravity-cli", "annotations", testSession+".pbtxt")
-
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	return home
-}
-
 func TestAnAntigravitySessionIsNamedByItsAnnotation(t *testing.T) {
 	t.Parallel()
 
 	// The agent sets no terminal title, so the annotation is the only place
 	// its pane says what it is about.
 	opts := transcriptOptions()
-	opts.Home = annotation(t, `title:"Casual Greeting And Request"`)
+	opts.Home = t.TempDir()
+	readstest.Annotation(t, opts.Home, testSession, `title:"Casual Greeting And Request"`)
 
 	pane := antigravityPaneAt("wE:p1", testSession, t.TempDir())
 	readOne(opts, pane)
@@ -814,7 +796,8 @@ func TestTranscriptsSwitchedOffLeaveAnAntigravitySessionUnread(t *testing.T) {
 	t.Parallel()
 
 	opts := branchOptions()
-	opts.Home = annotation(t, `title:"Casual Greeting And Request"`)
+	opts.Home = t.TempDir()
+	readstest.Annotation(t, opts.Home, testSession, `title:"Casual Greeting And Request"`)
 
 	pane := antigravityPaneAt("wE:p1", testSession, t.TempDir())
 	readOne(opts, pane)

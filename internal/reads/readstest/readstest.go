@@ -1,5 +1,5 @@
 // Package readstest lays down on disk what a pane read goes to: repositories,
-// their worktrees, and the agent transcripts that say where an agent is.
+// their worktrees, and the agent session files that say what an agent is doing.
 package readstest
 
 import (
@@ -76,6 +76,17 @@ func Transcript(t *testing.T, home, sessionID string, lines ...string) {
 
 	mkdir(t, filepath.Dir(path))
 	write(t, path, strings.Join(lines, "\n")+"\n")
+}
+
+// Annotation lays down the title Antigravity CLI keeps for one session under a
+// home directory.
+func Annotation(t *testing.T, home, sessionID, content string) {
+	t.Helper()
+
+	path := filepath.Join(home, ".gemini", "antigravity-cli", "annotations", sessionID+".pbtxt")
+
+	mkdir(t, filepath.Dir(path))
+	write(t, path, content)
 }
 
 // AgentIn is a transcript line saying where the agent is working. Only the
