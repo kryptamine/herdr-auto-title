@@ -6,7 +6,7 @@ import (
 	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
 
-func TestIsForeignProcess(t *testing.T) {
+func TestOwnersMatchMirrorsStreamerAndConfiguredNames(t *testing.T) {
 	t.Parallel()
 
 	streamer := &state.PaneState{

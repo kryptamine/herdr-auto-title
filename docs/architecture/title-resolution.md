@@ -366,8 +366,8 @@ git: `git rev-parse` measured 12.37 ms against 0.019 ms for reading `HEAD`, on a
 poll whose whole snapshot costs 0.47 ms. The reading is not cached between polls
 — at 0.038 ms including the walk up to the repository, a fresh answer costs less
 than remembering a stale one, and a checkout shows up in the tab within one
-poll. It is read only for the panes the poll reads at all, which without pane
-naming is the one pane each tab is named from ([the poll loop](./poll-loop.md)).
+poll. It is read only for the panes the poll reads at all
+([the poll loop](./poll-loop.md)), and once per directory however many share it.
 
 **Which directory the branch is read from is not the pane's alone.** A coding
 agent sent into a worktree never moves the pane's directory: it enters the

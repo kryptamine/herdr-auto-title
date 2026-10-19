@@ -542,3 +542,31 @@ func TestAPollCutShortInsideTheLastTabsPanesDoesNotSettle(t *testing.T) {
 		t.Errorf("moved pane = %v, want it renamed to its new ID", got)
 	}
 }
+
+func TestALocalSplitOfAMirrorTabIsStillNamed(t *testing.T) {
+	t.Parallel()
+
+	// Mirror writes its own pane's label and the tab's, never its neighbour's.
+	h := startPanes(
+		t,
+		oneTab(),
+		[]herdr.PaneInfo{
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard},
+			{PaneID: "wE:p2", TabID: "wE:t1", CWD: api, Focused: true},
+		},
+	)
+	h.client.SetProcesses("wE:p1", mirrorStreamer)
+	h.poll()
+
+	if got := labelsOf(h, "wE:p1"); len(got) != 0 {
+		t.Errorf("mirror pane = %v, want it left alone", got)
+	}
+
+	if got := labelsOf(h, "wE:p2"); len(got) != 1 {
+		t.Errorf("local pane = %v, want it named", got)
+	}
+
+	if got := tabLabels(h); len(got) != 0 {
+		t.Errorf("renamed a mirror tab: %q", got)
+	}
+}

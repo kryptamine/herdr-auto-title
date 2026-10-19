@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -1104,9 +1105,8 @@ func TestAPaneThatCannotBeReadIsAskedAgain(t *testing.T) {
 	h.client.SetProcessError(errors.New("herdr is busy"))
 	h.poll()
 
-	// The tab is already named from the snapshot alone; the second rename can
-	// only come from a process read that happened again. The processes go in
-	// before the error clears: an empty read between the two would be reused.
+	// The processes go in before the error clears: an empty read between the
+	// two would be reused.
 	h.client.SetProcesses(
 		"wE:p1",
 		herdr.PaneProcessInfoProcess{Name: "nvim", Argv: []string{"nvim"}},
@@ -1114,16 +1114,76 @@ func TestAPaneThatCannotBeReadIsAskedAgain(t *testing.T) {
 	h.client.SetProcessError(nil)
 	h.poll()
 
-	if got := h.client.Renames()[1].Label; got != "dashboard › nvim" {
-		t.Errorf("rename = %q, want %q", got, "dashboard › nvim")
+	if got := tabLabels(h); !slices.Equal(got, []string{"dashboard › nvim"}) {
+		t.Errorf("renames = %q, want only %q", got, "dashboard › nvim")
 	}
 }
 
-func TestAPaneThatDoesNotNameItsTabIsNotRead(t *testing.T) {
+// mirrorStreamer is what herdr-mirror runs in a pane it shadows from a remote.
+var mirrorStreamer = herdr.PaneProcessInfoProcess{
+	Name: "herdr-mirror",
+	Argv: []string{"/bin/herdr-mirror", "pane", "host", "w1:p1"},
+	CWD:  dashboard,
+}
+
+func tabLabels(h *harness) []string {
+	renames := h.client.Renames()
+
+	labels := make([]string, 0, len(renames))
+	for _, call := range renames {
+		labels = append(labels, call.Label)
+	}
+
+	return labels
+}
+
+func TestAMirrorTabIsNotNamedWithTopicsOff(t *testing.T) {
 	t.Parallel()
 
-	// A tab is named from one pane, so asking what the others are running is a
-	// request each whose answer nothing would look at.
+	// With topics off nothing else reads the tab's panes, and a split whose
+	// focused half is local still must not name a tab mirror writes.
+	h := start(
+		t,
+		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
+		[]herdr.PaneInfo{
+			{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard},
+			{PaneID: "wE:p2", TabID: "wE:t1", CWD: dashboard, Focused: true},
+		},
+	)
+	h.client.SetProcesses("wE:p1", mirrorStreamer)
+	h.polls(2)
+
+	if got := tabLabels(h); len(got) != 0 {
+		t.Errorf("renamed a mirror tab: %q", got)
+	}
+}
+
+func TestAMirrorTabWhoseFirstReadFailsIsNotNamed(t *testing.T) {
+	t.Parallel()
+
+	// Before any read has said what a pane runs, it may be mirror's; naming
+	// the tab then would push that name to the remote.
+	h := start(
+		t,
+		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
+		[]herdr.PaneInfo{{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true}},
+	)
+	h.client.SetProcesses("wE:p1", mirrorStreamer)
+	h.client.SetProcessError(errors.New("herdr is busy"))
+	h.poll()
+	h.client.SetProcessError(nil)
+	h.poll()
+
+	if got := tabLabels(h); len(got) != 0 {
+		t.Errorf("renamed a mirror tab: %q", got)
+	}
+}
+
+func TestEveryPaneOfATabThatMayBeRenamedIsReadOnce(t *testing.T) {
+	t.Parallel()
+
+	// Any pane may run a program that writes the tab's label, so each is read
+	// before the tab is named, and the read is reused while the pane is still.
 	h := start(
 		t,
 		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
@@ -1135,11 +1195,8 @@ func TestAPaneThatDoesNotNameItsTabIsNotRead(t *testing.T) {
 	)
 	h.polls(10)
 
-	// Each pane is read once, because a tab is now checked for a pane that
-	// owns its own label (herdr-mirror, and anything in the foreign list)
-	// before it is named, which also tells whether the others are that.
 	if reads := h.client.ProcessReads(); reads != 3 {
-		t.Errorf("read %d panes, want all three checked for a foreign owner", reads)
+		t.Errorf("read %d panes, want each of the three once", reads)
 	}
 }
 

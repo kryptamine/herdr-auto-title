@@ -64,8 +64,8 @@ cannot express it:
   are monotonic, so comparing one poll's revisions with the last says which panes
   moved. The map is rebuilt from each snapshot, so panes that closed disappear
   from it for free.
-- **What each pane was running** (`internal/reads/processes.go`, which forgets a
-  read on the panes `Changes.Observe` reports as drawn, so the two cannot
+- **What each pane was running** (`internal/reads/processes.go`, which marks a
+  read stale on the panes `Changes.Observe` reports as drawn, so the two cannot
   disagree on which panes moved). `PaneInfo` carries no process name, so naming a
   pane after the program in it costs a `pane.process_info` request per pane.
   Measured against an eight-pane session, a read is 0.17 ms and the snapshot
@@ -81,11 +81,11 @@ cannot express it:
   command usually but not always provokes. So the reuse is bounded twice: by the
   revision, which catches the common case in the very next poll, and by
   `processRefresh` (2 s), which is what actually bounds how wrong the answer can
-  be.
+  be. A stale read is not reused, but it is kept: when the read that replaces
+  it fails, it is the answer, because it is closer to the truth than none.
 
-  Only the pane a tab is named from is asked about, so the request is per tab
-  rather than per pane. The reuse still earns its keep: focus moves between the
-  panes of a tab, and what was read for one is still there when it comes back.
+  Every pane of a tab that may be renamed is asked about, because any of them
+  may run [a program that owns the tab's label](#programs-that-own-their-labels).
 - **How far each agent transcript has been read** (`internal/transcript`, which
   `internal/claude` and `internal/pi` follow their files through).
   A transcript is append-only, so a poll reads the bytes appended since the last
@@ -129,26 +129,31 @@ changes name at most once per poll however fast its pane is churning, so
    skip, and a pass cannot be asked anything before it has run.
 4. `tabsIn` — assemble tabs with their panes from the snapshot alone. Nothing
    is read here: assembly is what says which pane will be asked about.
-   `Reader.Poll` opens the poll's reads, forgetting what was read of the panes
-   step 2 returned and of panes and agent sessions that are gone.
-5. Per tab (`nameTab`): skip it if locked, otherwise read the one pane the tab
-   is named from (`Poll.Fill`), resolve a title, then check whether the
-   label moved under us and rename when the result differs from the label the
-   tab already carries (`Pass.Tab`).
+   `Reader.Poll` opens the poll's reads, marking what was read of the panes
+   step 2 returned as stale and forgetting panes and agent sessions that are
+   gone.
+5. Per tab (`nameTab`): skip it if locked, or if any of its panes is theirs
+   (`handsOff`) — runs a program that owns its labels, or could not be read
+   (`Poll.Fill`) to rule that out. Otherwise resolve a title from the pane the
+   tab is named after, check whether the label moved under us and rename when
+   the result differs from the label the tab already carries (`Pass.Tab`).
 6. Per tab again (`namePanes`), and only when pane naming is on: read the tab's
    own pane even if the tab is locked, and every pane nobody has claimed; name
    all of them at once against the tab (`ResolvePanes`); then `Pass.Pane`
    checks each name against the pane's own label, exactly as step 5 does for
-   the tab.
-7. Per workspace (`reportTopics`), unless topics are turned off: read the
-   active tab's pane and report its topic when it changed or is due for a
-   refresh — [the workspace topic](#the-workspace-topic).
+   the tab, skipping a pane that is theirs (`theirs`).
+7. Per workspace (`reportTopics`), unless topics are turned off: skip an active
+   tab step 5 would, otherwise report the topic of the pane it is named after
+   when it changed or is due for a refresh —
+   [the workspace topic](#the-workspace-topic). `Poll.Fill` answers a pane once
+   per poll, so asking step 5's question again re-reads only a failed pane.
 
-**Without pane naming, only the pane that names its tab is read**, and only
-while its tab is nobody's. `pane.process_info` is asked about the panes that moved since they
-were last read, reusing the last answer for the rest; a pane whose processes
-cannot be read simply has none, and a failed read is not remembered as an
-answer. `Poll.Fill` reads a pane once per poll however often it is asked, except
+**Without pane naming, only the panes of a tab nobody has claimed are read**,
+and those of each workspace's active tab when topics are on.
+`pane.process_info` is asked about the panes that moved since they were last
+read, reusing the last answer for the rest; a pane whose processes cannot be
+read keeps its last answer or, never read, has none, and a failed read is not
+remembered as an answer. `Poll.Fill` reads a pane once per poll however often it is asked, except
 that a read which failed with time left is made again by the next `Fill`, so a
 workspace's topic, read after its tab, need not wait a poll for it. That pane's
 directory is read for the branch it has checked out, every
@@ -161,17 +166,13 @@ rather than once per tab, which is what stops the tabs of one project — and tw
 panes whose agents share a worktree — walking the same tree once each; see
 [title resolution](./title-resolution.md#the-git-branch).
 
-A tab owned by a program that owns its own labels is decided per pane, so checking
-ownership reads every pane of that tab while topics are on; a failed process
-read also stops being a reason to drop the branch or topic it already had.
-
-The reads are left out rather than made and discarded because a tab is named
-from one pane (`TabState.Context`) and a locked tab is not named at all. A
-four-pane tab therefore costs one process request rather than four, and a
-session the user has named by hand costs the snapshot and nothing else. The
-choice of pane is made from state the snapshot already carries — focus, agent
-status, and which pane last drew — so it is made once, when the tab is built,
-and both the reads and the resolver take that pane rather than choosing again.
+The reads are left out rather than made and discarded because a locked tab is
+not named at all, so a session the user has named by hand, with topics off,
+costs the snapshot and nothing else. The branch, the agent's topic and the
+title come from one pane (`TabState.Context`), chosen from state the snapshot
+already carries — focus, agent status, and which pane last drew — so it is made
+once, when the tab is built, and both the reads and the resolver take that pane
+rather than choosing again.
 
 **Deduplication is what keeps the loop quiet.** The snapshot reports each tab's
 current label, and a rename is skipped when the resolved title already equals
@@ -179,11 +180,10 @@ it — which is also what stops a rename from provoking the next one. A session
 where every tab already carries the right name, and whose panes are sitting
 still, issues nothing beyond the snapshot itself.
 
-**Naming panes turns the per-tab read into a per-pane one.** With
-`HERDR_AUTO_TITLE_PANES` on, step 6 reads every pane of every tab rather than
-the one its tab speaks through, so the four-pane tab above costs four process
-requests instead of one, and a tab the user has claimed is read as well, because
-its panes are still named against it. The reads a poll has already spent are not
+**Naming panes reads the claimed tabs too.** With `HERDR_AUTO_TITLE_PANES` on,
+step 6 reads every pane nobody has claimed, in every tab, and the pane each tab
+is named after even when the user has claimed the tab, because its panes are
+still named against it. The reads a poll has already spent are not
 spent again — `Poll.Fill` reads a pane once however often it is asked, the git
 checkouts are memoized by directory, and a pane holding still keeps its last
 process answer — but the floor is one read per pane, which is why it can be
@@ -192,6 +192,30 @@ turned off ([configuration](./configuration.md)).
 The whole poll is bounded by `PollTimeout` (5 s). A tab that closed between the
 snapshot and its rename answers `tab_not_found`, which is expected rather than an
 error; a pane that closed answers `pane_not_found` and is treated the same way.
+
+## Programs that own their labels
+
+Some programs write a tab's and their own pane's label themselves. herdr-mirror
+is one: a mirror pane runs `herdr-mirror pane …` and shadows a tab on another
+machine, and any label written to the local tab is read by mirror as a user
+rename and pushed to the remote, where it locks the tab against the remote's own
+Auto Title. herdr-mirror is built into `resolver.Owners`; others are added by
+name through `HERDR_AUTO_TITLE_FOREIGN_PROCESSES`.
+
+**One such pane leaves the whole tab alone.** Not only the pane the tab is named
+after: that one follows focus, and a local split of a mirror tab, focused,
+would name the tab through it. The tab is neither renamed nor cleared, and when
+it is a workspace's active tab its topic is neither reported nor cleared. Its
+other panes are still named, because mirror writes only its own pane's label.
+
+**A pane that cannot be read leaves its tab alone too.** A failed read on a pane
+read before falls back to that read, so this costs nothing to a pane that was
+answered once. A pane whose first read fails is unknown; naming its tab then
+could write through a mirror, so the tab waits a poll.
+
+On Windows `pane.process_info` lists only the shell or a recognised agent, so
+none of this fires there. A label mirror leaves behind when it exits was never
+Auto Title's, and is locked as the user's until it is cleared.
 
 ## When Herdr is not there
 

@@ -13,56 +13,43 @@ import (
 const processRefresh = 2 * time.Second
 
 // processCache remembers what each pane was running when it was last asked,
-// until the pane draws or leaves the session.
+// until the pane leaves the session.
 type processCache struct {
-	mu       sync.Mutex
-	panes    map[string]processRead
-	fallback map[string]processRead
-	now      func() time.Time
+	mu    sync.Mutex
+	panes map[string]processRead
+	now   func() time.Time
 }
 
 // processRead is what pane.process_info answered, and readAt when it did —
-// an empty list is a real answer, a zero time is not.
+// an empty list is a real answer, a zero time is not. A pane that drew since
+// is stale: its read is worth making again, and kept for when that fails.
 type processRead struct {
 	processes []herdr.PaneProcessInfoProcess
 	readAt    time.Time
+	stale     bool
 }
 
 func newProcessCache() *processCache {
 	return &processCache{
-		panes:    make(map[string]processRead),
-		fallback: make(map[string]processRead),
-		now:      time.Now,
+		panes: make(map[string]processRead),
+		now:   time.Now,
 	}
 }
 
-// observe forgets what was read of the panes that drew, and of panes the
-// session no longer holds.
+// observe marks what was read of the panes that drew as stale, and forgets
+// panes the session no longer holds.
 func (c *processCache) observe(panes []herdr.PaneInfo, drew map[string]bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	seen := make(map[string]processRead, len(panes))
 	for _, pane := range panes {
+		read := c.panes[pane.PaneID]
 		if drew[pane.PaneID] {
-			// The drawn pane's previous processes are not fresh, but they
-			// are the last word on what it was running; keep them for a
-			// later read that fails.
-			if read, known := c.panes[pane.PaneID]; known && !read.readAt.IsZero() {
-				c.fallback[pane.PaneID] = read
-			}
-
-			seen[pane.PaneID] = processRead{}
-		} else {
-			seen[pane.PaneID] = c.panes[pane.PaneID]
+			read.stale = true
 		}
-	}
 
-	// Panes that left the session forget their last answer too.
-	for id := range c.fallback {
-		if _, known := seen[id]; !known {
-			delete(c.fallback, id)
-		}
+		seen[pane.PaneID] = read
 	}
 
 	c.panes = seen
@@ -76,25 +63,22 @@ func (c *processCache) lookup(paneID string) ([]herdr.PaneProcessInfoProcess, bo
 	defer c.mu.Unlock()
 
 	read := c.panes[paneID]
-	if read.readAt.IsZero() || c.now().Sub(read.readAt) >= processRefresh {
+	if read.stale || read.readAt.IsZero() || c.now().Sub(read.readAt) >= processRefresh {
 		return nil, false
 	}
 
 	return read.processes, true
 }
 
-// last reports the most recent process read for a pane, including one made
-// before its latest draw. It is the fallback for a read that then fails.
-func (c *processCache) fallbackRead(paneID string) ([]herdr.PaneProcessInfoProcess, bool) {
+// last returns what the pane was running when it was last read, however long
+// ago, or false when it never has been.
+func (c *processCache) last(paneID string) ([]herdr.PaneProcessInfoProcess, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	read, known := c.fallback[paneID]
-	if !known || read.readAt.IsZero() {
-		return nil, false
-	}
+	read := c.panes[paneID]
 
-	return read.processes, true
+	return read.processes, !read.readAt.IsZero()
 }
 
 // record keeps what a pane was running. A pane the last observe did not see
@@ -108,7 +92,6 @@ func (c *processCache) record(paneID string, processes []herdr.PaneProcessInfoPr
 		return
 	}
 
-	read.processes, read.readAt = processes, c.now()
+	read.processes, read.readAt, read.stale = processes, c.now(), false
 	c.panes[paneID] = read
-	c.fallback[paneID] = read
 }

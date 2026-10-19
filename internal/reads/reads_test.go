@@ -214,6 +214,47 @@ func TestAPaneThatCannotBeReadIsAskedAgain(t *testing.T) {
 	}
 }
 
+func TestAPaneThatDrewAndCannotBeReadKeepsWhatItRanLast(t *testing.T) {
+	t.Parallel()
+
+	// A failed read leaves nothing better than the last answer, and dropping it
+	// would make a mirror pane look local and its tab wait on a read.
+	info := herdr.PaneInfo{PaneID: "wE:p1", TabID: "wE:t1", CWD: t.TempDir()}
+	client := herdrtest.New([]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}}, []herdr.PaneInfo{info})
+	client.SetProcesses(
+		"wE:p1",
+		herdr.PaneProcessInfoProcess{Name: "nvim", Argv: []string{"nvim"}},
+	)
+
+	reader := newReader(branchOptions())
+
+	reader.Poll(client, []herdr.PaneInfo{info}, nil).
+		Fill(context.Background(), state.PaneFrom(info, "", time.Time{}))
+
+	client.SetProcessError(errors.New("herdr is busy"))
+
+	pane := state.PaneFrom(info, "", time.Time{})
+	known := reader.Poll(client, []herdr.PaneInfo{info}, map[string]bool{"wE:p1": true}).
+		Fill(context.Background(), pane)
+
+	if foreground, ok := pane.Foreground(); !known || !ok || foreground.Name != "nvim" {
+		t.Errorf("known %v, foreground = %+v, want nvim kept", known, foreground)
+	}
+}
+
+func TestAPaneNeverReadIsNotKnown(t *testing.T) {
+	t.Parallel()
+
+	info := herdr.PaneInfo{PaneID: "wE:p1", TabID: "wE:t1", CWD: t.TempDir()}
+	client := herdrtest.New([]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}}, []herdr.PaneInfo{info})
+	client.SetProcessError(errors.New("herdr is busy"))
+
+	poll := newReader(branchOptions()).Poll(client, []herdr.PaneInfo{info}, nil)
+	if poll.Fill(context.Background(), state.PaneFrom(info, "", time.Time{})) {
+		t.Error("a pane whose only read failed is reported known")
+	}
+}
+
 func TestARepositoryIsWalkedOncePerPoll(t *testing.T) {
 	t.Parallel()
 

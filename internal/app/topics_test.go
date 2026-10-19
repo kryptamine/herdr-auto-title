@@ -149,6 +149,20 @@ func TestAForeignTabIsNotNamedAndHasNoTopic(t *testing.T) {
 	wantTopics(t, h)
 }
 
+func TestAMirrorTabForwardsNoTopic(t *testing.T) {
+	t.Parallel()
+
+	// Mirror shows the remote's terminal title, which would otherwise be
+	// reported here as this workspace's topic, over the remote's own.
+	h := oneTabWorkspace(t, topicConfig(), "dashboard", herdr.PaneInfo{
+		TerminalTitleStripped: "What is next",
+	})
+	h.client.SetProcesses("wE:p1", mirrorStreamer)
+	h.polls(2)
+
+	wantTopics(t, h)
+}
+
 // Whatever the label says -- Herdr's directory basename, a name the user gave,
 // or a row an earlier version wrote -- it is left alone and the topic reported.
 func TestATopicIsReportedWhateverTheLabel(t *testing.T) {

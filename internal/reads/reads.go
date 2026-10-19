@@ -51,9 +51,9 @@ func New(opts Options, log *slog.Logger) *Reader {
 	}
 }
 
-// Poll opens the reads of one poll over the snapshot's panes, forgetting what
-// was read of the panes that drew and of the panes and agent sessions the
-// snapshot no longer holds.
+// Poll opens the reads of one poll over the snapshot's panes, marking what was
+// read of the panes that drew as stale and forgetting the panes and agent
+// sessions the snapshot no longer holds.
 func (r *Reader) Poll(client herdr.Client, panes []herdr.PaneInfo, drew map[string]bool) *Poll {
 	r.processes.observe(panes, drew)
 
@@ -67,7 +67,7 @@ func (r *Reader) Poll(client herdr.Client, panes []herdr.PaneInfo, drew map[stri
 		reader:    r,
 		client:    client,
 		checkouts: make(map[string]git.Checkout),
-		filled:    make(map[*state.PaneState]struct{}),
+		filled:    make(map[*state.PaneState]bool),
 	}
 }
 
@@ -77,33 +77,27 @@ type Poll struct {
 	reader    *Reader
 	client    herdr.Client
 	checkouts map[string]git.Checkout
-	filled    map[*state.PaneState]struct{}
+	filled    map[*state.PaneState]bool
 }
 
 // Fill supplies what the snapshot could not say about a pane, once per poll
-// however often it is asked. A pane nobody fills keeps what the snapshot said.
-func (p *Poll) Fill(ctx context.Context, pane *state.PaneState) {
+// however often it is asked, and reports whether what it runs is known. A pane
+// nobody fills keeps what the snapshot said.
+func (p *Poll) Fill(ctx context.Context, pane *state.PaneState) bool {
 	if pane == nil {
-		return
+		return false
 	}
 
-	if _, done := p.filled[pane]; done {
-		return
+	if read, done := p.filled[pane]; done {
+		return read
 	}
 
+	// A read that failed with time left is asked again by the next Fill, so a
+	// second reader of the pane in this poll is not left with the snapshot's guess.
 	processes, read := p.reader.processesOf(ctx, p.client, pane.ID)
-	if !read {
-		// A failed read is a failed read, not an answer: leave what is
-		// already known (for a known foreign pane, its process) in place
-		// and ask again next Fill, unless the deadline left anyway.
-		if spent(ctx) {
-			p.filled[pane] = struct{}{}
-		}
-
-		return
+	if read || spent(ctx) {
+		p.filled[pane] = read
 	}
-
-	p.filled[pane] = struct{}{}
 
 	dir := state.PaneDir(processes, pane.Dir)
 
@@ -117,6 +111,8 @@ func (p *Poll) Fill(ctx context.Context, pane *state.PaneState) {
 	pane.Git = p.checkout(ctx, dir)
 	pane.AgentGit = p.checkout(ctx, topic.dir)
 	pane.AgentDir = topic.dir
+
+	return read
 }
 
 // processesOf reports what a pane is running, or false when Herdr gave no
@@ -146,11 +142,9 @@ func (r *Reader) processesOf(
 			)
 		}
 
-		if cached, ok := r.processes.fallbackRead(paneID); ok {
-			return cached, true
-		}
-
-		return nil, false
+		// What it ran last is closer to the truth than nothing: a mirror pane
+		// read as empty would look local and be named.
+		return r.processes.last(paneID)
 	}
 
 	r.processes.record(paneID, processes)
