@@ -16,6 +16,8 @@ internal/resolver     that state turned into a title, one source at a time
 internal/labels       that title put on, unless the label is the user's own
 internal/claude       what a Claude Code session is about, from its transcript
 internal/antigravity  what an Antigravity CLI session is about, from its annotation
+internal/pi           what a Pi session is about, from its session file
+internal/transcript   an append-only session file followed a poll at a time
 internal/git          what a repository has checked out, read from .git
 internal/instance     one Auto Title per session, and the restart handoff
 scripts/              the Python probes

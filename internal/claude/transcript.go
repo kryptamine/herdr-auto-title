@@ -4,24 +4,20 @@
 package claude
 
 import (
-	"bytes"
 	"encoding/json"
-	"io"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/kryptamine/herdr-auto-title/internal/transcript"
 )
 
 // Agent is the label Herdr gives Claude Code, and the only agent whose
 // transcript this package knows how to read.
 const Agent = "claude"
-
-// maxScan bounds one read. A transcript is append-only, so this bounds the
-// catch-up on a session first seen mid-flight, not the steady state.
-const maxScan = 2 << 20
 
 // maxOpening bounds what an opening prompt contributes. It is generous because
 // the cut that matters is made later, against the width of the tab bar.
@@ -71,16 +67,16 @@ type Reader struct {
 	// roots are the configuration directories a transcript is looked for in,
 	// searched in order until one holds the session.
 	roots    []string
-	sessions map[string]*transcript
+	sessions map[string]*followed
 	now      func() time.Time
 }
 
-// transcript is one session's file and what has been read out of it. A path
+// followed is one session's transcript and what has been read out of it. A path
 // that is still empty is a session whose transcript has been looked for and not
 // found, and searchedAt is when that search last ran.
-type transcript struct {
+type followed struct {
 	path       string
-	offset     int64
+	follower   transcript.Follower
 	topic      Topic
 	searchedAt time.Time
 }
@@ -92,7 +88,7 @@ type transcript struct {
 func NewReader(homes ...string) *Reader {
 	return &Reader{
 		roots:    homes,
-		sessions: make(map[string]*transcript),
+		sessions: make(map[string]*followed),
 		now:      time.Now,
 	}
 }
@@ -108,21 +104,21 @@ func (r *Reader) Topic(sessionID, dir string) Topic {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	session, known := r.sessions[sessionID]
+	held, known := r.sessions[sessionID]
 	if !known {
-		session = &transcript{}
-		r.sessions[sessionID] = session
+		held = &followed{}
+		r.sessions[sessionID] = held
 	}
 
-	if session.path == "" && !r.find(session, sessionID, dir) {
+	if held.path == "" && !r.find(held, sessionID, dir) {
 		// What was read before a transcript went missing still names the
 		// session better than nothing does.
-		return session.topic
+		return held.topic
 	}
 
-	r.readInto(session)
+	held.read()
 
-	return session.topic
+	return held.topic
 }
 
 // Retain forgets every session but these, so a pane that closed takes its
@@ -131,10 +127,10 @@ func (r *Reader) Retain(sessionIDs []string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	kept := make(map[string]*transcript, len(sessionIDs))
+	kept := make(map[string]*followed, len(sessionIDs))
 	for _, id := range sessionIDs {
-		if session, known := r.sessions[id]; known {
-			kept[id] = session
+		if held, known := r.sessions[id]; known {
+			kept[id] = held
 		}
 	}
 
@@ -144,20 +140,20 @@ func (r *Reader) Retain(sessionIDs []string) {
 // find fills in the session's transcript path, and reports whether there is one
 // to read. A search that came up empty is not repeated until locateRetry has
 // passed, because the scan behind it walks every project directory.
-func (r *Reader) find(session *transcript, sessionID, dir string) bool {
+func (r *Reader) find(held *followed, sessionID, dir string) bool {
 	now := r.now()
-	if !session.searchedAt.IsZero() && now.Sub(session.searchedAt) < locateRetry {
+	if !held.searchedAt.IsZero() && now.Sub(held.searchedAt) < locateRetry {
 		return false
 	}
 
-	session.searchedAt = now
+	held.searchedAt = now
 
 	path, found := r.locate(sessionID, dir)
 	if !found {
 		return false
 	}
 
-	session.path = path
+	held.path = path
 
 	return true
 }
@@ -217,67 +213,14 @@ func slugOf(dir string) string {
 	return slug.String()
 }
 
-// readInto reads what has been appended since the last read and updates the
-// topic from it. A transcript only grows, so one that is shorter than what has
-// been read out of it is no longer the file that was read.
-func (r *Reader) readInto(session *transcript) {
-	info, err := os.Stat(session.path)
-	if err != nil {
-		// Rotated, deleted, or refiled under another project. Letting the path
-		// go puts the session back behind locateRetry, and the offset goes
-		// with the file it counted into.
-		session.path, session.offset = "", 0
-
-		return
+// read updates the topic from what the transcript has had appended since the
+// last read. A transcript that is gone was rotated, deleted or refiled, and
+// letting its path go puts the session back behind locateRetry.
+func (s *followed) read() {
+	reset := func() { s.topic = Topic{} }
+	if !s.follower.Follow(s.path, reset, s.absorb) {
+		s.path = ""
 	}
-
-	size := info.Size()
-	switch {
-	case size == session.offset:
-		return
-	case size < session.offset:
-		session.offset, session.topic = 0, Topic{}
-	}
-
-	file, err := os.Open(session.path)
-	if err != nil {
-		return
-	}
-	// A read-only file has nothing to report on close.
-	defer func() { _ = file.Close() }()
-
-	// A session first seen long after it started is caught up on from its tail,
-	// which is where a title it has already been given is repeated.
-	from, fromTail := session.offset, size-session.offset > maxScan
-	if fromTail {
-		from = size - maxScan
-	}
-
-	if _, err := file.Seek(from, io.SeekStart); err != nil {
-		return
-	}
-
-	content, err := io.ReadAll(io.LimitReader(file, maxScan))
-	if err != nil {
-		return
-	}
-
-	// Only whole lines are read: the agent may have been writing one while
-	// this ran, and the rest of it arrives next poll.
-	end := bytes.LastIndexByte(content, '\n')
-	if end < 0 {
-		return
-	}
-
-	session.offset = from + int64(end) + 1
-
-	complete := string(content[:end])
-	if fromTail {
-		// A tail read starts mid-line, and that fragment is not JSON.
-		_, complete, _ = strings.Cut(complete, "\n")
-	}
-
-	session.absorb(complete)
 }
 
 // entry is one transcript line. A transcript carries far more per line — uuids,
@@ -300,35 +243,29 @@ type entry struct {
 // expanded into the conversation or a tool answered with.
 const humanOrigin = "human"
 
-// absorb updates the topic from a run of transcript lines. The last name of
-// each kind wins and the first opening does: a session can be renamed, but it
+// absorb updates the topic from one transcript line. The last name of each
+// kind wins and the first opening does: a session can be renamed, but it
 // opened only once.
-func (t *transcript) absorb(lines string) {
-	for line := range strings.SplitSeq(lines, "\n") {
-		if line == "" {
-			continue
-		}
+func (s *followed) absorb(line string) {
+	var read entry
+	if json.Unmarshal([]byte(line), &read) != nil {
+		return
+	}
 
-		var read entry
-		if json.Unmarshal([]byte(line), &read) != nil {
-			continue
-		}
+	// Kept as the transcript spelled it: whether a path can be a checkout is
+	// settled where one is read. Only an empty value is refused, which would
+	// erase the directory the session last named.
+	if read.CWD != "" {
+		s.topic.Dir = read.CWD
+	}
 
-		// Kept as the transcript spelled it: whether a path can be a checkout
-		// is settled where one is read. Only an empty value is refused, which
-		// would erase the directory the session last named.
-		if read.CWD != "" {
-			t.topic.Dir = read.CWD
-		}
-
-		switch {
-		case read.Type == "custom-title" && read.CustomTitle != "":
-			t.topic.Custom = read.CustomTitle
-		case read.Type == "ai-title" && read.AITitle != "":
-			t.topic.Title = read.AITitle
-		case read.Type == "user" && t.topic.Opening == "" && read.Origin != nil && read.Origin.Kind == humanOrigin:
-			t.topic.Opening = opening(read.Message.Content)
-		}
+	switch {
+	case read.Type == "custom-title" && read.CustomTitle != "":
+		s.topic.Custom = read.CustomTitle
+	case read.Type == "ai-title" && read.AITitle != "":
+		s.topic.Title = read.AITitle
+	case read.Type == "user" && s.topic.Opening == "" && read.Origin != nil && read.Origin.Kind == humanOrigin:
+		s.topic.Opening = opening(read.Message.Content)
 	}
 }
 
@@ -346,7 +283,7 @@ var markupPattern = regexp.MustCompile(`(?s)<[a-z][a-z-]*>.*?</[a-z][a-z-]*>`)
 // opening reduces a user's first message to what can name a session. Content is
 // either the text itself or the blocks a message was assembled from.
 func opening(content json.RawMessage) string {
-	text, ok := textOf(content)
+	text, ok := transcript.TextOf(content)
 	if !ok {
 		return ""
 	}
@@ -354,7 +291,7 @@ func opening(content json.RawMessage) string {
 	// A session opened with a slash command is named after the command, which
 	// is what Claude Code's own session list shows for it.
 	if command := commandPattern.FindStringSubmatch(text); command != nil {
-		return truncate(withArgs(command[1], text), maxOpening)
+		return transcript.Truncate(withArgs(command[1], text), maxOpening)
 	}
 
 	text = strings.TrimSpace(markupPattern.ReplaceAllString(text, " "))
@@ -364,7 +301,7 @@ func opening(content json.RawMessage) string {
 
 	line, _, _ := strings.Cut(text, "\n")
 
-	return truncate(strings.TrimSpace(line), maxOpening)
+	return transcript.Truncate(strings.TrimSpace(line), maxOpening)
 }
 
 // withArgs appends what the command was called with: `/code-review spec.md`
@@ -381,44 +318,4 @@ func withArgs(command, text string) string {
 	}
 
 	return command + " " + line
-}
-
-// textOf reads a message's content, which is a string when the user typed one
-// and a list of blocks when it was assembled from several.
-func textOf(content json.RawMessage) (string, bool) {
-	var text string
-	if json.Unmarshal(content, &text) == nil {
-		return text, true
-	}
-
-	var blocks []struct {
-		Type string `json:"type"`
-		Text string `json:"text"`
-	}
-	if json.Unmarshal(content, &blocks) != nil {
-		return "", false
-	}
-
-	var joined []string
-
-	for _, block := range blocks {
-		if block.Type == "text" && block.Text != "" {
-			joined = append(joined, block.Text)
-		}
-	}
-
-	if len(joined) == 0 {
-		return "", false
-	}
-
-	return strings.Join(joined, " "), true
-}
-
-func truncate(value string, limit int) string {
-	runes := []rune(value)
-	if len(runes) <= limit {
-		return value
-	}
-
-	return string(runes[:limit])
 }

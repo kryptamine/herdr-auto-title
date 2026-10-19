@@ -204,7 +204,10 @@ so unlike Claude Code's it is not expected to change without notice. A session
 first seen long after it started is read at both ends — the head for where it
 started and its first prompt, the tail for the name it was last given — and
 from wherever it grows after that; the Claude reader reads the tail alone,
-because a title Claude Code has given a session is repeated there.
+because a title Claude Code has given a session is repeated there. Both follow
+their files through `internal/transcript.Follower`, which keeps the offset,
+starts over on a file that shrank and waits for a half-written last line; the
+head read is its `Head` option, so each package parses only its own lines.
 
 Three costs are worth stating plainly:
 

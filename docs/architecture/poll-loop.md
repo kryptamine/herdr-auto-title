@@ -86,7 +86,8 @@ cannot express it:
   Only the pane a tab is named from is asked about, so the request is per tab
   rather than per pane. The reuse still earns its keep: focus moves between the
   panes of a tab, and what was read for one is still there when it comes back.
-- **How far each agent transcript has been read** (`internal/claude/transcript.go`).
+- **How far each agent transcript has been read** (`internal/transcript`, which
+  `internal/claude` and `internal/pi` follow their files through).
   A transcript is append-only, so a poll reads the bytes appended since the last
   one rather than the file: a session that has run all day is megabytes, and
   re-reading it twice a second to learn the one line that changed would cost

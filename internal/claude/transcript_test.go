@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/kryptamine/herdr-auto-title/internal/transcript"
 )
 
 const (
@@ -518,11 +520,11 @@ func TestARenameIsReadOnTheNextPoll(t *testing.T) {
 func TestARenameIsFoundInTheTailOfALongTranscript(t *testing.T) {
 	t.Parallel()
 
-	// A session first seen mid-flight is read from its last maxScan bytes, and
+	// A session first seen mid-flight is read from its last transcript.MaxScan bytes, and
 	// the rename made before then is only there because Claude Code repeats it.
 	filler := `{"type":"assistant","message":{"content":"` + strings.Repeat("x", 1000) + `"}}`
 
-	padding := maxScan/len(filler) + 1
+	padding := transcript.MaxScan/len(filler) + 1
 
 	lines := make([]string, 0, padding+4)
 	lines = append(lines, customTitle("SSRF guard"), human("fix the redirect"))

@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/kryptamine/herdr-auto-title/internal/transcript"
 )
 
 // started is the directory the session was opened in, which Pi records in the
@@ -287,7 +289,7 @@ func TestASessionFirstSeenMidFlightIsReadAtBothEnds(t *testing.T) {
 	f.write(header(), prompt("rework the poll loop"))
 
 	filler := answer(strings.Repeat("x", 4000))
-	for written := 0; written < maxScan+len(filler); written += len(filler) + 1 {
+	for written := 0; written < transcript.MaxScan+len(filler); written += len(filler) + 1 {
 		f.appendLines(filler)
 	}
 
