@@ -183,3 +183,6 @@ to leave.
 <a href="https://github.com/beefyhalo"><img src="https://images.weserv.nl/?url=github.com/beefyhalo.png&w=128&h=128&fit=cover&mask=circle&maxage=7d" width="64" alt="Kevin Horlick"></a>
 <a href="https://github.com/cliph"><img src="https://images.weserv.nl/?url=github.com/cliph.png&w=128&h=128&fit=cover&mask=circle&maxage=7d" width="64" alt="Cliph (Cliff Flood)"></a>
 <a href="https://github.com/wapenshaw"><img src="https://images.weserv.nl/?url=github.com/wapenshaw.png&w=128&h=128&fit=cover&mask=circle&maxage=7d" width="64" alt="Siddharth Abbineni"></a>
+<a href="https://github.com/moisesmorillo"><img src="https://images.weserv.nl/?url=github.com/moisesmorillo.png&w=128&h=128&fit=cover&mask=circle&maxage=7d" width="64" alt="Moisés Morillo"></a>
+<a href="https://github.com/evenfierro-qbit"><img src="https://images.weserv.nl/?url=github.com/evenfierro-qbit.png&w=128&h=128&fit=cover&mask=circle&maxage=7d" width="64" alt="Even Fierro"></a>
+<a href="https://github.com/WillowMist"><img src="https://images.weserv.nl/?url=github.com/WillowMist.png&w=128&h=128&fit=cover&mask=circle&maxage=7d" width="64" alt="WillowMist"></a>
