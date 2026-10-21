@@ -29,10 +29,17 @@ var errNotRegular = errors.New("session database is not a regular file")
 
 // Title selects by bound session ID, never by directory or recent activity.
 // A process home is authoritative; otherwise duplicate session IDs are refused.
-func Title(ctx context.Context, roots []string, sessionID, processHome string) string {
+func Title(
+	ctx context.Context,
+	roots []string,
+	sessionID, processHome string,
+	settledOnly ...bool,
+) string {
 	if !sessionIDPattern.MatchString(sessionID) || ctx.Err() != nil {
 		return ""
 	}
+
+	settled := len(settledOnly) > 0 && settledOnly[0]
 
 	ctx, cancel := context.WithTimeout(ctx, readTimeout)
 	defer cancel()
@@ -42,7 +49,7 @@ func Title(ctx context.Context, roots []string, sessionID, processHome string) s
 			return ""
 		}
 
-		title, _, _ := titleAt(ctx, processHome, sessionID)
+		title, _, _ := titleAt(ctx, processHome, sessionID, settled)
 
 		return title
 	}
@@ -57,7 +64,7 @@ func Title(ctx context.Context, roots []string, sessionID, processHome string) s
 	found := false
 
 	for _, dir := range homes {
-		value, exists, err := titleAt(ctx, dir, sessionID)
+		value, exists, err := titleAt(ctx, dir, sessionID, settled)
 		if err != nil || ctx.Err() != nil {
 			return ""
 		}
@@ -133,7 +140,7 @@ func profiles(home string) ([]os.DirEntry, bool) {
 	return entries, (err == nil || errors.Is(err, io.EOF)) && len(entries) <= maxHomes
 }
 
-func titleAt(ctx context.Context, home, sessionID string) (string, bool, error) {
+func titleAt(ctx context.Context, home, sessionID string, settled bool) (string, bool, error) {
 	path := filepath.Join(home, "state.db")
 	// Refuse absent files and special devices before SQLite opens anything.
 	info, err := os.Stat(path)
@@ -167,7 +174,12 @@ func titleAt(ctx context.Context, home, sessionID string) (string, bool, error) 
 
 	var title sql.NullString
 
-	err = db.QueryRowContext(ctx, `SELECT substr(title,1,?) FROM sessions WHERE id = ? LIMIT 1`, maxTitleRunes, sessionID).
+	query := `SELECT substr(title,1,?) FROM sessions WHERE id = ? LIMIT 1`
+	if settled {
+		query = `SELECT CASE WHEN title_source IN ('llm','user') THEN substr(title,1,?) ELSE NULL END FROM sessions WHERE id = ? LIMIT 1`
+	}
+
+	err = db.QueryRowContext(ctx, query, maxTitleRunes, sessionID).
 		Scan(&title)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", false, nil

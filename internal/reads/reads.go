@@ -17,6 +17,7 @@ import (
 	"github.com/kryptamine/herdr-auto-title/internal/hermes"
 	"github.com/kryptamine/herdr-auto-title/internal/pi"
 	"github.com/kryptamine/herdr-auto-title/internal/state"
+	"github.com/kryptamine/herdr-auto-title/internal/transcript"
 )
 
 // Options are the settings that decide whether a read is made at all, rather
@@ -35,6 +36,7 @@ type Options struct {
 	// BranchMax of zero or less turns branches off, and then no checkout is read.
 	BranchMax    int
 	ReadSessions bool
+	SessionOnly  bool
 }
 
 // Reader outlives a poll because what it remembers does: what each pane was
@@ -50,6 +52,7 @@ type Reader struct {
 	log               *slog.Logger
 	readBranches      bool
 	readSessions      bool
+	sessionOnly       bool
 }
 
 func New(opts Options, log *slog.Logger) *Reader {
@@ -69,6 +72,7 @@ func New(opts Options, log *slog.Logger) *Reader {
 		log:               log,
 		readBranches:      opts.BranchMax > 0,
 		readSessions:      opts.ReadSessions,
+		sessionOnly:       opts.SessionOnly,
 	}
 }
 
@@ -228,9 +232,7 @@ func (r *Reader) topic(
 			return sessionTopic{}
 		}
 
-		topic := r.piTopics.Topic(path)
-
-		return sessionTopic{text: topic.Text(), dir: topic.Dir}
+		return r.namedTopic(r.piTopics.Topic(path))
 	}
 
 	sessionID, ok := pane.AgentSession.ID()
@@ -241,6 +243,9 @@ func (r *Reader) topic(
 	switch pane.AgentSession.Agent {
 	case claude.Agent:
 		topic := r.claudeTopics.Topic(sessionID, dir)
+		if r.sessionOnly {
+			topic.Opening = ""
+		}
 
 		return sessionTopic{text: topic.Text(), dir: topic.Dir}
 	case antigravity.Agent:
@@ -255,10 +260,18 @@ func (r *Reader) topic(
 			return sessionTopic{}
 		}
 
-		return sessionTopic{text: topic.Text(), dir: topic.Dir}
+		return r.namedTopic(topic)
 	}
 
 	return sessionTopic{}
+}
+
+func (r *Reader) namedTopic(topic transcript.Topic) sessionTopic {
+	if r.sessionOnly {
+		return sessionTopic{text: topic.Name, dir: topic.Dir}
+	}
+
+	return sessionTopic{text: topic.Text(), dir: topic.Dir}
 }
 
 func (r *Reader) hermesTopic(
@@ -275,7 +288,9 @@ func (r *Reader) hermesTopic(
 		home = hermes.ProcessHome(processes[last].PID)
 	}
 
-	return sessionTopic{text: hermes.Title(ctx, r.hermesHomes, pane.AgentSession.Value, home)}
+	return sessionTopic{
+		text: hermes.Title(ctx, r.hermesHomes, pane.AgentSession.Value, home, r.sessionOnly),
+	}
 }
 
 // spent reports that the poll is past its deadline. The reads it guards go to
