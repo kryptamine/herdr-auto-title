@@ -25,6 +25,7 @@ const (
 	EnvPosition    = "HERDR_AUTO_TITLE_POSITION"
 	EnvManual      = "HERDR_AUTO_TITLE_MANUAL_FILE"
 	EnvTranscript  = "HERDR_AUTO_TITLE_TRANSCRIPT"
+	EnvSessionOnly = "HERDR_AUTO_TITLE_SESSION_ONLY"
 	EnvAgentName   = "HERDR_AUTO_TITLE_AGENT_NAME"
 	EnvPanes       = "HERDR_AUTO_TITLE_PANES"
 	EnvPreferAgent = "HERDR_AUTO_TITLE_PREFER_AGENT"
@@ -70,6 +71,8 @@ type Config struct {
 	// the agent has not titled its terminal. They hold what the user has been
 	// saying to that agent, so the read can be turned off.
 	ReadSessions bool
+	// SessionOnly waits for native conversation titles instead of process fallbacks.
+	SessionOnly bool
 	// ShowAgentName puts the name of the agent running in a pane in front of
 	// what it is working on. Turned off, a pane whose agent has said nothing
 	// is named like any other pane in that directory.
@@ -101,6 +104,8 @@ type Config struct {
 	// adds. A home the user's shell picks per directory cannot be discovered,
 	// so it is named.
 	ClaudeDirs []string
+	// HermesHomes supplements ~/.hermes and its named profiles; absolute paths only.
+	HermesHomes []string
 	// Home is the user's home directory, or "" when there is none.
 	Home string
 	// ForeignProcesses are programs that own their tab and pane labels; Auto
@@ -149,6 +154,7 @@ func LoadConfig() (Config, []string) {
 	cfg.BranchMax = fromEnv(&warnings, EnvBranchMax, cfg.BranchMax, countOrNone)
 	cfg.ShowPosition = fromEnv(&warnings, EnvPosition, cfg.ShowPosition, boolean)
 	cfg.ReadSessions = fromEnv(&warnings, EnvTranscript, cfg.ReadSessions, boolean)
+	cfg.SessionOnly = fromEnv(&warnings, EnvSessionOnly, cfg.SessionOnly, boolean)
 	cfg.ShowAgentName = fromEnv(&warnings, EnvAgentName, cfg.ShowAgentName, boolean)
 	cfg.RenamePanes = fromEnv(&warnings, EnvPanes, cfg.RenamePanes, boolean)
 	cfg.PreferAgentPane = fromEnv(&warnings, EnvPreferAgent, cfg.PreferAgentPane, boolean)
@@ -172,7 +178,18 @@ func LoadConfig() (Config, []string) {
 		cfg.ForeignProcesses = filepath.SplitList(raw)
 	}
 
+	cfg.HermesHomes = hermesHomesFromEnv()
+
 	return cfg, warnings
+}
+
+func hermesHomesFromEnv() []string {
+	var homes []string
+	if home := os.Getenv("HERMES_HOME"); home != "" {
+		homes = append(homes, home)
+	}
+
+	return append(homes, filepath.SplitList(os.Getenv("HERDR_AUTO_TITLE_HERMES_HOMES"))...)
 }
 
 // readConfigFile puts the file's settings into the environment, which is how a
