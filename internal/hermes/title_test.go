@@ -47,7 +47,15 @@ func TestTitleReadIsBounded(t *testing.T) {
 	home := t.TempDir()
 	database(t, home, strings.Repeat("x", 10000))
 
-	if got := hermes.Title(context.Background(), []string{home}, sessionID, ""); len(got) != 4096 {
+	if got := hermes.Title(
+		context.Background(),
+		[]string{home},
+		sessionID,
+		"",
+		false,
+	); len(
+		got,
+	) != 4096 {
 		t.Fatalf("title length = %d, want 4096", len(got))
 	}
 }
@@ -63,7 +71,7 @@ func TestProfileSearchIsBounded(t *testing.T) {
 		}
 	}
 
-	if got := hermes.Title(context.Background(), []string{home}, sessionID, ""); got != "" {
+	if got := hermes.Title(context.Background(), []string{home}, sessionID, "", false); got != "" {
 		t.Fatalf("unbounded search returned %q", got)
 	}
 }
@@ -81,7 +89,7 @@ func TestUnreadableCandidateDoesNotSelectAnotherProfile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if got := hermes.Title(context.Background(), []string{home}, sessionID, ""); got != "" {
+	if got := hermes.Title(context.Background(), []string{home}, sessionID, "", false); got != "" {
 		t.Fatalf("selected title despite unreadable candidate: %q", got)
 	}
 }
@@ -107,7 +115,7 @@ func TestLockedDatabaseFallsBack(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	if got := hermes.Title(ctx, []string{home}, sessionID, ""); got != "" {
+	if got := hermes.Title(ctx, []string{home}, sessionID, "", false); got != "" {
 		t.Fatalf("locked database returned %q", got)
 	}
 
@@ -124,7 +132,7 @@ func TestCanceledLookupReturnsNoTitle(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	if got := hermes.Title(ctx, []string{home}, sessionID, home); got != "" {
+	if got := hermes.Title(ctx, []string{home}, sessionID, home, false); got != "" {
 		t.Fatalf("canceled lookup returned %q", got)
 	}
 }
@@ -134,7 +142,13 @@ func TestDatabasePathIsURIQuoted(t *testing.T) {
 	home := filepath.Join(t.TempDir(), "home #with spaces")
 	database(t, home, "Quoted path title")
 
-	if got := hermes.Title(context.Background(), nil, sessionID, home); got != "Quoted path title" {
+	if got := hermes.Title(
+		context.Background(),
+		nil,
+		sessionID,
+		home,
+		false,
+	); got != "Quoted path title" {
 		t.Fatalf("quoted path title = %q", got)
 	}
 }
@@ -150,6 +164,7 @@ func TestExplicitHomeNeverFallsThrough(t *testing.T) {
 			[]string{home},
 			sessionID,
 			explicit,
+			false,
 		); got != "" {
 			t.Fatalf("explicit home %q fell through: %q", explicit, got)
 		}
@@ -169,6 +184,7 @@ func TestRepeatedHomeIsSearchedOnce(t *testing.T) {
 		roots,
 		sessionID,
 		"",
+		false,
 	); got != "Repeated home title" {
 		t.Fatalf("title = %q, want the repeated home's title", got)
 	}
@@ -183,7 +199,13 @@ func TestProfileNamedAsRootIsSearchedOnce(t *testing.T) {
 	database(t, profile, "Profile title")
 
 	for _, roots := range [][]string{{home, profile}, {profile, home}} {
-		if got := hermes.Title(context.Background(), roots, sessionID, ""); got != "Profile title" {
+		if got := hermes.Title(
+			context.Background(),
+			roots,
+			sessionID,
+			"",
+			false,
+		); got != "Profile title" {
 			t.Fatalf("roots %v: title = %q, want the profile's title", roots, got)
 		}
 	}

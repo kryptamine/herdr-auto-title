@@ -35,7 +35,7 @@ func isolate(t *testing.T) {
 
 	names := []string{
 		EnvDebug, EnvPoll, EnvMaxLength, EnvBranchMax, EnvDirectoryMax,
-		EnvPosition, EnvManual, EnvTranscript, EnvAgentName, EnvPanes,
+		EnvPosition, EnvManual, EnvTranscript, EnvSessionOnly, EnvAgentName, EnvPanes,
 		EnvPreferAgent, EnvPaneID, EnvAgentHandle, EnvIcons, EnvAgentStatus,
 		EnvWorkspaces, EnvWorkspaceMaxLength,
 		// Claude Code's own variable is cleared with ours: it now decides a
@@ -71,6 +71,33 @@ func writeConfig(t *testing.T, contents string) {
 
 	if err := os.WriteFile(path, []byte(contents), 0o644); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestSessionOnlyIsOptIn(t *testing.T) {
+	isolate(t)
+
+	cfg, warnings := loadConfig()
+	if len(warnings) != 0 || cfg.SessionOnly {
+		t.Fatalf("default session-only = %v, warnings = %v", cfg.SessionOnly, warnings)
+	}
+
+	t.Setenv(EnvSessionOnly, "true")
+
+	cfg, warnings = loadConfig()
+	if len(warnings) != 0 || !cfg.SessionOnly {
+		t.Fatalf("opt-in session-only = %v, warnings = %v", cfg.SessionOnly, warnings)
+	}
+}
+
+func TestSessionOnlyWithoutTranscriptsWarns(t *testing.T) {
+	isolate(t)
+	t.Setenv(EnvSessionOnly, "true")
+	t.Setenv(EnvTranscript, "false")
+
+	if _, warnings := loadConfig(); len(warnings) != 1 ||
+		!strings.Contains(warnings[0], EnvSessionOnly) {
+		t.Fatalf("warnings = %v, want one naming %s", warnings, EnvSessionOnly)
 	}
 }
 

@@ -33,7 +33,7 @@ func TestManualLauncherNamesAreProtected(t *testing.T) {
 			client := &renameRecorder{}
 			adapter := &Client{}
 			path := filepath.Join(t.TempDir(), "manual.json")
-			owner := labels.Load(path, nil, slog.New(slog.DiscardHandler))
+			owner := labels.Load(path, nil, slog.New(slog.DiscardHandler), false)
 			poll := func(name string) {
 				item := tab{ID: "tab1", Name: name, Terminals: []paneEntry{{App: "codex"}}}
 				snapshot, _ := adapter.build([]space{{ID: "space1", Tabs: []tab{item}}}, "", nil)
@@ -54,7 +54,7 @@ func TestManualLauncherNamesAreProtected(t *testing.T) {
 			poll(manual)
 
 			adapter = &Client{}
-			owner = labels.Load(path, nil, slog.New(slog.DiscardHandler))
+			owner = labels.Load(path, nil, slog.New(slog.DiscardHandler), false)
 
 			poll(manual)
 
@@ -126,6 +126,7 @@ func TestLauncherTabIsTitledBeforeItsAgentReports(t *testing.T) {
 				filepath.Join(t.TempDir(), "manual.json"),
 				nil,
 				slog.New(slog.DiscardHandler),
+				false,
 			)
 			poll := func(app string) {
 				world := world{Spaces: []space{{ID: "space1", Tabs: []tab{

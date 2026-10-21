@@ -2,6 +2,7 @@ package labels
 
 import (
 	"encoding/json"
+	"maps"
 	"os"
 	"path/filepath"
 )
@@ -21,6 +22,9 @@ type claims struct {
 	// owned is what a program that writes its own labels held when last seen.
 	// The label it carries next is that program's, whatever it is by then.
 	owned map[string]struct{}
+	// persisted is the label a reloaded thing last carried from Auto Title. It
+	// only shows a label is ours, never that one is the user's: Herdr reuses ids.
+	persisted map[string]string
 }
 
 // seenLabels is what is known of one thing's label: the one it carried when
@@ -33,20 +37,23 @@ type seenLabels struct {
 
 func newClaims(l *Labels, kind kind) *claims {
 	return &claims{
-		labels:   l,
-		kind:     kind,
-		seen:     make(map[string]seenLabels),
-		locked:   make(map[string]string),
-		departed: make(map[string]struct{}),
-		owned:    make(map[string]struct{}),
+		labels:    l,
+		kind:      kind,
+		seen:      make(map[string]seenLabels),
+		locked:    make(map[string]string),
+		departed:  make(map[string]struct{}),
+		owned:     make(map[string]struct{}),
+		persisted: make(map[string]string),
 	}
 }
 
-// claimsFile is the on-disk form: locks outlive the process because Herdr can
-// restart a plugin mid-session.
+// claimsFile keeps locks and unclaimed labels across plugin restarts.
+// Foreign programs' ownership marks remain in memory only.
 type claimsFile struct {
 	Locked      map[string]string `json:"locked_tabs"`
 	LockedPanes map[string]string `json:"locked_panes"`
+	OwnedTabs   map[string]string `json:"owned_tabs,omitempty"`
+	OwnedPanes  map[string]string `json:"owned_panes,omitempty"`
 }
 
 // isLocked reports whether the user has claimed this one.
@@ -91,7 +98,10 @@ func (c *claims) observe(s sighting) verdict {
 	_, leftByOwner := c.owned[s.id]
 	delete(c.owned, s.id)
 
-	ours := c.ours(s) || (!known && moved) || leftByOwner
+	stored, reloaded := c.persisted[s.id]
+	delete(c.persisted, s.id)
+
+	ours := c.ours(s) || (!known && moved) || leftByOwner || (reloaded && stored == s.current)
 	c.record(s, previous)
 
 	return c.claimedOnChange(s, previous, known, ours)
@@ -99,11 +109,16 @@ func (c *claims) observe(s sighting) verdict {
 
 // settle marks the end of a poll that saw everything. After the first,
 // something unseen did not exist before; after any, a moved thing has been seen.
+// The first also saves, so a session that needed no rename still records its labels.
 func (l *Labels) settle() {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	l.settled = true
+	if !l.settled || l.unsaved {
+		l.saveLocked()
+	}
+
+	l.settled, l.unsaved = true, false
 
 	for _, c := range []*claims{l.tabs, l.panes} {
 		clear(c.departed)
@@ -118,7 +133,9 @@ func (c *claims) applied(id, label string) {
 
 	seen := c.seen[id]
 	seen.current = label
+
 	c.seen[id] = seen
+	c.labels.unsaved = true
 }
 
 // sent records the label of a rename whose call got no answer, which Herdr
@@ -180,6 +197,12 @@ func (c *claims) retain(live map[string]string) {
 		}
 	}
 
+	for id := range c.persisted {
+		if _, alive := live[id]; !alive {
+			delete(c.persisted, id)
+		}
+	}
+
 	if changed {
 		l.saveLocked()
 	}
@@ -220,7 +243,7 @@ func (c *claims) claimedOnChange(s sighting, previous seenLabels, known, ours bo
 		if s.current == previous.current {
 			return verdictName
 		}
-	case !c.labels.settled:
+	case !c.labels.settled && !c.labels.preserveExisting:
 		// The first poll, where nothing carries a name Auto Title has set.
 		return verdictName
 	}
@@ -243,6 +266,20 @@ func (c *claims) ours(s sighting) bool {
 	return sent || s.current == s.desired
 }
 
+// persistedNames is every unclaimed label Auto Title may rename: those a poll
+// saw, and reloaded ones no poll has looked at yet.
+func (c *claims) persistedNames() map[string]string {
+	names := maps.Clone(c.persisted)
+
+	for id, seen := range c.seen {
+		if _, locked := c.locked[id]; !locked && seen.current != "" {
+			names[id] = seen.current
+		}
+	}
+
+	return names
+}
+
 // saveLocked writes the locks out through a temporary file, so a crash cannot
 // leave a half-written one. The caller holds the mutex; failure is silent.
 func (l *Labels) saveLocked() {
@@ -259,6 +296,8 @@ func (l *Labels) saveLocked() {
 		claimsFile{
 			Locked:      l.tabs.locked,
 			LockedPanes: l.panes.locked,
+			OwnedTabs:   l.tabs.persistedNames(),
+			OwnedPanes:  l.panes.persistedNames(),
 		},
 		"",
 		"  ",
