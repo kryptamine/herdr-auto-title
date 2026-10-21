@@ -17,6 +17,10 @@ const DefaultMaxLength = 50
 // GenericFallback names a tab whose context tells us nothing.
 const GenericFallback = "Shell"
 
+// ReasonGenericFallback is the reason a decision gives when it names
+// GenericFallback.
+const ReasonGenericFallback = "generic_fallback"
+
 // Confidence levels form the resolution ladder, and the resolver orders itself
 // by them. A source never overrides a field a higher one already supplied. The
 // gaps are what make room for the next source.
@@ -253,7 +257,7 @@ func (d *Deterministic) nameUnder(
 		return Decision{
 			Name:       GenericFallback,
 			Confidence: ConfidenceFallback,
-			Reason:     "generic_fallback",
+			Reason:     ReasonGenericFallback,
 		}
 	}
 

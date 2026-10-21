@@ -48,7 +48,18 @@ WAL support remains enabled: do not use `immutable=1`, which would miss live WAL
 updates. SQLite may need existing WAL/shared-memory sidecars or permission to
 manage shared memory; if access fails, ordinary title fallback remains available.
 No write SQL is issued, and no conversation rows are queried. The stored
-`title_source` is irrelevant: user and generated native titles use the same field.
+`title_source` is normally irrelevant: user and generated native titles use the same field.
+With `HERDR_AUTO_TITLE_SESSION_ONLY=true`, only `llm` and `user` provenance is
+ready; `derived` is the provisional opening-prompt title and is skipped. Older
+schemas without provenance safely leave names unchanged in this mode.
+
+Session-only mode excludes process, directory, agent and terminal placeholders
+from tab/pane decisions. No ready title means no rename, including after exit
+or `/new`. Existing labels not recorded as plugin-owned are treated as manual,
+even at startup. The existing name-state file also records plugin-owned labels
+in both modes, so a restart or a switch from normal to session-only does not
+accidentally claim them as user names. With an empty or unwritable name-state
+path, restart ownership cannot be guaranteed.
 
 A lookup has a 100 ms context budget, no SQLite busy wait, one connection at a
 time, at most 64 candidate homes and at most 64 profile directory entries per
