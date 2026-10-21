@@ -29,6 +29,7 @@ type Options struct {
 	// BranchMax of zero or less turns branches off, and then no checkout is read.
 	BranchMax    int
 	ReadSessions bool
+	SessionOnly  bool
 }
 
 // Reader outlives a poll because what it remembers does: what each pane was
@@ -42,6 +43,7 @@ type Reader struct {
 	log               *slog.Logger
 	readBranches      bool
 	readSessions      bool
+	sessionOnly       bool
 }
 
 func New(opts Options, log *slog.Logger) *Reader {
@@ -59,6 +61,7 @@ func New(opts Options, log *slog.Logger) *Reader {
 		log:               log,
 		readBranches:      opts.BranchMax > 0,
 		readSessions:      opts.ReadSessions,
+		sessionOnly:       opts.SessionOnly,
 	}
 }
 
@@ -217,7 +220,9 @@ func (r *Reader) topic(
 			home = hermes.ProcessHome(processes[last].PID)
 		}
 
-		return sessionTopic{text: hermes.Title(ctx, r.hermesHomes, pane.AgentSession.Value, home)}
+		return sessionTopic{
+			text: hermes.Title(ctx, r.hermesHomes, pane.AgentSession.Value, home, r.sessionOnly),
+		}
 	case claude.Agent:
 		sessionID, ok := pane.AgentSession.ID()
 		if !ok {

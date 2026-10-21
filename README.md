@@ -149,6 +149,13 @@ not read.
 
 On Windows Herdr reports only the shell or a recognised agent per pane, so this setting and the built-in herdr-mirror check may not detect a label-owning program there.
 
+Set `HERDR_AUTO_TITLE_SESSION_ONLY=true` to mirror only native session names.
+Unnamed shells and agent startup states are left alone; for Hermes the reader
+waits for `title_source=llm` or `user`, skipping its prompt-derived placeholder.
+Missing titles keep the existing label instead of falling back. Existing user
+names are protected even on the first poll; plugin-owned names are remembered
+across restarts. Other naming behavior remains the default when this is false.
+
 Hermes session titles use the native `sessions.title` in `state.db`, not chat
 messages or a new LLM call. They need a Herdr integration reporting the Hermes
 session ID. Linux first uses the foreground process's `HERMES_HOME` when readable;

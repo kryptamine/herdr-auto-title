@@ -35,7 +35,7 @@ func isolate(t *testing.T) {
 
 	names := []string{
 		EnvDebug, EnvPoll, EnvMaxLength, EnvBranchMax,
-		EnvPosition, EnvManual, EnvTranscript, EnvAgentName, EnvPanes,
+		EnvPosition, EnvManual, EnvTranscript, EnvSessionOnly, EnvAgentName, EnvPanes,
 		EnvPreferAgent, EnvPaneID, EnvAgentHandle, EnvWorkspaces, EnvWorkspaceMaxLength,
 		// Claude Code's own variable is cleared with ours: it now decides a
 		// Config field, so a developer's real home would otherwise be read.

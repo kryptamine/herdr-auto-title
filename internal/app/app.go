@@ -45,6 +45,7 @@ type App struct {
 	panes resolver.PaneResolver
 	// preferAgent names a tab after its agent pane rather than its focused one.
 	preferAgent bool
+	sessionOnly bool
 	// topics says what each workspace's active tab is doing, and is nil when the
 	// user turned that off.
 	topics   *resolver.Topics
@@ -83,14 +84,16 @@ func New(
 		topics:      topics,
 		reported:    newTopicReports(),
 		preferAgent: cfg.PreferAgentPane,
+		sessionOnly: cfg.SessionOnly,
 		changes:     state.NewChanges(),
-		labels:      labels.Load(cfg.ManualPath, log),
+		labels:      labels.Load(cfg.ManualPath, log, cfg.SessionOnly),
 		reads: reads.New(reads.Options{
 			ClaudeDirs:   cfg.ClaudeDirs,
 			HermesHomes:  cfg.HermesHomes,
 			Home:         cfg.Home,
 			BranchMax:    cfg.BranchMax,
 			ReadSessions: cfg.ReadSessions,
+			SessionOnly:  cfg.SessionOnly,
 		}, log),
 		owners:   resolver.NewOwners(cfg.ForeignProcesses),
 		instance: instance,
@@ -111,6 +114,13 @@ func Resolvers(
 		ShowHandle:    cfg.ShowAgentHandle,
 		Home:          cfg.Home,
 	})
+
+	if cfg.SessionOnly {
+		chain = resolver.New(
+			resolver.Options{MaxLength: cfg.MaxLength, HideAgentName: true, Home: cfg.Home},
+			resolver.NewTranscript(),
+		)
+	}
 
 	var titles resolver.TitleResolver = chain
 	if cfg.ShowPosition {
@@ -415,6 +425,10 @@ func (a *App) nameTab(
 	// spends, and only a tab that will be renamed is worth them.
 	poll.Fill(ctx, tab.Context)
 
+	if a.sessionOnly && tab.Context.AgentTopic == "" {
+		return
+	}
+
 	pass.Tab(ctx, tab, a.titles.Resolve(tab))
 }
 
@@ -444,7 +458,8 @@ func (a *App) namePanes(
 
 		// Skipped one by one, so a local split of a mirror tab is still named.
 		pane := tab.Panes[i]
-		if pass.PaneLocked(pane.ID) || a.theirs(ctx, poll, pane) {
+		if pass.PaneLocked(pane.ID) || a.theirs(ctx, poll, pane) ||
+			(a.sessionOnly && pane.AgentTopic == "") {
 			continue
 		}
 
