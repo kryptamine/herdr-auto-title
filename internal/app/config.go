@@ -101,6 +101,8 @@ type Config struct {
 	// adds. A home the user's shell picks per directory cannot be discovered,
 	// so it is named.
 	ClaudeDirs []string
+	// HermesHomes supplements ~/.hermes and its named profiles; absolute paths only.
+	HermesHomes []string
 	// Home is the user's home directory, or "" when there is none.
 	Home string
 	// ForeignProcesses are programs that own their tab and pane labels; Auto
@@ -172,7 +174,18 @@ func LoadConfig() (Config, []string) {
 		cfg.ForeignProcesses = filepath.SplitList(raw)
 	}
 
+	cfg.HermesHomes = hermesHomesFromEnv()
+
 	return cfg, warnings
+}
+
+func hermesHomesFromEnv() []string {
+	var homes []string
+	if home := os.Getenv("HERMES_HOME"); home != "" {
+		homes = append(homes, home)
+	}
+
+	return append(homes, filepath.SplitList(os.Getenv("HERDR_AUTO_TITLE_HERMES_HOMES"))...)
 }
 
 // readConfigFile puts the file's settings into the environment, which is how a

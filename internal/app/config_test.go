@@ -40,6 +40,7 @@ func isolate(t *testing.T) {
 		// Claude Code's own variable is cleared with ours: it now decides a
 		// Config field, so a developer's real home would otherwise be read.
 		EnvClaudeDirs, EnvClaudeConfigDir, EnvForeignProcesses,
+		"HERMES_HOME", "HERDR_AUTO_TITLE_HERMES_HOMES",
 	}
 
 	for _, name := range names {

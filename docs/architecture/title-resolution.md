@@ -130,6 +130,10 @@ same way.
 
 ### The session transcript
 
+Hermes uses this same source for its native `sessions.title` in read-only
+`state.db`, without reading chat messages. See [Hermes session titles](hermes-session-titles.md)
+for identity, profile selection, WAL updates and bounded database access.
+
 An agent that has titled its terminal has already said what it is doing, sooner
 and for free. This source answers when it has not, which is a real and repeatable
 case rather than an edge: Claude Code derives its terminal title from the user's

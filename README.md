@@ -144,11 +144,22 @@ not read.
 | `HERDR_AUTO_TITLE_WORKSPACES`   | `true`                                   | Report what each workspace's active tab is doing as its `topic`    |
 | `HERDR_AUTO_TITLE_WORKSPACE_MAX_LENGTH` | none: Herdr fits it              | Longest topic, in columns                                          |
 | `HERDR_AUTO_TITLE_CLAUDE_DIRS`  | none                                     | Extra Claude config homes to search, `:`-separated                 |
+| `HERDR_AUTO_TITLE_HERMES_HOMES` | none                                     | Extra absolute Hermes homes to search, `:`-separated (`;` on Windows), including each home's named profiles |
 | `HERDR_AUTO_TITLE_FOREIGN_PROCESSES` | none                                 | Programs that own their tab and pane labels, so Auto Title leaves them alone; herdr-mirror's streamer is built in. `:`-separated |
 
 On Windows Herdr reports only the shell or a recognised agent per pane, so this setting and the built-in herdr-mirror check may not detect a label-owning program there.
 
-Turning `HERDR_AUTO_TITLE_TRANSCRIPT` off also drops the branch from a tab whose
+Hermes session titles use the native `sessions.title` in `state.db`, not chat
+messages or a new LLM call. They need a Herdr integration reporting the Hermes
+session ID. Linux first uses the foreground process's `HERMES_HOME` when readable;
+otherwise Auto Title searches the plugin's `HERMES_HOME`, the configured extra
+homes, and `~/.hermes`, including their `profiles/*` homes. A session ID found in
+multiple homes is ambiguous and falls back rather than choosing another profile.
+Use absolute paths, not `~`, in configuration. Details and limits are in
+[Hermes session titles](docs/architecture/hermes-session-titles.md).
+
+Turning `HERDR_AUTO_TITLE_TRANSCRIPT` off also disables Hermes database reads.
+It also drops the branch from a tab whose
 agent is working in a git worktree, because the transcript is what says which
 worktree that is.
 

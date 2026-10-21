@@ -6,11 +6,13 @@ package reads
 import (
 	"context"
 	"log/slog"
+	"path/filepath"
 
 	"github.com/kryptamine/herdr-auto-title/internal/antigravity"
 	"github.com/kryptamine/herdr-auto-title/internal/claude"
 	"github.com/kryptamine/herdr-auto-title/internal/git"
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
+	"github.com/kryptamine/herdr-auto-title/internal/hermes"
 	"github.com/kryptamine/herdr-auto-title/internal/pi"
 	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
@@ -18,6 +20,8 @@ import (
 // Options are the settings that decide whether a read is made at all, rather
 // than how its answer is shown.
 type Options struct {
+	// HermesHomes supplements Home/.hermes and its named profiles.
+	HermesHomes []string
 	// ClaudeDirs are the Claude Code configuration homes transcripts are found in.
 	ClaudeDirs []string
 	// Home is the user's home directory, where Antigravity CLI keeps its state.
@@ -30,6 +34,7 @@ type Options struct {
 // Reader outlives a poll because what it remembers does: what each pane was
 // last seen running, and how far each agent's transcript has been read.
 type Reader struct {
+	hermesHomes       []string
 	processes         *processCache
 	claudeTopics      *claude.Reader
 	antigravityTitles *antigravity.Reader
@@ -40,7 +45,13 @@ type Reader struct {
 }
 
 func New(opts Options, log *slog.Logger) *Reader {
+	homes := append([]string(nil), opts.HermesHomes...)
+	if opts.Home != "" {
+		homes = append(homes, filepath.Join(opts.Home, ".hermes"))
+	}
+
 	return &Reader{
+		hermesHomes:       homes,
 		processes:         newProcessCache(),
 		claudeTopics:      claude.NewReader(opts.ClaudeDirs...),
 		antigravityTitles: antigravity.NewReader(opts.Home),
@@ -106,7 +117,7 @@ func (p *Poll) Fill(ctx context.Context, pane *state.PaneState) bool {
 
 	// The agent's session is read before the checkout because it can say where
 	// the agent is working, and that is where the branch is read from.
-	topic := p.reader.topic(ctx, pane, dir)
+	topic := p.reader.topic(ctx, pane, dir, processes)
 	pane.AgentTopic = topic.text
 	pane.Git = p.checkout(ctx, dir)
 	pane.AgentGit = p.checkout(ctx, topic.dir)
@@ -181,7 +192,12 @@ type sessionTopic struct {
 
 // topic reports what the session the pane's agent is holding says it is about.
 // Only Herdr's integration hook says which session a pane holds.
-func (r *Reader) topic(ctx context.Context, pane *state.PaneState, dir string) sessionTopic {
+func (r *Reader) topic(
+	ctx context.Context,
+	pane *state.PaneState,
+	dir string,
+	processes []herdr.PaneProcessInfoProcess,
+) sessionTopic {
 	if !r.readSessions || spent(ctx) {
 		return sessionTopic{}
 	}
@@ -191,6 +207,17 @@ func (r *Reader) topic(ctx context.Context, pane *state.PaneState, dir string) s
 	}
 
 	switch pane.AgentSession.Agent {
+	case hermes.Agent:
+		if pane.Agent != hermes.Agent || pane.AgentSession.Kind != herdr.SessionRefID {
+			return sessionTopic{}
+		}
+
+		home := ""
+		if last := len(processes) - 1; last >= 0 {
+			home = hermes.ProcessHome(processes[last].PID)
+		}
+
+		return sessionTopic{text: hermes.Title(ctx, r.hermesHomes, pane.AgentSession.Value, home)}
 	case claude.Agent:
 		sessionID, ok := pane.AgentSession.ID()
 		if !ok {
