@@ -7,6 +7,7 @@ import (
 	"cmp"
 	"slices"
 	"strings"
+	"unicode"
 
 	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
@@ -358,13 +359,30 @@ func withoutRepetition(parts Parts) Parts {
 	return parts
 }
 
+// sameContext matches a directory name against a workspace label someone spelled
+// out, so "deploy-social" is the same place as "Deploy Social" or "deploy_social".
+func sameContext(a, b string) bool {
+	return strings.EqualFold(a, b) || (contextKey(a) != "" && contextKey(a) == contextKey(b))
+}
+
+// contextKey keeps only the letters and digits of a name, folded to lower case.
+func contextKey(s string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			return unicode.ToLower(r)
+		}
+
+		return -1
+	}, s)
+}
+
 // withoutAbove drops the parts a row shown above the title already carries: the
 // workspace above a tab, the tab above a pane. The activity is what a row is
 // for and always stays, and a title left with nothing keeps what it had.
 func withoutAbove(parts, above Parts) Parts {
 	kept := parts
 
-	if strings.EqualFold(kept.Context, above.Context) {
+	if sameContext(kept.Context, above.Context) {
 		kept.Context = ""
 	}
 
