@@ -77,6 +77,10 @@ probe-snapshot: ## Show the session snapshot the plugin polls
 probe-workspaces: ## Show each workspace's active tab and reported tokens
 	@./scripts/probe.py workspaces
 
+.PHONY: dist
+dist: ## Build the release binaries and their SHA256SUMS into dist/
+	@./scripts/dist.py
+
 .PHONY: clean
-clean: ## Remove the built binary
-	@rm -f $(BINARY) $(BINARY).exe
+clean: ## Remove the built binaries
+	@rm -rf $(BINARY) $(BINARY).exe dist

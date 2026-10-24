@@ -31,6 +31,55 @@ jobs:
       - run: go build ./...
       - run: go test -race ./...
 
+  dist:
+    name: Release binaries
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version: stable
+      # Every release target, as the release job builds them, so one that
+      # stopped building shows up here rather than on the day of a release.
+      - run: make dist
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dist
+          path: dist/
+
+  dist-run:
+    name: Run ${{ matrix.asset }}
+    needs: dist
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, asset: herdr-auto-title-linux-amd64 }
+          - { os: ubuntu-24.04-arm, asset: herdr-auto-title-linux-arm64 }
+          - { os: macos-15-intel, asset: herdr-auto-title-macos-amd64 }
+          - { os: macos-latest, asset: herdr-auto-title-macos-arm64 }
+          - { os: windows-latest, asset: herdr-auto-title-windows-amd64.exe }
+          - { os: windows-11-arm, asset: herdr-auto-title-windows-arm64.exe }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist
+      # The binary a release ships, cross-built, on the machine it is for: what
+      # an install runs before it keeps the binary.
+      - name: --version reports the manifest's version
+        shell: bash
+        env:
+          ASSET: ${{ matrix.asset }}
+        run: |
+          want="herdr-auto-title $(sed -n 's/^version *= *"\([^"]*\)".*/\1/p' herdr-plugin.toml | head -n 1)"
+          chmod +x "dist/$ASSET"
+          got=$("dist/$ASSET" --version | tr -d '\r')
+          echo "$got"
+          test "$got" = "$want"
+
   lint:
     name: Lint
     runs-on: ubuntu-latest

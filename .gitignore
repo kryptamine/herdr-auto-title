@@ -1,6 +1,7 @@
 # Compiled binary
 /herdr-auto-title
 /herdr-auto-title.exe
+/dist/
 
 # Go build and test artifacts
 *.test
