@@ -56,7 +56,8 @@ in [docs/architecture](docs/architecture/).
   than what is visible. A decision that needs a paragraph goes into
   `docs/architecture/` with one line in the code pointing at it.
 - Everything in `scripts/` is Python 3 and uses the standard library only. Shell
-  stays in the Makefile's one-line recipes.
+  stays in the Makefile's one-line recipes. The install step is the exception:
+  `install.sh` and `install.ps1` run where Python may not.
 - Never pass a terminal-derived value to a shell. Renames go over the socket
   API.
 - Probe before assuming anything about Herdr's API (`make probe-*`,

@@ -3,6 +3,9 @@
 /herdr-auto-title.exe
 /dist/
 
+# Python bytecode, from the scripts that import one another
+__pycache__/
+
 # Go build and test artifacts
 *.test
 *.out

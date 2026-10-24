@@ -19,8 +19,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # The floor is what go.mod and the README promise; Herdr builds the
-        # plugin from source at install time, so breaking it matters.
+        # The floor is what go.mod and the README promise; an install with no
+        # release binary builds the plugin from source, so breaking it matters.
         go-version: ["1.24", "stable"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -98,6 +98,8 @@ jobs:
         # linter because the formatters are configured in .golangci.yml too.
         run: go tool -modfile=tools/go.mod golangci-lint fmt --diff ./...
       - run: make lint
+      # The runner ships shellcheck; install.ps1 is analyzed on Windows below.
+      - run: make lint-scripts
 
   macos:
     name: macOS
@@ -121,3 +123,21 @@ jobs:
       - run: go build ./...
       # The race detector needs cgo on Windows, and the runner ships gcc.
       - run: go test -race ./...
+
+  install:
+    name: Install on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version: stable
+      - name: PSScriptAnalyzer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Invoke-ScriptAnalyzer -Path scripts/install.ps1 -EnableExit
+      - run: python scripts/test_install.py

@@ -31,6 +31,10 @@ lint: ## golangci-lint, pinned in tools/go.mod, for this platform and the other
 	@go tool -modfile=tools/go.mod golangci-lint run ./...
 	@GOOS=$(OTHER_GOOS) "$$(go tool -modfile=tools/go.mod -n golangci-lint)" run ./...
 
+.PHONY: lint-scripts
+lint-scripts: ## shellcheck the install script; CI analyzes install.ps1 on Windows
+	@shellcheck -s sh scripts/install.sh
+
 .PHONY: test
 test: ## Tests with the race detector
 	@go test -race ./...
