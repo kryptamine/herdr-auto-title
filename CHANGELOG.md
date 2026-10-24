@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.15.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.14.0...v0.15.0) (2026-10-24)
+
+
+### Features
+
+* **pi:** name a pi pane from the session its pane holds ([3033c44](https://github.com/kryptamine/herdr-auto-title/commit/3033c44d689d43f92dd4d003039011aff4853ae8))
+* **reads:** name antigravity cli tabs from their session title ([89f44df](https://github.com/kryptamine/herdr-auto-title/commit/89f44df70af63fddb6746664b8e96418fe16cfc1))
+* **resolver,app:** add a setting to bound or hide the directory ([9de7c21](https://github.com/kryptamine/herdr-auto-title/commit/9de7c21b177320c9060f54357519d049467ff3a0)), closes [#161](https://github.com/kryptamine/herdr-auto-title/issues/161)
+* **resolver:** put an icon for what a pane runs in front of its labels ([a8fae09](https://github.com/kryptamine/herdr-auto-title/commit/a8fae09a9d5ae6b0e6b4e1b6b404551dddc1c91f))
+
+
+### Bug Fixes
+
+* **app,reads:** keep off a tab mirror owns, even through a failed read ([98d3b18](https://github.com/kryptamine/herdr-auto-title/commit/98d3b18d51e0d2b87a793f84fddcfa9aa0a20b6f))
+* **app,resolver,config:** skip processes that own their tab labels ([513b42a](https://github.com/kryptamine/herdr-auto-title/commit/513b42a4ff0f27a8e373e04892cccb550d93dbd4))
+* **herdr:** refuse a session path that is not absolute and clean ([e319b7a](https://github.com/kryptamine/herdr-auto-title/commit/e319b7a692f729b9a731f923822cdefed284725a))
+* **resolver:** decline a pi title when the pane's directory is unknown ([47e009c](https://github.com/kryptamine/herdr-auto-title/commit/47e009c7c8eedea2e46152e8d446f2e44a0440f0))
+* **resolver:** read a pi pane's title as pi frames it ([5074b08](https://github.com/kryptamine/herdr-auto-title/commit/5074b08d4efb94c736cf27523fbf6e14ce5a73ca))
+* **resolver:** refuse an interpreter as a pane's kind ([13ec8dd](https://github.com/kryptamine/herdr-auto-title/commit/13ec8dd06c7c2a878ff4678d3fe20e74f6a8440a))
+* **transcript:** read on past a head that holds no whole line ([aba66dd](https://github.com/kryptamine/herdr-auto-title/commit/aba66dd1994e67f98829376f7a3e66d0beadd54b))
+
+
+### Refactoring
+
+* **app:** name the session switch after every agent it covers ([9764d9e](https://github.com/kryptamine/herdr-auto-title/commit/9764d9e98e89be9151d8759b224a38714c0c922c))
+* **reads:** name each session reader after its agent ([0228eea](https://github.com/kryptamine/herdr-auto-title/commit/0228eea7d1315b3c986f8d976f0692ac81f33d47))
+* **reads:** switch on the agent that holds a session ([84544bc](https://github.com/kryptamine/herdr-auto-title/commit/84544bc023fdf8e660a26ee345fdcc0806a85abd))
+* **resolver:** read pi's label from the pi package ([25d0bd9](https://github.com/kryptamine/herdr-auto-title/commit/25d0bd907ad2a5adf80930812617c10fe5b5ee8f))
+* **transcript:** follow an agent's session file in one place ([624bb73](https://github.com/kryptamine/herdr-auto-title/commit/624bb73cd4945461e8f9472acf414ef009517d2e))
+
 ## [0.14.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.13.2...v0.14.0) (2026-10-19)
 
 
