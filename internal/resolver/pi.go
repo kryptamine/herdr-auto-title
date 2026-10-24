@@ -4,7 +4,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/kryptamine/herdr-auto-title/internal/pi"
 	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
 
@@ -17,12 +16,8 @@ const (
 
 // withoutPiFrame reports what a Pi pane's title says beyond the program and
 // its directory, and false while it says nothing else. A title Pi did not
-// frame, or any other agent's, passes through as it is.
+// frame passes through as it is.
 func withoutPiFrame(pane *state.PaneState, title string) (string, bool) {
-	if pane.Agent != pi.Agent {
-		return title, true
-	}
-
 	rest, framed := strings.CutPrefix(strings.TrimSpace(title), piGlyph+piJoin)
 	if !framed {
 		return title, true

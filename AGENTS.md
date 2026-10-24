@@ -15,6 +15,7 @@ internal/reads        what a snapshot cannot say about a pane, once per poll
 internal/resolver     that state turned into a title, one source at a time
 internal/labels       that title put on, unless the label is the user's own
 internal/claude       what a Claude Code session is about, from its transcript
+internal/codex        what a Codex session is about, from its rollout and index
 internal/antigravity  what an Antigravity CLI session is about, from its annotation
 internal/pi           what a Pi session is about, from its session file
 internal/transcript   an append-only session file followed a poll at a time
@@ -222,7 +223,9 @@ are only the facts that would otherwise mislead the code in silence.
 - **`agent_session.kind` is decided per agent.** Claude Code's session arrives
   as `id` even when its hook reported the path too; Pi's arrives as `path`, the
   absolute path of its session file. A reader keyed on one kind reads nothing
-  for the other.
+  for the other. Codex's hook reports only the id, though Codex hands it the
+  path, and only at a session's first prompt: after `/new` or `/resume` the
+  reported session lags the terminal title until the user types.
 - **A plugin the server starts inherits the server's environment**, not the
   shell of whoever installed it, which is why `HERDR_AUTO_TITLE_*` settings
   arrive through `config.env` (see

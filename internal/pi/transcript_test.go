@@ -189,10 +189,10 @@ func TestALongPromptIsCut(t *testing.T) {
 	t.Parallel()
 
 	f := newSessionFile(t)
-	f.write(header(), prompt(strings.Repeat("é", maxOpening+50)))
+	f.write(header(), prompt(strings.Repeat("é", transcript.MaxOpening+50)))
 
-	if got := NewReader().Topic(f.path); len([]rune(got.Text())) != maxOpening {
-		t.Errorf("opening is %d runes, want %d", len([]rune(got.Text())), maxOpening)
+	if got := NewReader().Topic(f.path); len([]rune(got.Text())) != transcript.MaxOpening {
+		t.Errorf("opening is %d runes, want %d", len([]rune(got.Text())), transcript.MaxOpening)
 	}
 }
 
@@ -320,7 +320,7 @@ func TestAPathThatIsNotASessionFileIsRefused(t *testing.T) {
 		"not a session": strings.TrimSuffix(f.path, ".jsonl") + ".txt",
 		"empty":         "",
 	} {
-		if got := NewReader().Topic(path); got != (Topic{}) {
+		if got := NewReader().Topic(path); got != (transcript.Topic{}) {
 			t.Errorf("%s path %q: topic = %+v, want nothing", name, path, got)
 		}
 	}

@@ -65,6 +65,7 @@ CLI that is nothing but `agy`.
 
 ```sh
 herdr integration install claude           # Claude Code
+herdr integration install codex            # Codex
 herdr integration install antigravity-cli  # Antigravity CLI
 herdr integration install pi               # Pi
 ```

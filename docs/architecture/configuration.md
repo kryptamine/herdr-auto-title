@@ -18,7 +18,8 @@ One variable read there is not ours. `CLAUDE_CONFIG_DIR` is Claude Code's own,
 and Herdr's server passes it through to the plugin; it is read here so that the
 transcript reader is handed the homes to search rather than going to the
 environment for them, which is what makes the order the file is loaded in stop
-mattering.
+mattering. `CODEX_HOME`, Codex's own, is read for the same reason; unset, it
+means `~/.codex`, as it does to Codex.
 
 ## Why a file exists
 

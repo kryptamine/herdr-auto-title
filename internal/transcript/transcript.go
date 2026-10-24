@@ -14,18 +14,39 @@ import (
 // catch-up on a session first seen mid-flight, not the steady state.
 const MaxScan = 2 << 20
 
-// Follower reads one session file a poll at a time, from where the last read
-// stopped. Head makes the catch-up on a large file read its head as well as
-// its tail, for an agent that records where it started only once, up front.
+// CatchUp is which part of a file first seen past MaxScan is read, which
+// depends on what the file says only once.
+type CatchUp int
+
+const (
+	// Tail reads the last MaxScan bytes alone, where a name the session was
+	// given is repeated.
+	Tail CatchUp = iota
+	// HeadAndTail reads the first MaxScan bytes too, for a file that says where
+	// the session started only up front.
+	HeadAndTail
+	// Whole skips nothing and reads MaxScan a poll until it has caught up, for
+	// a file no line of which is repeated later: an index of many sessions.
+	Whole
+)
+
+// Follower reads one file a poll at a time, from where the last read of that
+// file stopped. Another path is read from its start, over what the last one
+// said: a session that went on in another file is still that session.
 type Follower struct {
-	Head   bool
-	offset int64
+	CatchUp CatchUp
+	path    string
+	offset  int64
 }
 
 // Follow hands absorb each complete line appended to the file at path since
 // the last call. A file shorter than what was read is a new file, so reset
 // runs first; a file that is gone reports false and is read from the start.
 func (f *Follower) Follow(path string, reset func(), absorb func(line string)) bool {
+	if path != f.path {
+		f.path, f.offset = path, 0
+	}
+
 	info, err := os.Stat(path)
 	if err != nil {
 		f.offset = 0
@@ -51,9 +72,8 @@ func (f *Follower) Follow(path string, reset func(), absorb func(line string)) b
 	// A read-only file has nothing to report on close.
 	defer func() { _ = file.Close() }()
 
-	// A file first seen long after it started is caught up on from its tail,
-	// where a name it was given is repeated; what lies between says nothing.
-	if f.Head && f.offset == 0 && size > MaxScan {
+	// What lies between the head and the tail says nothing.
+	if f.CatchUp == HeadAndTail && f.offset == 0 && size > MaxScan {
 		next, err := readLines(file, 0, false, absorb)
 		if err != nil {
 			return true
@@ -64,7 +84,7 @@ func (f *Follower) Follow(path string, reset func(), absorb func(line string)) b
 		f.offset = next
 	}
 
-	from, fromTail := f.offset, size-f.offset > MaxScan
+	from, fromTail := f.offset, f.CatchUp != Whole && size-f.offset > MaxScan
 	if fromTail {
 		from = size - MaxScan
 	}

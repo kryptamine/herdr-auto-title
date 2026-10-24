@@ -47,6 +47,10 @@ const (
 // setting so that nothing downstream goes to the environment on its own.
 const EnvClaudeConfigDir = "CLAUDE_CONFIG_DIR"
 
+// EnvCodexHome is Codex's own variable, naming the home it keeps sessions in,
+// and read here for the same reason.
+const EnvCodexHome = "CODEX_HOME"
+
 // DefaultPoll is how often the session is read. A six-pane snapshot measured
 // 0.47 ms and 6 KB, so twice a second costs about a thousandth of a core, and
 // a rename lands while the user is still looking at the tab.
@@ -111,6 +115,9 @@ type Config struct {
 	// adds. A home the user's shell picks per directory cannot be discovered,
 	// so it is named.
 	ClaudeDirs []string
+	// CodexHome is the Codex home sessions are read from, or "" when there is
+	// no home directory to find it under.
+	CodexHome string
 	// Home is the user's home directory, or "" when there is none.
 	Home string
 	// ForeignProcesses are programs that own their tab and pane labels; Auto
@@ -147,6 +154,7 @@ func LoadConfig() (Config, []string) {
 		RenamePanes:      true,
 		ReportWorkspaces: true,
 		ClaudeDirs:       homes,
+		CodexHome:        codexHome(),
 		Home:             userHome(),
 		// ShowAgentName stays false: most sessions run one agent, whose name
 		// would repeat on every tab.
@@ -250,6 +258,20 @@ func claudeHome() string {
 	}
 
 	return filepath.Join(home, ".claude")
+}
+
+// codexHome is the home Codex names itself, else the one it defaults to.
+func codexHome() string {
+	if dir := os.Getenv(EnvCodexHome); dir != "" {
+		return dir
+	}
+
+	home := userHome()
+	if home == "" {
+		return ""
+	}
+
+	return filepath.Join(home, ".codex")
 }
 
 func userHome() string {

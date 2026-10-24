@@ -119,6 +119,42 @@ func PiPrompt(text string) string {
 	) + `}}`
 }
 
+// CodexRollout lays down one Codex session's rollout under a Codex home, filed
+// under a day the way Codex files it.
+func CodexRollout(t *testing.T, home, sessionID string, lines ...string) {
+	t.Helper()
+
+	path := filepath.Join(
+		home, "sessions", "2026", "10", "19",
+		"rollout-2026-10-19T09-17-14-"+sessionID+".jsonl",
+	)
+
+	mkdir(t, filepath.Dir(path))
+	write(t, path, strings.Join(lines, "\n")+"\n")
+}
+
+// CodexName lays down the session index under a Codex home, naming one
+// session.
+func CodexName(t *testing.T, home, sessionID, name string) {
+	t.Helper()
+
+	write(t, filepath.Join(home, "session_index.jsonl"),
+		`{"id":"`+sessionID+`","thread_name":`+strconv.Quote(name)+
+			`,"updated_at":"2026-10-19T09:20:00Z"}`+"\n")
+}
+
+// CodexStartedIn is the header line of a Codex rollout, which is where the
+// file says what directory the session was opened in.
+func CodexStartedIn(dir string) string {
+	return `{"type":"session_meta","payload":{"id":"01a070db","cwd":` + strconv.Quote(dir) + `}}`
+}
+
+// CodexPrompt is a prompt the user typed into a Codex session.
+func CodexPrompt(text string) string {
+	return `{"type":"event_msg","payload":{"type":"user_message","message":` +
+		strconv.Quote(text) + `}}`
+}
+
 func mkdir(t *testing.T, dir string) {
 	t.Helper()
 

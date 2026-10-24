@@ -395,6 +395,22 @@ func TestASessionFiledUnderAnotherDirectoryIsStillFound(t *testing.T) {
 	}
 }
 
+func TestASessionFiledUnderTwoOtherDirectoriesIsReadFromTheFirst(t *testing.T) {
+	t.Parallel()
+
+	// Projects sort by slug, not by age, so the first is as good as any and
+	// is what was always read.
+	p := newProject(t)
+	p.dir = "/work/a"
+	p.write(aiTitle("First project"))
+	p.dir = "/work/b"
+	p.write(aiTitle("Second project"))
+
+	if got := p.reader().Topic(session, "/somewhere/else"); got.Text() != "First project" {
+		t.Errorf("topic = %+v, want the transcript sorted first", got)
+	}
+}
+
 func TestASessionWithNoTranscriptSaysNothing(t *testing.T) {
 	t.Parallel()
 
@@ -426,7 +442,7 @@ func TestATranscriptThatWasNotThereYetIsLookedForAgain(t *testing.T) {
 		t.Errorf("topic = %+v, want the failed search left alone until it expires", got)
 	}
 
-	clock = clock.Add(locateRetry)
+	clock = clock.Add(transcript.LocateRetry)
 
 	if got := reader.Topic(session, started); got.Text() != "OAuth redirect fix" {
 		t.Errorf("topic = %+v, want the transcript found on the next search", got)
@@ -466,7 +482,7 @@ func TestATranscriptThatWentMissingIsLookedForAgain(t *testing.T) {
 
 	// The path was found once and then kept for the pane's whole life, so a
 	// transcript that was rotated away froze the topic on whatever it last
-	// said. locateRetry exists for exactly this and could never apply.
+	// said. transcript.LocateRetry exists for exactly this and could never apply.
 	p := newProject(t)
 	reader := p.reader()
 	clock := time.Now()
@@ -492,7 +508,7 @@ func TestATranscriptThatWentMissingIsLookedForAgain(t *testing.T) {
 
 	p.write(aiTitle("Rework the poll loop"))
 
-	clock = clock.Add(locateRetry)
+	clock = clock.Add(transcript.LocateRetry)
 
 	if got := reader.Topic(session, started); got.Text() != "Rework the poll loop" {
 		t.Errorf("topic = %+v, want the replacement transcript found and read", got)
@@ -884,7 +900,7 @@ func TestATranscriptThatMovedHomesIsFoundAgain(t *testing.T) {
 	newProjectIn(t, other).write(aiTitle("Rework the poll loop"))
 	reader.Topic(session, started)
 
-	clock = clock.Add(locateRetry)
+	clock = clock.Add(transcript.LocateRetry)
 
 	if got := reader.Topic(session, started); got.Text() != "Rework the poll loop" {
 		t.Errorf("text = %q, want the transcript found in the other home", got.Text())

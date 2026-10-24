@@ -16,32 +16,6 @@ import (
 // package knows how to read.
 const Agent = "pi"
 
-// maxOpening bounds what an opening prompt contributes. It is generous because
-// the cut that matters is made later, against the width of the tab bar.
-const maxOpening = 200
-
-// Topic is what a session says it is about.
-type Topic struct {
-	// Name is what the user called the session with /name, and empty until
-	// they have: Pi derives no name of its own.
-	Name string
-	// Opening is the first prompt the user typed, which is what Pi's own
-	// session list shows for a session that has no name.
-	Opening string
-	// Dir is where the session was started, which Pi records once in the
-	// file's header.
-	Dir string
-}
-
-// Text is what the topic contributes to a title, the name first.
-func (t Topic) Text() string {
-	if t.Name != "" {
-		return t.Name
-	}
-
-	return t.Opening
-}
-
 // Reader reads session files, remembering how far it has read each one. A
 // session file only grows, so a poll reads the bytes appended since the last
 // one rather than the file.
@@ -54,7 +28,7 @@ type Reader struct {
 // session started only in the file's header, so a catch-up reads the head too.
 type session struct {
 	follower transcript.Follower
-	topic    Topic
+	topic    transcript.Topic
 }
 
 func NewReader() *Reader {
@@ -64,9 +38,9 @@ func NewReader() *Reader {
 // Topic reports what the session in the file at path is about, and the zero
 // topic when nothing can be read. Only a .jsonl file is opened, and the path
 // must be one herdr.AgentSessionInfo.Path accepted.
-func (r *Reader) Topic(path string) Topic {
+func (r *Reader) Topic(path string) transcript.Topic {
 	if filepath.Ext(path) != ".jsonl" {
-		return Topic{}
+		return transcript.Topic{}
 	}
 
 	r.mu.Lock()
@@ -74,12 +48,12 @@ func (r *Reader) Topic(path string) Topic {
 
 	held, known := r.sessions[path]
 	if !known {
-		held = &session{follower: transcript.Follower{Head: true}}
+		held = &session{follower: transcript.Follower{CatchUp: transcript.HeadAndTail}}
 		r.sessions[path] = held
 	}
 
 	// A file that is gone keeps what it said while it was here.
-	held.follower.Follow(path, func() { held.topic = Topic{} }, held.absorb)
+	held.follower.Follow(path, func() { held.topic = transcript.Topic{} }, held.absorb)
 
 	return held.topic
 }
@@ -90,14 +64,7 @@ func (r *Reader) Retain(paths []string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	kept := make(map[string]*session, len(paths))
-	for _, path := range paths {
-		if held, known := r.sessions[path]; known {
-			kept[path] = held
-		}
-	}
-
-	r.sessions = kept
+	r.sessions = transcript.Retain(r.sessions, paths)
 }
 
 // entry is one session line. The file carries far more per line — ids,
@@ -129,8 +96,8 @@ func (s *session) absorb(line string) {
 			s.topic.Dir = read.CWD
 		}
 	case "session_info":
-		// A name entry without a name is the user clearing it, and the
-		// session then goes back to being known by its opening.
+		// Only the user names a session, with /name; an entry without a name
+		// clears it, and the session goes back to being known by its opening.
 		s.topic.Name = strings.TrimSpace(read.Name)
 	case "message":
 		if s.topic.Opening == "" && read.Message.Role == "user" {
@@ -147,7 +114,5 @@ func opening(content json.RawMessage) string {
 		return ""
 	}
 
-	line, _, _ := strings.Cut(strings.TrimSpace(text), "\n")
-
-	return transcript.Truncate(strings.TrimSpace(line), maxOpening)
+	return transcript.FirstLine(text)
 }

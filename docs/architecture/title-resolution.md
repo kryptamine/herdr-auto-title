@@ -116,6 +116,34 @@ The richest source in practice, and the one that carries most agent context. Its
 value is cleaned hard before it is trusted — see
 [sanitization](./sanitization.md).
 
+Some agents use their title for something other than the work, so
+`agentTitle` (`internal/resolver/agenttitle.go`) decides per agent what the
+title is worth before it is read; a pane it declines is named by its session
+[one rung down](#the-session-transcript).
+
+Codex's default title items are the activity, the thread name and the project,
+so it reads `<project>` until the session has a name and `<name> | <project>`
+once Codex has generated one or `/rename` has set it; while it waits on the user
+it blinks `[ ! ] Action Required` and `[ . ] Action Required` in front. Herdr
+strips the braille spinner but not that prefix, nor the `●` voice mode puts
+before it. `codex.ThreadName` (`internal/codex/title.go`) drops all three
+and the last ` | ` item, which is always the project: Codex names it after the
+repository root and cuts it at 24 characters, so it is not matched against the
+pane's directory. A title with no ` | ` left is the project alone and declines.
+A session the transcript has read declines the title outright: the title cuts
+the name at 48 characters, and the session index holds it whole. That makes
+the title the judge of whether the session is still the pane's: Herdr learns of
+a Codex session only at its first prompt, so after `/new` or `/resume` it goes
+on reporting the one before while the title already shows the next. A session
+whose name the title does not show, or that has a name the title lacks, is not
+read, and the pane is titled as if no session had been reported. A name shown
+whole has to match whole, since one session's name can start another's; only
+a name the title cut, which ends in `...`, is matched by its start. A user
+who reconfigured `tui.terminal_title` breaks this reading, so a `config.toml`
+under the Codex home that assigns the key turns the check off, and the session
+files still name the tab. The file is scanned for the key rather than parsed: a
+false match only skips the check, and a miss would drop every session's name.
+
 Pi is read with one more step, because its title has a grammar of its own: Pi
 titles its terminal `π - <dir>` and, once `/name` has given the session a name,
 `π - <name> - <dir>`. The first says which program sits where, and the context
@@ -142,16 +170,43 @@ session id through `pane.report_agent_session`, and it arrives in the snapshot
 as `PaneInfo.agent_session` — no extra request. Without the hook the field is
 null, this source declines, and every other rung works as it always did.
 
+`herdr integration install codex` reports a Codex session id the same way, and
+`internal/codex/session.go` reads two files under `CODEX_HOME`, else `~/.codex`.
+Codex files the rollout under the day the session started, as
+`sessions/YYYY/MM/DD/rollout-<timestamp>-<id>.jsonl`, so its `transcript.Layout`
+has no directory to try first; a reverted session goes on in a new file whose
+name adds a rollout id after the session's, and the layout's `Pick` takes the
+newest match, where Claude's takes the first. A layout that picks is searched
+again every `transcript.LocateRetry` while the session is read, since the newer
+file can appear after the first was found; the follower then reads it from its
+start, over what the first one said.
+Two things can name a session:
+
+- the session index, `session_index.jsonl`, one line per name with the last for
+  an id winning. Codex writes the title it generates from the first prompt
+  there, and `/rename` too; one file holds every session's names.
+- failing that, the first `user_message` event in the rollout, which is what
+  Codex's resume picker shows for an unnamed session. Only its first line is
+  kept; what Codex injects arrives as `response_item` lines and is not read.
+
+The rollout's `session_meta` line says where the session started and each
+`turn_context` line where it went on, and the last of them is where its branch
+is read from. Both files are followed through `transcript.Follower`: the
+rollout's head and tail, the index whole, `MaxScan` a poll, since a name is
+written to it once and an index past `MaxScan` read from its tail would lose
+every older session's. Codex compresses a rollout to `.jsonl.zst` only once
+it is a week old, which is not a session a pane still holds.
+
 The transcript is then read from disk (`internal/claude/transcript.go`). Claude
 Code files its sessions under the configuration home `CLAUDE_CONFIG_DIR` names,
 and a user may have more than one — a second home for work under one client,
 say, whose sessions are invisible to a plugin reading only the first.
-`HERDR_AUTO_TITLE_CLAUDE_DIRS` names the others, and `locate` tries each home in
-order, `locateUnder` doing one home's own two-step lookup, so a session found in
-the first costs what it cost before the setting existed. The homes are named
-rather than discovered: a scan for anything shaped like a configuration home
-would read directories the user never pointed the plugin at, which is the one
-thing this source does not do. Both settings are read in
+`HERDR_AUTO_TITLE_CLAUDE_DIRS` names the others, and `transcript.Layout.Find`
+tries each home in order, with its own two-step lookup inside each, so a session
+found in the first costs what it cost before the setting existed. The homes are
+named rather than discovered: a scan for anything shaped like a configuration
+home would read directories the user never pointed the plugin at, which is the
+one thing this source does not do. Both settings are read in
 `internal/app/config.go` with every other one and reach the reader as
 `Config.ClaudeDirs`, already in search order, so `internal/claude` reads no
 environment at all: a reader is built over the homes it is handed, and no home
@@ -208,7 +263,8 @@ from wherever it grows after that; the Claude reader reads the tail alone,
 because a title Claude Code has given a session is repeated there. Both follow
 their files through `internal/transcript.Follower`, which keeps the offset,
 starts over on a file that shrank and waits for a half-written last line; the
-head read is its `Head` option, so each package parses only its own lines.
+head read is its `HeadAndTail` catch-up, so each package parses only its own
+lines.
 
 Three costs are worth stating plainly:
 

@@ -9,6 +9,7 @@ import (
 
 	"github.com/kryptamine/herdr-auto-title/internal/antigravity"
 	"github.com/kryptamine/herdr-auto-title/internal/claude"
+	"github.com/kryptamine/herdr-auto-title/internal/codex"
 	"github.com/kryptamine/herdr-auto-title/internal/git"
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
 	"github.com/kryptamine/herdr-auto-title/internal/pi"
@@ -22,6 +23,8 @@ type Options struct {
 	ClaudeDirs []string
 	// Home is the user's home directory, where Antigravity CLI keeps its state.
 	Home string
+	// CodexHome is the Codex home rollouts and the session index are found in.
+	CodexHome string
 	// BranchMax of zero or less turns branches off, and then no checkout is read.
 	BranchMax    int
 	ReadSessions bool
@@ -34,6 +37,7 @@ type Reader struct {
 	claudeTopics      *claude.Reader
 	antigravityTitles *antigravity.Reader
 	piTopics          *pi.Reader
+	codexTopics       *codex.Reader
 	log               *slog.Logger
 	readBranches      bool
 	readSessions      bool
@@ -45,6 +49,7 @@ func New(opts Options, log *slog.Logger) *Reader {
 		claudeTopics:      claude.NewReader(opts.ClaudeDirs...),
 		antigravityTitles: antigravity.NewReader(opts.Home),
 		piTopics:          pi.NewReader(),
+		codexTopics:       codex.NewReader(opts.CodexHome),
 		log:               log,
 		readBranches:      opts.BranchMax > 0,
 		readSessions:      opts.ReadSessions,
@@ -62,6 +67,7 @@ func (r *Reader) Poll(client herdr.Client, panes []herdr.PaneInfo, drew map[stri
 	held := sessionsIn(panes)
 	r.claudeTopics.Retain(held)
 	r.piTopics.Retain(held)
+	r.codexTopics.Retain(held)
 
 	return &Poll{
 		reader:    r,
@@ -216,6 +222,18 @@ func (r *Reader) topic(ctx context.Context, pane *state.PaneState, dir string) s
 		}
 
 		topic := r.piTopics.Topic(path)
+
+		return sessionTopic{text: topic.Text(), dir: topic.Dir}
+	case codex.Agent:
+		sessionID, ok := pane.AgentSession.ID()
+		if !ok {
+			return sessionTopic{}
+		}
+
+		topic := r.codexTopics.Topic(sessionID)
+		if !r.codexTopics.Shows(pane.TerminalTitle, topic) {
+			return sessionTopic{}
+		}
 
 		return sessionTopic{text: topic.Text(), dir: topic.Dir}
 	}

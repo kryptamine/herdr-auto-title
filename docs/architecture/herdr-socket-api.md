@@ -356,6 +356,21 @@ reads, so this section describes Herdr rather than those types.
   Pi. The same pane carried `title: null`, `display_agent: null` and, in
   `terminal_title_stripped`, Pi's own title unchanged: `π - <dir>` for an
   unnamed session, `π - <name> - <dir>` once `/name` has named it.
+- **Codex's `agent_session` is an id.** The hook Herdr 0.9.5 installs for it
+  (integration version 10) runs on `SessionStart` and reports `agent: "codex"`
+  with the session id alone, dropping the `transcript_path` Codex hands it, so
+  the rollout is found by id under `CODEX_HOME`; a live pane carries
+  `source: "herdr:codex"`, `kind: "id"`. The hook fires at a session's first
+  prompt, not when it opens, while the rollout is written at once: after `/new`
+  or `/resume` the pane goes on reporting the session before, with the terminal
+  title already the next one's, until the user sends a prompt. Without the
+  integration a Codex pane still
+  reports `agent: "codex"` and `agent_session: null`. Its
+  `terminal_title_stripped` loses a leading braille spinner (`⠋ x | y` →
+  `x | y`) but keeps a `●` or a `[ ! ] Action Required` in front of it.
+  `codex resume <id>` titles the terminal after the resumed session at once,
+  `<name> | <project>`, and an unnamed resumed session as `<project>` alone.
+  Measured on Herdr 0.9.5 with Codex 0.163.0.
 - **`pane.report_metadata` is how anything outside Herdr sets `PaneInfo.title`.**
   Probed directly: `herdr pane report-metadata <pane> --source X --title T` put
   `T` in the snapshot's `title` and a tab bearing it appeared within one poll;

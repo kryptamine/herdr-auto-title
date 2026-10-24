@@ -1723,3 +1723,38 @@ func TestATabIsNamedFromAPiSessionsFirstPrompt(t *testing.T) {
 		t.Errorf("rename = %q, want %q", got, want)
 	}
 }
+
+func TestATabIsNamedFromACodexSessionsName(t *testing.T) {
+	t.Parallel()
+
+	// The title cuts a long name and the session index does not, so the files
+	// Codex keeps for the session say what the tab is for.
+	const session = "01a070db-95a3-70b3-bd9d-a9ee3186a65b"
+
+	cfg := transcriptConfig()
+	cfg.CodexHome = t.TempDir()
+	readstest.CodexRollout(t, cfg.CodexHome, session,
+		readstest.CodexStartedIn(dashboard),
+		readstest.CodexPrompt("rework the poll loop"),
+	)
+	readstest.CodexName(t, cfg.CodexHome, session, "Rework poll loop")
+
+	h := startConfigured(t, herdrtest.New(
+		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
+		[]herdr.PaneInfo{{
+			PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true,
+			TerminalTitleStripped: "Rework poll loop | dashboard",
+			Agent:                 "codex",
+			AgentStatus:           "working",
+			AgentSession: &herdr.AgentSessionInfo{
+				Agent: "codex", Kind: herdr.SessionRefID, Value: session,
+			},
+		}},
+	), cfg)
+	h.poll()
+
+	got := h.client.Renames()[0].Label
+	if want := "dashboard › codex › Rework poll loop"; got != want {
+		t.Errorf("rename = %q, want %q", got, want)
+	}
+}
