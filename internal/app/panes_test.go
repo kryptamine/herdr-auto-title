@@ -257,8 +257,9 @@ func TestTheSettingsThatShapeATitleShapeAPaneLabel(t *testing.T) {
 	t.Parallel()
 
 	// A pane is named by the chain that names tabs, so everything the user has
-	// tuned about a title holds for a pane too. The position and the pane ID
-	// are the exceptions, and the last two cases state which way round each goes.
+	// tuned about a title holds for a pane too. The position, the status and
+	// the pane ID are the exceptions, and the last three cases state which way
+	// round each goes.
 	tests := []struct {
 		name     string
 		tune     func(*Config)
@@ -290,6 +291,12 @@ func TestTheSettingsThatShapeATitleShapeAPaneLabel(t *testing.T) {
 			"1 · dashboard",
 		},
 		{
+			"the status follows the position on the tab and not the pane",
+			func(c *Config) { c.ShowPosition, c.ShowAgentStatus = true, true },
+			"billing › claude",
+			"1 · ◐ dashboard",
+		},
+		{
 			"the pane ID leads the pane and not the tab",
 			func(c *Config) { c.ShowPaneID = true },
 			"[wE:p2] billing › claude",
@@ -305,9 +312,15 @@ func TestTheSettingsThatShapeATitleShapeAPaneLabel(t *testing.T) {
 			cfg.ShowAgentName = true
 			tc.tune(&cfg)
 
-			client := herdrtest.New(oneTab(), []herdr.PaneInfo{
+			tabs := []herdr.TabInfo{
+				{TabID: "wE:t1", Label: "1", AgentStatus: herdr.AgentStatusWorking},
+			}
+			client := herdrtest.New(tabs, []herdr.PaneInfo{
 				{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true},
-				{PaneID: "wE:p2", TabID: "wE:t1", CWD: billing, Agent: "claude"},
+				{
+					PaneID: "wE:p2", TabID: "wE:t1", CWD: billing,
+					Agent: "claude", AgentStatus: herdr.AgentStatusWorking,
+				},
 			})
 			appFromConfig(t, cfg).poll(t.Context(), client)
 

@@ -43,7 +43,7 @@ func TestTabFromKeepsItsLabel(t *testing.T) {
 	t.Parallel()
 
 	tab := TabFrom(
-		herdr.TabInfo{TabID: "wE:t1", Label: "dashboard"},
+		herdr.TabInfo{TabID: "wE:t1", Label: "dashboard", AgentStatus: herdr.AgentStatusDone},
 		"dashboard",
 		1,
 		[]*PaneState{{ID: "wE:p1", Dir: "/work/dashboard"}},
@@ -64,6 +64,11 @@ func TestTabFromKeepsItsLabel(t *testing.T) {
 
 	if len(tab.Panes) != 1 || tab.Panes[0].Dir != "/work/dashboard" {
 		t.Errorf("panes = %+v, want one pane in /work/dashboard", tab.Panes)
+	}
+
+	// Herdr's own aggregate, not one of its panes' statuses.
+	if tab.AgentStatus != herdr.AgentStatusDone {
+		t.Errorf("agent status = %q, want the tab's own %q", tab.AgentStatus, herdr.AgentStatusDone)
 	}
 }
 

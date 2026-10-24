@@ -395,7 +395,14 @@ reads, so this section describes Herdr rather than those types.
   carries one, and a pane with no agent reports `unknown`. `TabInfo` carries one
   as well, aggregated over the tab's panes: with a single Claude Code pane
   working, its tab reported `working` while every other tab reported `unknown`.
-  How it aggregates two agent panes in one tab has not been probed.
+  Over two agent panes the tab reports the higher of the two, ranked
+  `blocked > done > working > idle > unknown`: probed on 0.9.5 with every pair
+  set through `pane report-agent`, so a pane without an agent never shows. **A
+  finished agent outranks a working one**, which held for three seconds with no
+  sign of giving way. `done` is never reported, only derived: an agent going
+  `working → idle` in a tab nobody is looking at reads `done`, focusing the tab
+  turns it to `idle`, and the same transition in the focused tab goes straight
+  to `idle`.
 - **A workspace nobody has renamed is labelled after its pane's directory, and
   the label follows that directory until anything renames it.** Probed:
   `herdr workspace create --no-focus --cwd /tmp` answered `label: "tmp"` with

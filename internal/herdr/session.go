@@ -5,12 +5,13 @@ import (
 	"regexp"
 )
 
-// Agent statuses a tab is named differently for. Herdr reports three more —
-// idle, done and unknown — and none of them changes what a tab says, so
-// nothing here names them.
+// Agent statuses a tab is named differently for. Herdr reports one more,
+// unknown, which a pane without an agent carries and nothing here marks.
 const (
+	AgentStatusIdle    = "idle"
 	AgentStatusWorking = "working"
 	AgentStatusBlocked = "blocked"
+	AgentStatusDone    = "done"
 )
 
 // WorkspaceInfo describes a workspace. Its label is what Herdr shows above the
@@ -32,6 +33,9 @@ type TabInfo struct {
 	TabID       string `json:"tab_id"`
 	WorkspaceID string `json:"workspace_id"`
 	Label       string `json:"label"`
+	// AgentStatus is Herdr's own over the tab's panes, so a finished agent
+	// outranks a working one — see docs/architecture/herdr-socket-api.md.
+	AgentStatus string `json:"agent_status"`
 }
 
 // PaneInfo describes a pane. It carries no foreground process name — only

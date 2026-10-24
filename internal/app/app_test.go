@@ -1693,6 +1693,41 @@ func TestResolversKeepAPaneInTheHomeFromNamingATab(t *testing.T) {
 	}
 }
 
+func TestTheAgentStatusFollowsTheTabWithoutLockingIt(t *testing.T) {
+	t.Parallel()
+
+	// Herdr changes the status on its own, so a label carrying a stale mark is
+	// still Auto Title's to replace rather than one the user typed.
+	cfg := testConfig()
+	cfg.ShowAgentStatus = true
+
+	client := herdrtest.New(
+		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1", AgentStatus: herdr.AgentStatusWorking}},
+		[]herdr.PaneInfo{{
+			PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true,
+			Agent: "claude", AgentStatus: herdr.AgentStatusWorking,
+		}},
+	)
+	app := appFromConfig(t, cfg)
+	app.poll(t.Context(), client)
+
+	client.SetTab(herdr.TabInfo{
+		TabID: "wE:t1", Label: "◐ dashboard", AgentStatus: herdr.AgentStatusDone,
+	})
+	app.poll(t.Context(), client)
+
+	renames := client.Renames()
+
+	got := make([]string, 0, len(renames))
+	for _, call := range renames {
+		got = append(got, call.Label)
+	}
+
+	if want := []string{"◐ dashboard", "✓ dashboard"}; !slices.Equal(got, want) {
+		t.Errorf("renames = %q, want %q", got, want)
+	}
+}
+
 func TestATabIsNamedFromAPiSessionsFirstPrompt(t *testing.T) {
 	t.Parallel()
 

@@ -207,6 +207,9 @@ type TabState struct {
 	// Context is the pane the tab is named after, nil only when it has no
 	// panes. Picked once here, so what is read and what is named cannot differ.
 	Context *PaneState
+	// AgentStatus is the tab's, as Herdr aggregates it over every pane rather
+	// than the context pane's alone.
+	AgentStatus string
 }
 
 // TabFrom builds a tab and picks its context pane. With preferAgent a pane
@@ -233,6 +236,7 @@ func TabFrom(
 		Position:      position,
 		Panes:         ordered,
 		Context:       contextPane(ordered, rules),
+		AgentStatus:   info.AgentStatus,
 	}
 }
 

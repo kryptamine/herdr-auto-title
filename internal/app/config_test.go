@@ -36,7 +36,8 @@ func isolate(t *testing.T) {
 	names := []string{
 		EnvDebug, EnvPoll, EnvMaxLength, EnvBranchMax, EnvDirectoryMax,
 		EnvPosition, EnvManual, EnvTranscript, EnvAgentName, EnvPanes,
-		EnvPreferAgent, EnvPaneID, EnvAgentHandle, EnvIcons, EnvWorkspaces, EnvWorkspaceMaxLength,
+		EnvPreferAgent, EnvPaneID, EnvAgentHandle, EnvIcons, EnvAgentStatus,
+		EnvWorkspaces, EnvWorkspaceMaxLength,
 		// Claude Code's own variable is cleared with ours: it now decides a
 		// Config field, so a developer's real home would otherwise be read.
 		EnvClaudeDirs, EnvClaudeConfigDir, EnvForeignProcesses,
@@ -118,6 +119,10 @@ func TestLoadConfigDefaults(t *testing.T) {
 
 	if cfg.ShowIcons {
 		t.Error("icons are shown by default")
+	}
+
+	if cfg.ShowAgentStatus {
+		t.Error("agent status is shown by default")
 	}
 
 	if home, _ := os.UserHomeDir(); cfg.Home != home {
@@ -208,6 +213,20 @@ func TestLoadConfigTurnsIconsOn(t *testing.T) {
 
 	if !cfg.ShowIcons {
 		t.Error("icons are hidden despite being turned on")
+	}
+}
+
+func TestLoadConfigTurnsAgentStatusOn(t *testing.T) {
+	isolate(t)
+	t.Setenv(EnvAgentStatus, "true")
+
+	cfg, warnings := LoadConfig()
+	if len(warnings) != 0 {
+		t.Errorf("warnings = %v, want none", warnings)
+	}
+
+	if !cfg.ShowAgentStatus {
+		t.Error("agent status is hidden despite being turned on")
 	}
 }
 

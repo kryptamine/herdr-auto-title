@@ -819,3 +819,29 @@ where nothing says what font the client that draws the tab bar uses.
 The glyphs need Nerd Fonts 3.0 or later: the agent's robot is an Octicon that
 2.3 lacks. On Windows only two icons ever show, the agent's and the shell's,
 because `pane.process_info` there lists nothing that runs under the shell.
+
+## The agent status is not a part of the title either
+
+`HERDR_AUTO_TITLE_AGENT_STATUS=true` puts a mark for what a tab's agents are
+doing in front of its title: `◉` idle, `◐` working, `●` blocked and `✓` done. A
+tab with no agent reports `unknown` and carries no mark.
+
+It is a decorator, `StatusTitles` (`internal/resolver/status.go`), for the
+reasons the icon is one. It sits between the position and the icon —
+`1 · ◐ <icon> billing` — because the position is a key and keeps the lead,
+while the status is what changes and reads first after it. Only tabs carry it:
+a pane label is reached through the goto panel, which is not where a user
+glances to see whether an agent is done.
+
+The mark is the tab's `agent_status` as Herdr aggregates it, not the context
+pane's, so a tab named after an editor still says its agent is blocked. Herdr
+ranks a finished agent above a working one
+([the socket API](./herdr-socket-api.md#what-the-objects-carry)), and the mark
+follows that rather than ranking on its own: it then agrees with Herdr's own
+sidebar, and `done` is what asks for a look.
+
+It costs nothing to read, because the snapshot already carries the status, but
+every change of it is a rename, and focusing a tab that reads `done` is one
+more. That is why it is off by default. The marks are plain Unicode, so no
+Nerd Font is needed; `◉`, `◐` and `●` are East Asian Ambiguous, and a terminal
+set to draw those wide gives each two columns where the bound counts one.
