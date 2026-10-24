@@ -20,7 +20,7 @@ internal/pi           what a Pi session is about, from its session file
 internal/transcript   an append-only session file followed a poll at a time
 internal/git          what a repository has checked out, read from .git
 internal/instance     one Auto Title per session, and the restart handoff
-scripts/              the Python probes
+scripts/              the Python probes, and the install step Herdr runs
 docs/architecture/    how the plugin works and why
 ```
 
@@ -101,6 +101,12 @@ Each script is executable, opens with `#!/usr/bin/env python3` and a module
 docstring saying what it is for, and takes no dependency outside the standard
 library.
 
+**The one exception is the install step**, `scripts/install.sh` and
+`scripts/install.ps1`. Herdr runs it where there may be neither Go nor Python,
+so it is POSIX `sh` and Windows PowerShell 5.1, the two take the same steps in
+the same order, and `scripts/test_install.py` runs both
+([installation](docs/architecture/installation.md) says why).
+
 ## Comment rule (mandatory)
 
 **A comment is at most three lines**, in every language in the repository, and
@@ -117,6 +123,7 @@ to delete, is in [.claude/rules/comments.md](.claude/rules/comments.md).
 make            # list every target
 make check      # fmt + vet + lint + test   ← the gate before any commit
 make lint       # golangci-lint, pinned in tools/go.mod, for both platforms
+make lint-scripts # shellcheck for scripts/install.sh
 make test       # go test -race ./...
 make run        # build and run in the current Herdr session, DEBUG logging
 make dev        # the same, restarting on every source change
@@ -139,8 +146,8 @@ in a `//nolint:paralleltest`.
 
 The linter lives in `tools/go.mod`, a module of its own, so its dependency tree
 stays out of the plugin's: the main module keeps two dependencies and still
-builds on Go 1.24, which is what Herdr needs at install time. An error
-swallowed on purpose is dropped with `_ =`, which is what `errcheck` asks
+builds on Go 1.24, which is what an install without a release binary needs. An
+error swallowed on purpose is dropped with `_ =`, which is what `errcheck` asks
 for; only a `Close` made through `io.Closer` or on a `net.Listener` is
 exempt, which is how connections and listeners are held here, and a file's
 is not.

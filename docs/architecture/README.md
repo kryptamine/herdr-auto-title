@@ -22,6 +22,7 @@ that settled it.
 | [Sanitizing untrusted values](./sanitization.md) | What is stripped from terminal-derived values, what is rejected as saying nothing, and why the length limit is counted in columns |
 | [Manual rename protection](./manual-rename-protection.md) | Telling your rename from the plugin's own using nothing but successive polls, and what that costs |
 | [Configuration](./configuration.md) | Why a configuration file exists at all, where it lives, why the environment overrides it, and what the file format does and does not do |
+| [Installation](./installation.md) | The release binaries an install downloads, the order it falls back to a Go build and an older release in, and why releases start as drafts |
 | [Herdr socket API](./herdr-socket-api.md) | The wire protocol and the measured facts about Herdr 0.8.2 that everything else rests on |
 
 Two things are worth knowing before reading any of them:

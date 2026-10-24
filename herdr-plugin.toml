@@ -8,15 +8,15 @@ description = "Automatically generates contextual tab titles"
 # Herdr enforces this list: on a platform left out of it, nothing below runs.
 platforms = ["linux", "macos", "windows"]
 
-# Built at install time; Go is the only requirement. Windows has a pair of its
-# own so the binary carries the extension Windows expects of one.
+# A release binary when one is published for this version and platform, else
+# a Go build; docs/architecture/installation.md has the order and why.
 [[build]]
 platforms = ["linux", "macos"]
-command = ["go", "build", "-o", "herdr-auto-title", "./cmd/herdr-auto-title"]
+command = ["sh", "scripts/install.sh"]
 
 [[build]]
 platforms = ["windows"]
-command = ["go", "build", "-o", "herdr-auto-title.exe", "./cmd/herdr-auto-title"]
+command = ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts/install.ps1"]
 
 # A one-shot launch, not a supervised daemon: the process stays alive itself.
 [[startup]]

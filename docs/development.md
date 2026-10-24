@@ -133,7 +133,9 @@ herdr plugin install kryptamine/herdr-auto-title
 `unlink` only unregisters; your checkout is left alone. `install` takes GitHub
 shorthand and nothing else (`owner/repo`, or `owner/repo/subdir`), clones the
 repository, runs the build command from `herdr-plugin.toml` and registers what
-it built. `herdr plugin list` shows which of the two you are running.
+it built. That command downloads the latest release's binary rather than
+building your branch; `HERDR_AUTO_TITLE_BUILD=source` builds the checkout instead,
+and [installation](architecture/installation.md) has the whole order. `herdr plugin list` shows which of the two you are running.
 
 Neither one starts anything. Herdr runs `[[startup]]` when the **server**
 restores a session, and has no hook for install or enable, so a freshly

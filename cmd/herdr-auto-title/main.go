@@ -25,8 +25,10 @@ func main() {
 		err = run()
 	case len(os.Args) == 2 && os.Args[1] == "restart":
 		err = restart()
+	case len(os.Args) == 2 && os.Args[1] == "--version":
+		fmt.Println("herdr-auto-title", version)
 	default:
-		err = errors.New("usage: herdr-auto-title [restart]")
+		err = errors.New("usage: herdr-auto-title [restart | --version]")
 	}
 
 	if err != nil {

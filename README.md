@@ -18,30 +18,28 @@ https://github.com/user-attachments/assets/ada47ba7-cf64-405b-bc07-185dc10ef2ef
 
 ## Install
 
-You need Herdr 0.8.2+ and Go 1.24+ on macOS, Linux or Windows. Herdr builds the
-plugin from source when it installs it.
-
-<!-- x-release-please-start-version -->
-
-```sh
-herdr plugin install kryptamine/herdr-auto-title --ref v0.14.0
-herdr plugin action invoke herdr.auto-title.restart
-```
-
-<!-- x-release-please-end -->
-
-The second line starts the plugin now. Without it Herdr starts a plugin only
-when its server next starts.
-
-To update, run both lines again with the newer
-[release](https://github.com/kryptamine/herdr-auto-title/releases) tag. Your
-configuration is kept.
-
-To run the latest commit on `main`, which can be ahead of the latest release,
-leave the tag out:
+You need Herdr 0.8.2+ on macOS, Linux or Windows. An install downloads the
+release binary for your platform and checks it against the release's
+checksums; Go 1.24+ is needed only where none fits.
 
 ```sh
 herdr plugin install kryptamine/herdr-auto-title
+herdr plugin action invoke herdr.auto-title.restart
+```
+
+This installs the latest
+[release](https://github.com/kryptamine/herdr-auto-title/releases). The second
+line starts the plugin now. Without it Herdr starts a plugin only when its
+server next starts.
+
+To update, run both lines again. Your configuration is kept. To stay on one
+release instead, add its tag to the first line: `--ref vX.Y.Z`.
+
+To run the latest commit on `main`, which can be ahead of the latest release,
+build it from source, which needs Go:
+
+```sh
+HERDR_AUTO_TITLE_BUILD=source herdr plugin install kryptamine/herdr-auto-title
 herdr plugin action invoke herdr.auto-title.restart
 ```
 
