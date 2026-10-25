@@ -362,6 +362,12 @@ reads, so this section describes Herdr rather than those types.
   `--clear-title` undid it. Nothing installs a source for it today, which is why
   `title` is null in practice. It also carries `--display-agent`,
   `--state-label`, `--token` and a `--ttl-ms`.
+- **A pane carries `tokens` only while metadata is reported on it.** Probed on
+  0.9.5: `--token probe=one` put `"tokens": {"probe": "one"}` in the snapshot's
+  pane, one flat map of strings, and `--clear-token probe` removed the key
+  entirely. No shell, editor or ssh pane carries any; herdr-sidebar's panes
+  carry `herdr-sidebar-explorer` and `herdr-sidebar-git`, which is why a pane
+  with tokens ranks below one without when naming a tab.
 - **A workspace object carries** `workspace_id`, `number`, `label`, `focused`,
   `pane_count`, `tab_count`, `active_tab_id` and `agent_status`, plus `tokens`
   only while metadata is reported on it and `worktree` for a workspace in a git
