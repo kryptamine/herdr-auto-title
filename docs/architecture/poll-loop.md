@@ -199,7 +199,7 @@ Some programs write a tab's and their own pane's label themselves. herdr-mirror
 is one: a mirror pane runs `herdr-mirror pane …` and shadows a tab on another
 machine, and any label written to the local tab is read by mirror as a user
 rename and pushed to the remote, where it locks the tab against the remote's own
-Auto Title. herdr-mirror is built into `resolver.Owners`; others are added by
+Auto Title. herdr-mirror is built into `labels.Owners`; others are added by
 name through `HERDR_AUTO_TITLE_FOREIGN_PROCESSES`.
 
 **One such pane leaves the whole tab alone.** Not only the pane the tab is named

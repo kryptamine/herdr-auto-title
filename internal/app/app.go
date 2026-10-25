@@ -56,7 +56,7 @@ type App struct {
 	// how loudly the next one is reported.
 	failures failureLog
 	// owners are the programs that write their own tab and pane labels.
-	owners resolver.Owners
+	owners labels.Owners
 	// server identifies the Herdr this instance answers to, learned from the
 	// first poll that could read it. Another server on the socket has started
 	// an instance of its own, and this one leaves rather than double it.
@@ -91,7 +91,7 @@ func New(
 			BranchMax:    cfg.BranchMax,
 			ReadSessions: cfg.ReadSessions,
 		}, log),
-		owners:   resolver.NewOwners(cfg.ForeignProcesses),
+		owners:   labels.NewOwners(cfg.ForeignProcesses),
 		instance: instance,
 	}
 }
