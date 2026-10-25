@@ -1,6 +1,7 @@
 package state
 
 import (
+	"encoding/json"
 	"path/filepath"
 	"testing"
 	"time"
@@ -363,6 +364,90 @@ func TestAPreferredAgentOutranksFocusInAnyState(t *testing.T) {
 		t.Fatalf("context = %v without the preference, want the focused pane wE:p2", got)
 	}
 }
+
+func TestTabContextPassesOverAPaneWithTokens(t *testing.T) {
+	t.Parallel()
+
+	// A docked sidebar redraws all the time, so on recency alone it names
+	// every tab nobody is looking at.
+	now := time.Now()
+	tab := tabOf([]*PaneState{
+		{ID: "wE:p1", ChangedAt: now},
+		{ID: "wE:p2", ChangedAt: now.Add(time.Hour), Tokens: sidebarTokens},
+	})
+
+	if got := tab.Context; got == nil || got.ID != "wE:p1" {
+		t.Fatalf("selected %v, want the shell wE:p1", got)
+	}
+}
+
+func TestTabContextKeepsAFocusedPaneWithTokens(t *testing.T) {
+	t.Parallel()
+
+	now := time.Now()
+	tab := tabOf([]*PaneState{
+		{ID: "wE:p1", ChangedAt: now},
+		{ID: "wE:p2", ChangedAt: now, Focused: true, Tokens: sidebarTokens},
+	})
+
+	if got := tab.Context; got == nil || got.ID != "wE:p2" {
+		t.Fatalf("selected %v, want the focused pane wE:p2", got)
+	}
+}
+
+func TestTabContextKeepsAnActiveAgentWithTokens(t *testing.T) {
+	t.Parallel()
+
+	// A user's hook may annotate an agent pane, which must still outrank an
+	// idle shell beside it.
+	now := time.Now()
+	tab := tabOf([]*PaneState{
+		{
+			ID:          "wE:p1",
+			ChangedAt:   now,
+			Agent:       "claude",
+			AgentStatus: herdr.AgentStatusWorking,
+			Tokens:      map[string]string{"model": "opus"},
+		},
+		{ID: "wE:p2", ChangedAt: now.Add(time.Hour)},
+	})
+
+	if got := tab.Context; got == nil || got.ID != "wE:p1" {
+		t.Fatalf("selected %v, want the agent pane wE:p1", got)
+	}
+}
+
+func TestTabContextAmongPanesThatAllHaveTokens(t *testing.T) {
+	t.Parallel()
+
+	now := time.Now()
+	tab := tabOf([]*PaneState{
+		{ID: "wE:p1", ChangedAt: now, Tokens: sidebarTokens},
+		{ID: "wE:p2", ChangedAt: now.Add(time.Hour), Tokens: map[string]string{"model": "opus"}},
+	})
+
+	if got := tab.Context; got == nil || got.ID != "wE:p2" {
+		t.Fatalf("selected %v, want the most recently updated pane wE:p2", got)
+	}
+}
+
+func TestPaneFromReadsTokensOffTheWire(t *testing.T) {
+	t.Parallel()
+
+	var info herdr.PaneInfo
+	if err := json.Unmarshal(
+		[]byte(`{"pane_id":"wE:p1","tokens":{"probe":"one"}}`),
+		&info,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := PaneFrom(info, "", time.Time{}).Tokens; got["probe"] != "one" {
+		t.Fatalf("tokens = %v, want probe=one", got)
+	}
+}
+
+var sidebarTokens = map[string]string{"herdr-sidebar-explorer": "api"}
 
 // tabOf builds a tab without the agent preference, which is how it ships.
 func tabOf(panes []*PaneState) TabState {

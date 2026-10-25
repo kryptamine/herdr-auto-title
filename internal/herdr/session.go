@@ -62,6 +62,10 @@ type PaneInfo struct {
 	// AgentSession identifies the conversation the pane's agent is holding.
 	// It is null until the agent's Herdr integration reports one.
 	AgentSession *AgentSessionInfo `json:"agent_session"`
+
+	// Tokens are what pane.report_metadata attached, one flat map whichever
+	// source reported each. Herdr omits the field while there are none.
+	Tokens map[string]string `json:"tokens"`
 }
 
 // The reference kinds Herdr answers with, decided per agent: Claude Code's

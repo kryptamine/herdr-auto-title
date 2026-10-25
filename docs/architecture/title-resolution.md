@@ -52,14 +52,20 @@ in order:
 2. failing that, a pane running an agent that is `working` or `blocked` — a
    split where the user left an agent running is about that agent, even though
    the pane below it saw the last update;
-3. failing that, the pane that changed most recently.
+3. failing that, a pane carrying no tokens — a plugin's own pane, such as a
+   docked sidebar, reports tokens through `pane.report_metadata` and redraws
+   constantly, so on recency alone it would name every tab not in view;
+4. failing that, the pane that changed most recently.
+
+Tokens are not an ownership flag: a plugin pane that reports none still
+competes on recency, and Herdr offers no way to ask which plugin owns a pane.
 
 Each rule takes the pane that changed most recently among those it accepts,
 and ties break on pane ID, so identical state always yields the same choice.
 Both halves of the name then come from that pane alone.
 
 With `HERDR_AUTO_TITLE_PREFER_AGENT=true` a pane running an agent comes before
-all three, so an editor opened beside the agent leaves the tab named after the
+all four, so an editor opened beside the agent leaves the tab named after the
 agent instead of flipping with focus. That rule takes an agent in any state,
 unlike rule 2: a user who asked for it has said the tab is about its agent,
 and an agent that finished is still what that tab was opened for.

@@ -59,6 +59,8 @@ type PaneState struct {
 	// holding no repository of its own has nothing else to judge by.
 	AgentDir string
 
+	Tokens map[string]string
+
 	Focused bool
 	// ChangedAt is when a poll last saw this pane's revision advance.
 	// Snapshots carry no timestamp, so it is the only ordering available.
@@ -121,6 +123,7 @@ func PaneFrom(info herdr.PaneInfo, handle string, changedAt time.Time) *PaneStat
 		AgentStatus:      info.AgentStatus,
 		AgentSession:     info.AgentSession,
 		Handle:           handle,
+		Tokens:           info.Tokens,
 		Focused:          info.Focused,
 		ChangedAt:        changedAt,
 	}
@@ -241,12 +244,17 @@ type paneRule func(*PaneState) bool
 
 func focused(p *PaneState) bool { return p.Focused }
 
+// withoutTokens passes a pane nobody annotated. A plugin's own pane, such as a
+// docked sidebar, reports tokens and redraws constantly, so on recency alone
+// it would name every tab nobody is looking at.
+func withoutTokens(p *PaneState) bool { return len(p.Tokens) == 0 }
+
 func anyPane(*PaneState) bool { return true }
 
 // contextRules rank the panes a tab may be named after: the focused one, then
-// one running an active agent, then any.
+// one running an active agent, then one without tokens, then any.
 var (
-	contextRules    = []paneRule{focused, (*PaneState).AgentIsActive, anyPane}
+	contextRules    = []paneRule{focused, (*PaneState).AgentIsActive, withoutTokens, anyPane}
 	agentFirstRules = append([]paneRule{(*PaneState).HasAgent}, contextRules...)
 )
 
