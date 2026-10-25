@@ -132,16 +132,17 @@ changes name at most once per poll however fast its pane is churning, so
    `Reader.Poll` opens the poll's reads, marking what was read of the panes
    step 2 returned as stale and forgetting panes and agent sessions that are
    gone.
-5. Per tab (`nameTab`): skip it if locked, or if any of its panes is theirs
-   (`handsOff`) — runs a program that owns its labels, or could not be read
-   (`Poll.Fill`) to rule that out. Otherwise resolve a title from the pane the
+5. Per tab (`nameTab`): skip it if locked, if any of its panes could not be
+   read (`readAll`, `Poll.Fill`), or if any runs a program that owns its labels
+   (`Pass.TabOwned`, which remembers that it did). Otherwise resolve a title from the pane the
    tab is named after, check whether the label moved under us and rename when
    the result differs from the label the tab already carries (`Pass.Tab`).
 6. Per tab again (`namePanes`), and only when pane naming is on: read the tab's
    own pane even if the tab is locked, and every pane nobody has claimed; name
    all of them at once against the tab (`ResolvePanes`); then `Pass.Pane`
    checks each name against the pane's own label, exactly as step 5 does for
-   the tab, skipping a pane that is theirs (`theirs`).
+   the tab, skipping a pane that could not be read or that such a program
+   owns (`Pass.PaneOwned`).
 7. Per workspace (`reportTopics`), unless topics are turned off: skip an active
    tab step 5 would, otherwise report the topic of the pane it is named after
    when it changed or is due for a refresh —
