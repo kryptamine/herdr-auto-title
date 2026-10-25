@@ -223,6 +223,28 @@ func TestATabDoesNotRepeatItsWorkspace(t *testing.T) {
 	}
 }
 
+func TestASpelledOutWorkspaceLabelStillDropsTheContext(t *testing.T) {
+	t.Parallel()
+
+	// Workspaces are often named for people, not for the directory: "Deploy
+	// Social" sits above deploy-social, and the tab should not repeat it.
+	for _, label := range []string{"Dash Board", "dash-board", "DASH_BOARD"} {
+		t.Run(label, func(t *testing.T) {
+			t.Parallel()
+
+			tab := tabWithPane(&state.PaneState{
+				Dir:           herdrtest.Dir("work", "dash-board"),
+				TerminalTitle: "Fix OAuth redirect",
+			})
+			tab.WorkspaceName = label
+
+			if got := defaultChain().Resolve(tab).Name; got != "Fix OAuth redirect" {
+				t.Errorf("name = %q, want %q", got, "Fix OAuth redirect")
+			}
+		})
+	}
+}
+
 func TestATabWithNothingElseKeepsItsContext(t *testing.T) {
 	t.Parallel()
 
