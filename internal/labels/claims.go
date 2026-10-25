@@ -18,6 +18,9 @@ type claims struct {
 	// departed is the labels of things gone unclaimed since the last poll that
 	// saw everything; a poll cut short must not lose them.
 	departed map[string]struct{}
+	// owned is what a program that writes its own labels held when last seen.
+	// The label it carries next is that program's, whatever it is by then.
+	owned map[string]struct{}
 }
 
 // seenLabels is what is known of one thing's label: the one it carried when
@@ -35,6 +38,7 @@ func newClaims(l *Labels, kind kind) *claims {
 		seen:     make(map[string]seenLabels),
 		locked:   make(map[string]string),
 		departed: make(map[string]struct{}),
+		owned:    make(map[string]struct{}),
 	}
 }
 
@@ -84,7 +88,10 @@ func (c *claims) observe(s sighting) verdict {
 
 	previous, known := c.seen[s.id]
 	_, moved := c.departed[s.current]
-	ours := c.ours(s) || (!known && moved)
+	_, leftByOwner := c.owned[s.id]
+	delete(c.owned, s.id)
+
+	ours := c.ours(s) || (!known && moved) || leftByOwner
 	c.record(s, previous)
 
 	return c.claimedOnChange(s, previous, known, ours)
@@ -130,6 +137,14 @@ func (c *claims) sent(id, label string) {
 	c.seen[id] = seen
 }
 
+// ownedNow records that a program writing its own labels holds this one.
+func (c *claims) ownedNow(id string) {
+	c.labels.mu.Lock()
+	defer c.labels.mu.Unlock()
+
+	c.owned[id] = struct{}{}
+}
+
 // retain drops everything about what the session no longer holds, and releases
 // a lock whose owner now carries a different label — which is what stops a
 // reloaded lock from claiming an unrelated tab or pane that inherited its id.
@@ -156,6 +171,12 @@ func (c *claims) retain(live map[string]string) {
 	for id := range c.seen {
 		if _, alive := live[id]; !alive {
 			delete(c.seen, id)
+		}
+	}
+
+	for id := range c.owned {
+		if _, alive := live[id]; !alive {
+			delete(c.owned, id)
 		}
 	}
 

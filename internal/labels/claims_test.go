@@ -12,7 +12,7 @@ import (
 )
 
 func load(path string) *Labels {
-	return Load(path, slog.New(slog.DiscardHandler))
+	return Load(path, nil, slog.New(slog.DiscardHandler))
 }
 
 func settledLabels(t *testing.T) *Labels {

@@ -570,3 +570,28 @@ func TestALocalSplitOfAMirrorTabIsStillNamed(t *testing.T) {
 		t.Errorf("renamed a mirror tab: %q", got)
 	}
 }
+
+func TestAPaneLabelMirrorWroteIsNamedOverOnceMirrorExits(t *testing.T) {
+	t.Parallel()
+
+	// Mirror labels its own pane too, and that label is no more the user's.
+	pane := herdr.PaneInfo{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard}
+	h := startPanes(
+		t,
+		oneTab(),
+		[]herdr.PaneInfo{pane, {PaneID: "wE:p2", TabID: "wE:t1", CWD: api, Focused: true}},
+	)
+	h.client.SetProcesses("wE:p1", mirrorStreamer)
+	h.poll()
+
+	pane.Label = "remote shell"
+	h.client.SetPane(pane)
+	h.poll()
+
+	mirrorExits(h, pane)
+	h.poll()
+
+	if got := labelsOf(h, "wE:p1"); len(got) != 1 {
+		t.Errorf("mirror pane = %v, want it named once mirror left", got)
+	}
+}

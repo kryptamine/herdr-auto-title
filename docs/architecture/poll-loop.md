@@ -213,9 +213,13 @@ read before falls back to that read, so this costs nothing to a pane that was
 answered once. A pane whose first read fails is unknown; naming its tab then
 could write through a mirror, so the tab waits a poll.
 
+Which programs own their labels is `labels.Owners`, and the labels pass
+remembers each tab and pane it found owned, so the label one of those programs
+leaves behind when it exits is named over rather than locked as the user's
+([manual rename protection](./manual-rename-protection.md#a-label-left-by-a-program-that-owns-it)).
+
 On Windows `pane.process_info` lists only the shell or a recognised agent, so
-none of this fires there. A label mirror leaves behind when it exits was never
-Auto Title's, and is locked as the user's until it is cleared.
+none of this fires there.
 
 ## When Herdr is not there
 

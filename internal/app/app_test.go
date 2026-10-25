@@ -1179,6 +1179,76 @@ func TestAMirrorTabWhoseFirstReadFailsIsNotNamed(t *testing.T) {
 	}
 }
 
+// mirrorExits leaves a shell where mirror ran, and has the pane draw so the
+// next poll asks what it runs.
+func mirrorExits(h *harness, pane herdr.PaneInfo) {
+	h.client.SetProcesses(pane.PaneID, herdr.PaneProcessInfoProcess{Name: "zsh", CWD: pane.CWD})
+	pane.Revision++
+	h.client.SetPane(pane)
+}
+
+func TestALabelMirrorWroteIsNamedOverOnceMirrorExits(t *testing.T) {
+	t.Parallel()
+
+	// Mirror renames the tab it shadows; the label it leaves is mirror's, and
+	// locking it as the user's would stop the tab being named for good.
+	pane := herdr.PaneInfo{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true}
+	h := start(t, []herdr.TabInfo{{TabID: "wE:t1", Label: "1"}}, []herdr.PaneInfo{pane})
+	h.client.SetProcesses("wE:p1", mirrorStreamer)
+	h.poll()
+
+	h.client.SetTab(herdr.TabInfo{TabID: "wE:t1", Label: "remote work"})
+	h.poll()
+
+	mirrorExits(h, pane)
+	h.poll()
+
+	if got := tabLabels(h); !slices.Equal(got, []string{"dashboard"}) {
+		t.Errorf("renames = %q, want the tab named once mirror left", got)
+	}
+}
+
+func TestALabelMirrorWritesAsItExitsIsNamedOver(t *testing.T) {
+	t.Parallel()
+
+	// Mirror can write its last label between two polls and be gone by the
+	// second, so no poll ever sees that label on a tab mirror owns.
+	pane := herdr.PaneInfo{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true}
+	h := start(t, []herdr.TabInfo{{TabID: "wE:t1", Label: "1"}}, []herdr.PaneInfo{pane})
+	h.client.SetProcesses("wE:p1", mirrorStreamer)
+	h.polls(2)
+
+	h.client.SetTab(herdr.TabInfo{TabID: "wE:t1", Label: "remote work"})
+	mirrorExits(h, pane)
+	h.poll()
+
+	if got := tabLabels(h); !slices.Equal(got, []string{"dashboard"}) {
+		t.Errorf("renames = %q, want the tab named once mirror left", got)
+	}
+}
+
+func TestARenameAfterMirrorLeftIsStillTheUsers(t *testing.T) {
+	t.Parallel()
+
+	// Only the label mirror left behind is taken for mirror's; after that the
+	// tab is judged like any other.
+	pane := herdr.PaneInfo{PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true}
+	h := start(t, []herdr.TabInfo{{TabID: "wE:t1", Label: "1"}}, []herdr.PaneInfo{pane})
+	h.client.SetProcesses("wE:p1", mirrorStreamer)
+	h.poll()
+
+	h.client.SetTab(herdr.TabInfo{TabID: "wE:t1", Label: "remote work"})
+	mirrorExits(h, pane)
+	h.poll()
+
+	h.client.SetTab(herdr.TabInfo{TabID: "wE:t1", Label: "Important work"})
+	h.polls(2)
+
+	if got := tabLabels(h); !slices.Equal(got, []string{"dashboard"}) {
+		t.Errorf("renames = %q, want the user's rename left alone", got)
+	}
+}
+
 func TestEveryPaneOfATabThatMayBeRenamedIsReadOnce(t *testing.T) {
 	t.Parallel()
 

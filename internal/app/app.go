@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"slices"
 	"time"
 
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
@@ -55,8 +54,6 @@ type App struct {
 	// failures is the run of polls that have failed in a row, which decides
 	// how loudly the next one is reported.
 	failures failureLog
-	// owners are the programs that write their own tab and pane labels.
-	owners labels.Owners
 	// server identifies the Herdr this instance answers to, learned from the
 	// first poll that could read it. Another server on the socket has started
 	// an instance of its own, and this one leaves rather than double it.
@@ -84,14 +81,17 @@ func New(
 		reported:    newTopicReports(),
 		preferAgent: cfg.PreferAgentPane,
 		changes:     state.NewChanges(),
-		labels:      labels.Load(cfg.ManualPath, log),
+		labels: labels.Load(
+			cfg.ManualPath,
+			labels.NewOwners(cfg.ForeignProcesses),
+			log,
+		),
 		reads: reads.New(reads.Options{
 			ClaudeDirs:   cfg.ClaudeDirs,
 			Home:         cfg.Home,
 			BranchMax:    cfg.BranchMax,
 			ReadSessions: cfg.ReadSessions,
 		}, log),
-		owners:   labels.NewOwners(cfg.ForeignProcesses),
 		instance: instance,
 	}
 }
@@ -319,7 +319,7 @@ func (a *App) reportTopics(
 		}
 
 		// Neither reported nor cleared while the tab's labels are another program's.
-		if !live || a.handsOff(ctx, poll, tab) {
+		if !live || !a.readAll(ctx, poll, tab) || a.labels.Owned(tab) {
 			continue
 		}
 
@@ -395,18 +395,16 @@ func firstTabs(tabs []herdr.TabInfo) map[string]string {
 	return first
 }
 
-// handsOff reports whether a tab's label is not Auto Title's to write, because
-// one of its panes is theirs. Any pane counts, not only the one it is named after.
-func (a *App) handsOff(ctx context.Context, poll *reads.Poll, tab state.TabState) bool {
-	return slices.ContainsFunc(tab.Panes, func(pane *state.PaneState) bool {
-		return a.theirs(ctx, poll, pane)
-	})
-}
+// readAll reads every pane of a tab and reports whether each could be. Any
+// pane may run a program that writes the tab's label, and one whose first read
+// failed may be such a pane, so its tab is left alone.
+func (a *App) readAll(ctx context.Context, poll *reads.Poll, tab state.TabState) bool {
+	read := true
+	for _, pane := range tab.Panes {
+		read = poll.Fill(ctx, pane) && read
+	}
 
-// theirs reports whether a pane runs a program that writes its own labels, or
-// could not be read to rule that out.
-func (a *App) theirs(ctx context.Context, poll *reads.Poll, pane *state.PaneState) bool {
-	return !poll.Fill(ctx, pane) || a.owners.Owns(pane)
+	return read
 }
 
 // nameTab keeps one tab's label in step with what the tab is doing.
@@ -416,7 +414,7 @@ func (a *App) nameTab(
 	poll *reads.Poll,
 	tab state.TabState,
 ) {
-	if pass.TabLocked(tab.ID) || a.handsOff(ctx, poll, tab) {
+	if pass.TabLocked(tab.ID) || !a.readAll(ctx, poll, tab) || pass.TabOwned(tab) {
 		return
 	}
 
@@ -453,7 +451,7 @@ func (a *App) namePanes(
 
 		// Skipped one by one, so a local split of a mirror tab is still named.
 		pane := tab.Panes[i]
-		if pass.PaneLocked(pane.ID) || a.theirs(ctx, poll, pane) {
+		if pass.PaneLocked(pane.ID) || !poll.Fill(ctx, pane) || pass.PaneOwned(pane) {
 			continue
 		}
 

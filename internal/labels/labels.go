@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"maps"
 	"os"
+	"slices"
 	"strconv"
 	"sync"
 
@@ -21,9 +22,10 @@ import (
 // Labels outlives a poll because what it remembers does: the label each thing
 // last carried, and the ones the user claimed, which are kept on disk too.
 type Labels struct {
-	tabs  *claims
-	panes *claims
-	log   *slog.Logger
+	tabs   *claims
+	panes  *claims
+	owners Owners
+	log    *slog.Logger
 
 	mu   sync.Mutex
 	path string
@@ -35,8 +37,8 @@ type Labels struct {
 // Load reads the claims an earlier run left at path. Anything unreadable
 // yields none: keeping them is a convenience, not a reason to refuse to start.
 // An empty path keeps them in memory only.
-func Load(path string, log *slog.Logger) *Labels {
-	l := &Labels{path: path, log: log}
+func Load(path string, owners Owners, log *slog.Logger) *Labels {
+	l := &Labels{path: path, owners: owners, log: log}
 	l.tabs = newClaims(l, tabKind)
 	l.panes = newClaims(l, paneKind)
 
@@ -117,6 +119,36 @@ func (p *Pass) Pane(ctx context.Context, pane *state.PaneState, decision resolve
 	}
 
 	p.apply(ctx, claims, sightingOfPane(pane, decision.Name), decision)
+}
+
+// Owned reports whether one of a tab's panes runs a program that writes its
+// own labels. Each pane must have been read.
+func (l *Labels) Owned(tab state.TabState) bool {
+	return slices.ContainsFunc(tab.Panes, l.owners.Owns)
+}
+
+// TabOwned is Owned for a tab that would otherwise be named, and remembers
+// that its label is that program's: the first one seen once the program has
+// gone is not the user's, though no poll saw it written.
+func (p *Pass) TabOwned(tab state.TabState) bool {
+	if !p.labels.Owned(tab) {
+		return false
+	}
+
+	p.labels.tabs.ownedNow(tab.ID)
+
+	return true
+}
+
+// PaneOwned is TabOwned for one pane, which such a program labels too.
+func (p *Pass) PaneOwned(pane *state.PaneState) bool {
+	if !p.labels.owners.Owns(pane) {
+		return false
+	}
+
+	p.labels.panes.ownedNow(pane.ID)
+
+	return true
 }
 
 // Settle ends a pass that saw everything the session holds. A pass cut short

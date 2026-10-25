@@ -17,7 +17,7 @@ import (
 const theTab = "wE:t1"
 
 func load(path string) *labels.Labels {
-	return labels.Load(path, slog.New(slog.DiscardHandler))
+	return labels.Load(path, nil, slog.New(slog.DiscardHandler))
 }
 
 // session is a stubbed Herdr holding one tab that carries label.

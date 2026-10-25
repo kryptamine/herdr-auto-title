@@ -117,6 +117,30 @@ as it has for a rename right after a process read that stalled.
 Kept all the same, its label would pass for Auto Title's, and a user who then
 chose that name would have it renamed away.
 
+### A label left by a program that owns it
+
+Some programs write a tab's and their own pane's label themselves — herdr-mirror
+is one ([poll loop](./poll-loop.md#programs-that-own-their-labels)) — and while
+one runs, its tab and its pane are not named, so no poll judges their labels.
+When it exits, the label it left is neither *Seen* nor *Desired*, and the rule
+read it as the user's and locked it: the mirror tab was never named again.
+
+Recording each label seen on an owned tab is not enough. The program can write
+its last label between two polls and be gone by the second, so that label is
+never seen while it owns the tab. Instead the pass remembers that a tab or a
+pane was owned when last seen (`claims.owned`, set by `Pass.TabOwned` and
+`Pass.PaneOwned`), and **the first label judged once the owner has gone is
+Auto Title's**, like one wearing *Desired*, and is renamed on. The mark is
+spent by that one sighting, so a rename made afterwards is the user's as
+usual.
+
+The cost: **a rename the user makes while the program runs is not protected.**
+Mirror itself pushes any label written to the local tab to the remote, so
+there it is the program's state as much as the user's, and the two cannot be
+told apart from a label alone. A tab the user had already claimed is not
+marked: a locked tab is skipped before anything asks what its panes run, and
+stays locked for as long as it keeps the label it was locked with.
+
 ## Locks outlive the process, guarded by the label
 
 Herdr can restart a plugin mid-session, and losing every manual name to that is
