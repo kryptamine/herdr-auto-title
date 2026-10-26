@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.16.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.15.0...v0.16.0) (2026-10-26)
+
+
+### Features
+
+* **codex:** name a codex pane from its session ([4ed5a9f](https://github.com/kryptamine/herdr-auto-title/commit/4ed5a9f4318c93c5dea52a5fdf69f8b787cd1d58))
+* **resolver,app:** mark a tab title with its agent status ([b43a241](https://github.com/kryptamine/herdr-auto-title/commit/b43a241989c0f1e5279c0a256b96136097a7dde7)), closes [#173](https://github.com/kryptamine/herdr-auto-title/issues/173)
+
+
+### Bug Fixes
+
+* **codex:** skip a session the terminal title has left behind ([74bc6c1](https://github.com/kryptamine/herdr-auto-title/commit/74bc6c166cb05720b080f9373eb827791aebd3e5))
+* **resolver:** read a codex pane's title as codex frames it ([6798128](https://github.com/kryptamine/herdr-auto-title/commit/6798128fc71cd09aebbf864cca14e0129c9a1ccb))
+
+
+### Refactoring
+
+* **transcript:** find a session's file by id in one place ([a620a75](https://github.com/kryptamine/herdr-auto-title/commit/a620a756600edbd61a96b64d1a9f37ebcfa51f9a))
+* **transcript:** name how a follower catches up ([9de4501](https://github.com/kryptamine/herdr-auto-title/commit/9de45017a5ecadf9fe35cb5cc81f02c502351651))
+* **transcript:** share a session topic between pi and codex ([54649bd](https://github.com/kryptamine/herdr-auto-title/commit/54649bdb4fb1210336044137fa212e036952c370))
+
 ## [0.15.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.14.0...v0.15.0) (2026-10-25)
 
 
