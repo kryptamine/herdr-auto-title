@@ -12,9 +12,8 @@
 
 https://github.com/user-attachments/assets/46fa98e7-416f-4cca-b024-82bc641cd0d2
 
-A [Herdr](https://herdr.dev) plugin that names your tabs and panes after the
-work in them. It reads the session twice a second, and it leaves alone any tab
-or pane you rename yourself.
+A [Herdr](https://herdr.dev) plugin that names your tabs and panes based on
+their context.
 
 ## Install
 
