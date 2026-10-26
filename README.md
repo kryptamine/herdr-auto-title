@@ -1,6 +1,6 @@
 <div align="center">
   <p>
-    <img src="assets/banner.png" alt="Herdr Auto Title: smarter tab titles, zero effort" width="800">
+    <img src="assets/banner.png" alt="Herdr Auto Title" width="800">
   </p>
   <p>
     <a href="https://github.com/kryptamine/herdr-auto-title/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/kryptamine/herdr-auto-title/ci.yml?branch=main&style=for-the-badge&logo=githubactions&logoColor=white&label=CI&labelColor=000000" alt="CI status"></a>
