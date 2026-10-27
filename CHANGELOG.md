@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.17.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.16.0...v0.17.0) (2026-10-27)
+
+
+### Features
+
+* **grok:** name a pane from its session summary ([2cf4475](https://github.com/kryptamine/herdr-auto-title/commit/2cf4475d27629afe5906b902e8d20939312ea3e7))
+
+
+### Bug Fixes
+
+* **grok:** match percent-encoded session directories ([4edf213](https://github.com/kryptamine/herdr-auto-title/commit/4edf2133370c6cb37da88bd68cf750c23e5bf148))
+* **resolver:** read grok's session name out of its status line ([cbe41d7](https://github.com/kryptamine/herdr-auto-title/commit/cbe41d754f9a701fab25a74a799af6a3a48b3feb))
+
 ## [0.16.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.15.0...v0.16.0) (2026-10-26)
 
 
