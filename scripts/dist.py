@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Build the static release binaries into dist/, with SHA256SUMS and COMMIT.
 
-The names are what the install scripts download, so renaming one sends every
-install of that release to a Go build. COMMIT is the commit they were built
-from, which an install compares with its checkout.
+The install scripts download these names and match COMMIT against their
+checkout, so renaming an asset sends that release's installs to a Go build.
 """
 
 import hashlib
