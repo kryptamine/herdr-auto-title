@@ -219,18 +219,10 @@ func (r *Reader) topic(
 	}
 
 	if pane.AgentSession.Agent == hermes.Agent {
-		if pane.Agent != hermes.Agent || pane.AgentSession.Kind != herdr.SessionRefID {
-			return sessionTopic{}
-		}
-		home := ""
-		if last := len(processes) - 1; last >= 0 {
-			home = hermes.ProcessHome(processes[last].PID)
-		}
-		return sessionTopic{text: hermes.Title(ctx, r.hermesHomes, pane.AgentSession.Value, home)}
+		return r.hermesTopic(ctx, pane, processes)
 	}
 	// Pi's session arrives as a path; every other agent's as an id.
 	if pane.AgentSession.Agent == pi.Agent {
-
 		path, ok := pane.AgentSession.Path()
 		if !ok {
 			return sessionTopic{}
@@ -267,6 +259,23 @@ func (r *Reader) topic(
 	}
 
 	return sessionTopic{}
+}
+
+func (r *Reader) hermesTopic(
+	ctx context.Context,
+	pane *state.PaneState,
+	processes []herdr.PaneProcessInfoProcess,
+) sessionTopic {
+	if pane.Agent != hermes.Agent || pane.AgentSession.Kind != herdr.SessionRefID {
+		return sessionTopic{}
+	}
+
+	home := ""
+	if last := len(processes) - 1; last >= 0 {
+		home = hermes.ProcessHome(processes[last].PID)
+	}
+
+	return sessionTopic{text: hermes.Title(ctx, r.hermesHomes, pane.AgentSession.Value, home)}
 }
 
 // spent reports that the poll is past its deadline. The reads it guards go to
