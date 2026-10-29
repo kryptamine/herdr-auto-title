@@ -154,7 +154,7 @@ func titleAt(ctx context.Context, home, sessionID string) (string, bool, error) 
 		path = "/" + path
 	}
 
-	uri := url.URL{Scheme: "file", Path: path, RawQuery: "mode=ro"}
+	uri := url.URL{Scheme: "file", Path: path, RawQuery: "mode=ro&_pragma=trusted_schema(0)"}
 
 	db, err := sql.Open("sqlite", uri.String())
 	if err != nil {

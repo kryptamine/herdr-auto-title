@@ -42,7 +42,7 @@ It adds dependencies and binary/build cost, but avoids requiring Python, a
 SQLite executable, CGO or a subprocess per pane on every poll. Dependency changes
 must keep the manifest's Go floor and the cross-platform build working.
 
-Every lookup opens only an existing regular `state.db` using `mode=ro`, reads one
+Every lookup opens only an existing regular `state.db` using `mode=ro` and `_pragma=trusted_schema(0)`, reads one
 bound row and closes its handle. Missing files are not created. SQLite's normal
 WAL support remains enabled: do not use `immutable=1`, which would miss live WAL
 updates. SQLite may need existing WAL/shared-memory sidecars or permission to

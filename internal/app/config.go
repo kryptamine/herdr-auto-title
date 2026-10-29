@@ -159,6 +159,7 @@ func LoadConfig() (Config, []string) {
 	}
 
 	cfg := Config{
+		HermesHomes:      hermesHomesFromEnv(),
 		Poll:             DefaultPoll,
 		MaxLength:        resolver.DefaultMaxLength,
 		BranchMax:        resolver.DefaultBranchMaxLength,
@@ -207,8 +208,6 @@ func LoadConfig() (Config, []string) {
 	if raw := os.Getenv(EnvForeignProcesses); raw != "" {
 		cfg.ForeignProcesses = filepath.SplitList(raw)
 	}
-
-	cfg.HermesHomes = hermesHomesFromEnv()
 
 	return cfg, warnings
 }
