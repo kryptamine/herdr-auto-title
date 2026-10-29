@@ -1,7 +1,7 @@
 ---
 type: doc
 title: 'Installation'
-description: 'How an install puts a binary in the plugin root: the release binaries CI attaches and attests, why one is downloaded only into a checkout of the commit it was built from, a Go build for anything else, why a release stays a draft until its binaries are attached, and why the scripts are shell and PowerShell.'
+description: 'How an install puts a binary in the plugin root: the release binaries CI attaches and attests, why one is downloaded only into a checkout of the commit it was built from, a Go build for anything else, why a release stays a draft until its binaries are attached and how stable follows it, and why the scripts are shell and PowerShell.'
 tags: [architecture, release]
 created: 2026-10-24
 generated: { by: claude-code/opus-5-5, at: 2026-10-27T12:00:00+03:00 }
@@ -116,6 +116,12 @@ source, or fails without Go.
 
 If the `binaries` job fails, the release stays a draft. Fix the cause and
 re-run the failed job: it checks out the tag again and publishes.
+
+The `stable` job then moves `stable` to the release's commit, creating the
+branch the first time. It is a job of its own so that a failed move re-runs
+without touching the published release, and it updates the branch without
+force, so a release that is not ahead of `stable` fails the job rather than
+moving every install that follows it back.
 
 ## Why shell and PowerShell
 
