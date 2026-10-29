@@ -33,6 +33,7 @@ const (
 	EnvAgentHandle  = "HERDR_AUTO_TITLE_AGENT_HANDLE"
 	EnvIcons        = "HERDR_AUTO_TITLE_ICONS"
 	EnvAgentStatus  = "HERDR_AUTO_TITLE_AGENT_STATUS"
+	EnvSessionOnly  = "HERDR_AUTO_TITLE_SESSION_ONLY"
 
 	EnvForeignProcesses = "HERDR_AUTO_TITLE_FOREIGN_PROCESSES"
 
@@ -86,6 +87,8 @@ type Config struct {
 	// the agent has not titled its terminal. They hold what the user has been
 	// saying to that agent, so the read can be turned off.
 	ReadSessions bool
+	// SessionOnly waits for native conversation titles instead of process fallbacks.
+	SessionOnly bool
 	// ShowAgentName puts the name of the agent running in a pane in front of
 	// what it is working on. Turned off, a pane whose agent has said nothing
 	// is named like any other pane in that directory.
@@ -129,6 +132,9 @@ type Config struct {
 	// GrokHome is the Grok Build home session summaries are read from, or ""
 	// when there is no home directory to find it under.
 	GrokHome string
+	// HermesHomes supplements ~/.hermes and its named profiles; absolute paths only.
+	HermesHomes []string
+
 	// Home is the user's home directory, or "" when there is none.
 	Home string
 	// ForeignProcesses are programs that own their tab and pane labels; Auto
@@ -156,6 +162,7 @@ func LoadConfig() (Config, []string) {
 	}
 
 	cfg := Config{
+		HermesHomes:      hermesHomesFromEnv(),
 		Poll:             DefaultPoll,
 		MaxLength:        resolver.DefaultMaxLength,
 		BranchMax:        resolver.DefaultBranchMaxLength,
@@ -179,7 +186,7 @@ func LoadConfig() (Config, []string) {
 	cfg.BranchMax = fromEnv(&warnings, EnvBranchMax, cfg.BranchMax, countOrNone)
 	cfg.DirectoryMax, cfg.HideDirectory = directoryFromEnv(&warnings)
 	cfg.ShowPosition = fromEnv(&warnings, EnvPosition, cfg.ShowPosition, boolean)
-	cfg.ReadSessions = fromEnv(&warnings, EnvTranscript, cfg.ReadSessions, boolean)
+	loadSessionOptions(&cfg, &warnings)
 	cfg.ShowAgentName = fromEnv(&warnings, EnvAgentName, cfg.ShowAgentName, boolean)
 	cfg.RenamePanes = fromEnv(&warnings, EnvPanes, cfg.RenamePanes, boolean)
 	cfg.PreferAgentPane = fromEnv(&warnings, EnvPreferAgent, cfg.PreferAgentPane, boolean)
@@ -206,6 +213,20 @@ func LoadConfig() (Config, []string) {
 	}
 
 	return cfg, warnings
+}
+
+func loadSessionOptions(cfg *Config, warnings *[]string) {
+	cfg.ReadSessions = fromEnv(warnings, EnvTranscript, cfg.ReadSessions, boolean)
+	cfg.SessionOnly = fromEnv(warnings, EnvSessionOnly, cfg.SessionOnly, boolean)
+}
+
+func hermesHomesFromEnv() []string {
+	var homes []string
+	if home := os.Getenv("HERMES_HOME"); home != "" {
+		homes = append(homes, home)
+	}
+
+	return append(homes, filepath.SplitList(os.Getenv("HERDR_AUTO_TITLE_HERMES_HOMES"))...)
 }
 
 // readConfigFile puts the file's settings into the environment, which is how a

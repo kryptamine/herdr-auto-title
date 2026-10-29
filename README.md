@@ -112,8 +112,9 @@ $HOME                                  →  7 · Shell
   editor or an ssh or mosh session does not name its tab.
 
 > [!WARNING]
-> The first start renames every pane, including panes you had already named by
-> hand. A pane you rename after that is left alone.
+> In the default mode, the first start renames every pane, including panes you
+> had already named by hand. A pane you rename after that is left alone.
+> Session-only mode also protects existing names at startup.
 
 ## Configuration
 
@@ -138,6 +139,7 @@ not read.
 | `HERDR_AUTO_TITLE_POSITION`     | `true`                                   | Put the tab's position in front of its title                       |
 | `HERDR_AUTO_TITLE_MANUAL_FILE`  | `manual-names.json`, found the same way  | Where names you set by hand are kept; empty keeps them in memory   |
 | `HERDR_AUTO_TITLE_TRANSCRIPT`   | `true`                                   | Read an agent's own session files: what it is doing, and where     |
+| `HERDR_AUTO_TITLE_SESSION_ONLY` | `false`                                | Mirror session names only; keep labels when no usable name is ready |
 | `HERDR_AUTO_TITLE_AGENT_NAME`   | `false`                                  | Put the agent's name in front of what it is doing                  |
 | `HERDR_AUTO_TITLE_PANES`        | `true`                                   | Name panes as well as tabs                                         |
 | `HERDR_AUTO_TITLE_PREFER_AGENT` | `false`                                  | Name a tab after its agent pane even while another pane is focused |
@@ -148,11 +150,37 @@ not read.
 | `HERDR_AUTO_TITLE_WORKSPACES`   | `true`                                   | Report what each workspace's active tab is doing as its `topic`    |
 | `HERDR_AUTO_TITLE_WORKSPACE_MAX_LENGTH` | none: Herdr fits it              | Longest topic, in columns                                          |
 | `HERDR_AUTO_TITLE_CLAUDE_DIRS`  | none                                     | Extra Claude config homes to search, `:`-separated                 |
+| `HERDR_AUTO_TITLE_HERMES_HOMES` | none                                     | Extra absolute Hermes homes to search, `:`-separated (`;` on Windows), including each home's named profiles |
 | `HERDR_AUTO_TITLE_FOREIGN_PROCESSES` | none                                 | Programs that own their tab and pane labels, so Auto Title leaves them alone; herdr-mirror's streamer is built in. `:`-separated |
 
 On Windows Herdr reports only the shell or a recognised agent per pane, so this setting and the built-in herdr-mirror check may not detect a label-owning program there.
 
-Turning `HERDR_AUTO_TITLE_TRANSCRIPT` off also drops the branch from a tab whose
+Set `HERDR_AUTO_TITLE_SESSION_ONLY=true` to name tabs and panes from session
+names only. Hermes requires `title_source=llm` or `user`; Claude uses a custom
+or generated title, Pi its session name, and Codex its index name. Opening-prompt
+fallbacks are skipped. Antigravity uses its annotation title and Grok Build its
+summary's `generated_title`. These other agents do not expose Hermes's provenance
+check, so a stored name may still contain prompt text. Missing or generic names
+keep the existing label, including after exit or `/new`; terminal titles,
+processes and directories do not substitute. Position, pane ID, icon and status
+settings still apply to usable names. Existing user names are protected even on
+the first poll. Plugin-owned labels are saved in both modes so a restart or mode
+switch can update them, provided the name-state file is writable. An empty
+`HERDR_AUTO_TITLE_MANUAL_FILE` keeps ownership in memory only. The default remains
+normal naming. Workspace topics retain their own resolver, but share session
+reads and therefore also skip these opening-prompt fallbacks.
+
+Hermes session titles use the native `sessions.title` in `state.db`, not chat
+messages or a new LLM call. They need a Herdr integration reporting the Hermes
+session ID. Linux first uses the foreground process's `HERMES_HOME` when readable;
+otherwise Auto Title searches the plugin's `HERMES_HOME`, the configured extra
+homes, and `~/.hermes`, including their `profiles/*` homes. A session ID found in
+multiple homes is ambiguous and falls back rather than choosing another profile.
+Use absolute paths, not `~`, in configuration. Details and limits are in
+[Hermes session titles](docs/architecture/hermes-session-titles.md).
+
+Turning `HERDR_AUTO_TITLE_TRANSCRIPT` off also disables Hermes database reads.
+It also drops the branch from a tab whose
 agent is working in a git worktree, because the transcript is what says which
 worktree that is.
 

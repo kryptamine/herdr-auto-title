@@ -45,8 +45,9 @@ Both were found by running it, not by reading it.
 
 ### The first poll is not each tab's first sighting
 
-**The first poll never locks a tab or a pane.** On startup almost every tab
-carries a label that is not yet what the resolver would produce, and locking on
+**In normal mode the first poll does not lock a previously unseen tab or pane.**
+On startup almost every tab carries a label that is not yet what the resolver
+would produce, and locking on
 that would claim the whole session at once.
 
 Applied per *tab* rather than per *poll*, the same rule loses names. A tab
@@ -156,6 +157,25 @@ The cost of that guard is stated plainly: **a rename made while the plugin is
 not running is not remembered.** It cannot be told apart from an id reused by a
 different session, and wrongly locking a stranger's tab is worse than forgetting
 a rename made in the seconds the plugin was down.
+
+## Session-only startup and persisted names
+
+`HERDR_AUTO_TITLE_SESSION_ONLY=true` leaves labels unchanged until a usable
+session name exists. Unlike normal mode, it claims unknown existing names even
+on the first poll. `owned_tabs` and `owned_panes` in the same name-state file
+remember unclaimed labels across restarts; successful renames save them in every
+mode, so switching from normal mode does not turn the plugin's work into a lock.
+These names are separate from `claims.owned`, the in-memory mark for foreign
+programs. Reloaded names are compared with the live label, not trusted by ID
+alone; a changed name can be claimed as manual. Older files without these fields
+still load, but cannot prove which previous labels the plugin wrote.
+
+Names that produce `generic_fallback` after sanitizing are not applied in
+session-only mode, even if the raw session topic was nonempty. This also applies
+to decorated titles and pane labels. No-data polls leave labels untouched, so a
+manual change is judged when a usable session name next becomes available.
+An empty path keeps all claims in memory, and a failed save cannot preserve
+ownership over restart.
 
 ## Handing a tab back
 

@@ -31,14 +31,18 @@ type Labels struct {
 	path string
 	// settled is false until the first poll has finished, while nothing can yet
 	// be judged. One poll looks at every kind together, so they share it.
-	settled bool
+	settled          bool
+	preserveExisting bool
 }
 
 // Load reads the claims an earlier run left at path. Anything unreadable
 // yields none: keeping them is a convenience, not a reason to refuse to start.
 // An empty path keeps them in memory only.
-func Load(path string, owners Owners, log *slog.Logger) *Labels {
-	l := &Labels{path: path, owners: owners, log: log}
+func Load(path string, owners Owners, log *slog.Logger, preserveExisting ...bool) *Labels {
+	l := &Labels{
+		path: path, owners: owners, log: log,
+		preserveExisting: len(preserveExisting) > 0 && preserveExisting[0],
+	}
 	l.tabs = newClaims(l, tabKind)
 	l.panes = newClaims(l, paneKind)
 
@@ -54,6 +58,14 @@ func Load(path string, owners Owners, log *slog.Logger) *Labels {
 
 	maps.Copy(l.tabs.locked, stored.Locked)
 	maps.Copy(l.panes.locked, stored.LockedPanes)
+
+	for id, label := range stored.OwnedTabs {
+		l.tabs.seen[id] = seenLabels{current: label}
+	}
+
+	for id, label := range stored.OwnedPanes {
+		l.panes.seen[id] = seenLabels{current: label}
+	}
 
 	return l
 }

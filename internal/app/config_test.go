@@ -35,13 +35,14 @@ func isolate(t *testing.T) {
 
 	names := []string{
 		EnvDebug, EnvPoll, EnvMaxLength, EnvBranchMax, EnvDirectoryMax,
-		EnvPosition, EnvManual, EnvTranscript, EnvAgentName, EnvPanes,
+		EnvPosition, EnvManual, EnvTranscript, EnvSessionOnly, EnvAgentName, EnvPanes,
 		EnvPreferAgent, EnvPaneID, EnvAgentHandle, EnvIcons, EnvAgentStatus,
 		EnvWorkspaces, EnvWorkspaceMaxLength,
 		// Claude Code's own variable is cleared with ours: it now decides a
 		// Config field, so a developer's real home would otherwise be read.
 		EnvClaudeDirs, EnvClaudeConfigDir, EnvCodexHome, EnvForeignProcesses,
 		EnvGrokConfigDir,
+		"HERMES_HOME", "HERDR_AUTO_TITLE_HERMES_HOMES",
 	}
 
 	for _, name := range names {
@@ -70,6 +71,22 @@ func writeConfig(t *testing.T, contents string) {
 
 	if err := os.WriteFile(path, []byte(contents), 0o644); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestSessionOnlyIsOptIn(t *testing.T) {
+	isolate(t)
+
+	cfg, warnings := LoadConfig()
+	if len(warnings) != 0 || cfg.SessionOnly {
+		t.Fatalf("default session-only = %v, warnings = %v", cfg.SessionOnly, warnings)
+	}
+
+	t.Setenv(EnvSessionOnly, "true")
+
+	cfg, warnings = LoadConfig()
+	if len(warnings) != 0 || !cfg.SessionOnly {
+		t.Fatalf("opt-in session-only = %v, warnings = %v", cfg.SessionOnly, warnings)
 	}
 }
 
