@@ -1,7 +1,7 @@
 ---
 type: doc
 title: 'Installation'
-description: 'How an install puts a binary in the plugin root: the release binaries CI attaches and attests, why one is downloaded only into a checkout of the commit it was built from, a Go build for anything else, why a release stays a draft until its binaries are attached and how stable follows it, and why the scripts are shell and PowerShell.'
+description: 'How an install puts a binary in the plugin root: the release binaries CI attaches and attests, why one is downloaded only into a checkout of the commit it was built from, a Go build for anything else, why a release stays a draft until its binaries are attached, what publishes one left stuck, how stable follows it, and why the scripts are shell and PowerShell.'
 tags: [architecture, release]
 created: 2026-10-24
 generated: { by: claude-code/opus-5-5, at: 2026-10-27T12:00:00+03:00 }
@@ -117,14 +117,45 @@ source, or fails without Go.
 If the `binaries` job fails, the release stays a draft. Fix the cause and
 re-run the failed job: it checks out the tag again and publishes.
 
-The `stable` job then moves `stable` to the latest published release's commit,
-creating the branch the first time. It runs on every push to `main` unless
-`binaries` failed, and reads the target from the releases rather than from
+After "Re-run all jobs" there is no failed job left to re-run, because
+release-please reports a release only once and the job is skipped. So the
+workflow takes the tag by hand, which works whatever the last attempt did:
+
+```sh
+gh workflow run release-please.yml -f tag=vX.Y.Z
+```
+
+That builds the tag, attests the files and publishes, as the original run would
+have. It refuses a tag that is not a draft, because replacing a published
+release's files changes what its installs were checked against. Building by
+hand would publish files with no attestation, so nothing here does.
+
+Two drafts should be deleted rather than published, with
+`gh release delete vX.Y.Z`, which keeps the tag: one whose tag cannot build,
+since the fix lands after that tag and the next release carries it, and one
+older than the latest published release, since publishing marks it latest and
+the `stable` job then fails rather than move back.
+
+Once a release is published, the `stable` job moves `stable` to the latest
+published release's commit, creating the branch the first time. It runs on
+every run of the workflow unless `binaries` failed, and reads the target from the releases rather than from
 release-please, which reports a release only once: re-running all jobs finds
 none and skips `binaries`. So any later run repairs a `stable` left behind, and
 a run with nothing new writes the sha the branch already holds. It updates the
 branch without force, so a release that is not ahead of `stable` fails the job
 rather than moving every install that follows it back.
+
+After the move the job fails while any release is a draft, and names each one.
+So a release stuck behind a skipped `binaries` keeps the runs on `main` red until
+it is published or deleted, and any later run repairs a `stable` left behind or
+reports the draft that holds it there. The workflow runs one at a time, because
+a push landing while another run's `binaries` attaches its files would otherwise
+see that draft and fail with nothing wrong. GitHub keeps only the newest waiting
+run and cancels the one before, and a push loses nothing by that: a run acts on
+the current state of `main` and the releases, not on its own push. A waiting
+dispatch cancelled that way has to be sent again. A dispatch whose release-please
+cuts a new release builds only the tag it was given, so that run goes red naming
+the new draft, which takes a dispatch of its own.
 
 `GITHUB_TOKEN` cannot hold the `workflows` permission, and that limits this
 move. Measured on a scratch repository, a ref write to a commit that was on
