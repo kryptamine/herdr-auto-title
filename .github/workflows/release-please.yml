@@ -5,10 +5,19 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Draft release to build and publish, such as v1.2.3
+        required: false
 
 permissions:
   contents: write
   pull-requests: write
+
+# A run must not see another run's draft while its binaries are being attached.
+concurrency:
+  group: release-please
+  cancel-in-progress: false
 
 jobs:
   release-please:
@@ -29,18 +38,29 @@ jobs:
   # of a release an install cannot download yet; see installation.md.
   binaries:
     needs: release-please
-    if: needs.release-please.outputs.release_created == 'true'
+    if: needs.release-please.outputs.release_created == 'true' || inputs.tag != ''
     runs-on: ubuntu-latest
     permissions:
       contents: write
       id-token: write
       attestations: write
     env:
-      TAG: ${{ needs.release-please.outputs.tag_name }}
+      TAG: ${{ inputs.tag || needs.release-please.outputs.tag_name }}
     steps:
+      # Installs have already checked a published release's files, so never replace them.
+      - name: Refuse anything but a draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          draft=$(gh release view "$TAG" --json isDraft --jq .isDraft)
+          if [ "$draft" != true ]; then
+            echo "::error::$TAG is not a draft release, so nothing here may replace its files"
+            exit 1
+          fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ needs.release-please.outputs.tag_name }}
+          ref: ${{ env.TAG }}
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
@@ -83,3 +103,12 @@ jobs:
           else
             gh api -X POST "repos/$GH_REPO/git/refs" -f ref=refs/heads/stable -f sha="$sha"
           fi
+      # Re-running all jobs skips binaries, so a stuck draft would otherwise go
+      # unnoticed behind green runs; see installation.md for the way out.
+      - name: Fail while a release is a draft
+        run: |
+          drafts=$(gh release list --json isDraft,tagName --jq 'map(select(.isDraft)) | .[].tagName')
+          for tag in $drafts; do
+            echo "::error::$tag is still a draft. To publish it: gh workflow run release-please.yml -f tag=$tag. If it cannot build or a newer release is out: gh release delete $tag"
+          done
+          [ -z "$drafts" ]
