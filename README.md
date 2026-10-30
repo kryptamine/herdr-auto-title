@@ -23,7 +23,7 @@ plugin from source when it installs it.
 <!-- x-release-please-start-version -->
 
 ```sh
-herdr plugin install kryptamine/herdr-auto-title --ref v0.17.0
+herdr plugin install kryptamine/herdr-auto-title --ref v0.18.0
 herdr plugin action invoke herdr.auto-title.restart
 ```
 
