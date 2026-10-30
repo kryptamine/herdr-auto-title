@@ -12,21 +12,9 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
-)
-
-// The objects Herdr wraps its answers in. They are declared here rather than
-// shared with the client: a stub borrowing the client's own wrappers could not
-// catch the two disagreeing about the wire.
-type (
-	snapshotResult struct {
-		Snapshot herdr.Snapshot `json:"snapshot"`
-	}
-
-	processInfoResult struct {
-		ProcessInfo herdr.PaneProcessInfo `json:"process_info"`
-	}
 )
 
 type RenameCall struct {
@@ -230,128 +218,135 @@ func (s *Client) ProcessReads() int {
 	return s.reads
 }
 
-func (s *Client) Call(ctx context.Context, method string, params any, result any) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
+func (s *Client) Path() string { return "herdrtest" }
 
+// Snapshot travels the wire shape rather than being handed over as a Go value:
+// a json tag nothing else exercises is exercised here.
+func (s *Client) Snapshot(ctx context.Context) (herdr.Snapshot, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if s.callErr != nil {
-		return s.callErr
+	if err := s.refused(ctx); err != nil {
+		return herdr.Snapshot{}, err
 	}
 
-	switch method {
-	case herdr.MethodSessionSnapshot:
-		return answer(result, snapshotResult{Snapshot: herdr.Snapshot{
-			Workspaces: slices.Clone(s.workspaces),
-			Tabs:       sorted(s.tabs, func(t herdr.TabInfo) string { return t.TabID }),
-			Panes:      sorted(s.panes, func(p herdr.PaneInfo) string { return p.PaneID }),
-			Agents:     s.agents(),
-		}})
-
-	case herdr.MethodPaneProcessInfo:
-		return s.processInfo(params, result)
-
-	case herdr.MethodTabRename:
-		return s.rename(params)
-
-	case herdr.MethodPaneRename:
-		return s.renamePane(params)
-
-	case herdr.MethodWorkspaceReportMetadata:
-		return s.reportMetadata(params)
-
-	default:
-		return fmt.Errorf("stub client: unsupported method %s", method)
+	raw, err := json.Marshal(herdr.Snapshot{
+		Workspaces: slices.Clone(s.workspaces),
+		Tabs:       sorted(s.tabs, func(t herdr.TabInfo) string { return t.TabID }),
+		Panes:      sorted(s.panes, func(p herdr.PaneInfo) string { return p.PaneID }),
+		Agents:     s.agents(),
+	})
+	if err != nil {
+		return herdr.Snapshot{}, fmt.Errorf("stub client: encode snapshot: %w", err)
 	}
+
+	var snapshot herdr.Snapshot
+	if err := json.Unmarshal(raw, &snapshot); err != nil {
+		return herdr.Snapshot{}, fmt.Errorf("stub client: decode snapshot: %w", err)
+	}
+
+	return snapshot, nil
 }
 
-func (s *Client) processInfo(params any, result any) error {
+func (s *Client) PaneProcesses(
+	ctx context.Context,
+	paneID string,
+) ([]herdr.PaneProcessInfoProcess, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if err := s.refused(ctx); err != nil {
+		return nil, err
+	}
+
 	if s.processErr != nil {
-		return s.processErr
+		return nil, s.processErr
 	}
 
 	if err := s.processErrOnce; err != nil {
 		s.processErrOnce = nil
-		return err
+		return nil, err
 	}
 
-	var target herdr.PaneTarget
-	if err := decode(params, &target); err != nil {
-		return err
-	}
-
-	if _, live := s.panes[target.PaneID]; !live {
-		return &herdr.APIError{
+	if _, live := s.panes[paneID]; !live {
+		return nil, &herdr.APIError{
 			Code:    herdr.CodePaneNotFound,
-			Message: "pane " + target.PaneID + " not found",
+			Message: "pane " + paneID + " not found",
 		}
 	}
 
 	s.reads++
 
-	return answer(result, processInfoResult{
-		ProcessInfo: herdr.PaneProcessInfo{ForegroundProcesses: s.processes[target.PaneID]},
-	})
+	return slices.Clone(s.processes[paneID]), nil
 }
 
-func (s *Client) rename(params any) error {
+func (s *Client) RenameTab(ctx context.Context, tabID, label string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if err := s.refused(ctx); err != nil {
+		return err
+	}
+
 	if s.renameErr != nil && !errors.Is(s.renameErr, herdr.ErrUnanswered) {
 		return s.renameErr
 	}
 
-	var call herdr.TabRenameParams
-	if err := decode(params, &call); err != nil {
-		return err
-	}
-
-	tab, live := s.tabs[call.TabID]
+	tab, live := s.tabs[tabID]
 	if !live {
 		return &herdr.APIError{
 			Code:    herdr.CodeTabNotFound,
-			Message: "tab " + call.TabID + " not found",
+			Message: "tab " + tabID + " not found",
 		}
 	}
 	// Herdr's label really does change, so the next poll must agree.
-	tab.Label = call.Label
-	s.tabs[call.TabID] = tab
-	s.renames = append(s.renames, RenameCall(call))
+	tab.Label = label
+	s.tabs[tabID] = tab
+	s.renames = append(s.renames, RenameCall{TabID: tabID, Label: label})
 
 	return s.renameErr
 }
 
-func (s *Client) renamePane(params any) error {
-	var call herdr.PaneRenameParams
-	if err := decode(params, &call); err != nil {
+func (s *Client) RenamePane(ctx context.Context, paneID, label string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if err := s.refused(ctx); err != nil {
 		return err
 	}
 
-	pane, live := s.panes[call.PaneID]
+	pane, live := s.panes[paneID]
 	if !live {
 		return &herdr.APIError{
 			Code:    herdr.CodePaneNotFound,
-			Message: "pane " + call.PaneID + " not found",
+			Message: "pane " + paneID + " not found",
 		}
 	}
 	// Herdr's label really does change, so the next poll must agree.
-	pane.Label = call.Label
-	s.panes[call.PaneID] = pane
-	s.paneRenames = append(s.paneRenames, PaneRenameCall(call))
+	pane.Label = label
+	s.panes[paneID] = pane
+	s.paneRenames = append(s.paneRenames, PaneRenameCall{PaneID: paneID, Label: label})
 
 	return nil
 }
 
-func (s *Client) reportMetadata(params any) error {
+func (s *Client) ReportWorkspaceTopic(
+	ctx context.Context,
+	workspaceID, source, topic string,
+	ttl time.Duration,
+) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if err := s.refused(ctx); err != nil {
+		return err
+	}
+
 	if s.reportErr != nil && !errors.Is(s.reportErr, herdr.ErrUnanswered) {
 		return s.reportErr
 	}
 
-	var call herdr.WorkspaceMetadataParams
-	if err := decode(params, &call); err != nil {
-		return err
-	}
+	call := herdr.TopicReport(workspaceID, source, topic, ttl)
 
 	for i, workspace := range s.workspaces {
 		if workspace.WorkspaceID != call.WorkspaceID {
@@ -368,6 +363,15 @@ func (s *Client) reportMetadata(params any) error {
 		Code:    herdr.CodeWorkspaceNotFound,
 		Message: "workspace " + call.WorkspaceID + " not found",
 	}
+}
+
+// refused is why the stub will not answer this call, if it will not.
+func (s *Client) refused(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
+	return s.callErr
 }
 
 // merged applies reported tokens the way Herdr does: each key replaces its own
@@ -389,42 +393,6 @@ func merged(current map[string]string, reported map[string]*string) map[string]s
 	}
 
 	return next
-}
-
-// answer encodes the stub's reply and decodes it into result the way the socket
-// client does, so a session travels the wire shape rather than being handed
-// over as a Go value: a json tag nothing else exercises is exercised here.
-func answer(result any, value any) error {
-	raw, err := json.Marshal(value)
-	if err != nil {
-		return fmt.Errorf("stub client: encode result: %w", err)
-	}
-
-	if result == nil {
-		return nil
-	}
-
-	if err := json.Unmarshal(raw, result); err != nil {
-		return fmt.Errorf("stub client: decode result: %w", err)
-	}
-
-	return nil
-}
-
-// decode reads a request's parameters as Herdr would, which is what makes the
-// stub answer the request that was actually sent rather than the Go value
-// behind it.
-func decode(params any, target any) error {
-	raw, err := json.Marshal(params)
-	if err != nil {
-		return fmt.Errorf("stub client: encode params: %w", err)
-	}
-
-	if err := json.Unmarshal(raw, target); err != nil {
-		return fmt.Errorf("stub client: decode params: %w", err)
-	}
-
-	return nil
 }
 
 // sorted flattens a map into a slice ordered by each value's id, so a stub
