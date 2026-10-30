@@ -14,131 +14,53 @@ import (
 
 	"github.com/kryptamine/herdr-auto-title/internal/app"
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
-	"github.com/kryptamine/herdr-auto-title/internal/instance"
 )
 
 func main() {
-	var err error
-
-	switch {
-	case len(os.Args) == 1:
-		err = run()
-	case len(os.Args) == 2 && os.Args[1] == "restart":
-		err = restart()
-	case len(os.Args) == 2 && os.Args[1] == "--version":
-		fmt.Println("herdr-auto-title", version)
-	default:
-		err = errors.New("usage: herdr-auto-title [restart | --version]")
-	}
-
-	if err != nil {
+	if err := execute(os.Args[1:]); err != nil {
 		slog.Error("auto title stopped", "error", err)
 		os.Exit(1)
 	}
 }
 
-// setup reads the configuration, makes a logger at the level it asks for, and
-// a client for the session this process was started in.
-func setup() (app.Config, *slog.Logger, *herdr.SocketClient, error) {
-	cfg, warnings := app.LoadConfig()
-
-	level := slog.LevelInfo
-	if cfg.Debug {
-		level = slog.LevelDebug
-	}
-
-	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level}))
-	slog.SetDefault(log)
-
-	for _, warning := range warnings {
-		log.Warn(warning)
-	}
-
-	client, err := herdr.New()
-
-	return cfg, log, client, err
-}
-
-func run() error {
-	cfg, log, client, err := setup()
-	if err != nil {
-		return err
-	}
-
-	log.Info("starting auto title", "poll", cfg.Poll, "max_length", cfg.MaxLength)
-
+func execute(args []string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-
-	// Take waits for the instance it displaces, which looks at the claim
-	// before every poll; the manual-name locks are loaded only once it has.
-	claim, stayed, err := instance.Take(
-		ctx,
-		instance.File(app.StateDir(), client.Path()),
-		app.LeaveTimeout,
-	)
-	if err != nil {
-		log.Warn(
-			"the session could not be claimed, so a restart will not end this instance",
-			"error",
-			err,
-		)
-	}
-
-	if stayed != 0 {
-		log.Warn("the instance this one replaces is still running", "pid", stayed)
-	}
-
-	titles, panes, topics := app.Resolvers(cfg)
-	app.New(cfg, log, titles, panes, topics, claim).Run(ctx, client)
-
-	return nil
-}
-
-// restart starts a fresh instance in this one's session and says how that went,
-// in the log Herdr keeps of the action and in a notification.
-func restart() error {
-	_, log, client, err := setup()
-	if err != nil {
-		return err
-	}
-
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
-	exe, err := os.Executable()
-	if err != nil {
-		return err
-	}
-
-	// The instance being replaced has LeaveTimeout to go, and the new one a
-	// first poll after that.
-	pid, err := instance.Restart(
-		ctx,
-		instance.File(app.StateDir(), client.Path()),
-		exe,
-		app.LeaveTimeout+app.PollTimeout,
-	)
-
-	title, body := "Auto Title restarted", fmt.Sprintf("pid %d is naming the session", pid)
-	if err != nil {
-		title, body = "Auto Title did not restart", err.Error()
-	}
-
-	notice, notifyErr := client.ShowNotification(ctx, title, body)
 
 	switch {
-	case notifyErr != nil:
-		log.Warn("notification failed", "error", notifyErr)
-	case !notice.Shown:
-		log.Debug("notification not shown", "reason", notice.Reason)
-	}
+	case len(args) == 0:
+		return run(ctx)
+	case len(args) == 1 && args[0] == "restart":
+		return restart(ctx)
+	case len(args) == 1 && args[0] == "--version":
+		fmt.Println("herdr-auto-title", version)
 
+		return nil
+	default:
+		return errors.New("usage: herdr-auto-title [restart | --version]")
+	}
+}
+
+func run(ctx context.Context) error {
+	cfg, log := app.Configure()
+
+	client, err := herdr.New()
 	if err != nil {
 		return err
 	}
 
-	log.Info(title, "pid", pid)
+	app.Serve(ctx, cfg, log, client)
 
 	return nil
+}
+
+func restart(ctx context.Context) error {
+	_, log := app.Configure()
+
+	client, err := herdr.New()
+	if err != nil {
+		return err
+	}
+
+	return app.Restart(ctx, log, client)
 }

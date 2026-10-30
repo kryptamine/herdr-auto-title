@@ -248,9 +248,9 @@ func appFromConfig(t *testing.T, cfg Config) *App {
 	t.Helper()
 
 	cfg.Home = testHome(t)
-	titles, panes, topics := Resolvers(cfg)
+	titles, panes, topics := resolvers(cfg)
 
-	return New(cfg, discardLogger(), titles, panes, topics, &fakeInstance{})
+	return newApp(cfg, discardLogger(), titles, panes, topics, &fakeInstance{})
 }
 
 func TestTheSettingsThatShapeATitleShapeAPaneLabel(t *testing.T) {
@@ -416,7 +416,7 @@ func TestOnlyOnePaneOfATabCarriesTheBranchTheTabShows(t *testing.T) {
 	oauth := readstest.Worktree(t, repo, "oauth", "feat/oauth")
 	token := readstest.Worktree(t, repo, "token", "fix/token")
 
-	root := stateDir(t)
+	root := claudeStateDir(t)
 	readstest.Transcript(t, root, testSession, readstest.AgentIn(oauth),
 		`{"type":"ai-title","aiTitle":"Poll loop rework","sessionId":"`+testSession+`"}`)
 	readstest.Transcript(t, root, otherSession, readstest.AgentIn(token),
