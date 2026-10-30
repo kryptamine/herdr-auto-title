@@ -27,7 +27,7 @@ is required even when empty, which is why `emptyParams` exists in
 `{"id","error"}`.
 
 **One request per connection.** Herdr closes the connection after answering, so
-`SocketClient.Call` dials its own each time. That is not a workaround: it is why
+`SocketClient.call` dials its own each time. That is not a workaround: it is why
 there is no connection to lose and no reconnect logic anywhere in the plugin.
 See [the poll loop](./poll-loop.md).
 
@@ -40,7 +40,7 @@ A server stalled by a slow tab bar status command applied `tab.rename` requests
 3 to 18 seconds after receiving them, well past the poll's deadline. So a
 rename that got no answer may still land, which is why
 [manual rename protection](./manual-rename-protection.md) keeps its label.
-`Call` marks such a failure with `ErrUnanswered`, and only one that happened
+`call` marks such a failure with `ErrUnanswered`, and only one that happened
 after the request was sent: a dial that failed carried nothing to Herdr.
 
 **On Windows the socket is a named pipe.** `HERDR_SOCKET_PATH` still names a
@@ -271,7 +271,7 @@ reads, so this section describes Herdr rather than those types.
   `pid` equals `foreground_process_group_id`, and its `cwd` was the directory
   the pane was working in. The order is not the same everywhere: Herdr 0.9.0
   on Linux lists the foreground process first and its descendants after it,
-  so `herdr.PaneProcesses` finds it by that `pid` and moves it last rather
+  so `PaneProcesses` finds it by that `pid` and moves it last rather
   than trusting its place. One pane disagreed with both snapshot fields at once
   — `cwd: ~/Work/herdr-auto-title` (the shell it was started from) against
   `foreground_cwd: ~/Work/self-care-portal` (an MCP server), with the agent

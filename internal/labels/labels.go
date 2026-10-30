@@ -224,13 +224,17 @@ type kind struct {
 
 var (
 	tabKind = kind{
-		noun:   "tab",
-		rename: herdr.RenameTab,
-		gone:   herdr.CodeTabNotFound,
+		noun: "tab",
+		rename: func(ctx context.Context, c herdr.Client, id, label string) error {
+			return c.RenameTab(ctx, id, label)
+		},
+		gone: herdr.CodeTabNotFound,
 	}
 	paneKind = kind{
-		noun:         "pane",
-		rename:       herdr.RenamePane,
+		noun: "pane",
+		rename: func(ctx context.Context, c herdr.Client, id, label string) error {
+			return c.RenamePane(ctx, id, label)
+		},
 		gone:         herdr.CodePaneNotFound,
 		followsMoves: true,
 	}
