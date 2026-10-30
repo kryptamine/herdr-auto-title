@@ -199,7 +199,7 @@ func TestATopicIsReportedWhateverTheLabel(t *testing.T) {
 
 			wantTopics(t, h, test.want)
 
-			snapshot, err := herdr.SessionSnapshot(t.Context(), h.client)
+			snapshot, err := h.client.Snapshot(t.Context())
 			if err != nil {
 				t.Fatalf("snapshot: %v", err)
 			}

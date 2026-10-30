@@ -510,15 +510,17 @@ type cancelOn struct {
 	cancel context.CancelFunc
 }
 
-func (c *cancelOn) Call(ctx context.Context, method string, params any, result any) error {
-	if target, ok := params.(herdr.PaneTarget); ok &&
-		method == herdr.MethodPaneProcessInfo && target.PaneID == c.paneID {
+func (c *cancelOn) PaneProcesses(
+	ctx context.Context,
+	paneID string,
+) ([]herdr.PaneProcessInfoProcess, error) {
+	if paneID == c.paneID {
 		c.cancel()
 
-		return ctx.Err()
+		return nil, ctx.Err()
 	}
 
-	return c.Client.Call(ctx, method, params, result)
+	return c.Client.PaneProcesses(ctx, paneID)
 }
 
 // A poll cut short inside the last tab's panes has not seen every pane, so it

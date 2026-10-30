@@ -125,7 +125,7 @@ func restart() error {
 		title, body = "Auto Title did not restart", err.Error()
 	}
 
-	notice, notifyErr := herdr.ShowNotification(ctx, client, title, body)
+	notice, notifyErr := client.ShowNotification(ctx, title, body)
 
 	switch {
 	case notifyErr != nil:

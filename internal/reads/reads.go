@@ -139,7 +139,7 @@ func (r *Reader) processesOf(
 		return processes, true
 	}
 
-	processes, err := herdr.PaneProcesses(ctx, client, paneID)
+	processes, err := client.PaneProcesses(ctx, paneID)
 	if err != nil {
 		// A pane that closed is an answer, and asking again cannot change it.
 		if herdr.ErrorCode(err) == herdr.CodePaneNotFound {
