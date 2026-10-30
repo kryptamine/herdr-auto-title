@@ -30,7 +30,7 @@ func isolate(t *testing.T) {
 	setHome(t, home)
 	// Looked in before the home on every platform, so the home alone does not
 	// isolate anything until both point elsewhere.
-	t.Setenv(EnvXDGConfigHome, "")
+	t.Setenv(envXDGConfigHome, "")
 	t.Setenv("AppData", filepath.Join(home, "AppData", "Roaming"))
 
 	names := []string{
@@ -55,11 +55,11 @@ func isolate(t *testing.T) {
 	}
 }
 
-// writeConfig puts contents where LoadConfig looks for the configuration file.
+// writeConfig puts contents where loadConfig looks for the configuration file.
 func writeConfig(t *testing.T, contents string) {
 	t.Helper()
 
-	path := ownPath(ConfigFile)
+	path := ownPath(configFile)
 	if path == "" {
 		t.Fatal("no configuration directory")
 	}
@@ -77,7 +77,7 @@ func writeConfig(t *testing.T, contents string) {
 func TestLoadConfigDefaults(t *testing.T) {
 	isolate(t)
 
-	cfg, warnings := LoadConfig()
+	cfg, warnings := loadConfig()
 	if len(warnings) != 0 {
 		t.Errorf("warnings = %v, want none", warnings)
 	}
@@ -135,7 +135,7 @@ func TestLoadConfigTurnsPositionsOff(t *testing.T) {
 	isolate(t)
 	t.Setenv(EnvPosition, "false")
 
-	cfg, warnings := LoadConfig()
+	cfg, warnings := loadConfig()
 	if len(warnings) != 0 {
 		t.Errorf("warnings = %v, want none", warnings)
 	}
@@ -149,7 +149,7 @@ func TestLoadConfigTurnsTheAgentNameOn(t *testing.T) {
 	isolate(t)
 	t.Setenv(EnvAgentName, "true")
 
-	cfg, warnings := LoadConfig()
+	cfg, warnings := loadConfig()
 	if len(warnings) != 0 {
 		t.Errorf("warnings = %v, want none", warnings)
 	}
@@ -165,7 +165,7 @@ func TestLoadConfigTurnsPaneNamingOff(t *testing.T) {
 	isolate(t)
 	t.Setenv(EnvPanes, "false")
 
-	cfg, warnings := LoadConfig()
+	cfg, warnings := loadConfig()
 	if len(warnings) != 0 {
 		t.Errorf("warnings = %v, want none", warnings)
 	}
@@ -179,7 +179,7 @@ func TestLoadConfigTurnsPaneIDsOn(t *testing.T) {
 	isolate(t)
 	t.Setenv(EnvPaneID, "true")
 
-	cfg, warnings := LoadConfig()
+	cfg, warnings := loadConfig()
 	if len(warnings) != 0 {
 		t.Errorf("warnings = %v, want none", warnings)
 	}
@@ -193,7 +193,7 @@ func TestLoadConfigTurnsAgentHandlesOn(t *testing.T) {
 	isolate(t)
 	t.Setenv(EnvAgentHandle, "true")
 
-	cfg, warnings := LoadConfig()
+	cfg, warnings := loadConfig()
 	if len(warnings) != 0 {
 		t.Errorf("warnings = %v, want none", warnings)
 	}
@@ -207,7 +207,7 @@ func TestLoadConfigTurnsIconsOn(t *testing.T) {
 	isolate(t)
 	t.Setenv(EnvIcons, "true")
 
-	cfg, warnings := LoadConfig()
+	cfg, warnings := loadConfig()
 	if len(warnings) != 0 {
 		t.Errorf("warnings = %v, want none", warnings)
 	}
@@ -221,7 +221,7 @@ func TestLoadConfigTurnsAgentStatusOn(t *testing.T) {
 	isolate(t)
 	t.Setenv(EnvAgentStatus, "true")
 
-	cfg, warnings := LoadConfig()
+	cfg, warnings := loadConfig()
 	if len(warnings) != 0 {
 		t.Errorf("warnings = %v, want none", warnings)
 	}
@@ -238,7 +238,7 @@ func TestLoadConfigFromEnvironment(t *testing.T) {
 	t.Setenv(EnvMaxLength, "32")
 	t.Setenv(EnvBranchMax, "20")
 
-	cfg, warnings := LoadConfig()
+	cfg, warnings := loadConfig()
 	if len(warnings) != 0 {
 		t.Errorf("warnings = %v, want none", warnings)
 	}
@@ -266,7 +266,7 @@ func TestABranchWidthOfZeroIsAValue(t *testing.T) {
 	isolate(t)
 	t.Setenv(EnvBranchMax, "0")
 
-	cfg, warnings := LoadConfig()
+	cfg, warnings := loadConfig()
 	if len(warnings) != 0 {
 		t.Errorf("warnings = %v, want none", warnings)
 	}
@@ -280,7 +280,7 @@ func TestABranchWidthOfZeroIsAValue(t *testing.T) {
 func TestADirectoryIsUnboundedByDefault(t *testing.T) {
 	isolate(t)
 
-	cfg, _ := LoadConfig()
+	cfg, _ := loadConfig()
 	if cfg.DirectoryMax != 0 || cfg.HideDirectory {
 		t.Errorf(
 			"directory max = %d, hidden = %v, want neither",
@@ -294,7 +294,7 @@ func TestANegativeDirectoryWidthIsRejected(t *testing.T) {
 	isolate(t)
 	t.Setenv(EnvDirectoryMax, "-1")
 
-	cfg, warnings := LoadConfig()
+	cfg, warnings := loadConfig()
 	if cfg.DirectoryMax != 0 || cfg.HideDirectory {
 		t.Errorf(
 			"directory max = %d, hidden = %v, want neither",
@@ -312,7 +312,7 @@ func TestADirectoryWidthOfZeroHidesIt(t *testing.T) {
 	isolate(t)
 	t.Setenv(EnvDirectoryMax, "0")
 
-	cfg, warnings := LoadConfig()
+	cfg, warnings := loadConfig()
 	if len(warnings) != 0 {
 		t.Errorf("warnings = %v, want none", warnings)
 	}
@@ -326,7 +326,7 @@ func TestANegativeBranchWidthIsRejected(t *testing.T) {
 	isolate(t)
 	t.Setenv(EnvBranchMax, "-1")
 
-	cfg, warnings := LoadConfig()
+	cfg, warnings := loadConfig()
 	if cfg.BranchMax != resolver.DefaultBranchMaxLength {
 		t.Errorf("branch max = %d, want the default", cfg.BranchMax)
 	}
@@ -346,7 +346,7 @@ func TestLoadConfigKeepsDefaultsOnBadValues(t *testing.T) {
 	t.Setenv(EnvPoll, "-5")
 	t.Setenv(EnvMaxLength, "plenty")
 
-	cfg, warnings := LoadConfig()
+	cfg, warnings := loadConfig()
 	if len(warnings) != 3 {
 		t.Errorf("warnings = %v, want one per bad value", warnings)
 	}
@@ -368,7 +368,7 @@ func TestAnUnusableValueIsReportedInFull(t *testing.T) {
 	isolate(t)
 	t.Setenv(EnvMaxLength, "0")
 
-	cfg, warnings := LoadConfig()
+	cfg, warnings := loadConfig()
 	if cfg.MaxLength != resolver.DefaultMaxLength {
 		t.Errorf("max length = %d, want the default %d", cfg.MaxLength, resolver.DefaultMaxLength)
 	}
@@ -399,7 +399,7 @@ HERDR_AUTO_TITLE_AGENT_NAME=true
 HERDR_AUTO_TITLE_MANUAL_FILE=/tmp/names.json
 `)
 
-	cfg, warnings := LoadConfig()
+	cfg, warnings := loadConfig()
 	if len(warnings) != 0 {
 		t.Errorf("warnings = %v, want none", warnings)
 	}
@@ -444,7 +444,7 @@ func TestTheEnvironmentBeatsTheFile(t *testing.T) {
 	writeConfig(t, "HERDR_AUTO_TITLE_POLL_MS=800\n")
 	t.Setenv(EnvPoll, "250")
 
-	cfg, warnings := LoadConfig()
+	cfg, warnings := loadConfig()
 	if len(warnings) != 0 {
 		t.Errorf("warnings = %v, want none", warnings)
 	}
@@ -458,7 +458,7 @@ func TestTheEnvironmentBeatsTheFile(t *testing.T) {
 func TestAMissingConfigFileIsSilent(t *testing.T) {
 	isolate(t)
 
-	cfg, warnings := LoadConfig()
+	cfg, warnings := loadConfig()
 	if len(warnings) != 0 {
 		t.Errorf("warnings = %v, want none", warnings)
 	}
@@ -475,12 +475,12 @@ func TestABrokenConfigFileCostsTheWholeFile(t *testing.T) {
 	isolate(t)
 	writeConfig(t, "HERDR_AUTO_TITLE_POLL_MS=800\nHERDR_AUTO_TITLE_MAX_LENGTH=\"32\n")
 
-	cfg, warnings := LoadConfig()
+	cfg, warnings := loadConfig()
 	if len(warnings) != 1 {
 		t.Fatalf("warnings = %v, want one", warnings)
 	}
 
-	if !strings.Contains(warnings[0], ConfigFile) {
+	if !strings.Contains(warnings[0], configFile) {
 		t.Errorf("warning %q does not name the file", warnings[0])
 	}
 
@@ -500,7 +500,7 @@ func TestAKeyOfSomeoneElsesIsIgnored(t *testing.T) {
 	isolate(t)
 	writeConfig(t, "HERDR_AUTO_TITLE_POL_MS=800\nSOMETHING_ELSE=1\n")
 
-	cfg, warnings := LoadConfig()
+	cfg, warnings := loadConfig()
 	if len(warnings) != 0 {
 		t.Errorf("warnings = %v, want none", warnings)
 	}
@@ -516,7 +516,7 @@ func TestAnEmptyManualFileKeepsLocksInMemory(t *testing.T) {
 	isolate(t)
 	t.Setenv(EnvManual, "")
 
-	cfg, warnings := LoadConfig()
+	cfg, warnings := loadConfig()
 	if len(warnings) != 0 {
 		t.Errorf("warnings = %v, want none", warnings)
 	}
@@ -530,7 +530,7 @@ func TestAnEmptyManualFileKeepsLocksInMemory(t *testing.T) {
 func TestAnUnsetManualFileKeepsTheDefault(t *testing.T) {
 	isolate(t)
 
-	cfg, _ := LoadConfig()
+	cfg, _ := loadConfig()
 	if want := ownPath(manualFile); cfg.ManualPath != want {
 		t.Errorf("manual path = %q, want the default %q", cfg.ManualPath, want)
 	}
@@ -542,7 +542,7 @@ func TestWorkspaceTopicsAreReportedByDefault(t *testing.T) {
 	isolate(t)
 	t.Setenv(EnvManual, "")
 
-	cfg, warnings := LoadConfig()
+	cfg, warnings := loadConfig()
 	if len(warnings) != 0 {
 		t.Fatalf("unexpected warnings: %v", warnings)
 	}
@@ -553,13 +553,13 @@ func TestWorkspaceTopicsAreReportedByDefault(t *testing.T) {
 
 	t.Setenv(EnvWorkspaces, "false")
 
-	if cfg, _ = LoadConfig(); cfg.ReportWorkspaces {
+	if cfg, _ = loadConfig(); cfg.ReportWorkspaces {
 		t.Errorf("%s=false left reporting on", EnvWorkspaces)
 	}
 
 	t.Setenv(EnvWorkspaces, "true")
 
-	if cfg, _ = LoadConfig(); !cfg.ReportWorkspaces {
+	if cfg, _ = loadConfig(); !cfg.ReportWorkspaces {
 		t.Errorf("%s=true turned reporting off", EnvWorkspaces)
 	}
 }
@@ -582,7 +582,7 @@ func TestATopicIsUnboundUnlessAWidthIsSet(t *testing.T) {
 	} {
 		t.Setenv(EnvWorkspaceMaxLength, test.raw)
 
-		cfg, warnings := LoadConfig()
+		cfg, warnings := loadConfig()
 		if cfg.WorkspaceMaxLength != test.want || len(warnings) != test.warnings {
 			t.Errorf("%s=%q: width %d with warnings %v, want %d with %d",
 				EnvWorkspaceMaxLength, test.raw, cfg.WorkspaceMaxLength, warnings,
@@ -609,7 +609,7 @@ func TestLoadConfigWarnsAboutAConfigHomeItCannotUse(t *testing.T) {
 		string(os.PathListSeparator),
 	))
 
-	cfg, warnings := LoadConfig()
+	cfg, warnings := loadConfig()
 	if len(warnings) != 1 {
 		t.Fatalf("warnings = %v, want the unusable home alone reported", warnings)
 	}
@@ -635,7 +635,7 @@ func TestAConfigHomeWrittenWithATrailingSeparatorIsRead(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv(EnvClaudeDirs, home+string(os.PathSeparator))
 
-	cfg, warnings := LoadConfig()
+	cfg, warnings := loadConfig()
 	if len(warnings) != 0 {
 		t.Fatalf("warnings = %v, want none for a home that exists", warnings)
 	}
@@ -649,7 +649,7 @@ func TestLoadConfigAcceptsConfigHomesItCanUse(t *testing.T) {
 	isolate(t)
 	t.Setenv(EnvClaudeDirs, t.TempDir())
 
-	if _, warnings := LoadConfig(); len(warnings) != 0 {
+	if _, warnings := loadConfig(); len(warnings) != 0 {
 		t.Errorf("warnings = %v, want none", warnings)
 	}
 }
@@ -658,12 +658,55 @@ func TestForeignProcessesFromEnv(t *testing.T) {
 	isolate(t)
 	t.Setenv(EnvForeignProcesses, "foo"+string(filepath.ListSeparator)+"bar")
 
-	cfg, warnings := LoadConfig()
+	cfg, warnings := loadConfig()
 	if len(warnings) != 0 {
 		t.Fatalf("warnings = %v, want none", warnings)
 	}
 
 	if want := []string{"foo", "bar"}; !slices.Equal(cfg.ForeignProcesses, want) {
 		t.Errorf("ForeignProcesses = %v, want %v", cfg.ForeignProcesses, want)
+	}
+}
+
+// The two modes' tab ids differ, so sharing a locks file would have each
+// overwrite the other's, and panes and tokens have no desktop equivalent.
+func TestForDesktopTurnsOffWhatTheAppLacksAndKeepsItsOwnLocks(t *testing.T) {
+	t.Parallel()
+
+	cfg := Config{
+		RenamePanes:      true,
+		ReportWorkspaces: true,
+		ManualPath:       "/state/manual.json",
+		Poll:             time.Second,
+	}
+
+	got := cfg.ForDesktop()
+	if got.RenamePanes || got.ReportWorkspaces {
+		t.Errorf(
+			"RenamePanes = %v, ReportWorkspaces = %v, want both off",
+			got.RenamePanes,
+			got.ReportWorkspaces,
+		)
+	}
+
+	if got.ManualPath != "/state/manual.json.desktop" {
+		t.Errorf("ManualPath = %q", got.ManualPath)
+	}
+
+	if got.Poll != time.Second {
+		t.Errorf("Poll = %v, want it left alone", got.Poll)
+	}
+
+	if !cfg.RenamePanes {
+		t.Error("the configuration it was made from changed")
+	}
+}
+
+// An empty path keeps the locks in memory, which a suffix would turn into a file.
+func TestForDesktopKeepsLocksInMemoryWhenAsked(t *testing.T) {
+	t.Parallel()
+
+	if got := (Config{}).ForDesktop().ManualPath; got != "" {
+		t.Errorf("ManualPath = %q, want empty", got)
 	}
 }

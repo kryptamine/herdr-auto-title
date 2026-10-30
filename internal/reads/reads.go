@@ -139,7 +139,7 @@ func (r *Reader) processesOf(
 		return processes, true
 	}
 
-	processes, err := herdr.PaneProcesses(ctx, client, paneID)
+	processes, err := client.PaneProcesses(ctx, paneID)
 	if err != nil {
 		// A pane that closed is an answer, and asking again cannot change it.
 		if herdr.ErrorCode(err) == herdr.CodePaneNotFound {
@@ -192,7 +192,7 @@ type sessionTopic struct {
 }
 
 // topic reports what the session the pane's agent is holding says it is about.
-// Only Herdr's integration hook says which session a pane holds.
+// Only the snapshot says which session a pane holds.
 func (r *Reader) topic(ctx context.Context, pane *state.PaneState, dir string) sessionTopic {
 	if !r.readSessions || spent(ctx) {
 		return sessionTopic{}

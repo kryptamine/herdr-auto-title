@@ -181,7 +181,7 @@ func (p *Pass) apply(
 		return
 	}
 
-	if err := kind.rename(ctx, p.client, seen.id, decision.Name); err != nil {
+	if err := kind.rename(p.client, ctx, seen.id, decision.Name); err != nil {
 		if herdr.ErrorCode(err) == kind.gone {
 			log.Debug(kind.noun+" closed before it could be renamed", idKey, seen.id)
 			return
@@ -212,7 +212,7 @@ func (p *Pass) apply(
 // kind is what differs between the things Auto Title names.
 type kind struct {
 	noun   string
-	rename func(ctx context.Context, c herdr.Client, id, label string) error
+	rename func(c herdr.Client, ctx context.Context, id, label string) error
 	// gone is the error Herdr answers when the thing closed between the
 	// snapshot and the rename. The next poll will not see it at all.
 	gone string
@@ -225,12 +225,12 @@ type kind struct {
 var (
 	tabKind = kind{
 		noun:   "tab",
-		rename: herdr.RenameTab,
+		rename: herdr.Client.RenameTab,
 		gone:   herdr.CodeTabNotFound,
 	}
 	paneKind = kind{
 		noun:         "pane",
-		rename:       herdr.RenamePane,
+		rename:       herdr.Client.RenamePane,
 		gone:         herdr.CodePaneNotFound,
 		followsMoves: true,
 	}

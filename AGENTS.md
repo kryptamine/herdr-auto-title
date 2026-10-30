@@ -10,6 +10,7 @@ no LLM and no external service.
 cmd/herdr-auto-title  the binary
 internal/app          the poll loop and its configuration
 internal/herdr        the socket client; herdrtest beside it is its stub
+internal/desktop      that client's interface, answered by the desktop app and herdr-core
 internal/state        a session snapshot turned into what each tab is doing
 internal/reads        what a snapshot cannot say about a pane, once per poll
 internal/resolver     that state turned into a title, one source at a time
@@ -135,6 +136,7 @@ make tabs       # current tab names
 make watch-tabs # ...refreshed every second
 make probe-snapshot # the session snapshot the plugin polls
 make probe-workspaces # each workspace's active tab and reported tokens
+make probe-desktop  # the desktop app's tabs, joined to herdr-core's terminals
 ```
 
 `go test -race` is the gate, not `go test`: the state a poll carries between
@@ -168,11 +170,11 @@ which is the record. **A probe that teaches something new goes there.** Below
 are only the facts that would otherwise mislead the code in silence.
 
 - **One request per connection.** Herdr closes the connection after answering,
-  so every `Call` dials its own. That is why nothing here reconnects.
+  so every `call` dials its own. That is why nothing here reconnects.
 - **A call that gives up has not undone its request.** Herdr carries out a
   request it has read even after the caller hangs up, so a stalled server can
   apply a `tab.rename` seconds after the poll's deadline. That label is still
-  Auto Title's own when it lands, so `Call` marks a failure after sending
+  Auto Title's own when it lands, so `call` marks a failure after sending
   `ErrUnanswered`, and `claims.sent` keeps that label.
 - **On Windows the socket is a named pipe**, `\\.\pipe\` followed by the whole
   of `HERDR_SOCKET_PATH`. The path itself names a small text file, and dialing
@@ -284,7 +286,8 @@ are only the facts that would otherwise mislead the code in silence.
   only grows and re-reading megabytes twice a second to find one new line would
   cost more than the rest of the loop together, and what each workspace was
   last reported and when, because the snapshot's tokens name no source and
-  carry no expiry.
+  carry no expiry. The desktop client also keeps which session each pane's agent
+  holds, for `sessionRefresh`, because finding out takes a `ps` and an `lsof`.
 - **The code is the source of truth, then `docs/architecture`, then a comment.**
   A doc that contradicts the code is a bug in the doc, so fix it in the change
   that found it rather than leaving the next reader to rediscover the same

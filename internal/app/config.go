@@ -137,10 +137,10 @@ type Config struct {
 	ForeignProcesses []string
 }
 
-// LoadConfig reads configuration from the configuration file and the
+// loadConfig reads configuration from the configuration file and the
 // environment. Unusable values are reported as warnings and the default is
 // kept, so a typo never stops the plugin from running.
-func LoadConfig() (Config, []string) {
+func loadConfig() (Config, []string) {
 	var warnings []string
 	if warning := readConfigFile(); warning != "" {
 		warnings = append(warnings, warning)
@@ -212,7 +212,7 @@ func LoadConfig() (Config, []string) {
 // setting reaches a plugin the Herdr server starts: that process inherits the
 // server's environment, never the user's shell.
 func readConfigFile() string {
-	path := ownPath(ConfigFile)
+	path := ownPath(configFile)
 	if path == "" {
 		return ""
 	}
@@ -401,4 +401,18 @@ func milliseconds(raw string) (time.Duration, error) {
 	}
 
 	return time.Duration(value) * time.Millisecond, nil
+}
+
+// ForDesktop is this configuration for the desktop app. Panes and workspace tokens
+// have no equivalent there, and its tab ids need a locks file of their own, or
+// this mode and TUI's would overwrite each other's.
+func (c Config) ForDesktop() Config {
+	c.RenamePanes = false
+	c.ReportWorkspaces = false
+
+	if c.ManualPath != "" {
+		c.ManualPath += ".desktop"
+	}
+
+	return c
 }

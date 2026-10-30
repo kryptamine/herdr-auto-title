@@ -24,6 +24,7 @@ that settled it.
 | [Configuration](./configuration.md) | Why a configuration file exists at all, where it lives, why the environment overrides it, and what the file format does and does not do |
 | [Installation](./installation.md) | The release binaries an install downloads, why only into a checkout of their own commit, the Go build for anything else, and why releases start as drafts |
 | [Herdr socket API](./herdr-socket-api.md) | The wire protocol and the measured facts about Herdr 0.8.2 that everything else rests on |
+| [Herdr desktop API](./desktop-api.md) | The measured facts about the desktop app and herdr-core: the two sockets, renames, and how each agent's session can be found |
 
 Two things are worth knowing before reading any of them:
 

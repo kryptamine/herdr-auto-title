@@ -81,6 +81,10 @@ probe-snapshot: ## Show the session snapshot the plugin polls
 probe-workspaces: ## Show each workspace's active tab and reported tokens
 	@./scripts/probe.py workspaces
 
+.PHONY: probe-desktop
+probe-desktop: ## Show the desktop app's tabs, joined to herdr-core's terminals
+	@./scripts/probe.py desktop
+
 .PHONY: dist
 dist: ## Build the release binaries and their SHA256SUMS into dist/
 	@./scripts/dist.py
