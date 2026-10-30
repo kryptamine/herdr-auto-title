@@ -17,6 +17,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import tomllib
 
 import dist
 from dist import NAME, ROOT
@@ -41,6 +42,13 @@ class QuietHandler(http.server.SimpleHTTPRequestHandler):
 def manifest_version() -> str:
     text = (ROOT / "herdr-plugin.toml").read_text()
     return re.search(r'^version\s*=\s*"([^"]*)"', text, re.M).group(1)
+
+
+def manifest_build() -> list:
+    """The command Herdr runs for this platform, so the manifest is what is tested."""
+    system = {"linux": "linux", "darwin": "macos", "win32": "windows"}[sys.platform]
+    manifest = tomllib.loads((ROOT / "herdr-plugin.toml").read_text())
+    return next(b["command"] for b in manifest["build"] if system in b["platforms"])
 
 
 def build_host_asset(into: pathlib.Path) -> pathlib.Path:
@@ -123,12 +131,8 @@ def failing_go(work: pathlib.Path, path: str) -> str:
 
 
 def install(root: pathlib.Path, base: str, path: str) -> subprocess.CompletedProcess:
-    if WINDOWS:
-        command = ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts/install.ps1"]
-    else:
-        command = ["sh", "scripts/install.sh"]
     env = dict(os.environ, HERDR_AUTO_TITLE_RELEASES=base, PATH=path)
-    result = subprocess.run(command, cwd=root, env=env, capture_output=True, text=True)
+    result = subprocess.run(manifest_build(), cwd=root, env=env, capture_output=True, text=True)
     sys.stderr.write(result.stderr)
     return result
 
