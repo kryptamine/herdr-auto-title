@@ -124,7 +124,7 @@ func fakeClient(t *testing.T) (*Client, *fakeSocket) {
 	})
 	core := serve(t, func(map[string]any) string { return fakeTerminals })
 
-	return &Client{app: app.path, core: core.path}, app
+	return &Client{app: app.path, core: core.path, sessions: newSessionFinder(nil)}, app
 }
 
 func readSnapshot(t *testing.T, client *Client) herdr.Snapshot {
@@ -402,7 +402,7 @@ func TestAPaneTheCoreDoesNotListYetIsLeftOut(t *testing.T) {
 		}},
 	}}}}
 
-	snapshot, foregrounds := build(world.local([]terminal{{Address: "t1"}}), "")
+	snapshot, foregrounds := build(world.local([]terminal{{Address: "t1"}}), "", nil)
 
 	if len(snapshot.Panes) != 1 || snapshot.Panes[0].PaneID != "listed" {
 		t.Errorf("panes = %+v, want only the listed one", snapshot.Panes)
@@ -414,5 +414,19 @@ func TestAPaneTheCoreDoesNotListYetIsLeftOut(t *testing.T) {
 
 	if got := snapshot.Tabs[1].Label; got != "2" {
 		t.Errorf("launcher's tab label = %q, want its position", got)
+	}
+}
+
+// One read of `ls` must not leave a remote space's panes behind.
+func TestPanesOfOtherMachinesAreNotLocal(t *testing.T) {
+	t.Parallel()
+
+	machine := "box"
+	world := world{Spaces: []space{{ID: "s", Machine: &machine, Tabs: []tab{
+		{ID: "t", Terminals: []paneEntry{{Terminal: "t1", Pane: "p"}}},
+	}}}}
+
+	if got := panesIn(world.local([]terminal{{Address: "t1"}})); len(got) != 0 {
+		t.Errorf("panes = %+v", got)
 	}
 }

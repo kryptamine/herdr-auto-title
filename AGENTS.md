@@ -286,7 +286,8 @@ are only the facts that would otherwise mislead the code in silence.
   only grows and re-reading megabytes twice a second to find one new line would
   cost more than the rest of the loop together, and what each workspace was
   last reported and when, because the snapshot's tokens name no source and
-  carry no expiry.
+  carry no expiry. The desktop client also keeps which session each pane's agent
+  holds, for `sessionRefresh`, because finding out takes a `ps` and an `lsof`.
 - **The code is the source of truth, then `docs/architecture`, then a comment.**
   A doc that contradicts the code is a bug in the doc, so fix it in the change
   that found it rather than leaving the next reader to rediscover the same

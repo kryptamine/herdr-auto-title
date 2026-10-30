@@ -40,13 +40,15 @@ type Client struct {
 	mu sync.Mutex
 	// foregrounds is what each pane was running at the last snapshot.
 	foregrounds map[string]herdr.PaneProcessInfoProcess
+
+	sessions *sessionFinder
 }
 
 var _ herdr.Client = (*Client)(nil)
 
 // New builds a client for this user's app and core. It performs no I/O: the
 // window comes and goes, and a poll finding it closed simply fails.
-func New() (*Client, error) {
+func New(claudeDirs []string) (*Client, error) {
 	if runtime.GOOS == "windows" {
 		return nil, errors.New("the desktop mode does not support Windows yet")
 	}
@@ -57,8 +59,9 @@ func New() (*Client, error) {
 	}
 
 	return &Client{
-		app:  appSocketPath(home),
-		core: coreSocketPath(home),
+		app:      appSocketPath(home),
+		core:     coreSocketPath(home),
+		sessions: newSessionFinder(claudeDirs),
 	}, nil
 }
 
@@ -118,7 +121,8 @@ func (c *Client) Snapshot(ctx context.Context) (herdr.Snapshot, error) {
 		return herdr.Snapshot{}, err
 	}
 
-	snapshot, foregrounds := build(world.local(terminals), status.FocusedPane)
+	local := world.local(terminals)
+	snapshot, foregrounds := build(local, status.FocusedPane, c.sessions.read(ctx, panesIn(local)))
 
 	c.mu.Lock()
 	c.foregrounds = foregrounds

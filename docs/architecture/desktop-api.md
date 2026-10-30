@@ -141,9 +141,30 @@ terminal's `pid` and walking its descendants.
 - **Which held session is current** was judged by newest: by the time-ordered id
   for Grok Build and by the file under `conversations/` for Antigravity, whose
   ids are random. Returning to an older session was not measured.
-- **Open files** were read with `lsof`. Linux should offer the same through
-  `/proc/<pid>/fd`; Windows has no equivalent here, which leaves it Claude Code
-  alone.
+- **Open files** are read with `lsof`. Linux should offer the same through
+  `/proc/<pid>/fd`, which is what the code reads there, unmeasured on a live
+  agent; Windows has no equivalent here, which leaves it Claude Code alone.
+
+### What reading them costs
+
+`ps -axo pid=,ppid=` takes about 33 ms with 860 processes, and `lsof -p` about
+55 ms. A snapshot that read every session of five agents, three of which need
+`lsof`, took 140 to 155 ms, against 2.5 to 3 ms for one that reused them.
+
+So a read is reused for `sessionRefresh`, 5 s, unless the pane's agent, `pid`,
+foreground or `turn` moves first. The time limit is what follows a new session:
+
+- **`/clear` moves none of those.** `turn` stayed where it was.
+- **`turn` counts only what `terminal.send` delivered.** A prompt typed at the
+  keyboard leaves it alone: a Claude Code tab in real use read `turn` 0.
+
+A failed `ps` or `lsof` keeps the session the pane had, since it says nothing
+about that session, unless the pane's agent or `pid` has changed since.
+
+A session with no file under `conversations/` counts as Antigravity's newest,
+since every older one has had its first prompt. Whether `/new` makes that file
+at once was not measured, and neither was the `pid` file a crashed Claude Code
+leaves behind: a shallower process that reused its `pid` would be read first.
 
 ## Closing a space
 
@@ -173,6 +194,11 @@ implements `herdr.Client`. Three things differ from TUI mode:
 - **A pane the core does not list yet is left out.** `ls` and `terminal.list` are
   separate reads. Its siblings still name the tab, and a tab with no other pane
   gets the fallback name for that poll.
+
+An agent's session arrives as it does in TUI, in `agent_session`, so the readers
+are the same. The terminal title still outranks them: a Claude Code or Grok Build
+tab reads the transcript only when its title says nothing, as after `/clear`, and
+an Antigravity tab, whose title is empty, always does.
 
 `HERDR_AUTO_TITLE_ICONS` needs a Nerd Font in the app too, and its own setting:
 the tab bar is a mod, drawn in `ui_font`, not in the terminals' `font`. Herdr's
