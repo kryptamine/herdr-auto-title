@@ -10,12 +10,10 @@ generated: { by: claude-code/opus-5-5, at: 2026-10-27T12:00:00+03:00 }
 # Installation
 
 `herdr plugin install` clones the repository and runs the manifest's
-`[[build]]` step in the fresh checkout. That step is `go build`, so nobody
-without Go 1.24 can install the plugin. `scripts/install.sh`, or
-`scripts/install.ps1` on Windows, take its place once a release carries
-binaries, and with them Go is needed only for a checkout that is not a
-release. Until then releases get binaries and nothing downloads them, so the
-release job is proven before any install depends on it.
+`[[build]]` step in the fresh checkout. That step is `scripts/install.sh`, or
+`scripts/install.ps1` on Windows, so Go is needed only for a checkout that is
+not a release. A release whose tree still names `go build`, 0.18.0 and older,
+keeps building with Go whatever it has attached.
 
 ## What a release carries
 
@@ -113,6 +111,10 @@ that.
 
 An install of the tag itself in that window finds no `COMMIT` and builds from
 source, or fails without Go.
+
+Immutable releases are on, so publishing fixes a release's tag and assets for
+good. A draft still takes uploads, which is what the job relies on, and a bad
+release is replaced by the next one rather than repaired.
 
 If the `binaries` job fails, the release stays a draft. Fix the cause and
 re-run the failed job: it checks out the tag again and publishes.
