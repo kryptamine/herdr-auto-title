@@ -19,6 +19,7 @@ internal/codex        what a Codex session is about, from its rollout and index
 internal/antigravity  what an Antigravity CLI session is about, from its annotation
 internal/grok         what a Grok Build session is about, from its summary
 internal/pi           what a Pi session is about, from its session file
+internal/hermes       native Hermes session titles, from read-only SQLite
 internal/transcript   an append-only session file followed a poll at a time
 internal/git          what a repository has checked out, read from .git
 internal/instance     one Auto Title per session, and the restart handoff
@@ -147,7 +148,7 @@ a parallel test, and one that reaches the environment through a helper says so
 in a `//nolint:paralleltest`.
 
 The linter lives in `tools/go.mod`, a module of its own, so its dependency tree
-stays out of the plugin's: the main module keeps two dependencies and still
+stays out of the plugin's: the main module keeps a small dependency set and still
 builds on Go 1.24, which is what an install without a release binary needs. An
 error swallowed on purpose is dropped with `_ =`, which is what `errcheck` asks
 for; only a `Close` made through `io.Closer` or on a `net.Listener` is

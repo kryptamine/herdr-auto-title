@@ -87,8 +87,10 @@ func New(
 			log,
 		),
 		reads: reads.New(reads.Options{
-			ClaudeDirs:   cfg.ClaudeDirs,
-			GrokHome:     cfg.GrokHome,
+			ClaudeDirs:  cfg.ClaudeDirs,
+			GrokHome:    cfg.GrokHome,
+			HermesHomes: cfg.HermesHomes,
+
 			Home:         cfg.Home,
 			CodexHome:    cfg.CodexHome,
 			BranchMax:    cfg.BranchMax,
