@@ -127,12 +127,17 @@ branch without force, so a release that is not ahead of `stable` fails the job
 rather than moving every install that follows it back.
 
 `GITHUB_TOKEN` cannot hold the `workflows` permission, and that limits this
-move. Measured on a scratch repository, a ref write to a commit that was on
-`main` but never its head, and whose workflow file no head of `main` ever held,
-answered 403. Writes to commits whose workflow file a head of `main` had held
-were accepted, even after `main` moved on. A release commit is `main`'s head
-when it lands, so `stable` should be able to reach it; a 403 here fails the job
-loudly, and the fix would be an App token with `workflows: write`.
+move. On this repository, creating `stable` at v0.17.0's commit, once `main`'s
+head but with workflow files `main` had since changed, answered 403; creating it
+at v0.18.0's commit, `main`'s head at that moment, was accepted. On a scratch
+repository a write to a commit whose workflow file no head of `main` ever held
+answered 403, and an update to one that an earlier head held was accepted, even
+after `main` moved on.
+
+No rule explains all of that for certain, so what is relied on is the case seen
+to work: a release commit is `main`'s head when it lands. A repair after `main`
+changed its workflows may be refused. A 403 fails the job loudly, and the fix
+would be an App token with `workflows: write`.
 
 ## Why shell and PowerShell
 
