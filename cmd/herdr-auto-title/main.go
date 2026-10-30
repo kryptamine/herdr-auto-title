@@ -60,7 +60,7 @@ func run(ctx context.Context) error {
 func runDesktop(ctx context.Context) error {
 	cfg, log := app.Configure()
 
-	client, err := desktop.New()
+	client, err := desktop.New(cfg.ClaudeDirs)
 	if err != nil {
 		return err
 	}
