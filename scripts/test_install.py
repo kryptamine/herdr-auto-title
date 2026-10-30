@@ -5,9 +5,12 @@ Each case installs a copy of the plugin and checks what ended up in its root.
 The binary served is the one scripts/dist.py builds, so the two agree on names.
 """
 
+from __future__ import annotations
+
 import functools
 import hashlib
 import http.server
+import io
 import os
 import pathlib
 import platform
@@ -17,6 +20,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+from typing import Any, BinaryIO
 
 import dist
 from dist import NAME, ROOT
@@ -28,19 +32,22 @@ BINARY = NAME + (".exe" if WINDOWS else "")
 class QuietHandler(http.server.SimpleHTTPRequestHandler):
     """Serves the releases, and a server error for any file beside a BROKEN one."""
 
-    def send_head(self):
+    def send_head(self) -> io.BytesIO | BinaryIO | None:
         if (pathlib.Path(self.translate_path(self.path)).parent / "BROKEN").exists():
             self.send_error(500)
             return None
         return super().send_head()
 
-    def log_message(self, *args) -> None:
+    def log_message(self, format: str, *args: Any) -> None:
         pass
 
 
 def manifest_version() -> str:
     text = (ROOT / "herdr-plugin.toml").read_text()
-    return re.search(r'^version\s*=\s*"([^"]*)"', text, re.M).group(1)
+    found = re.search(r'^version\s*=\s*"([^"]*)"', text, re.M)
+    if found is None:
+        raise SystemExit("herdr-plugin.toml names no version")
+    return found.group(1)
 
 
 def build_host_asset(into: pathlib.Path) -> pathlib.Path:
@@ -65,12 +72,12 @@ def publish(
     (directory / "COMMIT").write_text(commit + "\n")
 
 
-def plugin_copy(into: pathlib.Path, version: str) -> tuple:
+def plugin_copy(into: pathlib.Path, version: str) -> tuple[pathlib.Path, str]:
     """A checkout of the plugin at version, as a commit of its own, and that commit."""
     root = into / "plugin"
-    skipped = {".git", "dist", NAME, NAME + ".exe"}
+    skipped = {".git", ".mypy_cache", ".ruff_cache", ".venv", "dist", NAME, NAME + ".exe"}
 
-    def ignore(directory: str, names: list) -> set:
+    def ignore(directory: str, names: list[str]) -> set[str]:
         return skipped & set(names) if pathlib.Path(directory) == ROOT else set()
 
     shutil.copytree(ROOT, root, ignore=ignore)
@@ -89,14 +96,17 @@ def plugin_copy(into: pathlib.Path, version: str) -> tuple:
     return root, git("rev-parse", "HEAD")
 
 
-def without_go(work: pathlib.Path, also: tuple = ()) -> str:
+def without_go(work: pathlib.Path, also: tuple[str, ...] = ()) -> str:
     """A PATH holding the system's own tools and git, and no Go toolchain."""
     if WINDOWS:
-        system = os.environ.get("SystemRoot", r"C:\Windows")
-        git = os.path.dirname(shutil.which("git"))
-        return os.pathsep.join([system + r"\System32", system, system + r"\System32\WindowsPowerShell\v1.0", git])
+        system = os.environ.get("SYSTEMROOT", r"C:\Windows")
+        git = shutil.which("git")
+        if git is None:
+            raise SystemExit("git is not on PATH")
+        directories = [system + r"\System32", system, system + r"\System32\WindowsPowerShell\v1.0"]
+        return os.pathsep.join([*directories, str(pathlib.Path(git).parent)])
     # Some runners keep Go in /usr/bin, so the system tools are linked one by one.
-    tools = work / ("tools-without-" + "-".join(("go",) + also))
+    tools = work / ("tools-without-" + "-".join(("go", *also)))
     tools.mkdir(exist_ok=True)
     hidden = {"go", "gofmt", *also}
     for directory in ("/usr/bin", "/bin", "/usr/sbin", "/sbin", "/usr/local/bin", "/opt/homebrew/bin"):
@@ -122,7 +132,7 @@ def failing_go(work: pathlib.Path, path: str) -> str:
     return os.pathsep.join([str(fake), path])
 
 
-def install(root: pathlib.Path, base: str, path: str) -> subprocess.CompletedProcess:
+def install(root: pathlib.Path, base: str, path: str) -> subprocess.CompletedProcess[str]:
     if WINDOWS:
         command = ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts/install.ps1"]
     else:
@@ -155,9 +165,9 @@ def main() -> None:
     threading.Thread(target=server.serve_forever, daemon=True).start()
     base = f"http://127.0.0.1:{server.server_address[1]}"
 
-    failures = []
+    failures: list[str] = []
 
-    def case(title: str, path: str, installs: bool, needle: str, **release) -> None:
+    def case(title: str, path: str, installs: bool, needle: str, **release: Any) -> None:
         """Install a fresh checkout against one release, laid out as the keywords say."""
         print(f"--- {title}", file=sys.stderr)
         shutil.rmtree(releases)
@@ -167,7 +177,11 @@ def main() -> None:
             commit = head if release.get("released", True) else "0" * 40
             for where in release.get("at", [f"download/v{release.get('checkout', version)}"]):
                 publish(
-                    releases, where, release.get("serve", asset), commit, release.get("tamper", False),
+                    releases,
+                    where,
+                    release.get("serve", asset),
+                    commit,
+                    release.get("tamper", False),
                     release.get("broken", False),
                 )
             if release.get("latest"):
@@ -191,7 +205,9 @@ def main() -> None:
     case("this release mismatches, latest answers, no Go", no_go, False, "does not match", tamper=True, latest=True)
     case("not this release, Go", go_path, True, "building from source", released=False)
     case("not this release, no Go", no_go, False, "without Go", released=False)
-    case("not this release, Go too old", failing_go(work, no_go), False, "the source build above failed", released=False)
+    case(
+        "not this release, Go too old", failing_go(work, no_go), False, "the source build above failed", released=False
+    )
     case("checksum mismatch, no Go", no_go, False, "does not match its checksum", tamper=True)
     case("checksum mismatch, Go", go_path, True, "building from source", tamper=True)
     case("binary of another version, no Go", no_go, False, "not 0.0.1", checkout="0.0.1")

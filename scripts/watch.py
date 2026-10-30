@@ -5,12 +5,18 @@ Keep it in the foreground: Ctrl+C stops both the watcher and the plugin, and
 backgrounding it is how you end up with a stray process renaming tabs.
 """
 
+from __future__ import annotations
+
+import contextlib
 import os
 import pathlib
 import signal
 import subprocess
 import sys
 import time
+from collections.abc import Iterator
+from types import FrameType
+from typing import NoReturn
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 BINARY = ROOT / "herdr-auto-title"
@@ -24,7 +30,7 @@ INTERVAL = 1.0
 GRACE = 5.0
 
 
-def sources():
+def sources() -> Iterator[pathlib.Path]:
     """Every file a rebuild depends on."""
     yield ROOT / "go.mod"
     for path in ROOT.rglob("*.go"):
@@ -32,31 +38,29 @@ def sources():
             yield path
 
 
-def fingerprint():
+def fingerprint() -> tuple[tuple[str, int], ...]:
     """A cheap summary of when the sources were last touched."""
     stamps = []
     for path in sorted(sources()):
-        try:
+        # The file may go away between being listed and being read.
+        with contextlib.suppress(OSError):
             stamps.append((str(path), path.stat().st_mtime_ns))
-        except OSError:
-            # The file went away between being listed and being read.
-            pass
     return tuple(stamps)
 
 
-def build():
+def build() -> bool:
     """Compile the plugin, reporting whether the binary is now fresh."""
     build = subprocess.run(["go", "build", "-o", str(BINARY), PACKAGE], cwd=ROOT)
     return build.returncode == 0
 
 
-def start():
+def start() -> subprocess.Popen[bytes]:
     """Run the plugin with DEBUG logging, in this process's own terminal."""
     env = {**os.environ, "HERDR_AUTO_TITLE_DEBUG": "1"}
     return subprocess.Popen([str(BINARY)], cwd=ROOT, env=env)
 
 
-def stop(plugin):
+def stop(plugin: subprocess.Popen[bytes] | None) -> None:
     """Stop the plugin and wait for it, so no instance outlives the watcher."""
     if plugin is None:
         return
@@ -68,14 +72,14 @@ def stop(plugin):
         plugin.wait()
 
 
-def clock():
+def clock() -> str:
     return time.strftime("%H:%M:%S")
 
 
-def watch():
+def watch() -> None:
     print("--- watching for changes; Ctrl+C to stop")
-    plugin = None
-    last = None
+    plugin: subprocess.Popen[bytes] | None = None
+    last: tuple[tuple[str, int], ...] | None = None
     try:
         while True:
             current = fingerprint()
@@ -101,19 +105,17 @@ def watch():
         stop(plugin)
 
 
-def interrupt(signum, frame):
+def interrupt(signum: int, frame: FrameType | None) -> NoReturn:
     """Turn a signal into the interrupt Ctrl+C already raises, so `make stop`
     runs the cleanup instead of ending the process and orphaning the plugin.
     """
     raise KeyboardInterrupt
 
 
-def main():
+def main() -> int:
     signal.signal(signal.SIGTERM, interrupt)
-    try:
+    with contextlib.suppress(KeyboardInterrupt):
         watch()
-    except KeyboardInterrupt:
-        pass
     return 0
 
 

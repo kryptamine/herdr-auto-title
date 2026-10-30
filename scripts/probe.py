@@ -4,10 +4,12 @@
 Verify against the running Herdr before writing code that assumes anything.
 """
 
+import contextlib
 import json
 import subprocess
 import sys
 import time
+from typing import Any
 
 USAGE = """usage: scripts/probe.py <command>
 
@@ -18,23 +20,23 @@ USAGE = """usage: scripts/probe.py <command>
   version      protocol and version of the running Herdr
 """
 
-def herdr(*args):
+
+def herdr(*args: str) -> dict[str, Any]:
     """Run a herdr CLI command and return its parsed JSON result."""
-    out = subprocess.run(
-        ["herdr", *args], capture_output=True, text=True, check=True
-    ).stdout
+    out = subprocess.run(["herdr", *args], capture_output=True, text=True, check=True).stdout
     payload = json.loads(out)
     if "error" in payload:
         raise SystemExit(f"herdr {' '.join(args)}: {payload['error']}")
-    return payload["result"]
+    result: dict[str, Any] = payload["result"]
+    return result
 
 
-def cmd_tabs():
+def cmd_tabs() -> None:
     for tab in herdr("tab", "list")["tabs"]:
         print(f"{tab['tab_id']:10} {tab['agent_status']:8} {tab['label']}")
 
 
-def cmd_watch_tabs():
+def cmd_watch_tabs() -> None:
     while True:
         print("\033[2J\033[H", end="")
         print(time.strftime("%H:%M:%S"))
@@ -43,7 +45,7 @@ def cmd_watch_tabs():
         time.sleep(1)
 
 
-def cmd_snapshot():
+def cmd_snapshot() -> None:
     snap = herdr("api", "snapshot")["snapshot"]
     print(f"herdr {snap['version']}, protocol {snap['protocol']}")
     print("\ntabs")
@@ -58,7 +60,7 @@ def cmd_snapshot():
             print(f"  {'':10} title={title!r}")
 
 
-def cmd_workspaces():
+def cmd_workspaces() -> None:
     snap = herdr("api", "snapshot")["snapshot"]
     for ws in snap["workspaces"]:
         print(
@@ -67,7 +69,7 @@ def cmd_workspaces():
         )
 
 
-def cmd_version():
+def cmd_version() -> None:
     snap = herdr("api", "snapshot")["snapshot"]
     print(f"herdr {snap['version']}, protocol {snap['protocol']}")
 
@@ -81,14 +83,12 @@ COMMANDS = {
 }
 
 
-def main():
+def main() -> int:
     if len(sys.argv) != 2 or sys.argv[1] not in COMMANDS:
         print(USAGE, file=sys.stderr)
         return 1
-    try:
+    with contextlib.suppress(KeyboardInterrupt):
         COMMANDS[sys.argv[1]]()
-    except KeyboardInterrupt:
-        pass
     return 0
 
 
