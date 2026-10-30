@@ -9,9 +9,6 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/kryptamine/herdr-auto-title/internal/antigravity"
-	"github.com/kryptamine/herdr-auto-title/internal/claude"
-	"github.com/kryptamine/herdr-auto-title/internal/grok"
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
 )
 
@@ -72,14 +69,6 @@ type localPane struct {
 // versionRe is a process name that is its version: Claude Code's reads 2.1.314.
 var versionRe = regexp.MustCompile(`^\d+(\.\d+)+$`)
 
-// agentNames are the names the resolver knows an agent by, where the one the
-// agent reports differs.
-var agentNames = map[string]string{
-	"claude-code": claude.Agent,
-	"grok-build":  grok.Agent,
-	"antigravity": antigravity.Agent,
-}
-
 // launcherNames are what the app's `+` menu names a tab it starts an agent in.
 // Nobody chose them, so such a tab counts as unnamed despite carrying one; an
 // agent missing here locks its tab: docs/architecture/desktop-api.md.
@@ -127,10 +116,23 @@ func (w world) local(terminals []terminal) []space {
 	return spaces
 }
 
+func panesIn(spaces []space) []localPane {
+	var panes []localPane
+
+	for _, space := range spaces {
+		for _, tab := range space.Tabs {
+			panes = append(panes, tab.panes...)
+		}
+	}
+
+	return panes
+}
+
 // build is the snapshot a poll reads, and what each pane is running beside it.
 func build(
 	spaces []space,
 	focusedPane string,
+	sessions map[string]*herdr.AgentSessionInfo,
 ) (herdr.Snapshot, map[string]herdr.PaneProcessInfoProcess) {
 	var snapshot herdr.Snapshot
 
@@ -152,7 +154,9 @@ func build(
 			})
 
 			for _, local := range tab.panes {
-				snapshot.Panes = append(snapshot.Panes, paneFrom(tab.ID, local, focusedPane))
+				pane := paneFrom(tab.ID, local, focusedPane)
+				pane.AgentSession = sessions[local.entry.Pane]
+				snapshot.Panes = append(snapshot.Panes, pane)
 				foregrounds[local.entry.Pane] = foregroundOf(local.terminal)
 			}
 		}
@@ -198,8 +202,8 @@ func paneFrom(tabID string, local localPane, focusedPane string) herdr.PaneInfo 
 	entry, t := local.entry, local.terminal
 
 	agent := entry.App
-	if name, renamed := agentNames[agent]; renamed {
-		agent = name
+	if known, listed := agents[agent]; listed {
+		agent = known.name
 	}
 
 	stripped := withoutSpinner(t.Title)

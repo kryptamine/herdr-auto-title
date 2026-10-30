@@ -198,7 +198,7 @@ type sessionTopic struct {
 }
 
 // topic reports what the session the pane's agent is holding says it is about.
-// Only Herdr's integration hook says which session a pane holds.
+// Only the snapshot says which session a pane holds.
 func (r *Reader) topic(
 	ctx context.Context,
 	pane *state.PaneState,
