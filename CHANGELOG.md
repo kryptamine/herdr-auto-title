@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.17.0...v0.18.0) (2026-10-30)
+
+
+### Features
+
+* report the release a binary belongs to with --version ([fb6e9dd](https://github.com/kryptamine/herdr-auto-title/commit/fb6e9dde3371bcb79eb326b58c7c097f18ca3470))
+
 ## [0.17.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.16.0...v0.17.0) (2026-10-27)
 
 
