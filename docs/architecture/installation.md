@@ -117,11 +117,22 @@ source, or fails without Go.
 If the `binaries` job fails, the release stays a draft. Fix the cause and
 re-run the failed job: it checks out the tag again and publishes.
 
-The `stable` job then moves `stable` to the release's commit, creating the
-branch the first time. It is a job of its own so that a failed move re-runs
-without touching the published release, and it updates the branch without
-force, so a release that is not ahead of `stable` fails the job rather than
-moving every install that follows it back.
+The `stable` job then moves `stable` to the latest published release's commit,
+creating the branch the first time. It runs on every push to `main` unless
+`binaries` failed, and reads the target from the releases rather than from
+release-please, which reports a release only once: re-running all jobs finds
+none and skips `binaries`. So any later run repairs a `stable` left behind, and
+a run with nothing new writes the sha the branch already holds. It updates the
+branch without force, so a release that is not ahead of `stable` fails the job
+rather than moving every install that follows it back.
+
+`GITHUB_TOKEN` cannot hold the `workflows` permission, and that limits this
+move. Measured on a scratch repository, a ref write to a commit that was on
+`main` but never its head, and whose workflow file no head of `main` ever held,
+answered 403. Writes to commits whose workflow file a head of `main` had held
+were accepted, even after `main` moved on. A release commit is `main`'s head
+when it lands, so `stable` should be able to reach it; a 403 here fails the job
+loudly, and the fix would be an App token with `workflows: write`.
 
 ## Why shell and PowerShell
 

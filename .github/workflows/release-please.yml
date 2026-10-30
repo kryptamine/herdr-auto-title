@@ -59,22 +59,22 @@ jobs:
           gh release upload "$TAG" dist/* --clobber
           gh release edit "$TAG" --draft=false --latest
 
-  # stable is what `--ref stable` installs, so it moves only once the release is
-  # published. A job of its own, so a failed move re-runs without re-uploading,
-  # and an update with no force, so it can never move stable back.
+  # stable follows the latest published release on every run, so any later run
+  # repairs a failed move. No force, so it can never move back.
   stable:
-    needs: [release-please, binaries]
+    needs: binaries
+    if: ${{ !cancelled() && needs.binaries.result != 'failure' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
     env:
-      TAG: ${{ needs.release-please.outputs.tag_name }}
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
     steps:
-      - name: Move stable to the release
+      - name: Move stable to the latest release
         run: |
-          sha=$(gh api "repos/$GH_REPO/commits/$TAG" --jq .sha)
+          tag=$(gh release view --json tagName --jq .tagName)
+          sha=$(gh api "repos/$GH_REPO/commits/$tag" --jq .sha)
           # Answers [] when stable is missing, so any other error fails the step.
           refs=$(gh api "repos/$GH_REPO/git/matching-refs/heads/stable" \
             --jq 'map(select(.ref == "refs/heads/stable")) | length')
