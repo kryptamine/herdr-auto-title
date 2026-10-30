@@ -1,0 +1,58 @@
+# Configuration for the tools that check scripts/, not a package: the scripts
+# themselves import the standard library alone, and nothing here is installed.
+[project]
+name = "herdr-auto-title-scripts"
+version = "0"
+# What these tools run on. The scripts' own floor is target-version, below.
+requires-python = ">=3.10"
+dependencies = []
+
+[dependency-groups]
+dev = ["mypy==2.4.1", "ruff==0.17.3"]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+# The Python macOS ships, which runs the scripts through their shebang.
+target-version = "py39"
+line-length = 120
+include = ["scripts/*.py"]
+
+[tool.ruff.lint]
+select = [
+    "ANN",  # every signature annotated, for mypy to check
+    "B",    # likely bugs
+    "E",    # pycodestyle
+    "F",    # pyflakes
+    "FA",   # an annotation Python 3.9 cannot evaluate needs the future import
+    "I",    # import order
+    "PLE",  # pylint's errors
+    "PLW",  # pylint's warnings
+    "PTH",  # pathlib over os.path
+    "RUF",  # ruff's own
+    "SIM",  # simpler spellings
+    "UP",   # idioms the target version has replaced
+    "W",    # pycodestyle
+]
+ignore = [
+    "PLW1510",  # most of these read the exit code, so check=False would only be noise
+]
+
+[tool.ruff.lint.flake8-annotations]
+allow-star-arg-any = true  # the keywords of a test case, and the base class's *args
+
+[tool.mypy]
+files = ["scripts"]
+python_version = "3.10"
+strict = true
+warn_unreachable = true
+enable_error_code = [
+    "ignore-without-code",
+    "possibly-undefined",
+    "redundant-expr",
+    "redundant-self",
+    "truthy-bool",
+    "truthy-iterable",
+    "unused-awaitable",
+]

@@ -31,9 +31,17 @@ lint: ## golangci-lint, pinned in tools/go.mod, for this platform and the other
 	@go tool -modfile=tools/go.mod golangci-lint run ./...
 	@GOOS=$(OTHER_GOOS) "$$(go tool -modfile=tools/go.mod -n golangci-lint)" run ./...
 
+.PHONY: fmt-scripts
+fmt-scripts: ## Format the Python scripts and apply every fix ruff can make itself
+	@uv run --locked ruff format
+	@uv run --locked ruff check --fix
+
 .PHONY: lint-scripts
-lint-scripts: ## shellcheck the install script; CI analyzes install.ps1 on Windows
+lint-scripts: ## shellcheck, ruff and mypy over scripts/; CI analyzes install.ps1 on Windows
 	@shellcheck -s sh scripts/install.sh
+	@uv run --locked ruff format --check
+	@uv run --locked ruff check
+	@uv run --locked mypy
 
 .PHONY: test
 test: ## Tests with the race detector

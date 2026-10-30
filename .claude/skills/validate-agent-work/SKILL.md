@@ -29,6 +29,8 @@ before handing work back.
    ```
 
    `fmt` runs first and rewrites files, so re-read one before editing it again.
+   A change under `scripts/` also runs `make lint-scripts`, which `make check`
+   leaves out because it needs uv and shellcheck.
 
 3. **Comment pass** — the `## Comment pass` in
    [`.claude/rules/comments.md`](../../rules/comments.md), over the comments
