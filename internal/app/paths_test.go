@@ -25,12 +25,12 @@ func writeOwnFile(t *testing.T, dir, name, contents string) string {
 	return path
 }
 
-// pollFound is the poll interval LoadConfig read, which the tests below use to
+// pollFound is the poll interval loadConfig read, which the tests below use to
 // tell the configuration files they put in different directories apart.
 func pollFound(t *testing.T) time.Duration {
 	t.Helper()
 
-	cfg, warnings := LoadConfig()
+	cfg, warnings := loadConfig()
 	if len(warnings) != 0 {
 		t.Fatalf("warnings = %v, want none", warnings)
 	}
@@ -70,8 +70,8 @@ func platformDir(t *testing.T) string {
 func TestXDGConfigHomeIsLookedInFirst(t *testing.T) {
 	isolate(t)
 	xdg := t.TempDir()
-	t.Setenv(EnvXDGConfigHome, xdg)
-	writeOwnFile(t, xdg, ConfigFile, "HERDR_AUTO_TITLE_POLL_MS=800\n")
+	t.Setenv(envXDGConfigHome, xdg)
+	writeOwnFile(t, xdg, configFile, "HERDR_AUTO_TITLE_POLL_MS=800\n")
 
 	if poll := pollFound(t); poll != 800*time.Millisecond {
 		t.Errorf("poll = %s, want the 800ms the file in XDG_CONFIG_HOME asks for", poll)
@@ -82,9 +82,9 @@ func TestARelativeXDGConfigHomeIsIgnored(t *testing.T) {
 	// The specification calls a relative value invalid, and honouring one would
 	// put the file wherever the Herdr server happened to be started.
 	isolate(t)
-	t.Setenv(EnvXDGConfigHome, filepath.Join("somewhere", "relative"))
+	t.Setenv(envXDGConfigHome, filepath.Join("somewhere", "relative"))
 
-	path := ownPath(ConfigFile)
+	path := ownPath(configFile)
 	if !filepath.IsAbs(path) {
 		t.Errorf("configuration path = %q, want an absolute one", path)
 	}
@@ -99,7 +99,7 @@ func TestTheHomeConfigDirectoryIsLookedIn(t *testing.T) {
 	// The point of the ordering: on macOS and Windows too, so one dotfiles
 	// repository serves every machine.
 	isolate(t)
-	writeOwnFile(t, dotConfig(t), ConfigFile, "HERDR_AUTO_TITLE_POLL_MS=800\n")
+	writeOwnFile(t, dotConfig(t), configFile, "HERDR_AUTO_TITLE_POLL_MS=800\n")
 
 	if poll := pollFound(t); poll != 800*time.Millisecond {
 		t.Errorf("poll = %s, want the 800ms the file in ~/.config asks for", poll)
@@ -110,7 +110,7 @@ func TestTheHomeConfigDirectoryIsLookedIn(t *testing.T) {
 func TestThePlatformDirectoryIsStillLookedIn(t *testing.T) {
 	// An install that predates the ordering keeps working without being moved.
 	isolate(t)
-	writeOwnFile(t, platformDir(t), ConfigFile, "HERDR_AUTO_TITLE_POLL_MS=800\n")
+	writeOwnFile(t, platformDir(t), configFile, "HERDR_AUTO_TITLE_POLL_MS=800\n")
 
 	if poll := pollFound(t); poll != 800*time.Millisecond {
 		t.Errorf("poll = %s, want the 800ms the platform directory asks for", poll)
@@ -122,8 +122,8 @@ func TestTheHomeConfigDirectoryBeatsThePlatformOne(t *testing.T) {
 	isolate(t)
 	platform := platformDir(t)
 	config := dotConfig(t)
-	writeOwnFile(t, platform, ConfigFile, "HERDR_AUTO_TITLE_POLL_MS=900\n")
-	writeOwnFile(t, config, ConfigFile, "HERDR_AUTO_TITLE_POLL_MS=800\n")
+	writeOwnFile(t, platform, configFile, "HERDR_AUTO_TITLE_POLL_MS=900\n")
+	writeOwnFile(t, config, configFile, "HERDR_AUTO_TITLE_POLL_MS=800\n")
 
 	if poll := pollFound(t); poll != 800*time.Millisecond {
 		t.Errorf("poll = %s, want the 800ms ~/.config asks for", poll)
@@ -136,9 +136,9 @@ func TestTheStateDirectoryIgnoresTheHomeConfigDirectory(t *testing.T) {
 	// hold a configuration file.
 	isolate(t)
 	platform := platformDir(t)
-	writeOwnFile(t, dotConfig(t), ConfigFile, "HERDR_AUTO_TITLE_POLL_MS=800\n")
+	writeOwnFile(t, dotConfig(t), configFile, "HERDR_AUTO_TITLE_POLL_MS=800\n")
 
-	if got, want := StateDir(), filepath.Join(platform, ownDir); got != want {
+	if got, want := stateDir(), filepath.Join(platform, ownDir); got != want {
 		t.Errorf("state dir = %q, want %q in the platform directory", got, want)
 	}
 }
@@ -150,7 +150,7 @@ func TestANewFileGoesToThePlatformDirectory(t *testing.T) {
 	isolate(t)
 	want := filepath.Join(platformDir(t), ownDir, manualFile)
 
-	cfg, _ := LoadConfig()
+	cfg, _ := loadConfig()
 	if cfg.ManualPath != want {
 		t.Errorf("manual path = %q, want %q in the platform directory", cfg.ManualPath, want)
 	}
@@ -164,9 +164,9 @@ func TestEachFileIsLookedForOnItsOwn(t *testing.T) {
 	platform := platformDir(t)
 	config := dotConfig(t)
 	locks := writeOwnFile(t, platform, manualFile, "{}\n")
-	writeOwnFile(t, config, ConfigFile, "# moved into a dotfiles repository\n")
+	writeOwnFile(t, config, configFile, "# moved into a dotfiles repository\n")
 
-	cfg, _ := LoadConfig()
+	cfg, _ := loadConfig()
 	if cfg.ManualPath != locks {
 		t.Errorf(
 			"manual path = %q, want the %q the platform directory holds",

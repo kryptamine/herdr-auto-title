@@ -89,7 +89,7 @@ func newTestAppOn(t *testing.T, cfg Config, instance Instance) *App {
 		panes = chain
 	}
 
-	return New(cfg, discardLogger(), chain, panes, topicsFor(cfg), instance)
+	return newApp(cfg, discardLogger(), chain, panes, topicsFor(cfg), instance)
 }
 
 // harness drives an App against a stubbed Herdr session one poll at a time, so
@@ -1382,7 +1382,7 @@ const otherSession = "0c3a1d94-77b1-4f2e-8a6d-5e91b2c4d803"
 func transcript(t *testing.T, lines ...string) string {
 	t.Helper()
 
-	home := stateDir(t)
+	home := claudeStateDir(t)
 	readstest.Transcript(t, home, testSession, lines...)
 
 	return home
@@ -1507,9 +1507,9 @@ func TestAWindowsShellPaneIsNamedAfterItsDirectory(t *testing.T) {
 	}
 }
 
-// stateDir points the plugin at a Claude Code state directory of the test's
+// claudeStateDir points the plugin at a Claude Code state directory of the test's
 // own, so several sessions can be laid down in one.
-func stateDir(t *testing.T) string {
+func claudeStateDir(t *testing.T) string {
 	t.Helper()
 	return t.TempDir()
 }
@@ -1557,7 +1557,7 @@ func TestATabIsNamedAfterTheBranchTheAgentIsWorkingOn(t *testing.T) {
 func TestASessionInAnExtraConfigHomeIsNamed(t *testing.T) {
 	t.Parallel()
 
-	first := stateDir(t)
+	first := claudeStateDir(t)
 
 	other := t.TempDir()
 	readstest.Transcript(
@@ -1739,7 +1739,7 @@ func TestAPaneHoldingSeveralRepositoriesFollowsItsAgentsWorktree(t *testing.T) {
 	}
 }
 
-// Resolvers hands the home directory to the chain it builds: without it a pane
+// resolvers hands the home directory to the chain it builds: without it a pane
 // sitting in the home names the tab after the account.
 func TestResolversKeepAPaneInTheHomeFromNamingATab(t *testing.T) {
 	t.Parallel()
@@ -1747,7 +1747,7 @@ func TestResolversKeepAPaneInTheHomeFromNamingATab(t *testing.T) {
 	cfg := testConfig()
 	cfg.Home = testHome(t)
 
-	titles, _, _ := Resolvers(cfg)
+	titles, _, _ := resolvers(cfg)
 
 	pane := &state.PaneState{ID: "w1:p1", Dir: cfg.Home, Focused: true}
 	tab := state.TabFrom(
