@@ -893,7 +893,7 @@ against. It sits inside both — `1 · <icon> billing`, `[w1:p2] <icon> api` —
 because those two are keys a user types, and keys lead.
 
 The icon is read off the foreground process alone, the one
-`herdr.PaneProcesses` lists last. A descendant is not what the pane is for:
+`PaneProcesses` lists last. A descendant is not what the pane is for:
 Neovim runs its language servers under `node` and `git push` runs `ssh`, and
 either would otherwise take the icon. It is not `paneKind` either, which
 declines a runtime such as `node` and a remote session: neither says what the

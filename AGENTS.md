@@ -168,11 +168,11 @@ which is the record. **A probe that teaches something new goes there.** Below
 are only the facts that would otherwise mislead the code in silence.
 
 - **One request per connection.** Herdr closes the connection after answering,
-  so every `Call` dials its own. That is why nothing here reconnects.
+  so every `call` dials its own. That is why nothing here reconnects.
 - **A call that gives up has not undone its request.** Herdr carries out a
   request it has read even after the caller hangs up, so a stalled server can
   apply a `tab.rename` seconds after the poll's deadline. That label is still
-  Auto Title's own when it lands, so `Call` marks a failure after sending
+  Auto Title's own when it lands, so `call` marks a failure after sending
   `ErrUnanswered`, and `claims.sent` keeps that label.
 - **On Windows the socket is a named pipe**, `\\.\pipe\` followed by the whole
   of `HERDR_SOCKET_PATH`. The path itself names a small text file, and dialing

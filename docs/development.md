@@ -43,10 +43,10 @@ If a change can be expressed as "given this session, expect this title", it
 belongs here and nowhere else.
 
 That stub lives in `internal/herdr/herdrtest` rather than in `internal/herdr`,
-so the package the plugin ships exports nothing only a test reads. It answers by
-encoding a reply and decoding it into the caller's result exactly as the socket
-client does, which is what puts the wire tags under test at all — nothing else
-in the suite speaks JSON.
+so the package the plugin ships exports nothing only a test reads. Its `Snapshot`
+encodes the session and decodes it back, which keeps the snapshot's wire tags
+under test across the whole suite. Nothing else it answers passes through JSON,
+so `client_test.go` checks the other requests on the socket client itself.
 
 **Write the test first when you are fixing something a live run revealed.** Every
 defect found so far came from a live run and none from the happy path: a busy

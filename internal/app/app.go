@@ -253,7 +253,7 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 	ctx, cancel := context.WithTimeout(ctx, PollTimeout)
 	defer cancel()
 
-	snapshot, err := herdr.SessionSnapshot(ctx, client)
+	snapshot, err := client.Snapshot(ctx)
 	if err != nil {
 		return err
 	}
@@ -341,7 +341,7 @@ func (a *App) reportTopics(
 
 // report sends one workspace's topic, or clears it when topic is empty.
 func (a *App) report(ctx context.Context, client herdr.Client, id, topic string) {
-	err := herdr.ReportWorkspaceTopic(ctx, client, id, topicSource, topic, topicTTL)
+	err := client.ReportWorkspaceTopic(ctx, id, topicSource, topic, topicTTL)
 
 	switch {
 	case err == nil:
