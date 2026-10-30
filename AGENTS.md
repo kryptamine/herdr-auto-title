@@ -135,6 +135,7 @@ make tabs       # current tab names
 make watch-tabs # ...refreshed every second
 make probe-snapshot # the session snapshot the plugin polls
 make probe-workspaces # each workspace's active tab and reported tokens
+make probe-desktop  # the desktop app's tabs, joined to herdr-core's terminals
 ```
 
 `go test -race` is the gate, not `go test`: the state a poll carries between
