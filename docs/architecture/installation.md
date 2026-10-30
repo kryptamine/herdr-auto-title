@@ -134,10 +134,15 @@ repository a write to a commit whose workflow file no head of `main` ever held
 answered 403, and an update to one that an earlier head held was accepted, even
 after `main` moved on.
 
-No rule explains all of that for certain, so what is relied on is the case seen
-to work: a release commit is `main`'s head when it lands. A repair after `main`
-changed its workflows may be refused. A 403 fails the job loudly, and the fix
-would be an App token with `workflows: write`.
+Probed on this repository with `GITHUB_TOKEN`, from a push to another branch,
+writes to `main`'s head and to former heads with other workflow files were
+accepted, a create and updates alike, and one to a commit never `main`'s head
+answered 403. The v0.17.0 create did not fail again there, once probe branches
+held that commit, and nothing measured explains why it failed the first time.
+
+So what is relied on is the case seen to work: a release commit is `main`'s head
+when it lands. A 403 fails the job loudly, and the fix would be an App token
+with `workflows: write`.
 
 ## Why shell and PowerShell
 
