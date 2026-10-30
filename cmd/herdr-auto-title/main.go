@@ -13,6 +13,7 @@ import (
 	"syscall"
 
 	"github.com/kryptamine/herdr-auto-title/internal/app"
+	"github.com/kryptamine/herdr-auto-title/internal/desktop"
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
 )
 
@@ -30,6 +31,8 @@ func execute(args []string) error {
 	switch {
 	case len(args) == 0:
 		return run(ctx)
+	case len(args) == 1 && args[0] == "desktop":
+		return runDesktop(ctx)
 	case len(args) == 1 && args[0] == "restart":
 		return restart(ctx)
 	case len(args) == 1 && args[0] == "--version":
@@ -37,7 +40,7 @@ func execute(args []string) error {
 
 		return nil
 	default:
-		return errors.New("usage: herdr-auto-title [restart | --version]")
+		return errors.New("usage: herdr-auto-title [desktop | restart | --version]")
 	}
 }
 
@@ -50,6 +53,19 @@ func run(ctx context.Context) error {
 	}
 
 	app.Serve(ctx, cfg, log, client)
+
+	return nil
+}
+
+func runDesktop(ctx context.Context) error {
+	cfg, log := app.Configure()
+
+	client, err := desktop.New()
+	if err != nil {
+		return err
+	}
+
+	app.Serve(ctx, cfg.ForDesktop(), log, client)
 
 	return nil
 }

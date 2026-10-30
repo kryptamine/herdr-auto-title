@@ -63,7 +63,8 @@ Only `{"status":true}` says which pane has focus, and only for the shown tab.
 - **A tab started from the `+` menu is named.** `new-menu` passes
   `name: agent.name` to `tab.new`, so it reads as a user's tab called "Claude
   Code" and manual rename protection would never touch it. A tab started by
-  `tab.new` with no name is unnamed. Both were read back from `ls`.
+  `tab.new` with no name is unnamed. Both were read back from `ls`. The client
+  lists those names by hand, so one the app adds later locks its tab until listed.
 
 ## What the core reports
 
@@ -152,10 +153,38 @@ so it adopts them into a new space named after their directory, which then
 disappears as they exit. A poll in that window sees tabs that are already going.
 The closed space's `recent` list also gained an entry with an empty name.
 
+## With no window open
+
+After `app.quit`, `herdr-app.sock` stays on disk and refuses the connection, so
+its existence says nothing about a window. The core keeps answering, terminals
+keep running, and a rename made before the quit is still there when the window
+reopens.
+
+## The desktop mode
+
+`herdr-auto-title desktop` is the same poll loop behind `internal/desktop`, which
+implements `herdr.Client`. Three things differ from TUI mode:
+
+- **Panes and workspace tokens are off**, because they have no equivalent.
+- **Manual names live in `manual-names.json.desktop`**, so the two modes do not
+  overwrite each other's file.
+- **`Server()` is empty**, so a window restart is not a successor and the process
+  stays. It logs failed polls until the window returns.
+- **A pane the core does not list yet is left out.** `ls` and `terminal.list` are
+  separate reads. Its siblings still name the tab, and a tab with no other pane
+  gets the fallback name for that poll.
+
+`HERDR_AUTO_TITLE_ICONS` needs a Nerd Font in the app too, and its own setting:
+the tab bar is a mod, drawn in `ui_font`, not in the terminals' `font`. Herdr's
+default, Geist, has no such glyphs, so set `ui_font` in the app's `settings.json`
+to a Nerd Font, such as `JetBrainsMono Nerd Font Propo`. That changes every mod.
+
+A tab already named when the process first starts is renamed: the first poll
+claims nothing, as in TUI, since nothing there can tell a user's name from an
+earlier run's. A rename after that is the user's, and stays.
+
 ## Not settled
 
-- What each socket does with no window open. By the source, `herdr-app.sock`
-  refuses the connection and the core keeps answering. Not measured.
 - The app socket on Windows. By the source, it is an `AF_UNIX` socket at the same
   path, through `uds_windows`, and not a named pipe. Not measured.
 - A window that takes over 5 s answers `the window did not answer`. By the

@@ -10,6 +10,7 @@ no LLM and no external service.
 cmd/herdr-auto-title  the binary
 internal/app          the poll loop and its configuration
 internal/herdr        the socket client; herdrtest beside it is its stub
+internal/desktop      that client's interface, answered by the desktop app and herdr-core
 internal/state        a session snapshot turned into what each tab is doing
 internal/reads        what a snapshot cannot say about a pane, once per poll
 internal/resolver     that state turned into a title, one source at a time

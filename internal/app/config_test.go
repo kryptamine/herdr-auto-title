@@ -667,3 +667,46 @@ func TestForeignProcessesFromEnv(t *testing.T) {
 		t.Errorf("ForeignProcesses = %v, want %v", cfg.ForeignProcesses, want)
 	}
 }
+
+// The two modes' tab ids differ, so sharing a locks file would have each
+// overwrite the other's, and panes and tokens have no desktop equivalent.
+func TestForDesktopTurnsOffWhatTheAppLacksAndKeepsItsOwnLocks(t *testing.T) {
+	t.Parallel()
+
+	cfg := Config{
+		RenamePanes:      true,
+		ReportWorkspaces: true,
+		ManualPath:       "/state/manual.json",
+		Poll:             time.Second,
+	}
+
+	got := cfg.ForDesktop()
+	if got.RenamePanes || got.ReportWorkspaces {
+		t.Errorf(
+			"RenamePanes = %v, ReportWorkspaces = %v, want both off",
+			got.RenamePanes,
+			got.ReportWorkspaces,
+		)
+	}
+
+	if got.ManualPath != "/state/manual.json.desktop" {
+		t.Errorf("ManualPath = %q", got.ManualPath)
+	}
+
+	if got.Poll != time.Second {
+		t.Errorf("Poll = %v, want it left alone", got.Poll)
+	}
+
+	if !cfg.RenamePanes {
+		t.Error("the configuration it was made from changed")
+	}
+}
+
+// An empty path keeps the locks in memory, which a suffix would turn into a file.
+func TestForDesktopKeepsLocksInMemoryWhenAsked(t *testing.T) {
+	t.Parallel()
+
+	if got := (Config{}).ForDesktop().ManualPath; got != "" {
+		t.Errorf("ManualPath = %q, want empty", got)
+	}
+}

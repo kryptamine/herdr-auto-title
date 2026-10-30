@@ -402,3 +402,17 @@ func milliseconds(raw string) (time.Duration, error) {
 
 	return time.Duration(value) * time.Millisecond, nil
 }
+
+// ForDesktop is this configuration for the desktop app. Panes and workspace tokens
+// have no equivalent there, and its tab ids need a locks file of their own, or
+// this mode and TUI's would overwrite each other's.
+func (c Config) ForDesktop() Config {
+	c.RenamePanes = false
+	c.ReportWorkspaces = false
+
+	if c.ManualPath != "" {
+		c.ManualPath += ".desktop"
+	}
+
+	return c
+}
