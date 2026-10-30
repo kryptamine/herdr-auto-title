@@ -63,7 +63,7 @@ Only `{"status":true}` says which pane has focus, and only for the shown tab.
 - **A tab started from the `+` menu is named.** `new-menu` passes
   `name: agent.name` to `tab.new`, so it reads as a user's tab called "Claude
   Code" and manual rename protection would never touch it. A tab started by
-  `tab.new` with no name is unnamed.
+  `tab.new` with no name is unnamed. Both were read back from `ls`.
 
 ## What the core reports
 
@@ -119,28 +119,46 @@ sets no `HERDR_*` variable, which Pi's Herdr integration requires; the other
 agents' hooks were not read. So each agent has its own route, starting from the
 terminal's `pid` and walking its descendants.
 
-| Agent | Route | Follows a new session | Rests on |
-|-------|-------|-----------------------|----------|
-| Claude Code | `~/.claude/sessions/<pid>.json` holds `sessionId` | Yes, `/clear` measured | a file named by pid |
-| Grok Build | its process holds `~/.grok/sessions/<dir>/<id>/events.jsonl` open | Not measured | open files |
-| Antigravity | its process holds `~/.gemini/antigravity-cli/brain/<id>/` open | Not measured | open files |
-| Codex | a descendant holds `rollout-*-<id>.jsonl` open | **No, see below** | open files |
-| Pi | none: the newest file under `~/.pi/agent/sessions/<cwd slug>/` | Not measured | a guess |
+| Agent | Route | Two sessions in one directory | After a new session |
+|-------|-------|-------------------------------|---------------------|
+| Claude Code | `~/.claude/sessions/<pid>.json` holds `sessionId` | Told apart: one file per pid | `/clear` rewrites the file |
+| Grok Build | its process holds `~/.grok/sessions/<dir>/<id>/events.jsonl` open | Told apart | `/new` holds both; the newest is current |
+| Antigravity | its process holds `~/.gemini/antigravity-cli/brain/<id>/` open | Told apart | `/new` holds both; the newest is current |
+| Codex | **none** | **Not told apart** | a rollout appears at the first prompt |
+| Pi | **none**: only the session folder of its directory | **Not told apart** | a file appears at the first prompt |
 
-- **Codex after `/new`** kept the old rollout open, so this route can name a
-  session that has ended. The terminal title already carries the topic.
-- **Pi** holds no file open between writes, so two Pi sessions in one directory
-  cannot be told apart. Its only reliable source is its own extension API.
+- **Codex shares one daemon.** The first Codex's child, `app-server-daemon`, held
+  the rollouts of both terminals, and the second Codex had no child and held
+  none. So an open rollout says nothing about which terminal owns it, and after
+  `/new` the old one stays open too. The terminal title carries the topic.
+- **`/new` in Codex opens a dialog** asking where the conversation should run, so
+  text sent straight after it is taken by the dialog.
+- **Pi holds no session file open.** Its first file is stamped within about a
+  second of the process starting, which tells apart sessions started at
+  different times, but two started in the same second are not, and a file made
+  by `/new` has no such link. Only Pi's extension API knows for certain.
+- **Which held session is current** was judged by newest: by the time-ordered id
+  for Grok Build and by the file under `conversations/` for Antigravity, whose
+  ids are random. Returning to an older session was not measured.
 - **Open files** were read with `lsof`. Linux should offer the same through
   `/proc/<pid>/fd`; Windows has no equivalent here, which leaves it Claude Code
   alone.
+
+## Closing a space
+
+`space.close` answers before its terminals have exited. For about the next three
+seconds, those still running carry `herdr.space` labels the app no longer knows,
+so it adopts them into a new space named after their directory, which then
+disappears as they exit. A poll in that window sees tabs that are already going.
+The closed space's `recent` list also gained an entry with an empty name.
 
 ## Not settled
 
 - What each socket does with no window open. By the source, `herdr-app.sock`
   refuses the connection and the core keeps answering. Not measured.
-- The app socket's transport on Windows.
+- The app socket on Windows. By the source, it is an `AF_UNIX` socket at the same
+  path, through `uds_windows`, and not a named pipe. Not measured.
 - A window that takes over 5 s answers `the window did not answer`. By the
   source, the request is still queued, so it may apply later. Not measured.
-- Grok Build and Antigravity after a new session, and two Codex sessions in one
-  directory.
+- Clicking `+` itself. The tab it makes was reproduced by calling `tab.new` with
+  the same arguments.
