@@ -93,6 +93,7 @@ another tab will rebuild and restart on it.
 ```sh
 make probe-snapshot  # the snapshot the plugin polls
 make probe-workspaces # each workspace's active tab and reported tokens
+make probe-desktop  # the desktop app's tabs, joined to herdr-core's terminals
 ```
 
 `scripts/probe.py` talks to the socket directly, so it shows you the wire truth
@@ -108,7 +109,9 @@ per active pane before anything live.
 The current list of verified facts lives in
 [architecture/herdr-socket-api.md](architecture/herdr-socket-api.md), with a
 summary of it — and the measurements behind the polling decision — in AGENTS.md.
-When a probe teaches you something new, add it to both.
+When a probe teaches you something new, add it to both. What a probe of the
+desktop app teaches goes in
+[architecture/desktop-api.md](architecture/desktop-api.md).
 
 ## Registering it with Herdr
 
