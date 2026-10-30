@@ -192,7 +192,7 @@ checkouts are memoized by directory, and a pane holding still keeps its last
 process answer — but the floor is one read per pane, which is why it can be
 turned off ([configuration](./configuration.md)).
 
-The whole poll is bounded by `PollTimeout` (5 s). A tab that closed between the
+The whole poll is bounded by `pollTimeout` (5 s). A tab that closed between the
 snapshot and its rename answers `tab_not_found`, which is expected rather than an
 error; a pane that closed answers `pane_not_found` and is treated the same way.
 
@@ -310,7 +310,7 @@ ends over it.
 
 **Newest wins.** `App.poll` reads the claim before every poll and ends the run
 when another pid holds it, with nothing renamed that poll. `Take` waits for
-the pid it displaced to exit — `LeaveTimeout`, a poll past its deadline plus
+the pid it displaced to exit — `leaveTimeout`, a poll past its deadline plus
 up to five seconds for the old instance's own interval, which the new one
 cannot know — and only then are the manual-name locks loaded and the session
 polled. It never kills: an instance old enough not to look at claims is left
@@ -329,8 +329,8 @@ pid into a marker beside the claim, `<hash>.ready.json`. A file of its own,
 because that first poll can outlast a takeover: marking ready in the claim
 would write over the newer instance's pid with the old one's, and the wrong
 instance would survive. An instance is ready when it holds the claim and the
-marker names it, and that is what the restart waits for: `LeaveTimeout` plus
-`PollTimeout`, passed in from `main` so one deadline cannot drift from the
+marker names it, and that is what the restart waits for: `leaveTimeout` plus
+`pollTimeout`, passed in from `Restart` so one deadline cannot drift from the
 other, for the new pid to hold the claim, be ready, and the old pid to be
 gone, watching the child as well so an instance that exits at once is reported
 with its status rather than waited for. An exit is only a failure while nobody

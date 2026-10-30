@@ -5,15 +5,15 @@ import (
 	"path/filepath"
 )
 
-// EnvXDGConfigHome names the directory a user following the XDG convention
+// envXDGConfigHome names the directory a user following the XDG convention
 // keeps configuration in.
-const EnvXDGConfigHome = "XDG_CONFIG_HOME"
+const envXDGConfigHome = "XDG_CONFIG_HOME"
 
 // The files Auto Title keeps of its own, and the directory holding them inside
 // one of the configuration directories configDirs lists.
 const (
 	ownDir     = "herdr-auto-title"
-	ConfigFile = "config.env"
+	configFile = "config.env"
 	manualFile = "manual-names.json"
 )
 
@@ -38,10 +38,10 @@ func ownPath(name string) string {
 	return filepath.Join(dirs[len(dirs)-1], ownDir, name)
 }
 
-// StateDir is where Auto Title keeps what it writes for itself alone, or empty
+// stateDir is where Auto Title keeps what it writes for itself alone, or empty
 // when there is no platform directory. It is always the platform's, never the
 // first match ownPath would take, so every instance agrees on it.
-func StateDir() string {
+func stateDir() string {
 	dir, err := os.UserConfigDir()
 	if err != nil {
 		return ""
@@ -58,7 +58,7 @@ func configDirs() []string {
 
 	// A relative XDG_CONFIG_HOME is against the specification, and would put
 	// the file wherever the Herdr server happened to be started.
-	if xdg := os.Getenv(EnvXDGConfigHome); filepath.IsAbs(xdg) {
+	if xdg := os.Getenv(envXDGConfigHome); filepath.IsAbs(xdg) {
 		dirs = append(dirs, xdg)
 	}
 

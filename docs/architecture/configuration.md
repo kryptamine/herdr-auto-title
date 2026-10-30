@@ -181,7 +181,7 @@ fits the topic to it, while any width set here is a guess.
 
 ## Why it is not reread
 
-The file is read once. Half the settings are consumed in `main.run` while it
+The file is read once. Half the settings are consumed in `app.Serve` while it
 builds the resolver chains — `MAX_LENGTH`, `BRANCH_MAX` and `DIRECTORY_MAX` are
 baked into `resolver.Default`, `WORKSPACE_MAX_LENGTH` into the topic's bound,
 `ICONS` decides whether both chains are wrapped, and `AGENT_STATUS`,
