@@ -137,10 +137,10 @@ type Config struct {
 	ForeignProcesses []string
 }
 
-// LoadConfig reads configuration from the configuration file and the
+// loadConfig reads configuration from the configuration file and the
 // environment. Unusable values are reported as warnings and the default is
 // kept, so a typo never stops the plugin from running.
-func LoadConfig() (Config, []string) {
+func loadConfig() (Config, []string) {
 	var warnings []string
 	if warning := readConfigFile(); warning != "" {
 		warnings = append(warnings, warning)
@@ -212,7 +212,7 @@ func LoadConfig() (Config, []string) {
 // setting reaches a plugin the Herdr server starts: that process inherits the
 // server's environment, never the user's shell.
 func readConfigFile() string {
-	path := ownPath(ConfigFile)
+	path := ownPath(configFile)
 	if path == "" {
 		return ""
 	}

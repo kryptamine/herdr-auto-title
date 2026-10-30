@@ -16,13 +16,13 @@ import (
 	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
 
-// PollTimeout bounds one poll: a snapshot and the renames it decides on.
-const PollTimeout = 5 * time.Second
+// pollTimeout bounds one poll: a snapshot and the renames it decides on.
+const pollTimeout = 5 * time.Second
 
-// LeaveTimeout is how long a displaced instance gets to leave: a poll past its
+// leaveTimeout is how long a displaced instance gets to leave: a poll past its
 // deadline, then the wait for its next one, which is its own interval — up to
 // five seconds of it, a slower instance being left with a warning.
-const LeaveTimeout = PollTimeout + 5*time.Second
+const leaveTimeout = pollTimeout + 5*time.Second
 
 // Instance is this process's claim on the session: a newer claim ends the run,
 // and the first snapshot read is reported to whoever waits for it — see
@@ -61,10 +61,10 @@ type App struct {
 	instance Instance
 }
 
-// New builds the application. The client belongs to Run rather than to the
+// newApp builds the application. The client belongs to Run rather than to the
 // App, so one App can be driven by any connection. A nil panes leaves every
 // pane's label alone.
-func New(
+func newApp(
 	cfg Config,
 	log *slog.Logger,
 	titles resolver.TitleResolver,
@@ -98,11 +98,11 @@ func New(
 	}
 }
 
-// Resolvers builds what the configuration asks titles to be resolved by: the
+// resolvers builds what the configuration asks titles to be resolved by: the
 // shipped chain, icons, the agent status and then its position in front when
 // asked, panes named unless that is turned off with icons and then their IDs in
 // front when asked, and topics reported unless that is turned off.
-func Resolvers(
+func resolvers(
 	cfg Config,
 ) (resolver.TitleResolver, resolver.PaneResolver, *resolver.Topics) {
 	chain := resolver.Default(resolver.Options{
@@ -250,7 +250,7 @@ func (a *App) superseded(client herdr.Client) bool {
 }
 
 func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
-	ctx, cancel := context.WithTimeout(ctx, PollTimeout)
+	ctx, cancel := context.WithTimeout(ctx, pollTimeout)
 	defer cancel()
 
 	snapshot, err := client.Snapshot(ctx)
