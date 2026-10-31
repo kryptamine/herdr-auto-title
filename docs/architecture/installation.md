@@ -147,6 +147,13 @@ PowerShell 5.1 with `Invoke-WebRequest` and .NET on every Windows 10 and 11.
 `Get-FileHash`: started from PowerShell 7, Windows PowerShell inherits its
 module path and cannot load that cmdlet.
 
+The manifest starts `install.ps1` with `-ExecutionPolicy Bypass`, which sets the
+policy for that process only. Microsoft documents an execution policy set by
+Group Policy, such as `AllSigned`, as taking precedence over it. On such a
+machine the script should be refused before it runs, so the install fails
+before its Go fallback, even with Go present. This has not been tested here. It
+is an accepted cost: the case is narrow, and the script is not signed.
+
 The two scripts do the same steps in the same order, and
 `scripts/test_install.py` runs each against releases served locally, in CI on
 all three systems.
