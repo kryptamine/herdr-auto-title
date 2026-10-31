@@ -209,7 +209,14 @@ otherwise Go fetches the newer toolchain and the job passes.
 mypy, and Renovate updates the lock with them. As with the linter, a new
 version can bring new findings: `make lint-scripts` then fails on its pull
 request. `requires-python` is what the tools run on; the scripts' own floor is
-ruff's `target-version`, the Python macOS ships.
+Python 3.9, the one macOS ships.
+
+**That floor is only partly checked.** mypy no longer accepts 3.9, so it checks
+against 3.10, and ruff's `target-version` covers syntax and annotations. `make
+lint-scripts` also imports every script on 3.9, which catches what runs at
+module level. A call newer than 3.9 inside a function, such as
+`zip(a, b, strict=True)` or `n.bit_count()`, passes all of them, so a review has
+to catch it.
 
 **Actions are pinned to a commit**, in a pull request of their own, with the
 version in a comment beside it, so a tag moved upstream changes nothing here
