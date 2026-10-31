@@ -3,7 +3,7 @@
 [project]
 name = "herdr-auto-title-scripts"
 version = "0"
-# What these tools run on. The scripts' own floor is target-version, below.
+# What these tools run on, which is newer than what the scripts must run on.
 requires-python = ">=3.10"
 dependencies = []
 
@@ -14,7 +14,7 @@ dev = ["mypy==2.4.1", "ruff==0.17.3"]
 package = false
 
 [tool.ruff]
-# The Python macOS ships, which runs the scripts through their shebang.
+# Syntax and annotations only: the Python macOS ships runs the scripts.
 target-version = "py39"
 line-length = 120
 include = ["scripts/*.py"]
