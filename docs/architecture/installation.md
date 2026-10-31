@@ -121,18 +121,32 @@ The `stable` job then moves `stable` to the latest published release's commit,
 creating the branch the first time. It runs on every push to `main` unless
 `binaries` failed, and reads the target from the releases rather than from
 release-please, which reports a release only once: re-running all jobs finds
-none and skips `binaries`. So any later run repairs a `stable` left behind, and
-a run with nothing new writes the sha the branch already holds. It updates the
-branch without force, so a release that is not ahead of `stable` fails the job
-rather than moving every install that follows it back.
+none and skips `binaries`. So a later run can repair a `stable` left behind,
+unless the write is refused as described below, and a run with nothing new
+writes the sha the branch already holds. It updates the branch without force, so
+a release that is not ahead of `stable` fails the job rather than moving every
+install that follows it back.
 
 `GITHUB_TOKEN` cannot hold the `workflows` permission, and that limits this
-move. Measured on a scratch repository, a ref write to a commit that was on
-`main` but never its head, and whose workflow file no head of `main` ever held,
-answered 403. Writes to commits whose workflow file a head of `main` had held
-were accepted, even after `main` moved on. A release commit is `main`'s head
-when it lands, so `stable` should be able to reach it; a 403 here fails the job
-loudly, and the fix would be an App token with `workflows: write`.
+move. On this repository, creating `stable` at v0.17.0's commit, once `main`'s
+head but with workflow files `main` had since changed, answered 403; creating it
+at v0.18.0's commit, `main`'s head at that moment, was accepted. On a scratch
+repository a write to a commit whose workflow file no head of `main` ever held
+answered 403, and an update to one that an earlier head held was accepted, even
+after `main` moved on.
+
+Probed on this repository with `GITHUB_TOKEN`, from a push to another branch,
+writes to `main`'s head and to former heads with other workflow files were
+accepted, a create and updates alike, and one to a commit never `main`'s head
+answered 403. The v0.17.0 create did not fail again there, once probe branches
+held that commit, and nothing measured explains why it failed the first time.
+
+So what is relied on is the case seen to work: a release commit is `main`'s head
+when it lands. A run on a later push writes that commit when it is no longer
+`main`'s head; after `main` changes its workflow files that write may be
+refused, as the v0.17.0 create was, and the job fails until the next release. A
+403 fails the job loudly, and the fix would be an App token with
+`workflows: write`.
 
 ## Why shell and PowerShell
 
