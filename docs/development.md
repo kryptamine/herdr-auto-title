@@ -218,6 +218,11 @@ module level. A call newer than 3.9 inside a function, such as
 `zip(a, b, strict=True)` or `n.bit_count()`, passes all of them, so a review has
 to catch it.
 
+**uv is pinned by `required-version` in `pyproject.toml`**, which `setup-uv`
+installs, so a uv release cannot fail the Lint check on an unrelated pull
+request. uv refuses to run under any other version, so a local `make
+lint-scripts` needs that one too.
+
 **Actions are pinned to a commit**, in a pull request of their own, with the
 version in a comment beside it, so a tag moved upstream changes nothing here
 until a pull request says so.
