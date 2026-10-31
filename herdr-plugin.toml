@@ -9,8 +9,8 @@ description = "Automatically generates contextual tab titles"
 platforms = ["linux", "macos", "windows"]
 
 # The release binary when this checkout is that release, else a Go build; see
-# docs/architecture/installation.md. Windows has a pair of its own so the binary
-# carries the extension Windows expects of one.
+# docs/architecture/installation.md. Windows has its own pair because it runs
+# the PowerShell twin, which names the binary `.exe`.
 [[build]]
 platforms = ["linux", "macos"]
 command = ["sh", "scripts/install.sh"]
