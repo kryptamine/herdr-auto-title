@@ -75,8 +75,8 @@ type Process struct {
 }
 
 // PaneDir is the directory a pane speaks for, settled by what it is running:
-// herdr.PaneProcesses puts the pane's own foreground process last, and the
-// directory it is in is the pane's. A read saying nothing leaves guess.
+// herdr.Client.PaneProcesses puts the pane's own foreground process last, and
+// the directory it is in is the pane's. A read saying nothing leaves guess.
 func PaneDir(processes []herdr.PaneProcessInfoProcess, guess string) string {
 	if last := len(processes) - 1; last >= 0 && processes[last].CWD != "" {
 		return cleanDir(processes[last].CWD)
@@ -164,7 +164,8 @@ func programName(name string) string {
 }
 
 // Foreground is the process the pane is running rather than one it started:
-// herdr.PaneProcesses moves it last, as Herdr's own order differs by platform.
+// herdr.Client.PaneProcesses moves it last, as Herdr's own order differs by
+// platform.
 func (p *PaneState) Foreground() (Process, bool) {
 	if len(p.Processes) == 0 {
 		return Process{}, false

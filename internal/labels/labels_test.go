@@ -42,7 +42,7 @@ func open(
 ) (*labels.Pass, state.TabState) {
 	t.Helper()
 
-	snapshot, err := herdr.SessionSnapshot(context.Background(), client)
+	snapshot, err := client.Snapshot(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}

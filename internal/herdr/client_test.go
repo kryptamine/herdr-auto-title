@@ -127,7 +127,7 @@ func TestCallDecodesResult(t *testing.T) {
 		Version string `json:"version"`
 	}
 	if err := srv.client().
-		Call(context.Background(), MethodSessionSnapshot, nil, &got); err != nil {
+		call(context.Background(), MethodSessionSnapshot, nil, &got); err != nil {
 		t.Fatalf("Call: %v", err)
 	}
 
@@ -154,7 +154,7 @@ func TestEachCallUsesItsOwnConnection(t *testing.T) {
 	// Herdr closes the connection after answering, so a reused connection would
 	// fail on the second call.
 	for i := range 3 {
-		if err := client.Call(context.Background(), MethodSessionSnapshot, nil, nil); err != nil {
+		if err := client.call(context.Background(), MethodSessionSnapshot, nil, nil); err != nil {
 			t.Fatalf("call %d: %v", i, err)
 		}
 	}
@@ -171,7 +171,7 @@ func TestCallReturnsAPIError(t *testing.T) {
 		return `{"id":"` + req.ID + `","error":{"code":"not_found","message":"no such tab"}}`
 	})
 
-	err := RenameTab(context.Background(), srv.client(), "wE:t1", "dashboard")
+	err := srv.client().RenameTab(context.Background(), "wE:t1", "dashboard")
 	if err == nil {
 		t.Fatal("Call succeeded, want an error")
 	}
@@ -193,7 +193,7 @@ func TestACallHerdrDidNotAnswerMayStillTakeEffect(t *testing.T) {
 	// manual rename protection must know that it may.
 	srv := newTestServer(t, func(incoming) string { return "" })
 
-	err := RenameTab(context.Background(), srv.client(), "wE:t1", "dashboard")
+	err := srv.client().RenameTab(context.Background(), "wE:t1", "dashboard")
 	if !errors.Is(err, ErrUnanswered) {
 		t.Errorf("error %v is not ErrUnanswered", err)
 	}
@@ -206,7 +206,7 @@ func TestACallThatNeverReachedHerdrIsNotUnanswered(t *testing.T) {
 	// for Auto Title's own.
 	client := newWithPath(filepath.Join(t.TempDir(), "gone.sock"))
 
-	err := RenameTab(context.Background(), client, "wE:t1", "dashboard")
+	err := client.RenameTab(context.Background(), "wE:t1", "dashboard")
 	if err == nil || errors.Is(err, ErrUnanswered) {
 		t.Errorf("error %v, want a failure that is not ErrUnanswered", err)
 	}
@@ -221,7 +221,7 @@ func TestCallReportsAnUncorrelatedError(t *testing.T) {
 		return `{"id":"","error":{"code":"invalid_request","message":"unknown variant"}}`
 	})
 
-	if err := srv.client().Call(context.Background(), MethodSessionSnapshot, nil, nil); err == nil {
+	if err := srv.client().call(context.Background(), MethodSessionSnapshot, nil, nil); err == nil {
 		t.Error("Call succeeded despite an error frame")
 	}
 }
@@ -235,7 +235,7 @@ func TestSessionSnapshotDecodesTheWrapper(t *testing.T) {
 			`"panes":[{"pane_id":"wE:p1","tab_id":"wE:t1","terminal_id":"t","workspace_id":"wE","cwd":"/work/api","focused":true}]}}}`
 	})
 
-	snapshot, err := SessionSnapshot(context.Background(), srv.client())
+	snapshot, err := srv.client().Snapshot(context.Background())
 	if err != nil {
 		t.Fatalf("SessionSnapshot: %v", err)
 	}
@@ -260,7 +260,7 @@ func TestPaneProcessesPutsTheForegroundProcessLast(t *testing.T) {
 			`{"pid":11,"name":"uv","cwd":"/opt/gimp-mcp"},{"pid":12,"name":"gimp-mcp","cwd":"/opt/gimp-mcp"}]}}}`
 	})
 
-	processes, err := PaneProcesses(context.Background(), srv.client(), "wE:p1")
+	processes, err := srv.client().PaneProcesses(context.Background(), "wE:p1")
 	if err != nil {
 		t.Fatalf("PaneProcesses: %v", err)
 	}
@@ -272,6 +272,15 @@ func TestPaneProcessesPutsTheForegroundProcessLast(t *testing.T) {
 
 	if got, want := strings.Join(names, ","), "uv,gimp-mcp,claude"; got != want {
 		t.Errorf("processes = %s, want %s", got, want)
+	}
+
+	seen := srv.seen()
+	if len(seen) != 1 || seen[0].Method != MethodPaneProcessInfo {
+		t.Fatalf("server saw %+v, want one pane.process_info", seen)
+	}
+
+	if got, want := string(seen[0].Params), `{"pane_id":"wE:p1"}`; got != want {
+		t.Errorf("params = %s, want %s", got, want)
 	}
 }
 
@@ -301,10 +310,7 @@ func TestRenameTabSendsTabAndLabel(t *testing.T) {
 
 	srv := newTestServer(t, respondOK)
 
-	if err := RenameTab(
-		context.Background(),
-		srv.client(),
-		"wE:t1",
+	if err := srv.client().RenameTab(context.Background(), "wE:t1",
 		"dashboard › Tests",
 	); err != nil {
 		t.Fatalf("RenameTab: %v", err)
@@ -325,15 +331,36 @@ func TestRenameTabSendsTabAndLabel(t *testing.T) {
 	}
 }
 
+func TestRenamePaneSendsPaneAndLabel(t *testing.T) {
+	t.Parallel()
+
+	srv := newTestServer(t, respondOK)
+
+	if err := srv.client().RenamePane(context.Background(), "wE:p1", "Tests"); err != nil {
+		t.Fatalf("RenamePane: %v", err)
+	}
+
+	seen := srv.seen()
+	if len(seen) != 1 || seen[0].Method != MethodPaneRename {
+		t.Fatalf("server saw %+v, want one pane.rename", seen)
+	}
+
+	var params PaneRenameParams
+	if err := json.Unmarshal(seen[0].Params, &params); err != nil {
+		t.Fatalf("decode params: %v", err)
+	}
+
+	if params.PaneID != "wE:p1" || params.Label != "Tests" {
+		t.Errorf("params = %+v, want {wE:p1 Tests}", params)
+	}
+}
+
 func TestReportWorkspaceTopicSendsTheTokenAndItsLifetime(t *testing.T) {
 	t.Parallel()
 
 	srv := newTestServer(t, respondOK)
 
-	if err := ReportWorkspaceTopic(
-		context.Background(),
-		srv.client(),
-		"wE",
+	if err := srv.client().ReportWorkspaceTopic(context.Background(), "wE",
 		"herdr.auto-title",
 		"Fix login",
 		time.Minute,
@@ -359,10 +386,7 @@ func TestReportWorkspaceTopicClearsWithANull(t *testing.T) {
 	// changes nothing, so an empty topic must reach the wire as a null.
 	srv := newTestServer(t, respondOK)
 
-	if err := ReportWorkspaceTopic(
-		context.Background(),
-		srv.client(),
-		"wE",
+	if err := srv.client().ReportWorkspaceTopic(context.Background(), "wE",
 		"herdr.auto-title",
 		"",
 		time.Minute,
@@ -386,7 +410,7 @@ func TestSessionSnapshotReadsAWorkspacesActiveTabAndTokens(t *testing.T) {
 			`"tabs":[],"panes":[]}}}`
 	})
 
-	snapshot, err := SessionSnapshot(context.Background(), srv.client())
+	snapshot, err := srv.client().Snapshot(context.Background())
 	if err != nil {
 		t.Fatalf("SessionSnapshot: %v", err)
 	}
@@ -410,10 +434,7 @@ func TestShowNotificationSendsTitleAndBodyAndReadsWhetherItShowed(t *testing.T) 
 		return `{"id":"` + req.ID + `","result":{"type":"notification_show","shown":false,"reason":"no_foreground_client"}}`
 	})
 
-	res, err := ShowNotification(
-		context.Background(),
-		srv.client(),
-		"Auto Title restarted",
+	res, err := srv.client().ShowNotification(context.Background(), "Auto Title restarted",
 		"pid 42 is naming the session",
 	)
 	if err != nil {
@@ -490,7 +511,7 @@ func TestErrorCode(t *testing.T) {
 		return `{"id":"` + req.ID + `","error":{"code":"tab_not_found","message":"tab wE:t1 not found"}}`
 	})
 
-	err := RenameTab(context.Background(), srv.client(), "wE:t1", "dashboard")
+	err := srv.client().RenameTab(context.Background(), "wE:t1", "dashboard")
 	if got := ErrorCode(err); got != CodeTabNotFound {
 		t.Errorf("ErrorCode = %q, want %q", got, CodeTabNotFound)
 	}
