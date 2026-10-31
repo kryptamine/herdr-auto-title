@@ -20,7 +20,6 @@ import subprocess
 import sys
 import tempfile
 import threading
-import tomllib
 from typing import Any, BinaryIO
 
 import dist
@@ -54,8 +53,10 @@ def manifest_version() -> str:
 def manifest_build() -> list[str]:
     """The command Herdr runs for this platform, so the manifest is what is tested."""
     system = {"linux": "linux", "darwin": "macos", "win32": "windows"}[sys.platform]
-    manifest = tomllib.loads((ROOT / "herdr-plugin.toml").read_text())
-    return next(b["command"] for b in manifest["build"] if system in b["platforms"])
+    text = (ROOT / "herdr-plugin.toml").read_text()
+    # A regex because tomllib needs Python 3.11, and macOS's python3 is 3.9.
+    builds = re.findall(r"^\[\[build\]\]\nplatforms = \[(.*)\]\ncommand = \[(.*)\]$", text, re.M)
+    return next(re.findall(r'"([^"]*)"', command) for platforms, command in builds if f'"{system}"' in platforms)
 
 
 def build_host_asset(into: pathlib.Path) -> pathlib.Path:
