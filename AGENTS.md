@@ -101,7 +101,11 @@ Python was already here for the probes, so it is what the rest is written in.
 
 Each script is executable, opens with `#!/usr/bin/env python3` and a module
 docstring saying what it is for, and takes no dependency outside the standard
-library.
+library. `make lint-scripts` holds them to ruff and to `mypy --strict`, both
+pinned in `uv.lock`; a tool that checks a script is not a dependency of it. The
+scripts still run on the Python 3.9 macOS ships, and little checks that: ruff
+covers syntax and annotations, and importing them on 3.9 runs only module-level
+code, so a newer call inside a function passes. Read a new stdlib call for it.
 
 **The one exception is the install step**, `scripts/install.sh` and
 `scripts/install.ps1`. It runs where there may be neither Go nor Python,
@@ -125,7 +129,8 @@ to delete, is in [.claude/rules/comments.md](.claude/rules/comments.md).
 make            # list every target
 make check      # fmt + vet + lint + test   ← the gate before any commit
 make lint       # golangci-lint, pinned in tools/go.mod, for both platforms
-make lint-scripts # shellcheck for scripts/install.sh
+make fmt-scripts # ruff format and ruff check --fix for scripts/
+make lint-scripts # shellcheck, ruff, mypy, a Python 3.9 import, needs uv
 make test       # go test -race ./...
 make run        # build and run in the current Herdr session, DEBUG logging
 make dev        # the same, restarting on every source change

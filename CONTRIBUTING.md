@@ -57,7 +57,9 @@ in [docs/architecture](docs/architecture/).
   `docs/architecture/` with one line in the code pointing at it.
 - Everything in `scripts/` is Python 3 and uses the standard library only. Shell
   stays in the Makefile's one-line recipes. The install step is the exception:
-  `install.sh` and `install.ps1` run where Python may not.
+  `install.sh` and `install.ps1` run where Python may not. After changing
+  anything in `scripts/`, run `make lint-scripts`, which needs the
+  [uv](https://docs.astral.sh/uv/) version `pyproject.toml` pins.
 - Never pass a terminal-derived value to a shell. Renames go over the socket
   API.
 - Probe before assuming anything about Herdr's API (`make probe-*`,
@@ -70,7 +72,7 @@ in [docs/architecture](docs/architecture/).
 
 - `make check` green locally. CI then runs `go vet`, `go build` and
   `go test -race` on Go 1.24 and stable, the formatters and `golangci-lint`
-  once, and a build and test run on macOS and on Windows.
+  once, `make lint-scripts`, and a build and test run on macOS and on Windows.
 - A PR needs the approval of a code owner, listed in
   [.github/CODEOWNERS](.github/CODEOWNERS), to merge. Reviews from anyone else
   are welcome and read, but they do not unblock the merge on their own.

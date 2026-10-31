@@ -205,6 +205,24 @@ floor Herdr installs on, and the Go 1.24 job catches it only while
 `GOTOOLCHAIN` is `local` there, which `actions/setup-go` sets from v6 on;
 otherwise Go fetches the newer toolchain and the job passes.
 
+**The Python tools are pinned in `uv.lock`.** `pyproject.toml` names ruff and
+mypy, and Renovate updates the lock with them. As with the linter, a new
+version can bring new findings: `make lint-scripts` then fails on its pull
+request. `requires-python` is what the tools run on; the scripts' own floor is
+Python 3.9, the one macOS ships.
+
+**That floor is only partly checked.** mypy no longer accepts 3.9, so it checks
+against 3.10, and ruff's `target-version` covers syntax and annotations. `make
+lint-scripts` also imports every script on 3.9, which catches what runs at
+module level. A call newer than 3.9 inside a function, such as
+`zip(a, b, strict=True)` or `n.bit_count()`, passes all of them, so a review has
+to catch it.
+
+**uv is pinned by `required-version` in `pyproject.toml`**, which `setup-uv`
+installs, so a uv release cannot fail the Lint check on an unrelated pull
+request. uv refuses to run under any other version, so a local `make
+lint-scripts` needs that one too.
+
 **Actions are pinned to a commit**, in a pull request of their own, with the
 version in a comment beside it, so a tag moved upstream changes nothing here
 until a pull request says so.
