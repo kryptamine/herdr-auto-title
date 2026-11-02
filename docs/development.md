@@ -221,7 +221,8 @@ to catch it.
 **uv is pinned by `required-version` in `pyproject.toml`**, which `setup-uv`
 installs, so a uv release cannot fail the Lint check on an unrelated pull
 request. uv refuses to run under any other version, so a local `make
-lint-scripts` needs that one too.
+lint-scripts` needs that one too. Renovate reads the pin but never bumps it,
+so a uv update is a pull request made by hand.
 
 **Actions are pinned to a commit**, in a pull request of their own, with the
 version in a comment beside it, so a tag moved upstream changes nothing here
