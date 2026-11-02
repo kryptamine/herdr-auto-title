@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.19.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.18.0...v0.19.0) (2026-11-02)
+
+
+### Features
+
+* install the release binary when the checkout is a release ([87c5eca](https://github.com/kryptamine/herdr-auto-title/commit/87c5eca7d72a6086ce20ce31d29aeb85ecf74db7)), closes [#141](https://github.com/kryptamine/herdr-auto-title/issues/141)
+
+
+### Refactoring
+
+* **scripts:** annotate the scripts and fix what strict checks find ([8242004](https://github.com/kryptamine/herdr-auto-title/commit/82420041a304395c91e1a04c526025d035da2b66))
+
 ## [0.18.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.17.0...v0.18.0) (2026-10-30)
 
 
