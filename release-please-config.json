@@ -15,7 +15,6 @@
           "path": "herdr-plugin.toml",
           "jsonpath": "$.version"
         },
-        "README.md",
         "cmd/herdr-auto-title/version.go"
       ],
       "changelog-sections": [
