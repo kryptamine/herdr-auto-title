@@ -19,8 +19,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # The floor is what go.mod and the README promise for main; an install with no
-        # release binary builds the plugin from source, so breaking it matters.
+        # The floor is what go.mod and the README promise for main; an
+        # install with no release binary builds the plugin from source, so
+        # breaking it matters.
         go-version: ["1.24", "stable"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7

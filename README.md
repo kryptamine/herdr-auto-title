@@ -28,9 +28,16 @@ herdr plugin action invoke herdr.auto-title.restart
 prebuilt binary, so it needs no Go. The second line starts the plugin now.
 Without it Herdr starts a plugin only when its server next starts.
 
-To update, run both lines again. Your configuration is kept. An install made
-with a release tag, or with no `--ref`, stays where it is until you run them
-once with `--ref stable`.
+To update to the next release, keeping your configuration:
+
+```sh
+herdr plugin update herdr.auto-title
+herdr plugin action invoke herdr.auto-title.restart
+```
+
+On a Herdr without `plugin update`, run the install lines again instead. An
+update follows the ref you installed with: a tag never moves, and an install
+with no `--ref` follows `main`, so install once with `--ref stable` to switch.
 
 To run the latest commit on `main`, which can be ahead of the latest release,
 leave `--ref` out. Herdr then builds the plugin from source, which needs Go
