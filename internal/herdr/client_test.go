@@ -321,13 +321,10 @@ func TestRenameTabSendsTabAndLabel(t *testing.T) {
 		t.Fatalf("server saw %+v, want one tab.rename", seen)
 	}
 
-	var params TabRenameParams
-	if err := json.Unmarshal(seen[0].Params, &params); err != nil {
-		t.Fatalf("decode params: %v", err)
-	}
-
-	if params.TabID != "wE:t1" || params.Label != "dashboard › Tests" {
-		t.Errorf("params = %+v, want {wE:t1 dashboard › Tests}", params)
+	if got, want := string(
+		seen[0].Params,
+	), `{"tab_id":"wE:t1","label":"dashboard › Tests"}`; got != want {
+		t.Errorf("params = %s, want %s", got, want)
 	}
 }
 
@@ -345,13 +342,8 @@ func TestRenamePaneSendsPaneAndLabel(t *testing.T) {
 		t.Fatalf("server saw %+v, want one pane.rename", seen)
 	}
 
-	var params PaneRenameParams
-	if err := json.Unmarshal(seen[0].Params, &params); err != nil {
-		t.Fatalf("decode params: %v", err)
-	}
-
-	if params.PaneID != "wE:p1" || params.Label != "Tests" {
-		t.Errorf("params = %+v, want {wE:p1 Tests}", params)
+	if got, want := string(seen[0].Params), `{"pane_id":"wE:p1","label":"Tests"}`; got != want {
+		t.Errorf("params = %s, want %s", got, want)
 	}
 }
 
@@ -450,13 +442,9 @@ func TestShowNotificationSendsTitleAndBodyAndReadsWhetherItShowed(t *testing.T) 
 		t.Fatalf("server saw %+v, want one notification.show", seen)
 	}
 
-	var params NotificationParams
-	if err := json.Unmarshal(seen[0].Params, &params); err != nil {
-		t.Fatalf("decode params: %v", err)
-	}
-
-	if params.Title != "Auto Title restarted" || params.Body != "pid 42 is naming the session" {
-		t.Errorf("params = %+v, want the title and body sent", params)
+	want := `{"title":"Auto Title restarted","body":"pid 42 is naming the session"}`
+	if got := string(seen[0].Params); got != want {
+		t.Errorf("params = %s, want %s", got, want)
 	}
 }
 
