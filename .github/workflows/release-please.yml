@@ -59,8 +59,9 @@ jobs:
           gh release upload "$TAG" dist/* --clobber
           gh release edit "$TAG" --draft=false --latest
 
-  # stable follows the latest published release on every run, so any later run
-  # repairs a failed move. No force, so it can never move back.
+  # stable follows the latest published release on every run, so a later run can
+  # repair a failed move unless GITHUB_TOKEN is refused the write; see
+  # docs/architecture/installation.md. No force, so it can never move back.
   stable:
     needs: binaries
     if: ${{ !cancelled() && needs.binaries.result != 'failure' }}
