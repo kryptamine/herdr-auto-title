@@ -127,7 +127,7 @@ To use the published plugin the way anyone else does:
 
 ```sh
 herdr plugin unlink herdr.auto-title          # installing over a link is refused
-herdr plugin install kryptamine/herdr-auto-title
+herdr plugin install kryptamine/herdr-auto-title --ref stable
 ```
 
 `unlink` only unregisters; your checkout is left alone. `install` takes GitHub

@@ -15,7 +15,7 @@ What the plugin does and how to install it are in the
 
 ## Getting set up
 
-You need what the README asks for to install the plugin, plus a checkout:
+You need Herdr 0.8.2+ and Go 1.24+, plus a checkout:
 
 ```sh
 git clone https://github.com/kryptamine/herdr-auto-title.git
