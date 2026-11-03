@@ -99,7 +99,7 @@ jobs:
         run: go tool -modfile=tools/go.mod golangci-lint fmt --diff ./...
       - run: make lint
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
-      # The runner ships shellcheck; install.ps1 is analyzed on Windows below.
+      # The runner ships shellcheck for the shared installer.
       - run: make lint-scripts
 
   macos:
@@ -137,8 +137,4 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version: stable
-      - name: PSScriptAnalyzer
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: Invoke-ScriptAnalyzer -Path scripts/install.ps1 -EnableExit
       - run: python scripts/test_install.py

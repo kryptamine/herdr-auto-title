@@ -1,5 +1,5 @@
 #!/bin/sh
-# Puts herdr-auto-title in the plugin root: the release binary when this
+# Puts the platform's binary in the plugin root: the release binary when this
 # checkout is that release's commit, else a Go build;
 # docs/architecture/installation.md says why.
 set -u
@@ -13,6 +13,11 @@ stable="herdr plugin install kryptamine/herdr-auto-title --ref stable"
 released=
 hinted=
 go_missing=
+suffix=
+case $(uname -s) in
+MINGW*_NT-* | MSYS_NT-*) suffix=.exe ;;
+esac
+binary=$name$suffix
 
 say() { printf '%s: %s\n' "$name" "$*" >&2; }
 
@@ -26,19 +31,23 @@ asset_name() {
 	case $(uname -s) in
 	Linux) os=linux ;;
 	Darwin) os=macos ;;
+	MINGW*_NT-* | MSYS_NT-*) os=windows ;;
 	*) return 1 ;;
 	esac
 	arch=$(uname -m)
+	if [ "$os" = windows ]; then
+		arch=${PROCESSOR_ARCHITEW6432:-${PROCESSOR_ARCHITECTURE:-$arch}}
+	fi
 	# A shell under Rosetta reports x86_64 on Apple silicon.
 	if [ "$os" = macos ] && [ "$(sysctl -n hw.optional.arm64 2>/dev/null)" = 1 ]; then
 		arch=arm64
 	fi
 	case $arch in
-	x86_64 | amd64) arch=amd64 ;;
-	aarch64 | arm64) arch=arm64 ;;
+	x86_64 | amd64 | AMD64) arch=amd64 ;;
+	aarch64 | arm64 | ARM64) arch=arm64 ;;
 	*) return 1 ;;
 	esac
-	printf '%s-%s-%s\n' "$name" "$os" "$arch"
+	printf '%s-%s-%s%s\n' "$name" "$os" "$arch" "$suffix"
 }
 
 fetch() { # url file
@@ -63,7 +72,7 @@ sha256() { # file
 # place file: moves a verified download into the plugin root once it reports
 # the manifest's version. It runs from the root because $TMPDIR may be noexec.
 place() {
-	staged=".$name.$$"
+	staged=".$name.$$$suffix"
 	if ! cp "$1" "$staged" || ! chmod 755 "$staged"; then
 		say "the downloaded binary could not be copied into the plugin root"
 		rm -f "$staged"
@@ -79,7 +88,7 @@ place() {
 		rm -f "$staged"
 		return 1
 	fi
-	mv -f "$staged" "$name" || {
+	mv -f "$staged" "$binary" || {
 		rm -f "$staged"
 		return 1
 	}
@@ -112,7 +121,7 @@ build() {
 		return 1
 	fi
 	say "building from source with $(go version)"
-	go build -o "$name" ./cmd/herdr-auto-title && return 0
+	go build -o "$binary" ./cmd/herdr-auto-title && return 0
 	say "it could not be built from source, which needs Go 1.24 or newer"
 	return 1
 }

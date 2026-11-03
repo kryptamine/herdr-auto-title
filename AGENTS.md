@@ -109,9 +109,9 @@ covers syntax and annotations, and importing them on 3.9 runs only module-level
 code, so a newer call inside a function passes. Read a new stdlib call for it.
 
 **The one exception is the install step**, `scripts/install.sh` and
-`scripts/install.ps1`. It runs where there may be neither Go nor Python,
-so it is POSIX `sh` and Windows PowerShell 5.1, the two take the same steps in
-the same order, and `scripts/test_install.py` runs both
+`scripts/install.cmd`. It runs where there may be neither Go nor Python.
+POSIX `sh` owns installation; CMD locates Git Bash or builds with Go directly.
+`scripts/test_install.py` exercises the manifest's command on each platform
 ([installation](docs/architecture/installation.md) says why).
 
 ## Comment rule (mandatory)
