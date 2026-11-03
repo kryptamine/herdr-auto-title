@@ -155,3 +155,25 @@ func TestExplicitHomeNeverFallsThrough(t *testing.T) {
 		}
 	}
 }
+
+// HERMES_HOME=~/.hermes names the default home a second time; the session must
+// still count as found once, not as ambiguous between two homes.
+func TestRepeatedHomeIsSearchedOnce(t *testing.T) {
+	t.Parallel()
+	home := t.TempDir()
+	database(t, home, "Repeated home title")
+
+	if err := os.MkdirAll(filepath.Join(home, "profiles", "work"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+
+	roots := []string{home, home + string(filepath.Separator), filepath.Join(home, ".")}
+	if got := hermes.Title(
+		context.Background(),
+		roots,
+		sessionID,
+		"",
+	); got != "Repeated home title" {
+		t.Fatalf("title = %q, want the repeated home's title", got)
+	}
+}
