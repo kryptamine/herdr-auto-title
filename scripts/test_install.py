@@ -11,6 +11,7 @@ import functools
 import hashlib
 import http.server
 import io
+import json
 import os
 import pathlib
 import platform
@@ -56,7 +57,9 @@ def manifest_build() -> list[str]:
     text = (ROOT / "herdr-plugin.toml").read_text()
     # A regex because tomllib needs Python 3.11, and macOS's python3 is 3.9.
     builds = re.findall(r"^\[\[build\]\]\nplatforms = \[(.*)\]\ncommand = \[(.*)\]$", text, re.M)
-    return next(re.findall(r'"([^"]*)"', command) for platforms, command in builds if f'"{system}"' in platforms)
+    command = next(command for platforms, command in builds if f'"{system}"' in platforms)
+    arguments: list[str] = json.loads(f"[{command}]")
+    return arguments
 
 
 def build_host_asset(into: pathlib.Path) -> pathlib.Path:
@@ -83,7 +86,7 @@ def publish(
 
 def plugin_copy(into: pathlib.Path, version: str) -> tuple[pathlib.Path, str]:
     """A checkout of the plugin at version, as a commit of its own, and that commit."""
-    root = into / "plugin"
+    root = into / "plugin with spaces"
     skipped = {".git", ".mypy_cache", ".ruff_cache", ".venv", "dist", NAME, NAME + ".exe"}
 
     def ignore(directory: str, names: list[str]) -> set[str]:
@@ -102,6 +105,10 @@ def plugin_copy(into: pathlib.Path, version: str) -> tuple[pathlib.Path, str]:
     git("init", "-q")
     git("add", "-A")
     git("commit", "-q", "-m", "checkout")
+    if WINDOWS:
+        git("-c", "core.autocrlf=true", "checkout-index", "--force", "--all")
+        assert b"\r" not in (root / "scripts" / "install.sh").read_bytes()
+        assert b"\r\n" in (root / "scripts" / "install.cmd").read_bytes()
     return root, git("rev-parse", "HEAD")
 
 
@@ -112,7 +119,7 @@ def without_go(work: pathlib.Path, also: tuple[str, ...] = ()) -> str:
         git = shutil.which("git")
         if git is None:
             raise SystemExit("git is not on PATH")
-        directories = [system + r"\System32", system, system + r"\System32\WindowsPowerShell\v1.0"]
+        directories = [system + r"\System32", system]
         return os.pathsep.join([*directories, str(pathlib.Path(git).parent)])
     # Some runners keep Go in /usr/bin, so the system tools are linked one by one.
     tools = work / ("tools-without-" + "-".join(("go", *also)))
@@ -134,12 +141,9 @@ def failing_go(work: pathlib.Path, path: str) -> str:
     """PATH with a go in front of it that fails, as one too old to build would."""
     fake = work / "failing-go"
     fake.mkdir(exist_ok=True)
-    if WINDOWS:
-        (fake / "go.cmd").write_text("@exit /b 1\r\n")
-    else:
-        script = fake / "go"
-        script.write_text("#!/bin/sh\nexit 1\n")
-        script.chmod(0o755)
+    script = fake / "go"
+    script.write_bytes(b"#!/bin/sh\nexit 1\n")
+    script.chmod(0o755)
     return os.pathsep.join([str(fake), path])
 
 
@@ -181,6 +185,8 @@ def main() -> None:
         releases.mkdir()
         with tempfile.TemporaryDirectory(dir=work) as scratch:
             root, head = plugin_copy(pathlib.Path(scratch), release.get("checkout", version))
+            if release.get("bad_source"):
+                (root / "go.mod").write_text("invalid module file\n")
             commit = head if release.get("released", True) else "0" * 40
             for where in release.get("at", [f"download/v{release.get('checkout', version)}"]):
                 publish(
@@ -219,6 +225,22 @@ def main() -> None:
     case("checksum mismatch, Go", go_path, True, "building from source", tamper=True)
     case("binary of another version, no Go", no_go, False, "not 0.0.1", checkout="0.0.1")
     case("binary that does not run, no Go", no_go, False, "does not run", serve=garbage)
+    if WINDOWS:
+        system = os.environ.get("SYSTEMROOT", r"C:\Windows")
+        no_bash = os.pathsep.join([system + r"\System32", system])
+        go = shutil.which("go")
+        assert go is not None
+        with_go = os.pathsep.join([no_bash, str(pathlib.Path(go).parent)])
+        case("no Bash, no Go", no_bash, False, "install Git for Windows or Go")
+        case("no Bash, Go", with_go, True, "Git Bash is unavailable")
+        case("no Bash, failing build", with_go, False, "Git Bash is unavailable", bad_source=True)
+        incomplete = work / "incomplete Git"
+        for name in ("cmd/git.exe", "bin/bash.exe", "usr/bin/uname.exe"):
+            target = incomplete / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(pathlib.Path(system) / "System32" / "where.exe", target)
+        unusable = os.pathsep.join([str(incomplete / "cmd"), no_bash])
+        case("unusable Git Bash, no Go", unusable, False, "install Git for Windows or Go")
     if not WINDOWS and shutil.which("wget"):
         case("this release over wget, no Go", without_go(work, ("curl",)), True, f"installed release {version}")
     if not WINDOWS:

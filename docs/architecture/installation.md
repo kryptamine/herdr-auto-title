@@ -1,7 +1,7 @@
 ---
 type: doc
 title: 'Installation'
-description: 'How an install puts a binary in the plugin root: the release binaries CI attaches and attests, why one is downloaded only into a checkout of the commit it was built from, a Go build for anything else, why a release stays a draft until its binaries are attached, what publishes one left stuck, how stable follows it, and why the scripts are shell and PowerShell.'
+description: 'How installs verify release binaries or build from source, and how Windows locates Git Bash for the shared installer.'
 tags: [architecture, release]
 created: 2026-10-24
 generated: { by: claude-code/opus-5-5, at: 2026-10-27T12:00:00+03:00 }
@@ -11,8 +11,10 @@ generated: { by: claude-code/opus-5-5, at: 2026-10-27T12:00:00+03:00 }
 
 `herdr plugin install` clones the repository and runs the manifest's
 `[[build]]` step in the fresh checkout. That step is `scripts/install.sh`, or
-`scripts/install.ps1` on Windows, so Go is needed only for a checkout that is
-not a release. A release whose tree still names `go build`, 0.18.0 and older,
+`scripts/install.cmd` on Windows. CMD runs the shared installer through Git
+Bash, or builds with Go if Bash is unavailable. With the shell installer, Go
+is needed only when the release binary cannot be installed. A release whose
+tree still names `go build`, 0.18.0 and older,
 keeps building with Go whatever it has attached.
 
 ## What a release carries
@@ -190,27 +192,32 @@ refused, as the v0.17.0 create was, and the job fails until the next release. A
 403 fails the job loudly, and the fix would be an App token with
 `workflows: write`.
 
-## Why shell and PowerShell
+## One installer across platforms
 
 Everything else in `scripts/` is Python, but the install step runs on
 machines that have neither Go nor Python: Windows ships no Python, and macOS
-has one only once the command line tools are installed. `sh` with `curl` or
-`wget` and `sha256sum` or `shasum` is on every Linux and macOS, and Windows
-PowerShell 5.1 with `Invoke-WebRequest` and .NET on every Windows 10 and 11.
-`git` is there because Herdr needs it to clone. The hash is .NET's rather than
-`Get-FileHash`: started from PowerShell 7, Windows PowerShell inherits its
-module path and cannot load that cmdlet.
+has one only once the command line tools are installed. The shared installer
+uses `sh`, `curl` or `wget`, and `sha256sum` or `shasum`. Git for Windows
+supplies these tools alongside Bash; Herdr already needs Git to clone.
 
-The manifest starts `install.ps1` with `-ExecutionPolicy Bypass`, which sets the
-policy for that process only. Microsoft documents an execution policy set by
-Group Policy, such as `AllSigned`, as taking precedence over it. On such a
-machine the script should be refused before it runs, so the install fails
-before its Go fallback, even with Go present. This has not been tested here. It
-is an accepted cost: the case is narrow, and the script is not signed.
+Windows starts CMD with AutoRun disabled. The launcher looks beside the
+`git.exe` locations on PATH for Git for Windows' `bin/bash.exe`, including
+Git's `cmd`, `bin` and runtime `bin` layouts. It checks the bundled `uname`
+and the shell's Windows runtime before use, rather than selecting an arbitrary
+`bash.exe` on PATH that could belong to WSL. Profiles are skipped and the
+bundled `/usr/bin` precedes the inherited PATH, which still carries Go.
 
-The two scripts do the same steps in the same order, and
-`scripts/test_install.py` runs each against releases served locally, in CI on
-all three systems.
+If no usable Bash is found, CMD builds with Go directly; without either tool
+it asks for Git for Windows or Go. Once Bash starts the installer, CMD returns
+its exit code without retrying the build. The shell owns all release checks
+and its own build fallback. No PowerShell script is involved, so its Group
+Policy execution restrictions cannot prevent this fallback.
+
+On Windows the shared installer selects a Windows asset, preferring the native
+architecture environment variables over an emulated shell's architecture,
+and keeps `.exe` on both the staged and final binary. Git attributes keep shell
+files LF and the CMD entry CRLF. `scripts/test_install.py` exercises the
+manifest command against local releases, including Windows without Bash.
 
 ## Where the binary goes
 

@@ -9,15 +9,14 @@ description = "Automatically generates contextual tab titles"
 platforms = ["linux", "macos", "windows"]
 
 # The release binary when this checkout is that release, else a Go build; see
-# docs/architecture/installation.md. Windows has its own pair because it runs
-# the PowerShell twin, which names the binary `.exe`.
+# docs/architecture/installation.md. Windows locates Git Bash or builds with Go.
 [[build]]
 platforms = ["linux", "macos"]
 command = ["sh", "scripts/install.sh"]
 
 [[build]]
 platforms = ["windows"]
-command = ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts/install.ps1"]
+command = ["cmd", "/d", "/c", "scripts\\install.cmd"]
 
 # A one-shot launch, not a supervised daemon: the process stays alive itself.
 [[startup]]
