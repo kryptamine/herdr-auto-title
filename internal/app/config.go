@@ -39,7 +39,8 @@ const (
 	EnvWorkspaces         = "HERDR_AUTO_TITLE_WORKSPACES"
 	EnvWorkspaceMaxLength = "HERDR_AUTO_TITLE_WORKSPACE_MAX_LENGTH"
 
-	EnvClaudeDirs = "HERDR_AUTO_TITLE_CLAUDE_DIRS"
+	EnvClaudeDirs  = "HERDR_AUTO_TITLE_CLAUDE_DIRS"
+	EnvHermesHomes = "HERDR_AUTO_TITLE_HERMES_HOMES"
 )
 
 // EnvClaudeConfigDir is Claude Code's own variable, not one of ours: it names
@@ -55,6 +56,10 @@ const EnvCodexHome = "CODEX_HOME"
 // EnvGrokConfigDir is Grok Build's own variable, naming the home it files
 // sessions under, and read here for the same reason.
 const EnvGrokConfigDir = "GROK_CONFIG_DIR"
+
+// EnvHermesHome is Hermes Agent's own variable, naming the home it keeps
+// state.db in, and read here for the same reason.
+const EnvHermesHome = "HERMES_HOME"
 
 // DefaultPoll is how often the session is read. A six-pane snapshot measured
 // 0.47 ms and 6 KB, so twice a second costs about a thousandth of a core, and
@@ -214,11 +219,11 @@ func loadConfig() (Config, []string) {
 
 func hermesHomesFromEnv() []string {
 	var homes []string
-	if home := os.Getenv("HERMES_HOME"); home != "" {
+	if home := os.Getenv(EnvHermesHome); home != "" {
 		homes = append(homes, home)
 	}
 
-	return append(homes, filepath.SplitList(os.Getenv("HERDR_AUTO_TITLE_HERMES_HOMES"))...)
+	return append(homes, filepath.SplitList(os.Getenv(EnvHermesHomes))...)
 }
 
 // readConfigFile puts the file's settings into the environment, which is how a

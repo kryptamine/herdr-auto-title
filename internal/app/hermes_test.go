@@ -15,8 +15,8 @@ import (
 func TestHermesHomesConfiguration(t *testing.T) {
 	isolate(t)
 	custom, extra := t.TempDir(), t.TempDir()
-	t.Setenv("HERMES_HOME", custom)
-	t.Setenv("HERDR_AUTO_TITLE_HERMES_HOMES", extra+string(os.PathListSeparator)+custom)
+	t.Setenv(EnvHermesHome, custom)
+	t.Setenv(EnvHermesHomes, extra+string(os.PathListSeparator)+custom)
 
 	cfg, warnings := loadConfig()
 	if len(warnings) != 0 {

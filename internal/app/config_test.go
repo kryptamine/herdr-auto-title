@@ -42,7 +42,7 @@ func isolate(t *testing.T) {
 		// Config field, so a developer's real home would otherwise be read.
 		EnvClaudeDirs, EnvClaudeConfigDir, EnvCodexHome, EnvForeignProcesses,
 		EnvGrokConfigDir,
-		"HERMES_HOME", "HERDR_AUTO_TITLE_HERMES_HOMES",
+		EnvHermesHome, EnvHermesHomes,
 	}
 
 	for _, name := range names {
