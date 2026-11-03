@@ -14,20 +14,19 @@ Every setting Auto Title has is a `HERDR_AUTO_TITLE_*` variable, read in
 environment, or written into a file that is loaded into the environment before
 anything reads it.
 
-Hermes supplies its own `HERMES_HOME`. Along with
-`HERDR_AUTO_TITLE_HERMES_HOMES`, it reaches the session reader through
-`Config.HermesHomes`; the reader never reads the plugin environment itself.
-See [Hermes session titles](hermes-session-titles.md) for per-pane process homes.
-
-Three variables read there are not ours. `CLAUDE_CONFIG_DIR` is Claude Code's
+Four variables read there are not ours. `CLAUDE_CONFIG_DIR` is Claude Code's
 own, and Herdr's server passes it through to the plugin; it is read here so that
 the transcript reader is handed the homes to search rather than going to the
 environment for them, which is what makes the order the file is loaded in stop
-mattering. `CODEX_HOME`, Codex's own, and `GROK_CONFIG_DIR`, Grok Build's, are
-read for the same reason; unset, they mean `~/.codex` and `~/.grok`, as they do
-to the agents. Like ours, each reaches the plugin only through the server's
-environment or `config.env`: one set only in a shell is not seen, and the
-default home is read instead.
+mattering. `CODEX_HOME`, Codex's own, `GROK_CONFIG_DIR`, Grok Build's, and
+`HERMES_HOME`, Hermes Agent's, are read for the same reason; unset, the first
+two mean `~/.codex` and `~/.grok`, as they do to the agents. `HERMES_HOME`
+reaches the session reader with `HERDR_AUTO_TITLE_HERMES_HOMES` through
+`Config.HermesHomes`, and `~/.hermes` is searched either way; see
+[Hermes session titles](hermes-session-titles.md) for the per-pane process
+homes that come first. Like ours, each reaches the plugin only through the
+server's environment or `config.env`: one set only in a shell is not seen, and
+the default home is read instead.
 
 ## Why a file exists
 
