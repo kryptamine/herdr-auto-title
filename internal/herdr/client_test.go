@@ -499,3 +499,52 @@ func TestErrorCode(t *testing.T) {
 		t.Errorf("ErrorCode of a plain error = %q, want empty", got)
 	}
 }
+
+func TestNewBuildsAClientForTheEnvironmentsSocket(t *testing.T) {
+	t.Setenv(socketPathEnv, "")
+
+	if _, err := New(); err == nil {
+		t.Error("New succeeded without the environment variable")
+	}
+
+	srv := newTestServer(t, respondOK)
+	t.Setenv(socketPathEnv, srv.path)
+
+	client, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	if got := client.Path(); got != srv.path {
+		t.Errorf("Path = %q, want %q", got, srv.path)
+	}
+}
+
+func TestRenamePaneSendsPaneAndLabel(t *testing.T) {
+	t.Parallel()
+
+	srv := newTestServer(t, respondOK)
+
+	if err := RenamePane(
+		context.Background(),
+		srv.client(),
+		"wE:t1.p2",
+		"editor",
+	); err != nil {
+		t.Fatalf("RenamePane: %v", err)
+	}
+
+	seen := srv.seen()
+	if len(seen) != 1 || seen[0].Method != MethodPaneRename {
+		t.Fatalf("server saw %+v, want one pane.rename", seen)
+	}
+
+	var params PaneRenameParams
+	if err := json.Unmarshal(seen[0].Params, &params); err != nil {
+		t.Fatalf("decode params: %v", err)
+	}
+
+	if params.PaneID != "wE:t1.p2" || params.Label != "editor" {
+		t.Errorf("params = %+v, want {wE:t1.p2 editor}", params)
+	}
+}
