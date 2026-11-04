@@ -73,8 +73,9 @@ var versionRe = regexp.MustCompile(`^\d+(\.\d+)+$`)
 // Nobody chose them, so such a tab counts as unnamed despite carrying one; an
 // agent missing here locks its tab: docs/architecture/desktop-api.md.
 var launcherNames = []string{
-	"Claude Code", "Codex", "Pi", "OpenCode", "Cursor", "Copilot", "Amp", "Grok",
-	"Antigravity", "Kimi", "Kiro", "Hermes", "Qoder", "Crush", "Gemini",
+	"Claude Code", "Codex", "Pi", "PiG", "OpenCode", "Cursor", "Copilot", "Amp",
+	"Grok", "DeepSeek Harness", "Antigravity", "Kimi", "Kiro", "Hermes", "Qoder",
+	"Crush", "Gemini",
 }
 
 // statusRank orders what a tab reports, most urgent last, as the app does.
