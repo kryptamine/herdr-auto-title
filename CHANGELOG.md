@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.19.1](https://github.com/kryptamine/herdr-auto-title/compare/v0.19.0...v0.19.1) (2026-11-04)
+
+
+### Bug Fixes
+
+* **app:** name a tab after the pane focused within it ([5f66baf](https://github.com/kryptamine/herdr-auto-title/commit/5f66baf1a94bcdf4fa2362c8541e9a43288bb277))
+* **resolver:** drop opencode's OC prefix from its title ([b8214c6](https://github.com/kryptamine/herdr-auto-title/commit/b8214c6566331a64bcc759c23c6e6a40491d3692))
+
+
+### Refactoring
+
+* **app:** move the wiring out of main ([ed2b097](https://github.com/kryptamine/herdr-auto-title/commit/ed2b0971205c41dca256da25596b4507e2f70beb))
+* **herdr:** make the client an interface of what is asked ([d1d0a30](https://github.com/kryptamine/herdr-auto-title/commit/d1d0a30351109a6920fd343000a684000b5254ec))
+* **resolver:** drop a check opencode's frame never fails ([39d1af9](https://github.com/kryptamine/herdr-auto-title/commit/39d1af9021c396e10a2700d96c7f4aa2209d4d1e))
+
 ## [0.19.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.18.0...v0.19.0) (2026-11-02)
 
 
