@@ -41,10 +41,13 @@ func TestAnUntitledOpenCodeSessionIsNamedAfterTheAgent(t *testing.T) {
 func TestAnEmptyOpenCodeTitleIsDeclined(t *testing.T) {
 	t.Parallel()
 
-	got := defaultChain().Resolve(tabWithPane(openCodePane("OC | ")))
+	// The prefix alone names nothing, and must not leave `OC` as the title.
+	for _, title := range []string{"OC | ", "OC |"} {
+		got := defaultChain().Resolve(tabWithPane(openCodePane(title)))
 
-	if got.Reason == "terminal_title" {
-		t.Errorf("name = %q, want the frame alone declined", got.Name)
+		if got.Reason == "terminal_title" {
+			t.Errorf("%q: name = %q, want the frame alone declined", title, got.Name)
+		}
 	}
 }
 
