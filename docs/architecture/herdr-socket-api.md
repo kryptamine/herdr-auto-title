@@ -357,6 +357,12 @@ reads, so this section describes Herdr rather than those types.
   title names the current session either way: `<name> - grok` idle,
   `⠙ - <status> - <name> - grok` working, the name cut with `…` past about
   forty characters. Measured on Herdr 0.9.5.
+- **An OpenCode pane reports `agent: "opencode"`** and titles its terminal
+  `OpenCode` on its home screen and for a session that has no title yet, and
+  `OC | <title>` once it has one, the title cut to 37 characters and `...`
+  past 40. With the integration installed (version 13), the home screen
+  carried no `agent_session` and a session carried `kind: "id"`,
+  `source: "herdr:opencode"`. Measured on Herdr 0.9.5 with OpenCode 1.3.2.
 - **The kind of `agent_session` is decided per agent.** Pi's hook reports the
   session file, and Herdr 0.9.5 answered `{"agent": "pi", "kind": "path",
   "source": "herdr:pi", "value": "<absolute path to the .jsonl>"}` for a Pi pane
