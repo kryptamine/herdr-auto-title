@@ -59,8 +59,8 @@ Five things are carried between polls, and each exists because a snapshot
 cannot express it:
 
 - **When each pane last changed** (`internal/state/changes.go`). A snapshot says
-  what a pane holds but not when that became true, and a tab with several panes
-  and none focused is named after whichever moved last. Herdr's pane revisions
+  what a pane holds but not when that became true, and a tab whose layout
+  names no focused pane is named after whichever of its panes moved last. Herdr's pane revisions
   are monotonic, so comparing one poll's revisions with the last says which panes
   moved. The map is rebuilt from each snapshot, so panes that closed disappear
   from it for free.

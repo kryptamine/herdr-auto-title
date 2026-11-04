@@ -159,7 +159,8 @@ Six, and no others (`internal/herdr/client.go`), `workspace.report_metadata`
 unless workspace topics are turned off:
 
 - **`session.snapshot`** returns the whole session — every tab with its label,
-  every pane with its directory, terminal title, agent and agent status.
+  every pane with its directory, terminal title, agent and agent status, and
+  every tab's layout, whose `focused_pane_id` is the pane focused in that tab.
   Measured at 0.47 ms and 6 KB for six panes. Beside `panes` it carries an
   `agents` list, one entry per pane running an agent, and only there does the
   name `herdr agent rename` gave that agent appear, as `name`; an unnamed agent
@@ -400,9 +401,8 @@ reads, so this section describes Herdr rather than those types.
 - **`PaneInfo.focused` is true for one pane in the whole session**, the one a
   client is typing into, and `session.snapshot`'s `layouts` carry each tab's
   own as `focused_pane_id`. Measured on Herdr 0.9.5: 26 panes, one with
-  `focused`, while every tab's layout named its focused pane. Named after the
-  focused pane, a tab of several panes took another's name while it was not
-  shown, and its title changed the moment it was switched to.
+  `focused`, while every tab's layout named its focused pane, always one of
+  that tab's own. A layout also carries `zoomed` and a `focused` per pane.
 - **A workspace object carries** `workspace_id`, `number`, `label`, `focused`,
   `pane_count`, `tab_count`, `active_tab_id` and `agent_status`, plus `tokens`
   only while metadata is reported on it and `worktree` for a workspace in a git

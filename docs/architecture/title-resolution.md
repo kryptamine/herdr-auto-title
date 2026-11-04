@@ -48,7 +48,10 @@ A tab holding several panes is named after one of them, never after a blend of
 both. `TabFrom` (`internal/state/tab.go`) picks it once, as `TabState.Context`,
 in order:
 
-1. the focused pane;
+1. the pane focused within the tab — its layout's `focused_pane_id`, not
+   `PaneInfo.focused`, which marks one pane in the whole session; read that
+   way, a tab not shown would be named after another of its panes and change
+   its title the moment it was switched to;
 2. failing that, a pane running an agent that is `working` or `blocked` — a
    split where the user left an agent running is about that agent, even though
    the pane below it saw the last update;
@@ -56,6 +59,11 @@ in order:
    docked sidebar, reports tokens through `pane.report_metadata` and redraws
    constantly, so on recency alone it would name every tab not in view;
 4. failing that, the pane that changed most recently.
+
+Every tab Herdr lays out has a focused pane, so rules 2 to 4 decide only a tab
+whose layout is missing or names none of its panes. A working agent beside a
+focused shell therefore leaves the tab named after the shell, shown or not;
+`HERDR_AUTO_TITLE_PREFER_AGENT=true` is what names it after the agent.
 
 Tokens are not an ownership flag: a plugin pane that reports none still
 competes on recency, and Herdr offers no way to ask which plugin owns a pane.

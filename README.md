@@ -102,8 +102,9 @@ $HOME                                  →  7 · Shell
   switches to it.
 - The default branch is left out. Other branches are cut down to what
   identifies them: `bugfix-asa-cpanel-uapi-mc-13675` becomes `MC-13675`.
-- A tab with several panes is named after the focused pane, a pane with a busy
-  agent, or the pane that changed last.
+- A tab with several panes is named after the pane focused in it, whether the
+  tab is shown or not. `HERDR_AUTO_TITLE_PREFER_AGENT=true` names it after its
+  agent pane instead.
 - Each pane gets a name of its own, so Herdr's goto panel (`prefix`+`g`) no
   longer lists every Claude Code pane as `claude`.
 - Rename a tab or a pane yourself and Auto Title stops touching it. Clear the
