@@ -160,6 +160,13 @@ follows `/resume` at once, which Herdr's session id does not (see
 the summary below has the whole of that name, the title declines and the
 summary names the pane.
 
+OpenCode titles its terminal `OC | <title>` once a session has a title, and
+`OpenCode` before then. `withoutOpenCodeFrame` (`internal/resolver/opencode.go`)
+takes the `OC | ` off, so the tab reads the session's title rather than the
+frame; the bare `OpenCode` passes through, and the agent's own name is dropped
+from a title as any agent's is. Nothing reads an OpenCode session from disk, so
+a title OpenCode cut short stays cut.
+
 Pi is read with one more step, because its title has a grammar of its own: Pi
 titles its terminal `π - <dir>` and, once `/name` has given the session a name,
 `π - <name> - <dir>`. The first says which program sits where, and the context

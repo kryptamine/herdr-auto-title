@@ -24,6 +24,8 @@ func agentTitle(pane *state.PaneState, title string) (string, bool) {
 		return codex.ThreadName(title)
 	case grok.Agent:
 		return withoutGrokFrame(pane, title)
+	case openCodeAgent:
+		return withoutOpenCodeFrame(title)
 	}
 
 	return title, true
