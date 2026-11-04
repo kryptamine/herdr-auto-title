@@ -16,6 +16,7 @@ func (a *App) tabsIn(snapshot herdr.Snapshot) []state.TabState {
 	focused := focusedIn(snapshot.Layouts)
 
 	for _, pane := range snapshot.Panes {
+		// A tab without a layout keeps the pane's own, session-wide flag.
 		if id, ok := focused[pane.TabID]; ok {
 			pane.Focused = pane.PaneID == id
 		}

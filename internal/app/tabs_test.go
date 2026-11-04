@@ -38,3 +38,45 @@ func TestATabNotShownIsNamedAfterItsOwnFocusedPane(t *testing.T) {
 		}
 	}
 }
+
+func TestATabWithoutItsOwnFocusedPaneFallsBack(t *testing.T) {
+	t.Parallel()
+
+	panes := []herdr.PaneInfo{
+		{PaneID: "wE:p1", TabID: "wE:t1", Focused: true},
+		{PaneID: "wE:p2", TabID: "wE:t1", Agent: "claude", AgentStatus: herdr.AgentStatusWorking},
+	}
+
+	// A tab Herdr reports no layout for still has the session's focus to go by,
+	// and a layout naming none of the tab's panes leaves the tab to its agent.
+	cases := []struct {
+		name    string
+		layouts []herdr.LayoutInfo
+		want    string
+	}{
+		{"no layout", nil, "wE:p1"},
+		{"no focused pane", []herdr.LayoutInfo{{TabID: "wE:t1"}}, "wE:p2"},
+		{
+			"another tab's pane",
+			[]herdr.LayoutInfo{{TabID: "wE:t1", FocusedPaneID: "wE:p9"}},
+			"wE:p2",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			app := newTestApp(t, testConfig())
+			tabs := app.tabsIn(herdr.Snapshot{
+				Tabs:    []herdr.TabInfo{{TabID: "wE:t1"}},
+				Panes:   panes,
+				Layouts: tc.layouts,
+			})
+
+			if got := tabs[0].Context.ID; got != tc.want {
+				t.Errorf("tab is named after %s, want %s", got, tc.want)
+			}
+		})
+	}
+}
