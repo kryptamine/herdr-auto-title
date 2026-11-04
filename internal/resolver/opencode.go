@@ -22,7 +22,5 @@ func withoutOpenCodeFrame(title string) (string, bool) {
 		return title, true
 	}
 
-	name = strings.TrimSpace(name)
-
-	return name, name != ""
+	return strings.TrimSpace(name), true
 }
