@@ -397,6 +397,12 @@ reads, so this section describes Herdr rather than those types.
   entirely. No shell, editor or ssh pane carries any; herdr-sidebar's panes
   carry `herdr-sidebar-explorer` and `herdr-sidebar-git`, which is why a pane
   with tokens ranks below one without when naming a tab.
+- **`PaneInfo.focused` is true for one pane in the whole session**, the one a
+  client is typing into, and `session.snapshot`'s `layouts` carry each tab's
+  own as `focused_pane_id`. Measured on Herdr 0.9.5: 26 panes, one with
+  `focused`, while every tab's layout named its focused pane. Named after the
+  focused pane, a tab of several panes took another's name while it was not
+  shown, and its title changed the moment it was switched to.
 - **A workspace object carries** `workspace_id`, `number`, `label`, `focused`,
   `pane_count`, `tab_count`, `active_tab_id` and `agent_status`, plus `tokens`
   only while metadata is reported on it and `worktree` for a workspace in a git

@@ -229,6 +229,9 @@ are only the facts that would otherwise mislead the code in silence.
 - **A workspace's active tab is `active_tab_id`, not `TabInfo.focused`.**
   `focused` marks only the one tab a client is looking at, so every other
   workspace's tabs all read `false`.
+- **A tab's focused pane is its layout's `focused_pane_id`, not
+  `PaneInfo.focused`.** That flag marks one pane in the whole session, so in a
+  tab not shown no pane has it, and switching to the tab would rename it.
 - **`workspace.report_metadata` clears a token with `null`.** `tokens` is a
   required map of string or `null`; a string-only map cannot clear, and
   leaving the key out changes nothing. A token is keyed by its name alone:
