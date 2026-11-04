@@ -84,6 +84,8 @@ make dev         # rebuild and restart on every source change
 ```
 
 Same rules apply: foreground, one tab, Ctrl+C to stop both watcher and plugin.
+`make run-desktop` and `make dev-desktop` do the same against the open desktop
+window instead of the TUI session; they rename the desktop app's tabs.
 Note that `make check` rewrites files — `make fmt` runs the formatters and
 every fix the linters can make themselves — so a watcher left running in
 another tab will rebuild and restart on it.

@@ -136,6 +136,8 @@ make lint-scripts # shellcheck, ruff, mypy, a Python 3.9 import, needs uv
 make test       # go test -race ./...
 make run        # build and run in the current Herdr session, DEBUG logging
 make dev        # the same, restarting on every source change
+make run-desktop # the same as run, against the open desktop window
+make dev-desktop # the same as dev, against the open desktop window
 make ps         # show running plugin/watcher instances
 make stop       # stop them
 make tabs       # current tab names
