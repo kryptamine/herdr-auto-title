@@ -145,9 +145,17 @@ type AgentInfo struct {
 type Snapshot struct {
 	Workspaces []WorkspaceInfo `json:"workspaces"`
 
-	Tabs   []TabInfo   `json:"tabs"`
-	Panes  []PaneInfo  `json:"panes"`
-	Agents []AgentInfo `json:"agents"`
+	Tabs    []TabInfo    `json:"tabs"`
+	Panes   []PaneInfo   `json:"panes"`
+	Agents  []AgentInfo  `json:"agents"`
+	Layouts []LayoutInfo `json:"layouts"`
+}
+
+// LayoutInfo is a tab's split layout. Its focused pane is the tab's own, which
+// a pane's `focused` is not: that marks one pane in the whole session.
+type LayoutInfo struct {
+	TabID         string `json:"tab_id"`
+	FocusedPaneID string `json:"focused_pane_id"`
 }
 
 type snapshotResult struct {
