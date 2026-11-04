@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Rebuild and restart Auto Title whenever a source file changes.
 
+Arguments are passed to the plugin, so `watch.py desktop` runs the desktop mode.
 Keep it in the foreground: Ctrl+C stops both the watcher and the plugin, and
 backgrounding it is how you end up with a stray process renaming tabs.
 """
@@ -54,10 +55,10 @@ def build() -> bool:
     return build.returncode == 0
 
 
-def start() -> subprocess.Popen[bytes]:
+def start(args: list[str]) -> subprocess.Popen[bytes]:
     """Run the plugin with DEBUG logging, in this process's own terminal."""
     env = {**os.environ, "HERDR_AUTO_TITLE_DEBUG": "1"}
-    return subprocess.Popen([str(BINARY)], cwd=ROOT, env=env)
+    return subprocess.Popen([str(BINARY), *args], cwd=ROOT, env=env)
 
 
 def stop(plugin: subprocess.Popen[bytes] | None) -> None:
@@ -76,7 +77,7 @@ def clock() -> str:
     return time.strftime("%H:%M:%S")
 
 
-def watch() -> None:
+def watch(args: list[str]) -> None:
     print("--- watching for changes; Ctrl+C to stop")
     plugin: subprocess.Popen[bytes] | None = None
     last: tuple[tuple[str, int], ...] | None = None
@@ -88,7 +89,7 @@ def watch() -> None:
                 stop(plugin)
                 plugin = None
                 if build():
-                    plugin = start()
+                    plugin = start(args)
                     print(f"--- {clock()} started")
                 else:
                     print(f"--- {clock()} build failed; nothing is running")
@@ -115,7 +116,7 @@ def interrupt(signum: int, frame: FrameType | None) -> NoReturn:
 def main() -> int:
     signal.signal(signal.SIGTERM, interrupt)
     with contextlib.suppress(KeyboardInterrupt):
-        watch()
+        watch(sys.argv[1:])
     return 0
 
 

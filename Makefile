@@ -64,15 +64,23 @@ run: build ## Run in the current Herdr session with DEBUG logging
 dev: ## Rebuild and restart on every source change
 	@./scripts/watch.py
 
+.PHONY: run-desktop
+run-desktop: build ## Run against the open Herdr desktop window with DEBUG logging
+	@HERDR_AUTO_TITLE_DEBUG=1 ./$(BINARY) desktop
+
+.PHONY: dev-desktop
+dev-desktop: ## The same, restarting on every source change
+	@./scripts/watch.py desktop
+
 .PHONY: stop
 stop: ## Stop forgotten plugin and watcher instances
 	@pkill -f 'scripts/watch.py' 2>/dev/null && echo "watcher stopped" || true
-	@pkill -f '/$(BINARY)$$' 2>/dev/null && echo "plugin stopped" || true
+	@pkill -f '/$(BINARY)( desktop)?$$' 2>/dev/null && echo "plugin stopped" || true
 	@$(MAKE) --no-print-directory ps
 
 .PHONY: ps
 ps: ## Show running plugin and watcher instances
-	@pgrep -fl 'scripts/watch.py|/$(BINARY)$$' || echo "nothing running"
+	@pgrep -fl 'scripts/watch.py|/$(BINARY)( desktop)?$$' || echo "nothing running"
 
 .PHONY: tabs
 tabs: ## Show the current tab names
