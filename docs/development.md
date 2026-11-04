@@ -70,6 +70,7 @@ Rules that are worth following literally:
   really do survive — twice during this project, once because a `pkill` pattern
   did not match, and once because `make check` rewrote a file, which a forgotten
   watcher took as a cue to rebuild and restart.
+  `make ps` also lists the instance Herdr started; `make stop` leaves it alone.
 
 Watch what it does from a second tab:
 
