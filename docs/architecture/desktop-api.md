@@ -12,8 +12,10 @@ generated: { by: claude-code/opus-5, at: 2026-10-30T13:50:00+02:00 }
 The desktop app is a separate program from Herdr TUI and shares no agents with
 it. Every fact below was measured against a live **herdr-app 0.1.9** and **hc
 0.1.14, protocol generation 1** on macOS, with `make probe-desktop` or a direct
-socket request, unless it says otherwise. Nothing here has been measured on
-Linux or Windows.
+socket request, unless it says otherwise. On **herdr-app 0.1.13** and **hc
+0.1.18** the fields the code reads, renames, the `+` menu, Claude Code's session
+and closing a space were measured again; what changed is said where it applies.
+Nothing here has been measured on Linux or Windows.
 
 Desktop support is tracked in
 [#188](https://github.com/kryptamine/herdr-auto-title/issues/188).
@@ -58,13 +60,16 @@ Only `{"status":true}` says which pane has focus, and only for the shown tab.
   socket recognizes an unnamed tab by its name equalling its position, the same
   ambiguity as in TUI. A tab renamed to its own position reads as unnamed.
 - **`status` in `ls` is the one to read.** It is the app's own word, `done` while
-  the user has not looked, where `terminal.list` still says `idle`. A Pi report
-  of `error` read as `blocked`.
+  the user has not looked, where hc 0.1.14's `terminal.list` still said `idle`.
+  A Pi report of `error` read as `blocked`. In hc 0.1.18 `terminal.list` carries
+  `status` as an object, `{"app":…,"state":…}`, not a string.
 - **A tab started from the `+` menu is named.** `new-menu` passes
   `name: agent.name` to `tab.new`, so it reads as a user's tab called "Claude
   Code" and manual rename protection would never touch it. A tab started by
   `tab.new` with no name is unnamed. Both were read back from `ls`. The client
   lists those names by hand, so one the app adds later locks its tab until listed.
+  The app's own list is in its binary, each entry a `"name"` beside a `"run"`;
+  0.1.12 and 0.1.13 added PiG and DeepSeek Harness.
 
 ## What the core reports
 
@@ -72,9 +77,10 @@ Only `{"status":true}` says which pane has focus, and only for the shown tab.
   `claude-code`, `codex`, `pi`, `grok-build`, `antigravity`.
 - **`foreground` is `null` for the first moments of a terminal.**
 - **`foreground` is not the agent in a tab started with `argv`.** `tab.new`
-  wraps it, as `fish -ic "command $argv[2..]; exec $argv[1] -i"`, and the agent
-  runs as that shell's child in the shell's process group, so `foreground`
-  stays `fish`. Typed at a prompt, the agent is the foreground process itself.
+  wraps it, as `fish -lic "command $argv[2..]; exec $argv[1] -li"` in 0.1.13,
+  and the agent runs as that shell's child in the shell's process group, so
+  `foreground` stays `fish`. Typed at a prompt, the agent is the foreground
+  process itself.
 - **`foreground.name` can be a version.** Claude Code's reads `2.1.314`. Its
   `argv` reads `["claude"]`.
 - **`title` is raw.** There is no stripped field. Spinners arrive on every frame:
@@ -168,11 +174,11 @@ leaves behind: a shallower process that reused its `pid` would be read first.
 
 ## Closing a space
 
-`space.close` answers before its terminals have exited. For about the next three
-seconds, those still running carry `herdr.space` labels the app no longer knows,
-so it adopts them into a new space named after their directory, which then
-disappears as they exit. A poll in that window sees tabs that are already going.
-The closed space's `recent` list also gained an entry with an empty name.
+`space.close` refuses to run without `"confirmed": true`, since it ends the
+space's terminals. In 0.1.9 it answered before they had exited, and for about
+three seconds the app adopted those still running into a new space named after
+their directory. 0.1.10 fixed that: polled every 50 ms for five seconds after the
+close, no such space appeared in 0.1.13. `recent` gains the closed space's name.
 
 ## With no window open
 
