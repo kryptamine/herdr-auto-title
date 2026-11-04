@@ -75,7 +75,7 @@ dev-desktop: ## The same, restarting on every source change
 .PHONY: stop
 stop: ## Stop forgotten plugin and watcher instances
 	@pkill -f 'scripts/watch.py' 2>/dev/null && echo "watcher stopped" || true
-	@pkill -f '/$(BINARY)( desktop)?$$' 2>/dev/null && echo "plugin stopped" || true
+	@pkill -f '^(\./|$(CURDIR)/)$(BINARY)( desktop)?$$' 2>/dev/null && echo "plugin stopped" || true
 	@$(MAKE) --no-print-directory ps
 
 .PHONY: ps
