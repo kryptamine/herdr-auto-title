@@ -123,7 +123,9 @@ def without_go(work: pathlib.Path, also: tuple[str, ...] = ()) -> str:
             continue
         for tool in pathlib.Path(directory).iterdir():
             link = tools / tool.name
-            if tool.name not in hidden and not link.exists():
+            # exists() follows the link, so a dangling tool seen twice through
+            # /bin -> /usr/bin would be linked a second time and fail.
+            if tool.name not in hidden and not (link.is_symlink() or link.exists()):
                 link.symlink_to(tool)
     return str(tools)
 
