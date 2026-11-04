@@ -13,8 +13,13 @@ func (a *App) tabsIn(snapshot herdr.Snapshot) []state.TabState {
 	handles := handlesIn(snapshot.Agents)
 
 	byTab := make(map[string][]*state.PaneState, len(snapshot.Tabs))
+	focused := focusedIn(snapshot.Layouts)
 
 	for _, pane := range snapshot.Panes {
+		if id, ok := focused[pane.TabID]; ok {
+			pane.Focused = pane.PaneID == id
+		}
+
 		byTab[pane.TabID] = append(
 			byTab[pane.TabID],
 			state.PaneFrom(pane, handles[pane.PaneID], a.changes.ChangedAt(pane.PaneID)),
@@ -42,6 +47,17 @@ func (a *App) tabsIn(snapshot herdr.Snapshot) []state.TabState {
 	}
 
 	return tabs
+}
+
+// focusedIn maps each tab to the pane focused within it, so a tab is named after
+// the same pane whether it is shown or not.
+func focusedIn(layouts []herdr.LayoutInfo) map[string]string {
+	focused := make(map[string]string, len(layouts))
+	for _, layout := range layouts {
+		focused[layout.TabID] = layout.FocusedPaneID
+	}
+
+	return focused
 }
 
 // handlesIn maps each pane to the name its agent was given, leaving out the
