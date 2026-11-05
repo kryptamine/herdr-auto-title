@@ -203,3 +203,8 @@ to leave.
 <a href="https://github.com/moisesmorillo"><img src="https://images.weserv.nl/?url=github.com/moisesmorillo.png&w=128&h=128&fit=cover&mask=circle&maxage=7d" width="64" alt="Moisés Morillo"></a>
 <a href="https://github.com/evenfierro-qbit"><img src="https://images.weserv.nl/?url=github.com/evenfierro-qbit.png&w=128&h=128&fit=cover&mask=circle&maxage=7d" width="64" alt="Even Fierro"></a>
 <a href="https://github.com/WillowMist"><img src="https://images.weserv.nl/?url=github.com/WillowMist.png&w=128&h=128&fit=cover&mask=circle&maxage=7d" width="64" alt="WillowMist"></a>
+<a href="https://github.com/gandriyko"><img src="https://images.weserv.nl/?url=github.com/gandriyko.png&w=128&h=128&fit=cover&mask=circle&maxage=7d" width="64" alt="Andrew G"></a>
+<a href="https://github.com/jimbb"><img src="https://images.weserv.nl/?url=github.com/jimbb.png&w=128&h=128&fit=cover&mask=circle&maxage=7d" width="64" alt="Jimbb"></a>
+<a href="https://github.com/ModoloDev"><img src="https://images.weserv.nl/?url=github.com/ModoloDev.png&w=128&h=128&fit=cover&mask=circle&maxage=7d" width="64" alt="Lucas Modolo"></a>
+<a href="https://github.com/freethinkel"><img src="https://images.weserv.nl/?url=github.com/freethinkel.png&w=128&h=128&fit=cover&mask=circle&maxage=7d" width="64" alt="Egor Kolesnikov"></a>
+<a href="https://github.com/markdarling"><img src="https://images.weserv.nl/?url=github.com/markdarling.png&w=128&h=128&fit=cover&mask=circle&maxage=7d" width="64" alt="Mark Darling"></a>
