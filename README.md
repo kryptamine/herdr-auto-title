@@ -26,7 +26,8 @@ herdr plugin action invoke herdr.auto-title.restart
 
 `stable` is the latest release. On amd64 and arm64 the install downloads that
 release's prebuilt binary, so it needs no Go; anywhere else it builds from
-source and needs Go 1.24+. The second line starts the plugin now.
+source and needs Go 1.24+. On Windows the download runs in Git for Windows'
+Bash, so a Git without Bash needs Go too. The second line starts the plugin now.
 Without it Herdr starts a plugin only when its server next starts.
 
 To update to the next release, keeping your configuration:
