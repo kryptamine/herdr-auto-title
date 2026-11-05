@@ -199,6 +199,7 @@ type TabState struct {
 	ID string
 	// CurrentName lets a poll skip a rename that would change nothing.
 	CurrentName string
+	Unnamed     bool
 	// WorkspaceName is the label Herdr shows above this tab.
 	WorkspaceName string
 	// Position is the tab's place in its workspace, counted from one: the key
@@ -236,6 +237,7 @@ func TabFrom(
 	return TabState{
 		ID:            info.TabID,
 		CurrentName:   info.Label,
+		Unnamed:       info.Unnamed,
 		WorkspaceName: workspaceName,
 		Position:      position,
 		Panes:         ordered,

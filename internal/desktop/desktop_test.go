@@ -195,11 +195,11 @@ func TestLauncherNameCountsAsUnnamed(t *testing.T) {
 	client, _ := fakeClient(t)
 	tabs := readSnapshot(t, client).Tabs
 
-	if tabs[1].Label != "2" {
-		t.Errorf("launcher tab label = %q, want its position", tabs[1].Label)
+	if tabs[1].Label != "Claude Code" || !tabs[1].Unnamed {
+		t.Errorf("launcher tab = %+v, want its raw label marked unnamed", tabs[1])
 	}
 
-	if tabs[2].Label != "Codex" {
+	if tabs[2].Label != "Codex" || tabs[2].Unnamed {
 		t.Errorf("agentless tab label = %q, want it kept", tabs[2].Label)
 	}
 }
@@ -386,10 +386,8 @@ func TestMethodsWithoutADesktopEquivalentFail(t *testing.T) {
 	}
 }
 
-// A pane in `ls` that the core has not listed yet has no title or directory, so
-// as a blank pane it could speak for its tab over a sibling that has both. Its
-// tab's label is still judged by all of `ls`, or a launcher's tab would read as
-// named for that one poll and lock.
+// An unlisted pane must not outrank a known sibling, but its launcher name
+// must still count as unnamed until the core catches up.
 func TestAPaneTheCoreDoesNotListYetIsLeftOut(t *testing.T) {
 	t.Parallel()
 
@@ -402,7 +400,8 @@ func TestAPaneTheCoreDoesNotListYetIsLeftOut(t *testing.T) {
 		}},
 	}}}}
 
-	snapshot, foregrounds := build(world.local([]terminal{{Address: "t1"}}), "", nil)
+	client := &Client{}
+	snapshot, foregrounds := client.build(world.local([]terminal{{Address: "t1"}}), "", nil)
 
 	if len(snapshot.Panes) != 1 || snapshot.Panes[0].PaneID != "listed" {
 		t.Errorf("panes = %+v, want only the listed one", snapshot.Panes)
@@ -412,8 +411,8 @@ func TestAPaneTheCoreDoesNotListYetIsLeftOut(t *testing.T) {
 		t.Error("an unlisted pane answers as a pane that runs nothing")
 	}
 
-	if got := snapshot.Tabs[1].Label; got != "2" {
-		t.Errorf("launcher's tab label = %q, want its position", got)
+	if got := snapshot.Tabs[1]; got.Label != "Codex" || !got.Unnamed {
+		t.Errorf("launcher's tab = %+v, want its raw label marked unnamed", got)
 	}
 }
 

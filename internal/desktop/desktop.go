@@ -39,6 +39,9 @@ type Client struct {
 
 	mu sync.Mutex
 	// foregrounds is what each pane was running at the last snapshot.
+	// initialLabels holds the first label until it changes; an empty value
+	// means a launcher's name must never be inferred again for that tab.
+	initialLabels map[string]string
 	foregrounds map[string]herdr.PaneProcessInfoProcess
 
 	sessions *sessionFinder
@@ -97,6 +100,7 @@ func coreSocketPath(home string) string {
 }
 
 // Server is empty because a window restart is not a successor: nothing else
+	snapshot, foregrounds := c.build(local, status.FocusedPane, sessions)
 // starts an Auto Title for the desktop app, so this one must stay.
 func (*Client) Server() string { return "" }
 
@@ -122,7 +126,7 @@ func (c *Client) Snapshot(ctx context.Context) (herdr.Snapshot, error) {
 	}
 
 	local := world.local(terminals)
-	snapshot, foregrounds := build(local, status.FocusedPane, c.sessions.read(ctx, panesIn(local)))
+	sessions := c.sessions.read(ctx, panesIn(local))
 
 	c.mu.Lock()
 	c.foregrounds = foregrounds

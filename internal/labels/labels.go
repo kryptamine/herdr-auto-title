@@ -243,11 +243,16 @@ var (
 // sightingOfTab is what a poll saw of a tab, given the name chosen for it.
 // What Herdr calls an unclaimed tab is its position.
 func sightingOfTab(tab state.TabState, desired string) sighting {
+	byDefault := strconv.Itoa(tab.Position)
+	if tab.Unnamed {
+		byDefault = tab.CurrentName
+	}
+
 	return sighting{
 		id:        tab.ID,
 		current:   tab.CurrentName,
 		desired:   desired,
-		byDefault: strconv.Itoa(tab.Position),
+		byDefault: byDefault,
 	}
 }
 
