@@ -55,6 +55,8 @@ type terminal struct {
 	CWD     string `json:"cwd"`
 	Title   string `json:"title"`
 	Turn    uint64 `json:"turn"`
+	// Argv is what the terminal was started with, known from its first moment.
+	Argv []string `json:"argv"`
 	// Foreground is null for the first moments of a terminal, which decodes as
 	// no process at all.
 	Foreground herdr.PaneProcessInfoProcess `json:"foreground"`
@@ -201,9 +203,27 @@ func foregroundOf(t terminal) herdr.PaneProcessInfoProcess {
 	return process
 }
 
+// launcherNamed is a launcher's name on a tab an agent was started in. The
+// agent reports itself about a second late, so the argv tab.new was given
+// counts too, or the first poll would take the name for the user's.
 func launcherNamed(tab tab) bool {
-	hasAgent := slices.ContainsFunc(tab.Terminals, func(e paneEntry) bool { return e.App != "" })
-	return hasAgent && slices.Contains(launcherNames, tab.Name)
+	if !slices.Contains(launcherNames, tab.Name) {
+		return false
+	}
+
+	return slices.ContainsFunc(tab.Terminals, func(e paneEntry) bool { return e.App != "" }) ||
+		slices.ContainsFunc(
+			tab.panes,
+			func(p localPane) bool { return startsProgram(p.terminal.Argv) },
+		)
+}
+
+// startsProgram is whether argv runs more than a shell given only flags, which
+// tab.new's wrapper around the program it starts always does.
+func startsProgram(argv []string) bool {
+	return len(argv) > 1 && slices.ContainsFunc(argv[1:], func(arg string) bool {
+		return !strings.HasPrefix(arg, "-")
+	})
 }
 
 func statusOf(tab tab) string {
