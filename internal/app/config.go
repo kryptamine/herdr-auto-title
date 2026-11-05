@@ -134,7 +134,8 @@ type Config struct {
 	// GrokHome is the Grok Build home session summaries are read from, or ""
 	// when there is no home directory to find it under.
 	GrokHome string
-	// HermesHomes supplements ~/.hermes and its named profiles; absolute paths only.
+	// HermesHomes are the Hermes homes sessions are searched in, each with its
+	// named profiles; a relative path among them is skipped.
 	HermesHomes []string
 
 	// Home is the user's home directory, or "" when there is none.
@@ -164,7 +165,7 @@ func loadConfig() (Config, []string) {
 	}
 
 	cfg := Config{
-		HermesHomes:      hermesHomesFromEnv(),
+		HermesHomes:      hermesHomes(),
 		Poll:             DefaultPoll,
 		MaxLength:        resolver.DefaultMaxLength,
 		BranchMax:        resolver.DefaultBranchMaxLength,
@@ -217,13 +218,20 @@ func loadConfig() (Config, []string) {
 	return cfg, warnings
 }
 
-func hermesHomesFromEnv() []string {
+// hermesHomes are the homes Hermes sessions are searched in: the one Hermes
+// names itself, any EnvHermesHomes adds, then the one it defaults to.
+func hermesHomes() []string {
 	var homes []string
 	if home := os.Getenv(EnvHermesHome); home != "" {
 		homes = append(homes, home)
 	}
 
-	return append(homes, filepath.SplitList(os.Getenv(EnvHermesHomes))...)
+	homes = append(homes, filepath.SplitList(os.Getenv(EnvHermesHomes))...)
+	if home := userHome(); home != "" {
+		homes = append(homes, filepath.Join(home, ".hermes"))
+	}
+
+	return homes
 }
 
 // readConfigFile puts the file's settings into the environment, which is how a

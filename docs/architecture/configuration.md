@@ -22,7 +22,7 @@ mattering. `CODEX_HOME`, Codex's own, `GROK_CONFIG_DIR`, Grok Build's, and
 `HERMES_HOME`, Hermes Agent's, are read for the same reason; unset, the first
 two mean `~/.codex` and `~/.grok`, as they do to the agents. `HERMES_HOME`
 reaches the session reader with `HERDR_AUTO_TITLE_HERMES_HOMES` through
-`Config.HermesHomes`, and `~/.hermes` is searched either way; see
+`Config.HermesHomes`, which ends with `~/.hermes` either way; see
 [Hermes session titles](hermes-session-titles.md) for the per-pane process
 homes that come first. Like ours, each reaches the plugin only through the
 server's environment or `config.env`: one set only in a shell is not seen, and
