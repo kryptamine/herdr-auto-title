@@ -5,13 +5,11 @@ package desktop
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
 )
@@ -25,10 +23,6 @@ const (
 	noTabPrefix = "no tab "
 	noAnswer    = "the window did not answer"
 )
-
-// errNoEquivalent answers what the app has no place for, which the desktop mode's
-// configuration never asks of it.
-var errNoEquivalent = errors.New("the desktop app has no equivalent")
 
 // Client speaks to the app's socket and the core's. Both answer one request
 // per connection here, so like the TUI client it has nothing to reconnect.
@@ -126,16 +120,6 @@ func (c *Client) PaneProcesses(
 	}
 
 	return []herdr.PaneProcessInfoProcess{process}, nil
-}
-
-func (*Client) RenamePane(context.Context, string, string) error { return errNoEquivalent }
-
-func (*Client) ReportWorkspaceTopic(
-	context.Context,
-	string, string, string,
-	time.Duration,
-) error {
-	return errNoEquivalent
 }
 
 func (c *Client) RenameTab(ctx context.Context, tabID, label string) error {

@@ -24,9 +24,22 @@ type Client interface {
 	// process last.
 	PaneProcesses(ctx context.Context, paneID string) ([]PaneProcessInfoProcess, error)
 	RenameTab(ctx context.Context, tabID, label string) error
+	// Path names the session, which is what its claim is kept under.
+	Path() string
+	// Server identifies the server holding the socket, or is "" while none
+	// does. It changes when another server binds the path.
+	Server() string
+}
+
+// PaneRenamer is what a Client offers when its session has panes to name.
+type PaneRenamer interface {
 	// RenamePane names a pane, which is what the goto panel lists a pane by. An
 	// empty label clears the name rather than storing it, so nothing sends one.
 	RenamePane(ctx context.Context, paneID, label string) error
+}
+
+// TopicReporter is what a Client offers when its session shows workspace tokens.
+type TopicReporter interface {
 	// ReportWorkspaceTopic shows topic as the workspace's `topic` token until ttl
 	// runs out, or clears the token when topic is empty.
 	ReportWorkspaceTopic(
@@ -34,11 +47,6 @@ type Client interface {
 		workspaceID, source, topic string,
 		ttl time.Duration,
 	) error
-	// Path names the session, which is what its claim is kept under.
-	Path() string
-	// Server identifies the server holding the socket, or is "" while none
-	// does. It changes when another server binds the path.
-	Server() string
 }
 
 // SocketClient speaks NDJSON to the Herdr socket. Herdr closes the connection
@@ -49,7 +57,11 @@ type SocketClient struct {
 	seq  atomic.Uint64
 }
 
-var _ Client = (*SocketClient)(nil)
+var (
+	_ Client        = (*SocketClient)(nil)
+	_ PaneRenamer   = (*SocketClient)(nil)
+	_ TopicReporter = (*SocketClient)(nil)
+)
 
 func socketPath() (string, error) {
 	path := os.Getenv(socketPathEnv)

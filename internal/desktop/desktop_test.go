@@ -12,7 +12,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
 )
@@ -371,16 +370,18 @@ func TestProcessesComeFromTheLastSnapshot(t *testing.T) {
 	}
 }
 
-func TestMethodsWithoutADesktopEquivalentFail(t *testing.T) {
+// The app has no panes to name and no workspace tokens, and the poll loop
+// leaves both alone only for a client that does not offer them.
+func TestTheClientOffersNoPaneNamesOrTopics(t *testing.T) {
 	t.Parallel()
 
-	client := &Client{}
-	if err := client.RenamePane(t.Context(), "p1", "x"); err == nil {
-		t.Error("RenamePane succeeded")
+	var client herdr.Client = &Client{}
+	if _, renames := client.(herdr.PaneRenamer); renames {
+		t.Error("the client renames panes")
 	}
 
-	if err := client.ReportWorkspaceTopic(t.Context(), "w", "s", "t", time.Second); err == nil {
-		t.Error("ReportWorkspaceTopic succeeded")
+	if _, reports := client.(herdr.TopicReporter); reports {
+		t.Error("the client reports topics")
 	}
 }
 

@@ -265,6 +265,7 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 
 	tabs := a.tabsIn(snapshot)
 	poll := a.reads.Poll(client, snapshot.Panes, drew)
+	renamer, renamesPanes := client.(herdr.PaneRenamer)
 
 	for _, tab := range tabs {
 		if ctx.Err() != nil {
@@ -273,8 +274,8 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 
 		a.nameTab(ctx, pass, poll, tab)
 
-		if a.panes != nil {
-			a.namePanes(ctx, pass, poll, tab)
+		if a.panes != nil && renamesPanes {
+			a.namePanes(ctx, pass, renamer, poll, tab)
 		}
 	}
 
@@ -287,9 +288,9 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 	// Reached only when every tab and pane was seen, so never deferred.
 	pass.Settle()
 
-	if a.topics != nil {
+	if reporter, reports := client.(herdr.TopicReporter); a.topics != nil && reports {
 		// Last, so a poll cut short gives up a topic rather than a tab.
-		a.reportTopics(ctx, client, poll, snapshot, tabs)
+		a.reportTopics(ctx, reporter, poll, snapshot, tabs)
 	}
 
 	return nil
@@ -300,7 +301,7 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 // that fails never cuts the poll short.
 func (a *App) reportTopics(
 	ctx context.Context,
-	client herdr.Client,
+	reporter herdr.TopicReporter,
 	poll *reads.Poll,
 	snapshot herdr.Snapshot,
 	tabs []state.TabState,
@@ -336,14 +337,14 @@ func (a *App) reportTopics(
 
 		topic := a.topics.Topic(pane)
 		if a.reported.due(workspace, topic) {
-			a.report(ctx, client, workspace.WorkspaceID, topic)
+			a.report(ctx, reporter, workspace.WorkspaceID, topic)
 		}
 	}
 }
 
 // report sends one workspace's topic, or clears it when topic is empty.
-func (a *App) report(ctx context.Context, client herdr.Client, id, topic string) {
-	err := client.ReportWorkspaceTopic(ctx, id, topicSource, topic, topicTTL)
+func (a *App) report(ctx context.Context, reporter herdr.TopicReporter, id, topic string) {
+	err := reporter.ReportWorkspaceTopic(ctx, id, topicSource, topic, topicTTL)
 
 	switch {
 	case err == nil:
@@ -439,6 +440,7 @@ func (a *App) nameTab(
 func (a *App) namePanes(
 	ctx context.Context,
 	pass *labels.Pass,
+	renamer herdr.PaneRenamer,
 	poll *reads.Poll,
 	tab state.TabState,
 ) {
@@ -463,7 +465,7 @@ func (a *App) namePanes(
 			continue
 		}
 
-		pass.Pane(ctx, pane, decision)
+		pass.Pane(ctx, renamer, pane, decision)
 	}
 }
 
