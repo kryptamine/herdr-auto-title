@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.20.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.19.1...v0.20.0) (2026-11-05)
+
+
+### Features
+
+* **hermes:** read native session titles for tabs and panes ([70232d7](https://github.com/kryptamine/herdr-auto-title/commit/70232d74479c88b0e5a307bb1451a363fa52cec6))
+
+
+### Bug Fixes
+
+* **hermes:** harden title reads and fit upstream integration ([1636367](https://github.com/kryptamine/herdr-auto-title/commit/16363670e672f6e551002aa8f375697b5e87228e))
+* **install:** clarify failed Windows source builds ([efed991](https://github.com/kryptamine/herdr-auto-title/commit/efed9918691c6089cf0e1826a7ac78dd85ce45d6))
+* **install:** detect ARM64 beneath emulated Git Bash ([fed88d4](https://github.com/kryptamine/herdr-auto-title/commit/fed88d48cd5d6f30b994e78f94c31007ed2a1fe1))
+* **install:** find Git Bash behind Windows shims ([7294884](https://github.com/kryptamine/herdr-auto-title/commit/72948842ec71655d39cf2fd83bbd0906de5bfe41))
+* **install:** use Git Bash or Go on Windows ([5704f32](https://github.com/kryptamine/herdr-auto-title/commit/5704f32dbbd6f4fe743ef3e5e89790d9af97ab3a))
+
+
+### Refactoring
+
+* **app:** name the hermes variables as env constants ([32a4b10](https://github.com/kryptamine/herdr-auto-title/commit/32a4b10728d435bb05e307bc9e4bc193db19d085))
+* **app:** resolve the default hermes home in config ([e0b100f](https://github.com/kryptamine/herdr-auto-title/commit/e0b100f0845242c3225ba9b91204be40461b9707))
+
 ## [0.19.1](https://github.com/kryptamine/herdr-auto-title/compare/v0.19.0...v0.19.1) (2026-11-04)
 
 
