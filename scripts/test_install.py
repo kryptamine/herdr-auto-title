@@ -179,22 +179,6 @@ def reported(root: pathlib.Path) -> str:
 
 
 def main() -> None:
-    if WINDOWS:
-        print(f"Windows host: {platform.machine()}, runner: {os.environ.get('RUNNER_ARCH', 'local')}", flush=True)
-        for key in ("PROCESSOR_ARCHITECTURE", "PROCESSOR_ARCHITEW6432"):
-            print(f"{key}={os.environ.get(key, '(unset)')}", flush=True)
-        git_exec = subprocess.run(["git", "--exec-path"], capture_output=True, text=True, check=True).stdout.strip()
-        bash = pathlib.Path(git_exec).parents[2] / "bin" / "bash.exe"
-        subprocess.run(
-            [
-                str(bash),
-                "--noprofile",
-                "--norc",
-                "-c",
-                '/usr/bin/uname -sm; printf "%s %s\\n" "$PROCESSOR_ARCHITECTURE" "${PROCESSOR_ARCHITEW6432-unset}"',
-            ],
-            check=True,
-        )
     version = manifest_version()
     work = pathlib.Path(tempfile.mkdtemp(prefix=NAME + "-test-"))
     asset = build_host_asset(work)
@@ -275,7 +259,13 @@ def main() -> None:
         with_go = os.pathsep.join([no_bash, str(pathlib.Path(go).parent)])
         case("no Bash, no Go", no_bash, False, "install Git for Windows or Go")
         case("no Bash, Go", with_go, True, "Git Bash is unavailable")
-        case("no Bash, failing build", with_go, False, "Git Bash is unavailable", bad_source=True)
+        case(
+            "no Bash, failing build",
+            with_go,
+            False,
+            "it could not be built from source, which needs Go 1.24 or newer",
+            bad_source=True,
+        )
         incomplete = work / "incomplete Git"
         for name in ("cmd/git.exe", "bin/bash.exe", "usr/bin/uname.exe"):
             target = incomplete / name

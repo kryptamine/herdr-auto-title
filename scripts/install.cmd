@@ -21,6 +21,7 @@ if errorlevel 1 (
 echo herdr-auto-title: Git Bash is unavailable; building from source >&2
 go.exe build -o herdr-auto-title.exe ./cmd/herdr-auto-title
 set "result=%errorlevel%"
+if not "%result%"=="0" echo herdr-auto-title: it could not be built from source, which needs Go 1.24 or newer >&2
 goto done
 
 :shell
