@@ -179,6 +179,22 @@ def reported(root: pathlib.Path) -> str:
 
 
 def main() -> None:
+    if WINDOWS:
+        print(f"Windows host: {platform.machine()}, runner: {os.environ.get('RUNNER_ARCH', 'local')}", flush=True)
+        for key in ("PROCESSOR_ARCHITECTURE", "PROCESSOR_ARCHITEW6432"):
+            print(f"{key}={os.environ.get(key, '(unset)')}", flush=True)
+        git_exec = subprocess.run(["git", "--exec-path"], capture_output=True, text=True, check=True).stdout.strip()
+        bash = pathlib.Path(git_exec).parents[2] / "bin" / "bash.exe"
+        subprocess.run(
+            [
+                str(bash),
+                "--noprofile",
+                "--norc",
+                "-c",
+                '/usr/bin/uname -sm; printf "%s %s\\n" "$PROCESSOR_ARCHITECTURE" "${PROCESSOR_ARCHITEW6432-unset}"',
+            ],
+            check=True,
+        )
     version = manifest_version()
     work = pathlib.Path(tempfile.mkdtemp(prefix=NAME + "-test-"))
     asset = build_host_asset(work)
@@ -219,6 +235,13 @@ def main() -> None:
                 publish(releases, "latest/download", asset, head)
             result = install(root, base, path)
             got = reported(root)
+            if WINDOWS and installs and (root / BINARY).exists():
+                data = (root / BINARY).read_bytes()
+                pe = int.from_bytes(data[60:64], "little")
+                machine = int.from_bytes(data[pe + 4 : pe + 6], "little")
+                expected = 0xAA64 if "arm64" in asset.name else 0x8664
+                if machine != expected:
+                    failures.append(f"{title}: PE machine {machine:#x}, expected {expected:#x}")
             want = (0, f"{NAME} {version}") if installs else (1, "")
             unwanted = release.get("absent")
             said = needle in result.stderr and not (unwanted and unwanted in result.stderr)
@@ -227,7 +250,7 @@ def main() -> None:
 
     go_path = os.environ["PATH"]
     no_go = without_go(work)
-    case("this release, no Go", no_go, True, f"installed release {version}")
+    case("this release, no Go", no_go, True, f"downloading {asset.name}")
     case("this release, Go", go_path, True, f"installed release {version}")
     case("main after a release, latest answers, no Go", no_go, False, "is not release", released=False, latest=True)
     case("this release not out, latest answers, no Go", no_go, False, "could not be fetched", at=[], latest=True)
