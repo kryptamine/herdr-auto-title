@@ -108,17 +108,22 @@ func (p *Pass) Tab(ctx context.Context, tab state.TabState, decision resolver.De
 		return
 	}
 
-	p.apply(ctx, claims, sightingOfTab(tab, decision.Name), decision)
+	p.apply(ctx, claims, sightingOfTab(tab, decision.Name), decision, p.client.RenameTab)
 }
 
 // Pane gives a pane the name chosen for it, on the terms Tab gives a tab its.
-func (p *Pass) Pane(ctx context.Context, pane *state.PaneState, decision resolver.Decision) {
+func (p *Pass) Pane(
+	ctx context.Context,
+	renamer herdr.PaneRenamer,
+	pane *state.PaneState,
+	decision resolver.Decision,
+) {
 	claims := p.labels.panes
 	if claims.isLocked(pane.ID) {
 		return
 	}
 
-	p.apply(ctx, claims, sightingOfPane(pane, decision.Name), decision)
+	p.apply(ctx, claims, sightingOfPane(pane, decision.Name), decision, renamer.RenamePane)
 }
 
 // Owned reports whether one of a tab's panes runs a program that writes its
@@ -165,6 +170,7 @@ func (p *Pass) apply(
 	claims *claims,
 	seen sighting,
 	decision resolver.Decision,
+	rename func(ctx context.Context, id, label string) error,
 ) {
 	kind := claims.kind
 	log := p.labels.log
@@ -181,7 +187,7 @@ func (p *Pass) apply(
 		return
 	}
 
-	if err := kind.rename(ctx, p.client, seen.id, decision.Name); err != nil {
+	if err := rename(ctx, seen.id, decision.Name); err != nil {
 		if herdr.ErrorCode(err) == kind.gone {
 			log.Debug(kind.noun+" closed before it could be renamed", idKey, seen.id)
 			return
@@ -211,8 +217,7 @@ func (p *Pass) apply(
 
 // kind is what differs between the things Auto Title names.
 type kind struct {
-	noun   string
-	rename func(ctx context.Context, c herdr.Client, id, label string) error
+	noun string
 	// gone is the error Herdr answers when the thing closed between the
 	// snapshot and the rename. The next poll will not see it at all.
 	gone string
@@ -225,16 +230,10 @@ type kind struct {
 var (
 	tabKind = kind{
 		noun: "tab",
-		rename: func(ctx context.Context, c herdr.Client, id, label string) error {
-			return c.RenameTab(ctx, id, label)
-		},
 		gone: herdr.CodeTabNotFound,
 	}
 	paneKind = kind{
-		noun: "pane",
-		rename: func(ctx context.Context, c herdr.Client, id, label string) error {
-			return c.RenamePane(ctx, id, label)
-		},
+		noun:         "pane",
 		gone:         herdr.CodePaneNotFound,
 		followsMoves: true,
 	}

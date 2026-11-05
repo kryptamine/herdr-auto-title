@@ -197,9 +197,11 @@ reopens.
 ## The desktop mode
 
 `herdr-auto-title desktop` is the same poll loop behind `internal/desktop`, which
-implements `herdr.Client`. Three things differ from TUI mode:
+implements `herdr.Client`. Four things differ from TUI mode:
 
-- **Panes and workspace tokens are off**, because they have no equivalent.
+- **Panes and workspace tokens are off**, because they have no equivalent. The
+  client does not implement `herdr.PaneRenamer` or `herdr.TopicReporter`, and
+  the poll loop skips what a client does not offer, whatever the configuration.
 - **Manual names live in `manual-names.json.desktop`**, so the two modes do not
   overwrite each other's file.
 - **`Server()` is empty**, so a window restart is not a successor and the process

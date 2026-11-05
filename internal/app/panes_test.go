@@ -69,6 +69,39 @@ func TestPanesAreLeftAloneWhenTurnedOff(t *testing.T) {
 	}
 }
 
+// A client without panes or tokens, as the desktop app's is, must still have
+// its tabs named when the configuration asks for both.
+func TestPanesAndTopicsAreSkippedForAClientWithoutThem(t *testing.T) {
+	t.Parallel()
+
+	cfg := paneConfig()
+	cfg.ReportWorkspaces = true
+
+	panes := split()
+	panes[0].TerminalTitleStripped = "Fix the login flow"
+	stub := herdrtest.New([]herdr.TabInfo{{TabID: "wE:t1", WorkspaceID: "wE", Label: "1"}}, panes)
+	stub.SetWorkspaces(herdr.WorkspaceInfo{WorkspaceID: "wE", Label: "api", ActiveTabID: "wE:t1"})
+	h := startConfigured(t, stub, cfg)
+
+	// Embedding the interface hides every method the stub has beyond it.
+	tabsOnly := struct{ herdr.Client }{stub}
+	if !h.app.poll(context.Background(), tabsOnly) {
+		t.Fatal("the loop stopped")
+	}
+
+	if len(stub.Renames()) != 1 {
+		t.Errorf("tab renames = %v, want the tab named", stub.Renames())
+	}
+
+	if renames := stub.PaneRenames(); len(renames) != 0 {
+		t.Errorf("pane renames = %v, want none", renames)
+	}
+
+	if reports := stub.WorkspaceReports(); len(reports) != 0 {
+		t.Errorf("topic reports = %v, want none", reports)
+	}
+}
+
 func TestAPaneIsNamedForWhatTellsItFromItsTab(t *testing.T) {
 	t.Parallel()
 

@@ -57,7 +57,11 @@ type Client struct {
 	server           string
 }
 
-var _ herdr.Client = (*Client)(nil)
+var (
+	_ herdr.Client        = (*Client)(nil)
+	_ herdr.PaneRenamer   = (*Client)(nil)
+	_ herdr.TopicReporter = (*Client)(nil)
+)
 
 func New(tabs []herdr.TabInfo, panes []herdr.PaneInfo) *Client {
 	s := &Client{
