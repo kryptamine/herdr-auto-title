@@ -28,7 +28,8 @@ tmp=$(mktemp -d 2>/dev/null || mktemp -d -t "$name") || exit 1
 trap 'rm -rf "$tmp"' EXIT
 
 asset_name() {
-	case $(uname -s) in
+	system=$(uname -s)
+	case $system in
 	Linux) os=linux ;;
 	Darwin) os=macos ;;
 	MINGW*_NT-* | MSYS_NT-*) os=windows ;;
@@ -37,6 +38,10 @@ asset_name() {
 	arch=$(uname -m)
 	if [ "$os" = windows ]; then
 		arch=${PROCESSOR_ARCHITEW6432:-${PROCESSOR_ARCHITECTURE:-$arch}}
+		# Git Bash under x64 emulation reports the native CPU in this suffix.
+		case $system in
+		*-ARM64) arch=arm64 ;;
+		esac
 	fi
 	# A shell under Rosetta reports x86_64 on Apple silicon.
 	if [ "$os" = macos ] && [ "$(sysctl -n hw.optional.arm64 2>/dev/null)" = 1 ]; then

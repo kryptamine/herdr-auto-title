@@ -1,7 +1,7 @@
 ---
 type: doc
 title: 'Installation'
-description: 'How installs verify binaries or build from source, how Windows finds Git Bash, why releases start as drafts, and how stable follows them.'
+description: 'How installs verify binaries or build from source, how Windows finds Git Bash, why releases start as drafts, how stuck drafts recover, and how stable follows releases.'
 tags: [architecture, release]
 created: 2026-10-24
 generated: { by: claude-code/opus-5-5, at: 2026-10-27T12:00:00+03:00 }
@@ -215,11 +215,15 @@ its exit code without retrying the build. The shell owns all release checks
 and its own build fallback. No PowerShell script is involved, so its Group
 Policy execution restrictions cannot prevent this fallback.
 
-On Windows the shared installer selects a Windows asset, preferring the native
-architecture environment variables over an emulated shell's architecture,
-and keeps `.exe` on both the staged and final binary. Git attributes keep shell
-files LF and the CMD entry CRLF. `scripts/test_install.py` exercises the
+On Windows the shared installer selects a Windows asset and keeps `.exe` on
+both the staged and final binary. It checks the `uname -s` suffix `-ARM64`
+before trusting architecture environment variables: Git Bash under x64
+emulation can report `AMD64` with `PROCESSOR_ARCHITEW6432` unset on ARM64.
+Git attributes keep shell files LF and the CMD entry CRLF.
+`scripts/test_install.py` exercises the
 manifest command against local releases, including Windows without Bash.
+CI runs installation on native Windows ARM64 as well as x64 and checks the
+downloaded asset name and the installed binary's PE machine field.
 
 ## Where the binary goes
 
