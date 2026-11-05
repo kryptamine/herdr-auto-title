@@ -33,6 +33,9 @@ type TabInfo struct {
 	TabID       string `json:"tab_id"`
 	WorkspaceID string `json:"workspace_id"`
 	Label       string `json:"label"`
+	// Unnamed marks an adapter's default name without losing the actual label
+	// needed to restore a saved manual-name lock.
+	Unnamed bool `json:"-"`
 	// AgentStatus is Herdr's own over the tab's panes, so a finished agent
 	// outranks a working one — see docs/architecture/herdr-socket-api.md.
 	AgentStatus string `json:"agent_status"`

@@ -130,11 +130,13 @@ func panesIn(spaces []space) []localPane {
 }
 
 // build is the snapshot a poll reads, and what each pane is running beside it.
-func build(
+func (c *Client) build(
 	spaces []space,
 	focusedPane string,
 	sessions map[string]*herdr.AgentSessionInfo,
 ) (herdr.Snapshot, map[string]herdr.PaneProcessInfoProcess) {
+	c.rememberLabels(spaces)
+
 	var snapshot herdr.Snapshot
 
 	foregrounds := make(map[string]herdr.PaneProcessInfoProcess)
@@ -142,7 +144,7 @@ func build(
 	for _, space := range spaces {
 		workspace := herdr.WorkspaceInfo{WorkspaceID: space.ID, Label: space.Name}
 
-		for i, tab := range space.Tabs {
+		for _, tab := range space.Tabs {
 			if tab.Active {
 				workspace.ActiveTabID = tab.ID
 			}
@@ -150,7 +152,8 @@ func build(
 			snapshot.Tabs = append(snapshot.Tabs, herdr.TabInfo{
 				TabID:       tab.ID,
 				WorkspaceID: space.ID,
-				Label:       labelOf(tab, i+1),
+				Label:       tab.Name,
+				Unnamed:     c.initialLabels[tab.ID] == tab.Name && launcherNamed(tab),
 				AgentStatus: statusOf(tab),
 			})
 
@@ -168,6 +171,27 @@ func build(
 	return snapshot, foregrounds
 }
 
+// rememberLabels recognizes a launcher's unchanged initial name, never a name
+// the user later returns to. Closed tabs leave no history behind.
+func (c *Client) rememberLabels(spaces []space) {
+	initialLabels := make(map[string]string)
+
+	for _, space := range spaces {
+		for _, tab := range space.Tabs {
+			initial, known := c.initialLabels[tab.ID]
+			if !known {
+				initial = tab.Name
+			} else if initial != tab.Name {
+				initial = ""
+			}
+
+			initialLabels[tab.ID] = initial
+		}
+	}
+
+	c.initialLabels = initialLabels
+}
+
 func foregroundOf(t terminal) herdr.PaneProcessInfoProcess {
 	process := t.Foreground
 	if versionRe.MatchString(process.Name) && len(process.Argv) > 0 {
@@ -177,14 +201,9 @@ func foregroundOf(t terminal) herdr.PaneProcessInfoProcess {
 	return process
 }
 
-// labelOf is the tab's label, or its position when the app's launcher named it.
-func labelOf(tab tab, position int) string {
+func launcherNamed(tab tab) bool {
 	hasAgent := slices.ContainsFunc(tab.Terminals, func(e paneEntry) bool { return e.App != "" })
-	if hasAgent && slices.Contains(launcherNames, tab.Name) {
-		return strconv.Itoa(position)
-	}
-
-	return tab.Name
+	return hasAgent && slices.Contains(launcherNames, tab.Name)
 }
 
 func statusOf(tab tab) string {

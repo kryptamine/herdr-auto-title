@@ -216,6 +216,11 @@ claims nothing, as in TUI, since nothing there can tell a user's name from an
 earlier run's. A rename after that is the user's, and stays.
 
 ## Not settled
+Launcher names are defaults only while the first observed label is unchanged.
+After it changes, returning to `Codex` or `Claude Code` is a manual rename.
+The adapter keeps the raw label and marks defaults separately, so a saved
+manual-name lock still matches after restarting the client.
+
 
 - The app socket on Windows. By the source, it is an `AF_UNIX` socket at the same
   path, through `uds_windows`, and not a named pipe. Not measured.
