@@ -163,10 +163,6 @@ func TestRepeatedHomeIsSearchedOnce(t *testing.T) {
 	home := t.TempDir()
 	database(t, home, "Repeated home title")
 
-	if err := os.MkdirAll(filepath.Join(home, "profiles", "work"), 0o750); err != nil {
-		t.Fatal(err)
-	}
-
 	roots := []string{home, home + string(filepath.Separator), filepath.Join(home, ".")}
 	if got := hermes.Title(
 		context.Background(),
@@ -175,5 +171,20 @@ func TestRepeatedHomeIsSearchedOnce(t *testing.T) {
 		"",
 	); got != "Repeated home title" {
 		t.Fatalf("title = %q, want the repeated home's title", got)
+	}
+}
+
+// HERDR_AUTO_TITLE_HERMES_HOMES=~/.hermes/profiles/work names a profile the
+// default home already lists; it must not count as a second home holding it.
+func TestProfileNamedAsRootIsSearchedOnce(t *testing.T) {
+	t.Parallel()
+	home := t.TempDir()
+	profile := filepath.Join(home, "profiles", "work")
+	database(t, profile, "Profile title")
+
+	for _, roots := range [][]string{{home, profile}, {profile, home}} {
+		if got := hermes.Title(context.Background(), roots, sessionID, ""); got != "Profile title" {
+			t.Fatalf("roots %v: title = %q, want the profile's title", roots, got)
+		}
 	}
 }
