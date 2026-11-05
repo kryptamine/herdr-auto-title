@@ -5,6 +5,7 @@ Verify against the running Herdr before writing code that assumes anything.
 """
 
 import contextlib
+import io
 import json
 import os
 import socket
@@ -13,6 +14,8 @@ import sys
 import time
 from pathlib import Path
 from typing import Any
+
+WINDOWS = sys.platform == "win32"
 
 USAGE = """usage: scripts/probe.py <command>
 
@@ -27,11 +30,18 @@ USAGE = """usage: scripts/probe.py <command>
 
 def herdr(*args: str) -> dict[str, Any]:
     """Run a herdr CLI command and return its parsed JSON result."""
-    out = subprocess.run(["herdr", *args], capture_output=True, text=True, check=True).stdout
-    payload = json.loads(out)
+    payload = cli("herdr", *args)
     if "error" in payload:
         raise SystemExit(f"herdr {' '.join(args)}: {payload['error']}")
     result: dict[str, Any] = payload["result"]
+    return result
+
+
+def cli(*args: str) -> dict[str, Any]:
+    """Read JSON through a CLI when Python cannot speak its socket transport."""
+    env = dict(os.environ, HC_SESSION="default") if args[0] == "hc" else None
+    out = subprocess.run(args, capture_output=True, text=True, encoding="utf-8", check=True, timeout=6, env=env).stdout
+    result: dict[str, Any] = json.loads(out)
     return result
 
 
@@ -80,29 +90,35 @@ def cmd_version() -> None:
 
 def ask(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
     """Send one JSON line to a Unix socket and return the line it answers."""
-    with socket.socket(socket.AF_UNIX) as conn:
-        conn.settimeout(6)
-        conn.connect(str(path))
-        conn.sendall((json.dumps(payload) + "\n").encode())
-        reply = b""
-        while not reply.endswith(b"\n"):
-            chunk = conn.recv(65536)
-            if not chunk:
-                break
-            reply += chunk
-    answer: dict[str, Any] = json.loads(reply)
-    return answer
+    if sys.platform == "win32":
+        raise RuntimeError("the Windows probe uses CLI transport")
+    else:
+        with socket.socket(socket.AF_UNIX) as conn:
+            conn.settimeout(6)
+            conn.connect(str(path))
+            conn.sendall((json.dumps(payload) + "\n").encode())
+            reply = b""
+            while not reply.endswith(b"\n"):
+                chunk = conn.recv(65536)
+                if not chunk:
+                    break
+                reply += chunk
+        answer: dict[str, Any] = json.loads(reply)
+        return answer
 
 
 def core_socket() -> Path:
     """Where herdr-core listens, by the rules in its docs/security.md."""
-    runtime = os.environ.get("XDG_RUNTIME_DIR")
-    if not runtime and Path(f"/run/user/{os.getuid()}").exists():
-        runtime = f"/run/user/{os.getuid()}"
-    if runtime:
-        return Path(runtime) / "herdr-core" / "default.sock"
-    state = os.environ.get("XDG_STATE_HOME") or Path.home() / ".local" / "state"
-    return Path(state) / "herdr-core" / "default" / "default.sock"
+    if sys.platform == "win32":
+        raise RuntimeError("the Windows probe uses CLI transport")
+    else:
+        runtime = os.environ.get("XDG_RUNTIME_DIR")
+        if not runtime and Path(f"/run/user/{os.getuid()}").exists():
+            runtime = f"/run/user/{os.getuid()}"
+        if runtime:
+            return Path(runtime) / "herdr-core" / "default.sock"
+        state = os.environ.get("XDG_STATE_HOME") or Path.home() / ".local" / "state"
+        return Path(state) / "herdr-core" / "default" / "default.sock"
 
 
 def app_socket() -> Path:
@@ -112,6 +128,9 @@ def app_socket() -> Path:
 
 def core_terminals() -> dict[str, dict[str, Any]]:
     """herdr-core's terminals, keyed by the address the app's tabs name them by."""
+    if WINDOWS:
+        listed = cli("hc", "ls")["terminals"]
+        return {t["address"]: cli("hc", "get", t["address"]) for t in listed if "/" not in t["address"]}
     request = {"jsonrpc": "2.0", "id": 1, "method": "terminal.list", "params": {}}
     terminals = ask(core_socket(), request)["result"]["terminals"]
     return {terminal["address"]: terminal for terminal in terminals}
@@ -129,9 +148,16 @@ def print_terminal(entry: dict[str, Any], terminal: dict[str, Any]) -> None:
 
 def cmd_desktop() -> None:
     app = app_socket()
+    if WINDOWS:
+        world = cli("herdr-app", "ls")
+        status = cli("herdr-app", "status")
+        cli("hc", "server", "status")
+    else:
+        world = ask(app, {"ls": True})
+        status = ask(app, {"status": True})
     terminals = core_terminals()
-    print(f"focused pane {ask(app, {'status': True}).get('focused_pane')}")
-    for space in ask(app, {"ls": True})["spaces"]:
+    print(f"focused pane {status.get('focused_pane')}")
+    for space in world["spaces"]:
         print(f"\n{space['id']} {space['name']!r} machine={space['machine']}")
         for tab in space["tabs"]:
             print(f"  {tab['id']} name={tab['name']!r} active={tab['active']}")
@@ -150,6 +176,8 @@ COMMANDS = {
 
 
 def main() -> int:
+    if WINDOWS and isinstance(sys.stdout, io.TextIOWrapper):
+        sys.stdout.reconfigure(encoding="utf-8")
     if len(sys.argv) != 2 or sys.argv[1] not in COMMANDS:
         print(USAGE, file=sys.stderr)
         return 1

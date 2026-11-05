@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net"
 
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
 )
@@ -13,9 +12,7 @@ import (
 // ask sends one JSON line on a connection of its own and decodes the line that
 // answers it. A failure after sending may still take effect, as on Herdr's.
 func ask(ctx context.Context, path string, request, reply any) error {
-	var dialer net.Dialer
-
-	conn, err := dialer.DialContext(ctx, "unix", path)
+	conn, err := dial(ctx, path)
 	if err != nil {
 		return fmt.Errorf("connect to %s: %w", path, err)
 	}

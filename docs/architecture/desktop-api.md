@@ -15,7 +15,8 @@ it. Every fact below was measured against a live **herdr-app 0.1.9** and **hc
 socket request, unless it says otherwise. On **herdr-app 0.1.13** and **hc
 0.1.18** the fields the code reads, renames, the `+` menu, Claude Code's session
 and closing a space were measured again; what changed is said where it applies.
-Nothing here has been measured on Linux or Windows.
+Linux remains unmeasured. The Windows checks below do not establish full
+Windows support.
 
 Desktop support is tracked in
 [#188](https://github.com/kryptamine/herdr-auto-title/issues/188).
@@ -215,16 +216,60 @@ A tab already named when the process first starts is renamed: the first poll
 claims nothing, as in TUI, since nothing there can tell a user's name from an
 earlier run's. A rename after that is the user's, and stays.
 
-## Not settled
 Launcher names are defaults only while the first observed label is unchanged.
 After it changes, returning to `Codex` or `Claude Code` is a manual rename.
 The adapter keeps the raw label and marks defaults separately, so a saved
 manual-name lock still matches after restarting the client.
 
+## Not settled
 
-- The app socket on Windows. By the source, it is an `AF_UNIX` socket at the same
-  path, through `uds_windows`, and not a named pipe. Not measured.
 - A window that takes over 5 s answers `the window did not answer`. By the
   source, the request is still queued, so it may apply later. Not measured.
 - Clicking `+` itself. The tab it makes was reproduced by calling `tab.new` with
   the same arguments.
+
+## Windows transport probe
+
+Measured on Windows on 2026-11-05 with herdr-app 0.1.13 and hc 0.1.18.
+Windows uses the same client and poll loop, with platform-specific endpoint
+discovery, transport and process enumeration. No additional dependency is needed.
+
+- The app accepts Go's Unix socket connection at
+  `C:\Users\Admin\.config\herdr-app\herdr-app.sock`. Both `ls` and `status`
+  decoded successfully.
+- The core answers newline-delimited JSON-RPC over a Windows named pipe. The
+  current terminal supplied `HC_TERMINAL_SOCKET` as
+  `\\.\pipe\herdr-core-Admin-default.sock`; opening that path directly and
+  requesting `terminal.list` worked. Discovery uses the default session and
+  `USERNAME` stripped to ASCII letters and digits, matching
+  [hc 0.1.18](https://github.com/herdrdev/herdr-core/blob/v0.1.18/crates/herdr-core/src/platform/windows.rs).
+  The live client worked without using `HC_TERMINAL_SOCKET`.
+- The app reported `app: "codex"`. The core reported `pwsh.exe` as the
+  foreground process, with its current repository directory; the launch
+  directory remained the user's home. The existing resolver produced a
+  repository, agent and topic title from the live terminal title, with its
+  braille spinner removed. No transcript lookup was needed.
+- On a new test tab, a Unicode title round-tripped unchanged,
+  `"  trimmed probe  "` read back as `"trimmed probe"`, and an empty name
+  restored position `"2"`. A nonexistent tab mapped to `CodeTabNotFound`.
+- The test tab was closed afterward. Independent `ls` and `status` readback
+  confirmed the original tab name and focus, no extra tab, and no app errors.
+- The sandbox could not access the core pipe; the same read succeeded in the
+  current user's environment. No server restart or permission change was needed.
+- The production poll loop ran for three seconds against a temporary terminal
+  emitting a Codex status and title. It generated `codex` plus the topic, then
+  preserved a manual `Codex` label across three polls and a fresh client and
+  loop loading the saved lock. A test wrapper restricted writes to that tab.
+- Native process enumeration found the test process under its actual parent.
+  Fixture tests cover Claude's per-pid session files. Pipe tests cover a real
+  request/reply and cancellation while a server withholds its reply.
+
+Claude uses the native Windows process tree and the same per-pid session files.
+Grok and Antigravity have no Windows open-file reader yet, so their transcript
+sessions remain unavailable; ordinary title, process and directory fallbacks
+still apply. Real Claude session transitions, alternate homes/sessions,
+long-running stability and app restart recovery remain unmeasured.
+
+The Python probe uses `herdr-app ls/status` and `hc ls/get` on Windows: Python's
+Windows sockets do not expose `AF_UNIX`. CLI reads have a six-second timeout,
+and stdout is UTF-8 so spinner frames and non-ASCII topics can be printed.

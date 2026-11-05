@@ -1,5 +1,3 @@
-//go:build !windows
-
 package desktop
 
 import (
@@ -22,6 +20,16 @@ const (
 	sessionA = "01a18ca2-b264-7e03-9a9e-a5cbd02dd669"
 	sessionB = "01a18cb2-f7f6-7870-99e9-0f48e88a077f"
 )
+
+// Windows retains a dead parent's pid, which reuse can turn into a cycle.
+func TestProcessTreeVisitsEachPIDOnce(t *testing.T) {
+	t.Parallel()
+
+	got := treeOf(map[int][]int{10: {20, 30}, 20: {10, 30}, 30: {40}}, 10)
+	if !slices.Equal(got, []int{10, 20, 30, 40}) {
+		t.Fatalf("process tree = %v", got)
+	}
+}
 
 // agentPane is one local pane, its tab and the terminal behind it.
 type agentPane struct {
@@ -218,9 +226,9 @@ func TestAntigravitySessionIsTheNewestConversation(t *testing.T) {
 	finder := newSessionFinder(nil)
 	finder.processes = processTree(map[int][]int{10: {11}})
 	finder.openFiles = filesOpen(map[int][]string{11: {
-		filepath.Join(root, "brain", older),
-		filepath.Join(root, "brain", newer, ".system_generated", "log"),
-		filepath.Join(root, "conversation_summaries.db"),
+		filepath.ToSlash(filepath.Join(root, "brain", older)),
+		filepath.ToSlash(filepath.Join(root, "brain", newer, ".system_generated", "log")),
+		filepath.ToSlash(filepath.Join(root, "conversation_summaries.db")),
 	}})
 
 	client, _ := sessionClient(
@@ -269,8 +277,8 @@ func TestAntigravitySessionWithNoConversationBeatsAnOlderOne(t *testing.T) {
 	finder := newSessionFinder(nil)
 	finder.processes = processTree(map[int][]int{10: nil})
 	finder.openFiles = filesOpen(map[int][]string{10: {
-		filepath.Join(root, "brain", sessionA),
-		filepath.Join(root, "brain", sessionB),
+		filepath.ToSlash(filepath.Join(root, "brain", sessionA)),
+		filepath.ToSlash(filepath.Join(root, "brain", sessionB)),
 	}})
 
 	client, _ := sessionClient(
@@ -455,6 +463,10 @@ func TestClosedPaneIsForgotten(t *testing.T) {
 // ps and lsof are mocked everywhere else, so only this keeps their output readable.
 func TestOpenFilesListsWhatAProcessHolds(t *testing.T) {
 	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows has no open-file reader")
+	}
 
 	path := filepath.Join(t.TempDir(), "events.jsonl")
 

@@ -493,3 +493,10 @@ reads, so this section describes Herdr rather than those types.
   `tab_id` and an `insert_index` and reorders within the tab's workspace,
   ignoring any other field; `workspace.move` reorders the workspace list. Both
   kept the id, and neither CLI offers a move.
+
+## Desktop on Windows
+
+The desktop app is a separate server: its app API uses a Unix socket on Windows,
+while herdr-core uses a named pipe. The measured fields, rename behavior and
+test boundaries for herdr-app 0.1.13 and hc 0.1.18 are recorded in
+[desktop-api.md](desktop-api.md#windows-transport-probe).
