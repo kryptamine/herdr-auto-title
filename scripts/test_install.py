@@ -154,6 +154,23 @@ def install(root: pathlib.Path, base: str, path: str) -> subprocess.CompletedPro
     return result
 
 
+def git_shim(work: pathlib.Path) -> pathlib.Path:
+    """Forward Git from a directory unrelated to its installation, as Scoop does."""
+    directory = work / "Git shim with spaces"
+    directory.mkdir()
+    git = shutil.which("git")
+    assert git is not None
+    source = directory / "shim.go"
+    source.write_text(
+        'package main\nimport ("os"; "os/exec")\nfunc main() {\n'
+        f"cmd := exec.Command({json.dumps(git)}, os.Args[1:]...)\n"
+        "cmd.Stdin = os.Stdin; cmd.Stdout = os.Stdout; cmd.Stderr = os.Stderr\n"
+        "if err := cmd.Run(); err != nil { os.Exit(1) }\n}\n"
+    )
+    subprocess.run(["go", "build", "-o", str(directory / "git.exe"), str(source)], check=True)
+    return directory
+
+
 def reported(root: pathlib.Path) -> str:
     binary = root / BINARY
     if not binary.exists():
@@ -228,6 +245,8 @@ def main() -> None:
     if WINDOWS:
         system = os.environ.get("SYSTEMROOT", r"C:\Windows")
         no_bash = os.pathsep.join([system + r"\System32", system])
+        shim_path = os.pathsep.join([str(git_shim(work)), no_bash])
+        case("Git shim, no Go", shim_path, True, f"installed release {version}")
         go = shutil.which("go")
         assert go is not None
         with_go = os.pathsep.join([no_bash, str(pathlib.Path(go).parent)])

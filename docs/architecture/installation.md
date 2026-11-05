@@ -1,7 +1,7 @@
 ---
 type: doc
 title: 'Installation'
-description: 'How installs verify release binaries or build from source, and how Windows locates Git Bash for the shared installer.'
+description: 'How installs verify binaries or build from source, how Windows finds Git Bash, why releases start as drafts, and how stable follows them.'
 tags: [architecture, release]
 created: 2026-10-24
 generated: { by: claude-code/opus-5-5, at: 2026-10-27T12:00:00+03:00 }
@@ -202,8 +202,10 @@ supplies these tools alongside Bash; Herdr already needs Git to clone.
 
 Windows starts CMD with AutoRun disabled. The launcher looks beside the
 `git.exe` locations on PATH for Git for Windows' `bin/bash.exe`, including
-Git's `cmd`, `bin` and runtime `bin` layouts. It checks the bundled `uname`
-and the shell's Windows runtime before use, rather than selecting an arbitrary
+Git's `cmd`, `bin` and runtime `bin` layouts. If those fail, `git --exec-path`
+supplies another root candidate for Git reached through a shim, such as Scoop's.
+It checks the bundled `uname` and the shell's Windows runtime before use,
+rather than selecting an arbitrary
 `bash.exe` on PATH that could belong to WSL. Profiles are skipped and the
 bundled `/usr/bin` precedes the inherited PATH, which still carries Go.
 

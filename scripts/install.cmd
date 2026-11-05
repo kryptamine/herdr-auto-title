@@ -10,6 +10,8 @@ for /f "delims=" %%G in ('where.exe git.exe 2^>nul') do (
     call :find_bash "%%~dpG..\.."
 )
 if defined bash goto shell
+for /f "delims=" %%G in ('git.exe --exec-path 2^>nul') do call :find_bash "%%G\..\..\.."
+if defined bash goto shell
 where.exe /q go.exe
 if errorlevel 1 (
     echo herdr-auto-title: install Git for Windows or Go 1.24 or newer >&2
