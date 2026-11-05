@@ -282,6 +282,10 @@ are only the facts that would otherwise mislead the code in silence.
 
 ## Working here
 
+- Windows Desktop uses a Unix socket for the app and a named pipe for core.
+  The measured scope and remaining gaps are in
+  [desktop-api.md](docs/architecture/desktop-api.md#windows-transport-probe).
+
 - Work from the issue the change belongs to; [CONTRIBUTING.md](CONTRIBUTING.md)
   says when one is needed. If an issue turns out to rest on something false
   about Herdr, correct it there rather than silently working around it.

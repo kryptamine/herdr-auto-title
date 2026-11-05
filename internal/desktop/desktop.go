@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -39,10 +38,10 @@ type Client struct {
 
 	mu sync.Mutex
 	// foregrounds is what each pane was running at the last snapshot.
+	foregrounds map[string]herdr.PaneProcessInfoProcess
 	// initialLabels holds the first label until it changes; an empty value
 	// means a launcher's name must never be inferred again for that tab.
 	initialLabels map[string]string
-	foregrounds map[string]herdr.PaneProcessInfoProcess
 
 	sessions *sessionFinder
 }
@@ -52,10 +51,6 @@ var _ herdr.Client = (*Client)(nil)
 // New builds a client for this user's app and core. It performs no I/O: the
 // window comes and goes, and a poll finding it closed simply fails.
 func New(claudeDirs []string) (*Client, error) {
-	if runtime.GOOS == "windows" {
-		return nil, errors.New("the desktop mode does not support Windows yet")
-	}
-
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return nil, fmt.Errorf("locate the home directory: %w", err)
@@ -76,31 +71,7 @@ func appSocketPath(home string) string {
 	return filepath.Join(home, ".config", "herdr-app", appSocket)
 }
 
-// coreSocketPath follows the rules in herdr-core's docs/security.md for its
-// default session.
-func coreSocketPath(home string) string {
-	runtimeDir := os.Getenv("XDG_RUNTIME_DIR")
-	if runtimeDir == "" {
-		candidate := fmt.Sprintf("/run/user/%d", os.Getuid())
-		if _, err := os.Stat(candidate); err == nil {
-			runtimeDir = candidate
-		}
-	}
-
-	if runtimeDir != "" {
-		return filepath.Join(runtimeDir, "herdr-core", "default.sock")
-	}
-
-	state := os.Getenv("XDG_STATE_HOME")
-	if state == "" {
-		state = filepath.Join(home, ".local", "state")
-	}
-
-	return filepath.Join(state, "herdr-core", "default", "default.sock")
-}
-
 // Server is empty because a window restart is not a successor: nothing else
-	snapshot, foregrounds := c.build(local, status.FocusedPane, sessions)
 // starts an Auto Title for the desktop app, so this one must stay.
 func (*Client) Server() string { return "" }
 
@@ -129,6 +100,7 @@ func (c *Client) Snapshot(ctx context.Context) (herdr.Snapshot, error) {
 	sessions := c.sessions.read(ctx, panesIn(local))
 
 	c.mu.Lock()
+	snapshot, foregrounds := c.build(local, status.FocusedPane, sessions)
 	c.foregrounds = foregrounds
 	c.mu.Unlock()
 
