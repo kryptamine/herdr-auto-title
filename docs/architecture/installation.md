@@ -132,9 +132,11 @@ have. It refuses a tag that is not a draft, because replacing a published
 release's files changes what its installs were checked against. It also
 refuses a draft release-please did not make and a tag that is not a commit of
 `main`, because what it builds is attested as the release workflow's and
-published as latest; the checkout names `refs/tags/`, so a branch of the same
-name cannot stand in for the tag. Building by hand would publish files with no
-attestation, so nothing here does.
+published as latest. It resolves the tag to a commit once, through
+`refs/tags/`, compares that commit with `refs/heads/main` and checks out that
+same commit, so neither a branch nor a tag of the same name can stand in for
+the other, and a tag moved after the check builds nothing. Building by hand
+would publish files with no attestation, so nothing here does.
 
 Two drafts should be deleted rather than published, with
 `gh release delete vX.Y.Z`, which keeps the tag: one whose tag cannot build,

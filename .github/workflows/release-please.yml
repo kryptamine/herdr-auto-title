@@ -50,6 +50,7 @@ jobs:
       # Installs have already checked a published release's files, so never replace
       # them; a dispatch may only finish what release-please started, from main.
       - name: Refuse anything but a release-please draft
+        id: refuse
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -59,7 +60,10 @@ jobs:
             echo "::error::$TAG is not a draft release-please made, so nothing here may build or publish it"
             exit 1
           fi
-          status=$(gh api "repos/$GH_REPO/compare/refs/tags/$TAG...main" --jq .status)
+          # The commit is resolved once and checked out by sha, so a tag moved after
+          # this check builds nothing; refs/heads/ keeps a tag named main out.
+          sha=$(gh api "repos/$GH_REPO/commits/refs/tags/$TAG" --jq .sha)
+          status=$(gh api "repos/$GH_REPO/compare/$sha...refs/heads/main" --jq .status)
           if [ "$status" != ahead ] && [ "$status" != identical ]; then
             echo "::error::$TAG is not a commit of main ($status), so nothing here may build it"
             exit 1
@@ -69,9 +73,10 @@ jobs:
             echo "::error::$TAG is older than the latest release $latest, so publishing it would move stable back. Delete it: gh release delete $TAG"
             exit 1
           fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: refs/tags/${{ env.TAG }}
+          ref: ${{ steps.refuse.outputs.sha }}
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
