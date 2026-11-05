@@ -24,8 +24,9 @@ herdr plugin install kryptamine/herdr-auto-title --ref stable
 herdr plugin action invoke herdr.auto-title.restart
 ```
 
-`stable` is the latest release, and the install downloads that release's
-prebuilt binary, so it needs no Go. The second line starts the plugin now.
+`stable` is the latest release. On amd64 and arm64 the install downloads that
+release's prebuilt binary, so it needs no Go; anywhere else it builds from
+source and needs Go 1.24+. The second line starts the plugin now.
 Without it Herdr starts a plugin only when its server next starts.
 
 To update to the next release, keeping your configuration:
@@ -35,9 +36,10 @@ herdr plugin update herdr.auto-title
 herdr plugin action invoke herdr.auto-title.restart
 ```
 
-On a Herdr without `plugin update`, run the install lines again instead. An
-update follows the ref you installed with: a tag never moves, and an install
-with no `--ref` follows `main`, so install once with `--ref stable` to switch.
+On Herdr older than 0.9.4, which has no `plugin update`, run the install lines
+again instead. An update follows the ref you installed with: a tag never moves,
+and an install with no `--ref` follows `main`, so install once with
+`--ref stable` to switch.
 
 To run the latest commit on `main`, which can be ahead of the latest release,
 leave `--ref` out. Herdr then builds the plugin from source, which needs Go
