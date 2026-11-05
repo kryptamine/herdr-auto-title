@@ -68,7 +68,10 @@ func TestHermesNativeSessionTitle(t *testing.T) {
 	hermesDB(t, filepath.Join(home, ".hermes"), "Native desktop title")
 
 	pane := hermesPane()
-	readOne(reads.Options{Home: home, ReadSessions: true}, pane)
+	readOne(
+		reads.Options{HermesHomes: []string{filepath.Join(home, ".hermes")}, ReadSessions: true},
+		pane,
+	)
 
 	if pane.AgentTopic != "Native desktop title" {
 		t.Fatalf("topic = %q, want native Hermes title", pane.AgentTopic)
@@ -106,7 +109,13 @@ func TestHermesProfilesAndAmbiguity(t *testing.T) {
 			}
 
 			pane := hermesPane()
-			readOne(reads.Options{Home: home, ReadSessions: true}, pane)
+			readOne(
+				reads.Options{
+					HermesHomes:  []string{filepath.Join(home, ".hermes")},
+					ReadSessions: true,
+				},
+				pane,
+			)
 
 			if pane.AgentTopic != want {
 				t.Fatalf("topic = %q, want %q", pane.AgentTopic, want)
@@ -124,7 +133,9 @@ func TestHermesTitleRefreshAndSessionSwitch(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	reader := newReader(reads.Options{Home: home, ReadSessions: true})
+	reader := newReader(
+		reads.Options{HermesHomes: []string{filepath.Join(home, ".hermes")}, ReadSessions: true},
+	)
 	client := herdrtest.New(nil, nil)
 	pane := hermesPane()
 	fill := func() { reader.Poll(client, nil, nil).Fill(context.Background(), pane) }
@@ -193,7 +204,13 @@ func TestHermesSessionGating(t *testing.T) {
 				Kind:  tc.kind,
 				Value: tc.id,
 			}
-			readOne(reads.Options{Home: home, ReadSessions: true}, pane)
+			readOne(
+				reads.Options{
+					HermesHomes:  []string{filepath.Join(home, ".hermes")},
+					ReadSessions: true,
+				},
+				pane,
+			)
 
 			if pane.AgentTopic != "" {
 				t.Fatalf("topic = %q, want empty for invalid reference", pane.AgentTopic)
@@ -211,7 +228,7 @@ func TestHermesMissingDataFallsBack(t *testing.T) {
 			home := t.TempDir()
 			root := filepath.Join(home, ".hermes")
 			pane := hermesPane()
-			opts := reads.Options{Home: home, ReadSessions: true}
+			opts := reads.Options{HermesHomes: []string{root}, ReadSessions: true}
 
 			switch tc {
 			case "missing database":

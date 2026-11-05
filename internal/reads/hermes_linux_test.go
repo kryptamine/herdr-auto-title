@@ -61,7 +61,9 @@ func TestHermesProcessHomeOverridesSearch(t *testing.T) {
 		herdr.PaneProcessInfoProcess{PID: child.Pid, Name: "hermes", Argv: []string{"hermes"}},
 	)
 
-	reader := newReader(reads.Options{Home: home, ReadSessions: true})
+	reader := newReader(
+		reads.Options{HermesHomes: []string{filepath.Join(home, ".hermes")}, ReadSessions: true},
+	)
 	reader.Poll(client, []herdr.PaneInfo{info}, nil).Fill(context.Background(), pane)
 
 	if pane.AgentTopic != "Process profile title" {

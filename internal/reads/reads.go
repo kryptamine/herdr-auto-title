@@ -6,7 +6,6 @@ package reads
 import (
 	"context"
 	"log/slog"
-	"path/filepath"
 
 	"github.com/kryptamine/herdr-auto-title/internal/antigravity"
 	"github.com/kryptamine/herdr-auto-title/internal/claude"
@@ -22,7 +21,8 @@ import (
 // Options are the settings that decide whether a read is made at all, rather
 // than how its answer is shown.
 type Options struct {
-	// HermesHomes supplements Home/.hermes and its named profiles.
+	// HermesHomes are the Hermes homes sessions are searched in, each with its
+	// named profiles.
 	HermesHomes []string
 	// ClaudeDirs are the Claude Code configuration homes transcripts are found in.
 	ClaudeDirs []string
@@ -53,13 +53,8 @@ type Reader struct {
 }
 
 func New(opts Options, log *slog.Logger) *Reader {
-	homes := append([]string(nil), opts.HermesHomes...)
-	if opts.Home != "" {
-		homes = append(homes, filepath.Join(opts.Home, ".hermes"))
-	}
-
 	return &Reader{
-		hermesHomes:       homes,
+		hermesHomes:       opts.HermesHomes,
 		processes:         newProcessCache(),
 		claudeTopics:      claude.NewReader(opts.ClaudeDirs...),
 		antigravityTitles: antigravity.NewReader(opts.Home),

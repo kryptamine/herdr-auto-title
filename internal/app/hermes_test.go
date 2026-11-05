@@ -14,7 +14,8 @@ import (
 
 func TestHermesHomesConfiguration(t *testing.T) {
 	isolate(t)
-	custom, extra := t.TempDir(), t.TempDir()
+	home, custom, extra := t.TempDir(), t.TempDir(), t.TempDir()
+	setHome(t, home)
 	t.Setenv(EnvHermesHome, custom)
 	t.Setenv(EnvHermesHomes, extra+string(os.PathListSeparator)+custom)
 
@@ -23,7 +24,8 @@ func TestHermesHomesConfiguration(t *testing.T) {
 		t.Fatal(warnings)
 	}
 
-	if !slices.Equal(cfg.HermesHomes, []string{custom, extra, custom}) {
+	want := []string{custom, extra, custom, filepath.Join(home, ".hermes")}
+	if !slices.Equal(cfg.HermesHomes, want) {
 		t.Fatalf("Hermes homes = %v", cfg.HermesHomes)
 	}
 }
