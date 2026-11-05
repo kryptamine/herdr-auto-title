@@ -71,6 +71,12 @@ Only `{"status":true}` says which pane has focus, and only for the shown tab.
   lists those names by hand, so one the app adds later locks its tab until listed.
   The app's own list is in its binary, each entry a `"name"` beside a `"run"`;
   0.1.12 and 0.1.13 added PiG and DeepSeek Harness.
+- **A launcher's tab is seen before its agent.** For about a second after
+  `tab.new`, `ls` gives the terminal no `app` and `terminal.list` no
+  `foreground`, and a poll in that window would lock the launcher's name as the
+  user's. `argv` is there from the start: `["fish", "-l"]` for a plain tab, the
+  wrapper below around the agent for one the launcher started, so a launcher's
+  name on a terminal that starts a program counts as unnamed too.
 
 ## What the core reports
 

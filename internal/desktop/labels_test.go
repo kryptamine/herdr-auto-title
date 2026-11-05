@@ -95,3 +95,65 @@ func TestLauncherHistoryEndsWhenTheTabCloses(t *testing.T) {
 		t.Fatal("closed tab history retained")
 	}
 }
+
+// A tab the `+` menu starts is seen before its agent reports itself, and would
+// be locked as the user's on that first poll, never to be titled.
+func TestLauncherTabIsTitledBeforeItsAgentReports(t *testing.T) {
+	t.Parallel()
+
+	wrapper := []string{
+		"/opt/homebrew/bin/fish",
+		"-lic",
+		"command $argv[2..]; exec $argv[1] -li",
+		"/opt/homebrew/bin/fish",
+		"codex",
+	}
+
+	for _, tc := range []struct {
+		name   string
+		argv   []string
+		titled bool
+	}{
+		{"started by the launcher", wrapper, true},
+		{"a plain shell", []string{"/opt/homebrew/bin/fish", "-l"}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			client := &renameRecorder{}
+			adapter := &Client{}
+			owner := labels.Load(
+				filepath.Join(t.TempDir(), "manual.json"),
+				nil,
+				slog.New(slog.DiscardHandler),
+			)
+			poll := func(app string) {
+				world := world{Spaces: []space{{ID: "space1", Tabs: []tab{
+					{
+						ID:        "tab1",
+						Name:      "Codex",
+						Terminals: []paneEntry{{Terminal: "t1", Pane: "p1", App: app}},
+					},
+				}}}}
+				local := world.local([]terminal{{Address: "t1", Argv: tc.argv}})
+				snapshot, _ := adapter.build(local, "", nil)
+				pass := owner.Pass(client, snapshot)
+				pass.Tab(
+					t.Context(),
+					state.TabFrom(snapshot.Tabs[0], "", 1, nil, false),
+					resolver.Decision{Name: "codex - topic"},
+				)
+				pass.Settle()
+			}
+			// The first poll of a process claims nothing, and this tab opens later.
+			snapshot, _ := adapter.build(nil, "", nil)
+			owner.Pass(client, snapshot).Settle()
+			poll("")
+			poll("codex")
+
+			if titled := len(client.names) != 0; titled != tc.titled {
+				t.Fatalf("renamed to %q, want titled %v", client.names, tc.titled)
+			}
+		})
+	}
+}
