@@ -14,3 +14,7 @@ __pycache__/
 /.venv/
 .mypy_cache/
 .ruff_cache/
+
+# Written into a mod folder by `herdr-app check`.
+mod/mods/*/gpui-kit.d.ts
+mod/mods/*/jsconfig.json

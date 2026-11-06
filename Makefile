@@ -38,7 +38,7 @@ fmt-scripts: ## Format the Python scripts and apply every fix ruff can make itse
 
 .PHONY: lint-scripts
 lint-scripts: ## shellcheck, ruff, mypy and a Python 3.9 import of scripts/
-	@shellcheck -s sh scripts/install.sh
+	@shellcheck -s sh scripts/install.sh mod/mods/auto-title/install.sh
 	@uv run --locked ruff format --check
 	@uv run --locked ruff check
 	@uv run --locked mypy
@@ -71,6 +71,10 @@ run-desktop: build ## Run against the open Herdr desktop window with DEBUG loggi
 .PHONY: dev-desktop
 dev-desktop: ## The same, restarting on every source change
 	@./scripts/watch.py desktop
+
+.PHONY: check-mod
+check-mod: ## Load the gallery mod once in the Herdr desktop app and report what is wrong
+	@herdr-app check mod/mods/auto-title
 
 .PHONY: stop
 stop: ## Stop forgotten plugin and watcher instances

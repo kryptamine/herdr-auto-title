@@ -1,0 +1,11 @@
+{
+  "place": "none",
+  "title": "Auto Title",
+  "overlay": {
+    "kind": "popup",
+    "at": { "x": 100000, "y": 100000 },
+    "width": 445,
+    "height": 184,
+    "frame": "none"
+  }
+}

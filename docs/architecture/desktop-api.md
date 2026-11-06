@@ -331,6 +331,46 @@ ARM64 uses the same typed API bindings; a cross-build does not establish native
 ARM64 behavior. The opted-in task tests and ordinary gate are described in
 [development](../development.md#tests--seconds-no-herdr-involved).
 
+## The gallery mod
+
+`mod/` is what herdr.dev/mods lists once the repository carries the
+`herdr-mod` topic: `mod/mods/auto-title/`, its `RECIPE.md` and `preview.png`.
+The mod is a strip that runs `desktop install`, so the binary stays the one
+place that knows how a service is set up.
+
+- **It installs the release it belongs to**, `VERSION` in `service.js`, which
+  release-please bumps with `herdr-plugin.toml` and
+  `TestModInstallsThisRelease` holds to the binary's version. Whatever is
+  newest might not match the paths and commands the mod was written for. A
+  binary runs only after its checksum matched `SHA256SUMS`, as in
+  [installation](./installation.md).
+- **The install runs in a terminal tab, not through `exec`**, which gives up
+  after 30 s, too soon for a slow download. `run("terminal.open")` returns
+  nothing to follow, so `install.sh`, beside the mod, writes its result to a
+  status file in its `mktemp -d` folder, which the strip reads every second.
+  Under `mods/`, a saved file would reload the mod mid-install.
+- **`terminal.open` leaves a login shell in the tab** once its `argv` exits:
+  measured on herdr-app 0.1.13, it runs `zsh -lic '"$@"; exec "$0" -li'` with
+  `keep` set. Every terminal has its address in `HC_TERMINAL_ID`, so
+  `install.sh` ends with `hc kill` on it, which closes the tab.
+- **It knows only the copy's path** from `internal/autostart`. Everything else
+  it asks the copy: `desktop status` for its version and whether it runs,
+  `desktop install` to start it, `desktop uninstall` to remove it. A change to
+  that path changes the mod too.
+- **The topic waits for a release carrying `desktop install`.** The gallery
+  lists a repository within the hour, and until that release the mod names
+  one whose binary answers `desktop install` with its usage line.
+- **The strip hides itself once dismissed, and comes back when needed.**
+  Measured on herdr-app 0.1.13: `layout.hide` on a block is not written to the
+  layout file and ends with the window, a hidden copy keeps its timers, and
+  `layout()` still lists the hidden block. So the `×` is kept in the mod's
+  `localStorage`, and every status read runs `layout.hide` or `layout.show`.
+- `herdr-app check` writes `gpui-kit.d.ts` and `jsconfig.json` into the mod's
+  folder; `.gitignore` keeps them out. `window()` is null there, so the
+  platform comes from `os`.
+- A second window for a screenshot needs `HERDR_APP_HOME` short enough for a
+  socket path, and it attaches to the same herdr-core as the first.
+
 ## Not settled
 
 - A window that takes over 5 s answers `the window did not answer`. By the
