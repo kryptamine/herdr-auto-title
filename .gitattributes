@@ -1,2 +1,3 @@
 *.sh text eol=lf
 *.cmd text eol=crlf
+internal/autostart/templates/* text eol=lf
