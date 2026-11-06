@@ -533,6 +533,27 @@ func TestABackgroundTabKeepsItsFocusedPane(t *testing.T) {
 	}
 }
 
+func TestAppSocketPath(t *testing.T) {
+	t.Setenv(appHomeEnv, "")
+
+	if got, want := appSocketPath(
+		"/h",
+	), filepath.Join(
+		"/h",
+		".config",
+		"herdr-app",
+		appSocket,
+	); got != want {
+		t.Errorf("default = %q, want %q", got, want)
+	}
+
+	t.Setenv(appHomeEnv, "/app")
+
+	if got, want := appSocketPath("/h"), filepath.Join("/app", appSocket); got != want {
+		t.Errorf("HERDR_APP_HOME = %q, want %q", got, want)
+	}
+}
+
 // One read of `ls` must not leave a remote space's panes behind.
 func TestPanesOfOtherMachinesAreNotLocal(t *testing.T) {
 	t.Parallel()

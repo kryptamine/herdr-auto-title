@@ -19,11 +19,16 @@ func dial(ctx context.Context, path string) (io.ReadWriteCloser, error) {
 // coreSocketPath follows the rules in herdr-core's docs/security.md for its
 // default session.
 func coreSocketPath(home string) string {
+	return coreSocketIn(home, fmt.Sprintf("/run/user/%d", os.Getuid()))
+}
+
+// coreSocketIn is coreSocketPath with runUser, the per-user runtime directory
+// used when XDG_RUNTIME_DIR is unset, taken only if it exists.
+func coreSocketIn(home, runUser string) string {
 	runtimeDir := os.Getenv("XDG_RUNTIME_DIR")
 	if runtimeDir == "" {
-		candidate := fmt.Sprintf("/run/user/%d", os.Getuid())
-		if _, err := os.Stat(candidate); err == nil {
-			runtimeDir = candidate
+		if _, err := os.Stat(runUser); err == nil {
+			runtimeDir = runUser
 		}
 	}
 

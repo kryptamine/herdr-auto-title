@@ -26,10 +26,19 @@ Desktop support is tracked in
 | Socket | Default path | Speaks | Answers |
 |--------|--------------|--------|---------|
 | App | `~/.config/herdr-app/herdr-app.sock` (`$HERDR_APP_HOME`) | one JSON line each way | spaces, tabs, panes, focus, commands |
-| Core | `~/.local/state/herdr-core/default/default.sock` | JSON-RPC 2.0, one message per line | terminals: title, status, foreground process |
+| Core | see below | JSON-RPC 2.0, one message per line | terminals: title, status, foreground process |
 
-The core's path follows `XDG_RUNTIME_DIR` and `XDG_STATE_HOME` when they are
-set, and `<session>` is `default` unless chosen otherwise. The app socket is not
+The core's socket on macOS and Linux is the first of these, following
+herdr-core's `docs/security.md` for the `default` session; only the last was
+measured, on macOS. On Windows it is a named pipe, below.
+
+| When | Path |
+|------|------|
+| `XDG_RUNTIME_DIR` is set | `$XDG_RUNTIME_DIR/herdr-core/default.sock` |
+| `/run/user/<uid>` exists | `/run/user/<uid>/herdr-core/default.sock` |
+| `XDG_STATE_HOME` is set | `$XDG_STATE_HOME/herdr-core/default/default.sock` |
+| otherwise | `~/.local/state/herdr-core/default/default.sock` |
+ The app socket is not
 a documented API; the core's is, by OpenRPC (`hc schema`).
 
 Neither is named by `HERDR_SOCKET_PATH`, which belongs to the TUI server. Both
