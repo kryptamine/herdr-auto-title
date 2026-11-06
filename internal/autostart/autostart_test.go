@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -187,7 +188,7 @@ func TestInstallFromTheCopyItselfKeepsIt(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if info.Mode().Perm()&0o100 == 0 {
+	if runtime.GOOS != "windows" && info.Mode().Perm()&0o100 == 0 {
 		t.Errorf("the copy is not executable: %v", info.Mode())
 	}
 }

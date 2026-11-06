@@ -73,9 +73,13 @@ func Uninstall(ctx context.Context) error {
 	return s.uninstall(ctx)
 }
 
-// copyBinary puts exe at dst through a rename, so a copy that is running keeps
-// its file, and an install run from the copy itself does not truncate it.
+// copyBinary replaces dst through a rename and leaves a same-file copy alone.
+// Windows callers stop the task before replacing its running image.
 func copyBinary(exe, dst string) (err error) {
+	if sameFile(exe, dst) {
+		return nil
+	}
+
 	//nolint:gosec // the directory is Auto Title's own, never terminal-derived
 	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
 		return err
@@ -104,6 +108,10 @@ func copyBinary(exe, dst string) (err error) {
 		return err
 	}
 
+	if err := src.Close(); err != nil {
+		return err
+	}
+
 	if err := tmp.Chmod(executable); err != nil {
 		return err
 	}
@@ -114,6 +122,17 @@ func copyBinary(exe, dst string) (err error) {
 	}
 
 	return os.Rename(tmp.Name(), dst)
+}
+
+func sameFile(a, b string) bool {
+	x, err := os.Stat(a)
+	if err != nil {
+		return false
+	}
+
+	y, err := os.Stat(b)
+
+	return err == nil && os.SameFile(x, y)
 }
 
 // writeFile writes a service definition, readable by the service manager.
