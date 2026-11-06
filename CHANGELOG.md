@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.21.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.20.0...v0.21.0) (2026-11-06)
+
+
+### Features
+
+* **desktop:** discover Windows agent sessions from open files ([44bceb4](https://github.com/kryptamine/herdr-auto-title/commit/44bceb44f43e94ef9d71beeb59e80d49a890ed7e))
+* **desktop:** find the session each agent holds ([a4615ae](https://github.com/kryptamine/herdr-auto-title/commit/a4615aedf32afc533c1c784990994a68a7584340))
+* **desktop:** name the desktop app's tabs ([442f09b](https://github.com/kryptamine/herdr-auto-title/commit/442f09bc29feb80651c7221e3719316482986c9d))
+* **desktop:** support Windows sockets and process discovery ([068302e](https://github.com/kryptamine/herdr-auto-title/commit/068302e5e58e9aa8d1781bb0a1a6e9881d0d0224))
+
+
+### Bug Fixes
+
+* **desktop:** count a launcher's tab as unnamed before its agent reports ([0626b44](https://github.com/kryptamine/herdr-auto-title/commit/0626b449f4c1e9177025ad3b2d03fd0fba22cb55))
+* **desktop:** count PiG and DeepSeek Harness tabs as unnamed ([4cccfdc](https://github.com/kryptamine/herdr-auto-title/commit/4cccfdc57f5641eb21b599b946ed87c080c9cd9f))
+* **desktop:** fail a poll on an error reply to ls or status ([8c23f5a](https://github.com/kryptamine/herdr-auto-title/commit/8c23f5a2c2b078aaa7f3c5b0e779b258365e5467))
+* **desktop:** keep a background tab's focused pane ([2deeee1](https://github.com/kryptamine/herdr-auto-title/commit/2deeee12c8ff4e36c744f9c640bff1083ec27973))
+* **desktop:** preserve manual launcher names across restarts ([e586132](https://github.com/kryptamine/herdr-auto-title/commit/e586132aba9253bac5c6ac141fe3f89c08803098))
+
+
+### Refactoring
+
+* **herdr:** make pane renames and topic reports optional ([ad59cfd](https://github.com/kryptamine/herdr-auto-title/commit/ad59cfdd294a6bc71820ff1373f63b9df84dc515))
+
 ## [0.20.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.19.1...v0.20.0) (2026-11-05)
 
 
