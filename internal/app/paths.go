@@ -50,6 +50,15 @@ func stateDir() string {
 	return filepath.Join(dir, ownDir)
 }
 
+// ReleasePath is where the desktop mode keeps the newest release it found.
+func ReleasePath() string {
+	if dir := stateDir(); dir != "" {
+		return filepath.Join(dir, "latest-release")
+	}
+
+	return ""
+}
+
 // configDirs are the directories Auto Title's files are looked for in, in
 // order: XDG_CONFIG_HOME, ~/.config, and what the platform offers, which is
 // Application Support on macOS and %APPDATA% on Windows.

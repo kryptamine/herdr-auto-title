@@ -3,6 +3,8 @@
 
 Each case installs a copy of the plugin and checks what ended up in its root.
 The binary served is the one scripts/dist.py builds, so the two agree on names.
+The gallery mod's install.sh is run against the same releases, with a stub for
+the binary, so that no case starts a service on the machine running it.
 """
 
 from __future__ import annotations
@@ -28,6 +30,7 @@ from dist import NAME, ROOT
 
 WINDOWS = sys.platform == "win32"
 BINARY = NAME + (".exe" if WINDOWS else "")
+MOD_INSTALL = ROOT / "mod" / "mods" / "auto-title" / "install.sh"
 
 
 class QuietHandler(http.server.SimpleHTTPRequestHandler):
@@ -249,6 +252,40 @@ def main() -> None:
     case("checksum mismatch, Go", go_path, True, "building from source", tamper=True)
     case("binary of another version, no Go", no_go, False, "not 0.0.1", checkout="0.0.1")
     case("binary that does not run, no Go", no_go, False, "does not run", serve=garbage)
+
+    def mod_case(title: str, needle: str, called: bool, **release: Any) -> None:
+        """Run the gallery mod's install.sh against one release of a stub binary."""
+        print(f"--- mod: {title}", file=sys.stderr)
+        shutil.rmtree(releases)
+        releases.mkdir()
+        with tempfile.TemporaryDirectory(dir=work) as scratch:
+            folder = pathlib.Path(scratch)
+            marker = folder / "called"
+            stub = folder / "stub" / asset.name
+            stub.parent.mkdir()
+            stub.write_text(f'#!/bin/sh\nprintf %s "$*" > "{marker}"\n')
+            if release.get("published", True):
+                publish(releases, f"download/v{version}", stub, "0" * 40, release.get("tamper", False))
+            env = dict(os.environ, HERDR_AUTO_TITLE_RELEASES=base)
+            # Inside Herdr the script would close the terminal running the test.
+            env.pop("HC_TERMINAL_ID", None)
+            subprocess.run(
+                ["sh", str(MOD_INSTALL), version, str(folder)],
+                env=env,
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                check=False,
+            )
+            status = (folder / "status").read_text() if (folder / "status").exists() else ""
+            ran = marker.exists() and marker.read_text() == "desktop install"
+            if needle not in status or ran != called:
+                failures.append(f"mod: {title}: status {status!r}, desktop install run: {ran}")
+
+    if not WINDOWS:
+        mod_case("this release", "0", True)
+        mod_case("checksum mismatch", "does not match SHA256SUMS", False, tamper=True)
+        mod_case("release not out", f"The download of {version} failed.", False, published=False)
+
     if WINDOWS:
         system = os.environ.get("SYSTEMROOT", r"C:\Windows")
         no_bash = os.pathsep.join([system + r"\System32", system])

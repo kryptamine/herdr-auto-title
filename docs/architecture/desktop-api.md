@@ -258,10 +258,11 @@ and `desktop uninstall` takes that away. Both live in `internal/autostart`.
   checkout or a download, may move or go. The copy is written beside its place
   and renamed onto it, so a running copy keeps its file and an install run
   from the copy itself does not truncate it.
-- **`desktop status` prints `{"version": …, "running": …}`**, so nothing outside
-  the binary has to know the service's label, its unit or how each manager
-  says it runs: launchd counts as running only with `state = running`, since a
-  failed agent stays loaded while it waits out its throttle.
+- **`desktop status` prints `{"version": …, "running": …}`**, with `latest`
+  when a newer release is out, so nothing outside the binary has to know the
+  service's label, its unit or how each manager says it runs: launchd counts
+  as running only with `state = running`, since a failed agent stays loaded
+  while it waits out its throttle.
 - **Install again to upgrade.** It replaces the copy and restarts the service:
   launchd unloads and loads the agent again, since `bootstrap` refuses a label
   already loaded, and asks again while the old one is still leaving; systemd
@@ -283,6 +284,99 @@ Measured on macOS 27.2: install starts the agent, five installs in a row leave o
 instance running, `kill -9` is restarted within the throttle, an instance displaced
 by a newer claim stays down, and uninstall leaves the three paths gone. Linux
 is not measured yet, and has to be before this ships.
+
+## Updates
+
+The service tells the person when a newer release is out, and the mod's popup
+installs it. Nothing updates itself.
+
+- **Once a day, a minute after start**, and an hour after a check that failed,
+  `internal/release` sends a `HEAD` to `releases/latest` and reads the version
+  from the `/releases/tag/v…` it redirects to. A page, not the API: the API
+  limits callers without a token, and a redirect needs no JSON. Only an
+  `X.Y.Z` is taken, since it reaches the popup and `install.sh`'s URL.
+  `releases/latest` names only a published release, and a release is published
+  only once its binaries are attached ([installation](./installation.md)).
+- **The release offered is kept in `latest-release`**, one line in the state
+  directory beside the instance claims, and `desktop status` reports it as
+  `latest` while it is newer than the copy. It is written before the popup
+  opens, since the popup asks `desktop status` the moment it does, so a
+  release already in the file is not offered again, not even at a new login.
+- **The service opens the popup with `{"do":"mod.open"}`** on the app socket,
+  the command `keys.json` binds. The app toggles a mod's overlay, so a popup
+  already open at that moment closes instead.
+- **A refusal is final, no answer is not.** Installed by hand there is no
+  mod, and the app answers `no mod folder`: the service logs the release and
+  keeps it. A closed window answers nothing, so the file is removed again and
+  the next check, an hour later, offers it again; until then a popup opened by
+  hand offers only the mod's own `VERSION`.
+- **The popup offers the newer of its own `VERSION` and `latest`.** The
+  download and `desktop install` are the same for any release, so a mod older
+  than the release can install it; a newer mod then arrives with the gallery.
+- **Only a checksum**, as for any install from the popup: it catches a broken
+  download, not a compromised repository. The person still presses the button.
+- **TUI never checks**, since Herdr owns its plugin's updates.
+
+Measured on herdr-app 0.1.13: `mod.open` answers `{"ok":true}` and opens the
+popup, an unknown mod answers `{"error":"no mod folder \"…\""}`, and there is
+no `notify` command on the socket, so a toast is out of reach.
+
+## The gallery mod
+
+`mod/` is what herdr.dev/mods lists once the repository carries the
+`herdr-mod` topic: `mod/mods/auto-title/`, its `RECIPE.md` and `preview.png`.
+The mod is a popup that runs `desktop install`, so the binary stays the one
+place that knows how a service is set up.
+
+- **It installs the release it belongs to**, `VERSION` in `service.js`, which
+  release-please bumps with `herdr-plugin.toml` and
+  `TestModInstallsThisRelease` holds to the binary's version, or a newer one
+  the service found ([updates](#updates)). A binary runs only after its
+  checksum matched `SHA256SUMS`, as in [installation](./installation.md).
+- **The install runs in a terminal tab, not through `exec`**, which gives up
+  after 30 s, too soon for a slow download. `run("terminal.open")` returns
+  nothing to follow, so `install.sh`, beside the mod, writes its result to a
+  status file in its `mktemp -d` folder, which the popup reads every second.
+  Under `mods/`, a saved file would reload the mod mid-install.
+- **`terminal.open` leaves a login shell in the tab** once its `argv` exits:
+  measured on herdr-app 0.1.13, it runs `zsh -lic '"$@"; exec "$0" -li'` with
+  `keep` set. Every terminal has its address in `HC_TERMINAL_ID`, so
+  `install.sh` ends with `hc kill` on it, which closes the tab.
+- **It knows only the copy's path** from `internal/autostart`. Everything else
+  it asks the copy: `desktop status` for its version and whether it runs,
+  `desktop install` to start it. A change to that path changes the mod too.
+- **It has no uninstall button.** Removing is rare and needs no popup:
+  `desktop uninstall`, run on the copy by hand, as the README shows.
+- **The topic waits for a release carrying `desktop install`.** The gallery
+  lists a repository within the hour, and until that release the mod names
+  one whose binary answers `desktop install` with its usage line.
+- **It is a popup, not a block in a layout.** Measured on herdr-app 0.1.13, a
+  new mod folder with `"place": "bottom"` was docked nowhere, even after a
+  restart, and the shipped `main` layout accepts no change of structure, so a
+  strip would ask each person to clone `main` and edit it. A popup with
+  `"place": "none"` needs no layout; `keys.json` binds `cmd-alt-t` to
+  `mod.open`, as the palette lists no mod of the person's own.
+- **It opens in the bottom right corner**, out of the way of the terminal it
+  covers, since the service opens it unasked. `at` takes only `"top"` of the
+  strings, measured on herdr-app 0.1.13: `"bottom"`, `"right"` and
+  `"bottom-right"` all fell back to the pointer. A point far past the window
+  is clamped into its bottom right corner, about 8px in, so `mod.json` gives
+  `{ "x": 100000, "y": 100000 }`; nothing tells a mod the window's size.
+  **This is a workaround**, resting on that clamping rather than on anything
+  the app documents. Should a release stop clamping, the popup opens off
+  screen with `mod.open` still answering `ok`, so the release counts as
+  offered unseen; a corner anchor for `at` is what would replace it.
+- **`herdr-app shot` returns a stale frame while the window is behind another
+  app**: an open popup was missing from it. Running `herdr-app` first raises
+  the window, and the frame after it shows the overlay.
+- **The popup can close mid-install**, and its copy and wait loop with it.
+  `install.sh` therefore deletes its own download, and the popup reads the
+  copy afresh when it opens again.
+- `herdr-app check` writes `gpui-kit.d.ts` and `jsconfig.json` into the mod's
+  folder; `.gitignore` keeps them out. `window()` is null there, so the
+  platform comes from `os`.
+- A second window for a screenshot needs `HERDR_APP_HOME` short enough for a
+  socket path, and it attaches to the same herdr-core as the first.
 
 ## Not settled
 

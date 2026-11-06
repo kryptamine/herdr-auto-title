@@ -25,3 +25,23 @@ func TestVersionMatchesManifest(t *testing.T) {
 		t.Errorf("herdr-plugin.toml says %q, the binary says %q", got, version)
 	}
 }
+
+// The gallery mod installs the release it names, and that release has to be
+// this one, or the mod offers a binary the repository no longer describes.
+func TestModInstallsThisRelease(t *testing.T) {
+	t.Parallel()
+
+	mod, err := os.ReadFile("../../mod/mods/auto-title/service.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	match := regexp.MustCompile(`(?m)^export const VERSION = "([^"]*)"`).FindSubmatch(mod)
+	if match == nil {
+		t.Fatal("the mod names no VERSION")
+	}
+
+	if got := string(match[1]); got != version {
+		t.Errorf("the mod installs %q, the binary is %q", got, version)
+	}
+}

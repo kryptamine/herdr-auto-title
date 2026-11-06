@@ -18,6 +18,7 @@ import (
 	"github.com/kryptamine/herdr-auto-title/internal/autostart"
 	"github.com/kryptamine/herdr-auto-title/internal/desktop"
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
+	"github.com/kryptamine/herdr-auto-title/internal/release"
 )
 
 var errUsage = errors.New(
@@ -87,6 +88,11 @@ func runDesktop(ctx context.Context) error {
 		return err
 	}
 
+	offerCtx, stopOffers := context.WithCancel(ctx)
+	defer stopOffers()
+
+	go client.OfferReleases(offerCtx, log, version, app.ReleasePath())
+
 	app.Serve(ctx, cfg.ForDesktop(), log, client)
 
 	return nil
@@ -110,9 +116,11 @@ func install(ctx context.Context) error {
 }
 
 // desktopStatus is what `desktop status` prints, for the gallery mod to read.
+// Latest is a newer release the service found, if any.
 type desktopStatus struct {
 	Version string `json:"version"`
 	Running bool   `json:"running"`
+	Latest  string `json:"latest,omitempty"`
 }
 
 func status(ctx context.Context, w io.Writer) error {
@@ -121,7 +129,11 @@ func status(ctx context.Context, w io.Writer) error {
 		return err
 	}
 
-	return json.NewEncoder(w).Encode(desktopStatus{Version: version, Running: running})
+	return json.NewEncoder(w).Encode(desktopStatus{
+		Version: version,
+		Running: running,
+		Latest:  release.Pending(app.ReleasePath(), version),
+	})
 }
 
 func restart(ctx context.Context) error {

@@ -2,7 +2,8 @@
 
 Herdr Auto Title — a Herdr plugin, written in Go, that generates tab titles from
 each tab's current context. Long-running process that polls the Herdr session,
-no LLM and no external service.
+no LLM and no external service; the desktop mode alone asks GitHub once a day
+whether a newer release is out.
 
 ## Repository layout
 
@@ -23,9 +24,11 @@ internal/pi           what a Pi session is about, from its session file
 internal/hermes       native Hermes session titles, from read-only SQLite
 internal/transcript   an append-only session file followed a poll at a time
 internal/git          what a repository has checked out, read from .git
+internal/release      when a newer release is out, for the desktop mode's popup
 internal/instance     one Auto Title per session, and the restart handoff
 internal/autostart    the desktop mode started at login, by launchd or systemd
 scripts/              the Python probes, and the install step
+mod/                  the gallery mod that installs the desktop mode
 docs/architecture/    how the plugin works and why
 ```
 
@@ -72,8 +75,8 @@ with the types the commits use: `feat/optional-agent-name`,
   a merge commit, so release-please counted every change twice, and a squash
   collapses a pull request into one changelog line, losing the granularity that
   "one logical change per commit" exists to produce.
-- **`CHANGELOG.md`, the tags and the version in `herdr-plugin.toml` belong to
-  release-please.** Never edit one by hand.
+- **`CHANGELOG.md`, the tags, the version in `herdr-plugin.toml` and the
+  gallery mod's `VERSION` belong to release-please.** Never edit one by hand.
 - Keep a pull request to one thing. A refactor, a feature and a formatting sweep
   are three pull requests.
 - **A pull request body follows
@@ -115,6 +118,9 @@ code, so a newer call inside a function passes. Read a new stdlib call for it.
 POSIX `sh` owns installation; CMD locates Git Bash or builds with Go directly.
 `scripts/test_install.py` exercises the manifest's command on each platform
 ([installation](docs/architecture/installation.md) says why).
+The gallery mod's `mod/mods/auto-title/install.sh` is the same step for the
+desktop app, and POSIX `sh` for the same reason; `make lint-scripts` holds it
+to shellcheck too.
 
 ## Comment rule (mandatory)
 
@@ -139,6 +145,7 @@ make run        # build and run in the current Herdr session, DEBUG logging
 make dev        # the same, restarting on every source change
 make run-desktop # the same as run, against the open desktop window
 make dev-desktop # the same as dev, against the open desktop window
+make check-mod  # herdr-app check on the gallery mod, needs the desktop app
 make ps         # show running plugin/watcher instances
 make stop       # stop them
 make tabs       # current tab names
