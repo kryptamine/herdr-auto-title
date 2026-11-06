@@ -5,8 +5,10 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -19,7 +21,7 @@ import (
 )
 
 var errUsage = errors.New(
-	"usage: herdr-auto-title [desktop [install | uninstall] | restart | --version]",
+	"usage: herdr-auto-title [desktop [install | uninstall | status] | restart | --version]",
 )
 
 func main() {
@@ -70,6 +72,8 @@ func desktopCommand(ctx context.Context, args []string) error {
 		return install(ctx)
 	case len(args) == 1 && args[0] == "uninstall":
 		return autostart.Uninstall(ctx)
+	case len(args) == 1 && args[0] == "status":
+		return status(ctx, os.Stdout)
 	default:
 		return errUsage
 	}
@@ -103,6 +107,21 @@ func install(ctx context.Context) error {
 	fmt.Println("started at login by", installed.Service)
 
 	return nil
+}
+
+// desktopStatus is what `desktop status` prints, for the gallery mod to read.
+type desktopStatus struct {
+	Version string `json:"version"`
+	Running bool   `json:"running"`
+}
+
+func status(ctx context.Context, w io.Writer) error {
+	running, err := autostart.Running(ctx)
+	if err != nil {
+		return err
+	}
+
+	return json.NewEncoder(w).Encode(desktopStatus{Version: version, Running: running})
 }
 
 func restart(ctx context.Context) error {

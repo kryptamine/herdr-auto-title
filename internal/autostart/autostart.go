@@ -28,6 +28,7 @@ type Installed struct {
 type service interface {
 	install(ctx context.Context, exe string) (Installed, error)
 	uninstall(ctx context.Context) error
+	running(ctx context.Context) bool
 }
 
 // host is what a service reads of the machine and runs on it, so a test can
@@ -36,7 +37,7 @@ type host struct {
 	home   string
 	uid    int
 	getenv func(string) string
-	run    func(ctx context.Context, name string, args ...string) error
+	run    func(ctx context.Context, name string, args ...string) (string, error)
 	retry  time.Duration
 }
 
@@ -49,6 +50,16 @@ func Install(ctx context.Context, exe string) (Installed, error) {
 	}
 
 	return s.install(ctx, exe)
+}
+
+// Running reports whether the service manager is running the desktop mode now.
+func Running(ctx context.Context) (bool, error) {
+	s, err := current()
+	if err != nil {
+		return false, err
+	}
+
+	return s.running(ctx), nil
 }
 
 // Uninstall stops the service and removes it and the binary's copy. What it
