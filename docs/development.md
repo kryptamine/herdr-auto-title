@@ -129,6 +129,50 @@ When a probe teaches you something new, add it to both. What a probe of the
 desktop app teaches goes in
 [architecture/desktop-api.md](architecture/desktop-api.md).
 
+## The gallery mod
+
+`mod/mods/auto-title` is JavaScript the desktop app runs, so nothing in
+`make check` covers it. After every change:
+
+```sh
+make check-mod   # herdr-app check: loads the mod once, renders it, reports the error
+```
+
+It needs the desktop app installed. The mod is plain JavaScript annotated with
+JSDoc, which an editor checks against the types below; keep every function
+typed, braces on every `if`, and a blank line between steps, as `wsl` spaces
+the Go code. There is no linter for it yet: for two files it would be more
+machinery than code. If one is added, its `node_modules` must stay out of
+`./...`, since npm packages ship Go files that `go vet` and golangci-lint
+would then lint, and out of `mod/`, whose every file an agent adding the mod
+reads.
+
+The check leaves two files beside `main.js` that `.gitignore` keeps out of
+the repository:
+
+- `gpui-kit.d.ts`, the types of the UI and of globals such as `fetch`, `os`
+  and `fs/promises`, for the app version you have.
+- `jsconfig.json`, which points an editor at them. It is written once and then
+  left alone.
+
+No one updates them by hand: the app rewrites its own copies in
+`~/.config/herdr-app/` at every start, and a check writes the mod's copy
+again. The types of `import … from "herdr"` (`exec`, `home`, `theme`) are not
+copied; they are in `~/.config/herdr-app/herdr.d.ts`, and
+`~/.config/herdr-app/AGENTS.md` is the app's own guide to writing mods.
+
+To see the mod in the window, copy the folder into
+`~/.config/herdr-app/mods/`. A symlinked folder is not reloaded on change. The
+mod's `Install` downloads the release named by `VERSION` in `service.js`, not
+your build, so a change to `desktop install` is tried with `make build &&
+./herdr-auto-title desktop install` instead. release-please bumps `VERSION`;
+never edit it by hand.
+
+`preview.png` is a screenshot from `herdr-app shot`. To take one without
+touching your own layout, open a second window with a home of its own.
+`HERDR_APP_HOME` must be short, since the window's socket lives in it. That
+window attaches to the same herdr-core and shows your real terminals.
+
 ## Registering it with Herdr
 
 `make run` starts the binary from your working tree and registers nothing.

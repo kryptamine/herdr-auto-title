@@ -48,6 +48,39 @@ herdr plugin install kryptamine/herdr-auto-title
 herdr plugin action invoke herdr.auto-title.restart
 ```
 
+## Herdr desktop app
+
+The [desktop app](https://herdr.dev/) has no plugins, so Auto Title runs there
+as a service of its own, started at every login on macOS and Linux. Windows is
+not supported yet.
+
+**With the mod:** ask the app's agent to add the mod in this repository's
+[`mod/`](mod/) folder, or copy `mod/mods/auto-title` into
+`~/.config/herdr-app/mods/` yourself. A strip appears under the terminals; press
+`Install`. In a tab of its own it downloads the binary of the release the mod
+belongs to, checks it against `SHA256SUMS` and has it install itself. The same
+strip starts, updates and uninstalls it; once all is well, `×` hides it until
+something needs you again.
+
+**By hand:** with a release binary, or one built with `make build`:
+
+```sh
+./herdr-auto-title desktop install     # start now and at every login
+./herdr-auto-title desktop uninstall   # stop it and remove it
+```
+
+Installing again is the update. The service runs its own copy of the binary, so
+the one you ran can be deleted. Its log is `~/Library/Logs/herdr-auto-title.log`
+on macOS and `journalctl --user -u herdr-auto-title` on Linux.
+
+What differs from Herdr TUI:
+
+- Only tabs are named: the desktop app has no pane labels or workspace topics.
+- The service does not see your shell's environment, so settings go in
+  [`config.env`](#configuration), never in a shell profile.
+- `HERDR_AUTO_TITLE_ICONS` needs a Nerd Font as the app's `ui_font` in its
+  `settings.json`, since the tab bar is drawn in that font.
+
 ## Recommended setup
 
 Three settings make Auto Title work as intended. Each is optional.
