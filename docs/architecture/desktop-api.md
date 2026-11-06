@@ -248,16 +248,18 @@ The app has no plugin system, so nothing starts Auto Title with it. Instead
 `herdr-auto-title desktop install` has the OS start the desktop mode at login,
 and `desktop uninstall` takes that away. Both live in `internal/autostart`.
 
-| | macOS | Linux |
-|---|---|---|
-| Service | LaunchAgent `io.github.kryptamine.herdr-auto-title` in `~/Library/LaunchAgents` | `herdr-auto-title.service` in `$XDG_CONFIG_HOME/systemd/user` |
-| Binary | `~/Library/Application Support/herdr-auto-title/bin/` | `$XDG_DATA_HOME/herdr-auto-title/` |
-| Log | `~/Library/Logs/herdr-auto-title.log` | the journal |
+| | macOS | Linux | Windows |
+|---|---|---|---|
+| Service | LaunchAgent `io.github.kryptamine.herdr-auto-title` in `~/Library/LaunchAgents` | `herdr-auto-title.service` in `$XDG_CONFIG_HOME/systemd/user` | Task Scheduler task `herdr-auto-title-<user SID>` |
+| Binary | `~/Library/Application Support/herdr-auto-title/bin/` | `$XDG_DATA_HOME/herdr-auto-title/` | `%LOCALAPPDATA%\herdr-auto-title\bin\herdr-auto-title.exe` |
+| Log | `~/Library/Logs/herdr-auto-title.log` | the journal | Run `desktop` in a terminal for logs |
 
 - **The service runs a copy of its own.** Whatever ran the install, a plugin
   checkout or a download, may move or go. The copy is written beside its place
-  and renamed onto it, so a running copy keeps its file and an install run
-  from the copy itself does not truncate it.
+  and renamed onto it. On Unix a running copy keeps its file. Windows stages
+  the copy first, disables and stops the task, then replaces the stopped image;
+  Windows can take a moment to release that file after the stop returns.
+  Installing from the copy itself only restarts the service on every platform.
 - **`desktop status` prints `{"version": …, "running": …}`**, so nothing outside
   the binary has to know the service's label, its unit or how each manager
   says it runs: launchd counts as running only with `state = running`, since a
@@ -277,12 +279,54 @@ and `desktop uninstall` takes that away. Both live in `internal/autostart`.
 - **The service does not see the login shell's environment.** Settings come
   from `config.env`, as in TUI; a `CLAUDE_CONFIG_DIR` or `CODEX_HOME` exported
   in a shell profile reaches neither launchd nor the systemd user manager.
-- **Windows is not supported yet**, and says so.
+- **Windows uses the current user's interactive token**, a SID-specific login
+  trigger and least privilege, without a stored password. Windows PowerShell
+  5.1 calls the Task Scheduler COM API, avoiding localized `schtasks` output.
+  Encoded commands preserve Unicode and quote paths as literal strings;
+  no terminal text reaches the shell. Registration starts the task immediately;
+  its login trigger starts it on subsequent logins. See Microsoft's
+  [interactive-token semantics](https://learn.microsoft.com/en-us/windows/win32/taskschd/security-contexts-for-running-tasks).
+- **Windows retries a failed poller after five seconds.** The internal
+  `desktop service` entry point drops its console and owns a windowless
+  `desktop` child through a kill-on-close
+  [Job Object](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects).
+  The job is assigned during creation, so even an immediate task stop cannot
+  orphan a child. A zero exit ends the service; a nonzero exit restarts the
+  poller. Stopping the task closes the job and kills the child as well.
+  Battery use does not prevent or stop the task, and there is no time limit.
+  This uses the existing `golang.org/x/sys` version, with no new dependency.
+- **Task Scheduler's retry setting is only a startup fallback.** It is set to
+  one minute and 999 attempts, but measured task actions exiting with code 7
+  did not restart, whether started on demand or by a registration trigger.
+  The native supervisor implements the poller's restart contract instead.
+  Explicitly stopping the task or terminating its supervisor stops the whole
+  service. Run `desktop install` or log in again to resume it; recovery from
+  termination of the supervisor itself is not promised.
+- **Windows self-uninstall retires the running image first.** Once the task is
+  removed, the installed uninstaller renames itself to a unique `.old` path.
+  A hidden cleanup process waits for it to exit, then deletes that exact file
+  and the empty `bin` directory. A concurrent new install is not its target.
+  Uninstall from another copy deletes the stopped binary synchronously.
 
 Measured on macOS 27.2: install starts the agent, five installs in a row leave one
 instance running, `kill -9` is restarted within the throttle, an instance displaced
 by a newer claim stays down, and uninstall leaves the three paths gone. Linux
 is not measured yet, and has to be before this ships.
+
+Measured on Windows build 26200 on 2026-11-06 with Go 1.26.3 and Windows
+PowerShell 5.1: the opt-in lifecycle test registers a uniquely named real task
+that runs a harmless copy of the test executable, never the user's poller.
+It exercises install, replacement while running, a nonzero worker exit, a killed
+worker, a clean exit remaining stopped, install and uninstall invoked from the
+installed image, and repeated uninstall. The fixture path includes spaces,
+an apostrophe and Unicode. Unit tests also verify that closing the job kills its
+child and cancellation releases the process. No reboot or logout is performed;
+the login trigger is inspected through the registered task definition.
+
+The native job-list process attribute requires Windows 10 or newer. Windows
+ARM64 uses the same typed API bindings; a cross-build does not establish native
+ARM64 behavior. The opted-in task tests and ordinary gate are described in
+[development](../development.md#tests--seconds-no-herdr-involved).
 
 ## Not settled
 

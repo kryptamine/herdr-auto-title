@@ -24,7 +24,7 @@ internal/hermes       native Hermes session titles, from read-only SQLite
 internal/transcript   an append-only session file followed a poll at a time
 internal/git          what a repository has checked out, read from .git
 internal/instance     one Auto Title per session, and the restart handoff
-internal/autostart    the desktop mode started at login, by launchd or systemd
+internal/autostart    desktop login startup through launchd, systemd or Task Scheduler
 scripts/              the Python probes, and the install step
 docs/architecture/    how the plugin works and why
 ```

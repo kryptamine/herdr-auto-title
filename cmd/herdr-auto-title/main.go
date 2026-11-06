@@ -74,6 +74,8 @@ func desktopCommand(ctx context.Context, args []string) error {
 		return autostart.Uninstall(ctx)
 	case len(args) == 1 && args[0] == "status":
 		return status(ctx, os.Stdout)
+	case len(args) == 1 && args[0] == "service":
+		return desktopService(ctx)
 	default:
 		return errUsage
 	}
