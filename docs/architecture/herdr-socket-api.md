@@ -500,3 +500,7 @@ The desktop app is a separate server: its app API uses a Unix socket on Windows,
 while herdr-core uses a named pipe. The measured fields, rename behavior and
 test boundaries for herdr-app 0.1.13 and hc 0.1.18 are recorded in
 [desktop-api.md](desktop-api.md#windows-transport-probe).
+
+On that core version, an OSC 7501 `app=grok-build` report reads back as `grok`
+in both APIs. Windows native open-file discovery and its real Grok session/title
+probe are recorded in [desktop-api.md](desktop-api.md#windows-open-files).

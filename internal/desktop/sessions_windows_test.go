@@ -32,10 +32,13 @@ func TestProcessTableHonorsCancellation(t *testing.T) {
 	}
 }
 
-func TestWindowsOpenFilesIsExplicitlyUnsupported(t *testing.T) {
+func TestWindowsOpenFilesHonorsCancellation(t *testing.T) {
 	t.Parallel()
 
-	if _, err := openFiles(t.Context(), []int{os.Getpid()}); err == nil {
-		t.Fatal("unsupported reader reported success")
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	if _, err := openFiles(ctx, []int{os.Getpid()}); !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled open-file read: %v", err)
 	}
 }

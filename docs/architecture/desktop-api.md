@@ -154,9 +154,9 @@ terminal's `pid` and walking its descendants.
 - **Which held session is current** was judged by newest: by the time-ordered id
   for Grok Build and by the file under `conversations/` for Antigravity, whose
   ids are random. Returning to an older session was not measured.
-- **Open files** are read with `lsof`. Linux should offer the same through
-  `/proc/<pid>/fd`, which is what the code reads there, unmeasured on a live
-  agent; Windows has no equivalent here, which leaves it Claude Code alone.
+- **Open files** are read with `lsof` on macOS and `/proc/<pid>/fd` on Linux,
+  the latter unmeasured on a live agent. Windows uses native process handle
+  snapshots; the probe and limits are recorded below.
 
 ### What reading them costs
 
@@ -273,11 +273,53 @@ discovery, transport and process enumeration. No additional dependency is needed
   request/reply and cancellation while a server withholds its reply.
 
 Claude uses the native Windows process tree and the same per-pid session files.
-Grok and Antigravity have no Windows open-file reader yet, so their transcript
-sessions remain unavailable; ordinary title, process and directory fallbacks
-still apply. Real Claude session transitions, alternate homes/sessions,
-long-running stability and app restart recovery remain unmeasured.
+Grok and Antigravity use the native open-file reader below. Real Claude session
+transitions, alternate homes/sessions, long-running stability and app restart
+recovery remain unmeasured.
 
 The Python probe uses `herdr-app ls/status` and `hc ls/get` on Windows: Python's
 Windows sockets do not expose `AF_UNIX`. CLI reads have a six-second timeout,
 and stdout is UTF-8 so spinner frames and non-ASCII topics can be printed.
+
+### Windows open files
+
+`NtQueryInformationProcess(ProcessHandleInformation)` takes a per-process handle
+snapshot. The [native layout](https://github.com/winsiderss/phnt/blob/master/ntpsapi.h)
+has two pointer-sized header values, then entries containing a handle, two
+pointer-sized counts and four 32-bit values. Only the handle is consumed.
+Buffers grow up to 16 MiB and the returned count is checked before indexing.
+The native entry point is resolved at runtime; failure preserves the previous
+session for the same agent process rather than claiming it holds no session.
+
+Each handle is duplicated into this process with `DuplicateHandle`, inspected
+with `GetFileType`, and closed here. The source handle is never closed. Only
+disk files and directories reach `GetFinalPathNameByHandleW`; pipes and other
+objects are skipped. `FILE_NAME_OPENED` avoids normalized-path traversal and
+the returned DOS/UNC prefix is removed before session matching. Matching also
+accepts Windows separators. A process that exited, a closed handle and an object
+type that cannot be duplicated are skipped; access failures remain errors.
+
+Cancellation is checked between native calls. A filesystem call already in
+progress cannot be interrupted by that context; slow network filesystems remain
+unmeasured. No external utility, debug privilege or extra dependency is needed.
+
+On 2026-11-05, Grok Build 1.0.70 held its actual `events.jsonl` open on Windows.
+Two Grok processes in the same directory resolved to their separate session IDs.
+The native read of the first process tree took about 30 ms under the race
+detector. The production poll loop named the second test tab
+`grok › Second Windows session probe`, using the actual session summary.
+After `/new` and another no-tools prompt, that tab resolved the new session ID
+and became `grok › New Windows Session Probe Instruction`; the first process
+still resolved its original ID. Both test tabs were closed after the probe.
+
+This machine's Grok did not report an app identity by itself. The second test
+launcher emitted an explicit OSC 7501 status before starting Grok. Core 0.1.18
+normalized `app=grok-build` to `grok` in both core and app reads, so both names
+route to the same reader. Without integration status, session routing is not
+attempted. The status emission was test-only; no integration was installed.
+
+Regression tests hold real files and directories with spaces and non-ASCII
+paths, exercise both session matchers, reject truncated handle snapshots, and
+verify twenty reads leave only the fixture's original file handle. Antigravity CLI is
+not installed here: its directory matching is fixture-tested, not measured with
+a real agent.

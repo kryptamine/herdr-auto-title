@@ -197,6 +197,20 @@ func TestGrokSessionIsTheNewestItHoldsOpen(t *testing.T) {
 	wantSession(t, onlySession(t, client), "grok", sessionB)
 }
 
+func TestGrokCanonicalAppFindsItsSession(t *testing.T) {
+	t.Parallel()
+
+	finder := newSessionFinder(nil)
+	finder.processes = processTree(map[int][]int{10: {11}})
+	finder.openFiles = filesOpen(map[int][]string{11: {
+		"/home/x/.grok/sessions/repo/" + sessionA + "/events.jsonl",
+	}})
+	client, _ := sessionClient(t, finder,
+		agentPane{id: "p1", app: "grok", pid: 10, foreground: 10},
+	)
+	wantSession(t, onlySession(t, client), "grok", sessionA)
+}
+
 // An Antigravity id is random, so only its conversation file says which is newer.
 func TestAntigravitySessionIsTheNewestConversation(t *testing.T) {
 	t.Parallel()
@@ -461,11 +475,12 @@ func TestClosedPaneIsForgotten(t *testing.T) {
 }
 
 // ps and lsof are mocked everywhere else, so only this keeps their output readable.
+//
+//nolint:paralleltest // Windows must not extend parallel tests' file handle lifetimes
 func TestOpenFilesListsWhatAProcessHolds(t *testing.T) {
-	t.Parallel()
-
-	if runtime.GOOS == "windows" {
-		t.Skip("Windows has no open-file reader")
+	// Windows duplicates this process's handles, briefly extending their lifetimes.
+	if runtime.GOOS != "windows" {
+		t.Parallel()
 	}
 
 	path := filepath.Join(t.TempDir(), "events.jsonl")
@@ -495,8 +510,8 @@ func TestOpenFilesListsWhatAProcessHolds(t *testing.T) {
 
 // An lsof that answered nothing failed, which must not read as no session held.
 func TestOpenFilesReportsAReadWithNoAnswer(t *testing.T) {
-	if runtime.GOOS == "linux" {
-		t.Skip("Linux reads /proc, where a process that has gone simply lists nothing")
+	if runtime.GOOS != "darwin" {
+		t.Skip("only lsof reports a missing process as an error")
 	}
 
 	t.Parallel()

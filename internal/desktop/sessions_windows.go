@@ -36,8 +36,3 @@ func processTable(ctx context.Context) (map[int][]int, error) {
 
 	return children, nil
 }
-
-func openFiles(context.Context, []int) ([]string, error) {
-	// shortcut: Windows has no open-file reader; add one when session ownership is verified.
-	return nil, errors.New("open-file session discovery is unavailable on Windows")
-}
