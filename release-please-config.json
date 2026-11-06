@@ -15,7 +15,8 @@
           "path": "herdr-plugin.toml",
           "jsonpath": "$.version"
         },
-        "cmd/herdr-auto-title/version.go"
+        "cmd/herdr-auto-title/version.go",
+        "mod/mods/auto-title/service.js"
       ],
       "changelog-sections": [
         { "type": "feat", "section": "Features" },
