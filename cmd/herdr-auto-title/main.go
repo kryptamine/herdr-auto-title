@@ -1,20 +1,27 @@
-// Command herdr-auto-title is the Herdr Auto Title plugin process: started once,
-// it stays alive and keeps every tab's title in step with what that tab is
-// doing. `herdr-auto-title restart` starts a fresh one in its place.
+// Command herdr-auto-title keeps every tab's title in step with what the tab is
+// doing, for as long as it runs. `restart` starts a fresh one in its place, and
+// `desktop install` has the OS run the desktop mode from login.
 package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/kryptamine/herdr-auto-title/internal/app"
+	"github.com/kryptamine/herdr-auto-title/internal/autostart"
 	"github.com/kryptamine/herdr-auto-title/internal/desktop"
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
+)
+
+var errUsage = errors.New(
+	"usage: herdr-auto-title [desktop [install | uninstall | status] | restart | --version]",
 )
 
 func main() {
@@ -31,8 +38,8 @@ func execute(args []string) error {
 	switch {
 	case len(args) == 0:
 		return run(ctx)
-	case len(args) == 1 && args[0] == "desktop":
-		return runDesktop(ctx)
+	case len(args) >= 1 && args[0] == "desktop":
+		return desktopCommand(ctx, args[1:])
 	case len(args) == 1 && args[0] == "restart":
 		return restart(ctx)
 	case len(args) == 1 && args[0] == "--version":
@@ -40,7 +47,7 @@ func execute(args []string) error {
 
 		return nil
 	default:
-		return errors.New("usage: herdr-auto-title [desktop | restart | --version]")
+		return errUsage
 	}
 }
 
@@ -57,6 +64,21 @@ func run(ctx context.Context) error {
 	return nil
 }
 
+func desktopCommand(ctx context.Context, args []string) error {
+	switch {
+	case len(args) == 0:
+		return runDesktop(ctx)
+	case len(args) == 1 && args[0] == "install":
+		return install(ctx)
+	case len(args) == 1 && args[0] == "uninstall":
+		return autostart.Uninstall(ctx)
+	case len(args) == 1 && args[0] == "status":
+		return status(ctx, os.Stdout)
+	default:
+		return errUsage
+	}
+}
+
 func runDesktop(ctx context.Context) error {
 	cfg, log := app.Configure()
 
@@ -68,6 +90,38 @@ func runDesktop(ctx context.Context) error {
 	app.Serve(ctx, cfg.ForDesktop(), log, client)
 
 	return nil
+}
+
+func install(ctx context.Context) error {
+	exe, err := os.Executable()
+	if err != nil {
+		return err
+	}
+
+	installed, err := autostart.Install(ctx, exe)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("installed", installed.Binary)
+	fmt.Println("started at login by", installed.Service)
+
+	return nil
+}
+
+// desktopStatus is what `desktop status` prints, for the gallery mod to read.
+type desktopStatus struct {
+	Version string `json:"version"`
+	Running bool   `json:"running"`
+}
+
+func status(ctx context.Context, w io.Writer) error {
+	running, err := autostart.Running(ctx)
+	if err != nil {
+		return err
+	}
+
+	return json.NewEncoder(w).Encode(desktopStatus{Version: version, Running: running})
 }
 
 func restart(ctx context.Context) error {
