@@ -42,6 +42,7 @@ type agent struct {
 var agents = map[string]agent{
 	"claude-code": {name: claude.Agent, session: (*sessionFinder).claudeSession},
 	"grok-build":  {name: grok.Agent, session: (*sessionFinder).grokSession},
+	"grok":        {name: grok.Agent, session: (*sessionFinder).grokSession},
 	"antigravity": {name: antigravity.Agent, session: (*sessionFinder).antigravitySession},
 }
 
@@ -207,7 +208,10 @@ func (f *sessionFinder) grokSession(ctx context.Context, pids []int) (string, er
 	newest := ""
 
 	for _, path := range open {
-		if match := grokTranscriptRe.FindStringSubmatch(path); match != nil && match[1] > newest {
+		if match := grokTranscriptRe.FindStringSubmatch(
+			filepath.ToSlash(path),
+		); match != nil &&
+			match[1] > newest {
 			newest = match[1]
 		}
 	}
@@ -226,7 +230,7 @@ func (f *sessionFinder) antigravitySession(ctx context.Context, pids []int) (str
 	newest, newestAt := "", time.Time{}
 
 	for _, path := range open {
-		match := antigravityBrainRe.FindStringSubmatch(path)
+		match := antigravityBrainRe.FindStringSubmatch(filepath.ToSlash(path))
 		if match == nil || match[2] == newest {
 			continue
 		}
