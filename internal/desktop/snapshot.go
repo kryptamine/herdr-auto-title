@@ -15,6 +15,7 @@ import (
 // world is what `ls` answers: spaces, their tabs, and each tab's terminals.
 type world struct {
 	Spaces []space `json:"spaces"`
+	Error  string  `json:"error"`
 }
 
 type space struct {
@@ -46,6 +47,7 @@ type paneEntry struct {
 
 type appStatus struct {
 	FocusedPane string `json:"focused_pane"`
+	Error       string `json:"error"`
 }
 
 // terminal is what the core knows of a pane and `ls` does not.

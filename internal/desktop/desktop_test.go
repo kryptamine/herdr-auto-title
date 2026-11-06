@@ -109,12 +109,18 @@ const fakeTerminals = `{"jsonrpc":"2.0","id":1,"result":{"terminals":[
 func fakeClient(t *testing.T) (*Client, *fakeSocket) {
 	t.Helper()
 
+	return fakeClientAnswering(t, fakeWorld, `{"focused_pane":"p2"}`)
+}
+
+func fakeClientAnswering(t *testing.T, ls, status string) (*Client, *fakeSocket) {
+	t.Helper()
+
 	app := serve(t, func(request map[string]any) string {
 		switch {
 		case request["ls"] != nil:
-			return fakeWorld
+			return ls
 		case request["status"] != nil:
-			return `{"focused_pane":"p2"}`
+			return status
 		default:
 			return `{"ok":true}`
 		}
@@ -331,6 +337,36 @@ func TestRenameErrorsKeepTheirMeaning(t *testing.T) {
 
 	err := client.RenameTab(t.Context(), "tb1", "x")
 	if err == nil || errors.Is(err, herdr.ErrUnanswered) || herdr.ErrorCode(err) != "" {
+		t.Errorf("other failure: %v", err)
+	}
+}
+
+// An error reply read as an empty session would drop every lock and rewrite
+// the locks file; a slow window must also keep the meaning labels gives it.
+func TestAnErrorReplyFailsTheSnapshot(t *testing.T) {
+	t.Parallel()
+
+	slow := `{"error":"the window did not answer"}`
+
+	for name, replies := range map[string][2]string{
+		"ls":     {slow, `{"focused_pane":"p2"}`},
+		"status": {fakeWorld, slow},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			client, _ := fakeClientAnswering(t, replies[0], replies[1])
+
+			if _, err := client.Snapshot(t.Context()); !errors.Is(err, herdr.ErrUnanswered) {
+				t.Errorf("err = %v", err)
+			}
+		})
+	}
+
+	client, _ := fakeClientAnswering(t, `{"error":"no space"}`, `{"focused_pane":"p2"}`)
+
+	_, err := client.Snapshot(t.Context())
+	if err == nil || errors.Is(err, herdr.ErrUnanswered) {
 		t.Errorf("other failure: %v", err)
 	}
 }
