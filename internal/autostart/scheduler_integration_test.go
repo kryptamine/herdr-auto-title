@@ -5,6 +5,7 @@ package autostart
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -187,6 +188,13 @@ func TestSchedulerLifecycle(t *testing.T) {
 		t.Fatal("the installed task is not running")
 	}
 
+	assertTaskConfiguration(t, local, s.binary())
+
+	config := filepath.Join(filepath.Dir(filepath.Dir(s.binary())), "config.env")
+	if err := os.WriteFile(config, []byte("HERDR_AUTO_TITLE_ICONS=false\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
 	if _, err := s.install(t.Context(), exe); err != nil {
 		t.Fatal(err)
 	}
@@ -272,7 +280,73 @@ func TestSchedulerLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	if readFile(t, config) != "HERDR_AUTO_TITLE_ICONS=false\n" {
+		t.Error("uninstall changed the existing configuration")
+	}
+
 	t.Log("self-install, self-uninstall and repeated uninstall passed")
+}
+
+func assertTaskConfiguration(t *testing.T, local, binary string) {
+	t.Helper()
+
+	taskName := fmt.Sprintf("herdr-auto-title-test-%x", sha256.Sum256([]byte(local)))
+	script := `$ErrorActionPreference = 'Stop'
+$ProgressPreference = 'SilentlyContinue'
+trap { [Console]::Error.WriteLine($_.Exception.Message); exit 1 }
+$scheduler = New-Object -ComObject Schedule.Service
+$scheduler.Connect()
+$task = $scheduler.GetFolder('\').GetTask(` + powershellQuote(taskName) + `)
+$definition = $task.Definition
+$sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+$principalUser = $definition.Principal.UserId
+if (-not $principalUser.StartsWith('S-1-')) {
+    $principalUser = ([Security.Principal.NTAccount]::new($principalUser)).Translate([Security.Principal.SecurityIdentifier]).Value
+}
+$login = @($definition.Triggers | Where-Object { $_.Type -eq 9 })
+$registration = @($definition.Triggers | Where-Object { $_.Type -eq 7 })
+$loginUser = $login[0].UserId
+if (-not $loginUser.StartsWith('S-1-')) {
+    $loginUser = ([Security.Principal.NTAccount]::new($loginUser)).Translate([Security.Principal.SecurityIdentifier]).Value
+}
+@{
+    current_user = $principalUser -eq $sid
+    interactive_token = $definition.Principal.LogonType -eq 3
+    least_privilege = $definition.Principal.RunLevel -eq 0
+    login_trigger = $login.Count -eq 1 -and $loginUser -eq $sid -and $login[0].Enabled
+    registration_trigger = $registration.Count -eq 1 -and $registration[0].Enabled
+    enabled = $task.Enabled
+    single_instance = $definition.Settings.MultipleInstances -eq 2
+    starts_on_battery = -not $definition.Settings.DisallowStartIfOnBatteries
+    stays_on_battery = -not $definition.Settings.StopIfGoingOnBatteries
+    no_time_limit = $definition.Settings.ExecutionTimeLimit -eq 'PT0S'
+    correct_binary = $definition.Actions.Item(1).Path -eq ` + powershellQuote(binary) + `
+    correct_arguments = $definition.Actions.Item(1).Arguments -eq 'desktop service'
+} | ConvertTo-Json -Compress
+`
+
+	out, err := run(t.Context(), "powershell.exe", "-NoProfile", "-NonInteractive",
+		"-WindowStyle", "Hidden", "-EncodedCommand", encodedCommand(script))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var checks map[string]bool
+	if err := json.Unmarshal([]byte(out), &checks); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(checks) != 12 {
+		t.Fatalf("expected twelve task configuration checks, got %d", len(checks))
+	}
+
+	for name, passed := range checks {
+		if !passed {
+			t.Errorf("registered task configuration failed %s", name)
+		}
+	}
+
+	t.Log("checked persisted login, security, battery and time-limit settings")
 }
 
 func assertSupervisorOwnsChild(t *testing.T, local string) {
