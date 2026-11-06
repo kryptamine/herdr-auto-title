@@ -52,7 +52,7 @@ func (s systemd) install(ctx context.Context, exe string) (Installed, error) {
 		{"enable", systemdUnit},
 		{"restart", systemdUnit},
 	} {
-		if err := s.run(ctx, "systemctl", append([]string{"--user"}, args...)...); err != nil {
+		if _, err := s.run(ctx, "systemctl", append([]string{"--user"}, args...)...); err != nil {
 			return Installed{}, err
 		}
 	}
@@ -66,7 +66,7 @@ func (s systemd) uninstall(ctx context.Context) error {
 		return removeBinary(s.binary())
 	}
 
-	if err := s.run(ctx, "systemctl", "--user", "disable", "--now", systemdUnit); err != nil {
+	if _, err := s.run(ctx, "systemctl", "--user", "disable", "--now", systemdUnit); err != nil {
 		return err
 	}
 
@@ -78,5 +78,14 @@ func (s systemd) uninstall(ctx context.Context) error {
 		return err
 	}
 
-	return s.run(ctx, "systemctl", "--user", "daemon-reload")
+	_, err := s.run(ctx, "systemctl", "--user", "daemon-reload")
+
+	return err
+}
+
+// running is whether the unit is active; is-active fails for every other state.
+func (s systemd) running(ctx context.Context) bool {
+	_, err := s.run(ctx, "systemctl", "--user", "is-active", "--quiet", systemdUnit)
+
+	return err == nil
 }

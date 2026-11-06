@@ -258,6 +258,10 @@ and `desktop uninstall` takes that away. Both live in `internal/autostart`.
   checkout or a download, may move or go. The copy is written beside its place
   and renamed onto it, so a running copy keeps its file and an install run
   from the copy itself does not truncate it.
+- **`desktop status` prints `{"version": …, "running": …}`**, so nothing outside
+  the binary has to know the service's label, its unit or how each manager
+  says it runs: launchd counts as running only with `state = running`, since a
+  failed agent stays loaded while it waits out its throttle.
 - **Install again to upgrade.** It replaces the copy and restarts the service:
   launchd unloads and loads the agent again, since `bootstrap` refuses a label
   already loaded, and asks again while the old one is still leaving; systemd

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -83,7 +84,7 @@ func (l launchd) bootstrap(ctx context.Context) error {
 	var err error
 
 	for range bootstrapTries {
-		if err = l.run(ctx, "launchctl", "bootstrap", l.domain(), l.plist()); err == nil {
+		if _, err = l.run(ctx, "launchctl", "bootstrap", l.domain(), l.plist()); err == nil {
 			return nil
 		}
 
@@ -99,10 +100,19 @@ func (l launchd) bootstrap(ctx context.Context) error {
 
 // stop unloads the agent if launchd has it loaded, which ends the process.
 func (l launchd) stop(ctx context.Context) error {
-	loaded := l.run(ctx, "launchctl", "print", l.target()) == nil
-	if !loaded {
-		return nil
+	if _, err := l.run(ctx, "launchctl", "print", l.target()); err != nil {
+		return nil //nolint:nilerr // print fails for an agent not loaded, which is stopped
 	}
 
-	return l.run(ctx, "launchctl", "bootout", l.target())
+	_, err := l.run(ctx, "launchctl", "bootout", l.target())
+
+	return err
+}
+
+// running is whether launchd has the agent loaded and its process up: a loaded
+// agent that failed waits out its throttle as "not running".
+func (l launchd) running(ctx context.Context) bool {
+	out, err := l.run(ctx, "launchctl", "print", l.target())
+
+	return err == nil && strings.Contains(out, "state = running")
 }

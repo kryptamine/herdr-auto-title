@@ -46,13 +46,13 @@ func newHost() (host, error) {
 	}, nil
 }
 
-// run runs a service manager's command, and puts what it printed into the
-// error, since that is where the manager says why.
-func run(ctx context.Context, name string, args ...string) error {
+// run runs a service manager's command and returns what it printed, which on
+// a failure goes into the error, since that is where the manager says why.
+func run(ctx context.Context, name string, args ...string) (string, error) {
 	//nolint:forbidigo,gosec // the arguments are fixed paths and labels, and no shell
 	out, err := exec.CommandContext(ctx, name, args...).CombinedOutput()
 	if err != nil {
-		return fmt.Errorf(
+		return "", fmt.Errorf(
 			"%s %s: %w: %s",
 			name,
 			strings.Join(args, " "),
@@ -61,5 +61,5 @@ func run(ctx context.Context, name string, args ...string) error {
 		)
 	}
 
-	return nil
+	return string(out), nil
 }
