@@ -28,6 +28,36 @@ type fakeSocket struct {
 func serve(t *testing.T, reply func(map[string]any) string) *fakeSocket {
 	t.Helper()
 
+	socket := &fakeSocket{}
+	socket.path = listen(t, func(conn net.Conn) {
+		line, _ := bufio.NewReader(conn).ReadBytes('\n')
+
+		var request map[string]any
+
+		_ = json.Unmarshal(line, &request)
+
+		socket.mu.Lock()
+		socket.seen = append(socket.seen, request)
+		socket.mu.Unlock()
+
+		// One line each way: the fixtures below are spread out to be read.
+		var answer bytes.Buffer
+		if err := json.Compact(&answer, []byte(reply(request))); err != nil {
+			t.Errorf("fixture: %v", err)
+		}
+
+		answer.WriteByte('\n')
+
+		_, _ = conn.Write(answer.Bytes())
+	})
+
+	return socket
+}
+
+// listen hands each connection to a Unix socket to handle, then closes it.
+func listen(t *testing.T, handle func(net.Conn)) string {
+	t.Helper()
+
 	//nolint:usetesting // t.TempDir() overruns the 104 bytes of a sun_path
 	dir, err := os.MkdirTemp("", "dt")
 	if err != nil {
@@ -36,11 +66,11 @@ func serve(t *testing.T, reply func(map[string]any) string) *fakeSocket {
 
 	t.Cleanup(func() { _ = os.RemoveAll(dir) })
 
-	socket := &fakeSocket{path: filepath.Join(dir, "s.sock")}
+	path := filepath.Join(dir, "s.sock")
 
 	var config net.ListenConfig
 
-	listener, err := config.Listen(context.Background(), "unix", socket.path)
+	listener, err := config.Listen(context.Background(), "unix", path)
 	if err != nil {
 		t.Fatalf("listen: %v", err)
 	}
@@ -54,30 +84,12 @@ func serve(t *testing.T, reply func(map[string]any) string) *fakeSocket {
 				return
 			}
 
-			line, _ := bufio.NewReader(conn).ReadBytes('\n')
-
-			var request map[string]any
-
-			_ = json.Unmarshal(line, &request)
-
-			socket.mu.Lock()
-			socket.seen = append(socket.seen, request)
-			socket.mu.Unlock()
-
-			// One line each way: the fixtures below are spread out to be read.
-			var answer bytes.Buffer
-			if err := json.Compact(&answer, []byte(reply(request))); err != nil {
-				t.Errorf("fixture: %v", err)
-			}
-
-			answer.WriteByte('\n')
-
-			_, _ = conn.Write(answer.Bytes())
+			handle(conn)
 			_ = conn.Close()
 		}
 	}()
 
-	return socket
+	return path
 }
 
 func (s *fakeSocket) last() map[string]any {
@@ -369,6 +381,39 @@ func TestAnErrorReplyFailsTheSnapshot(t *testing.T) {
 	_, err := client.Snapshot(t.Context())
 	if err == nil || errors.Is(err, herdr.ErrUnanswered) {
 		t.Errorf("other failure: %v", err)
+	}
+}
+
+// A request the app read may still apply, so a hang-up or a garbled answer
+// after sending must keep labels' claim on the name.
+func TestABrokenAnswerIsUnanswered(t *testing.T) {
+	t.Parallel()
+
+	handlers := map[string]func(net.Conn){
+		"hang up": func(conn net.Conn) { _, _ = bufio.NewReader(conn).ReadBytes('\n') },
+		"garbage": func(conn net.Conn) {
+			_, _ = bufio.NewReader(conn).ReadBytes('\n')
+			_, _ = conn.Write([]byte("not json\n"))
+		},
+	}
+
+	for name, handle := range handlers {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			client := &Client{app: listen(t, handle)}
+
+			if err := client.RenameTab(
+				t.Context(),
+				"tb1",
+				"x",
+			); !errors.Is(
+				err,
+				herdr.ErrUnanswered,
+			) {
+				t.Errorf("err = %v", err)
+			}
+		})
 	}
 }
 
