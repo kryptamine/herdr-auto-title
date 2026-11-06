@@ -80,8 +80,16 @@ func (c *Client) Snapshot(ctx context.Context) (herdr.Snapshot, error) {
 		return herdr.Snapshot{}, err
 	}
 
+	if err := appError("ls", world.Error); err != nil {
+		return herdr.Snapshot{}, err
+	}
+
 	var status appStatus
 	if err := ask(ctx, c.app, map[string]bool{"status": true}, &status); err != nil {
+		return herdr.Snapshot{}, err
+	}
+
+	if err := appError("status", status.Error); err != nil {
 		return herdr.Snapshot{}, err
 	}
 
@@ -136,15 +144,23 @@ func (c *Client) RenameTab(ctx context.Context, tabID, label string) error {
 		return err
 	}
 
-	switch {
-	case reply.Error == "":
-		return nil
-	case strings.HasPrefix(reply.Error, noTabPrefix):
+	if strings.HasPrefix(reply.Error, noTabPrefix) {
 		return &herdr.APIError{Code: herdr.CodeTabNotFound, Message: reply.Error}
-	case reply.Error == noAnswer:
-		return fmt.Errorf("%w: %s", herdr.ErrUnanswered, reply.Error)
+	}
+
+	return appError("tab.rename", reply.Error)
+}
+
+// appError is the app's error reply as an error. An `ls` or `status` that
+// failed must fail the poll: read as an empty session, it drops every lock.
+func appError(request, message string) error {
+	switch message {
+	case "":
+		return nil
+	case noAnswer:
+		return fmt.Errorf("%w: %s: %s", herdr.ErrUnanswered, request, message)
 	default:
-		return fmt.Errorf("tab.rename: %s", reply.Error)
+		return fmt.Errorf("%s: %s", request, message)
 	}
 }
 

@@ -56,6 +56,8 @@ worth optimizing, which is why the desktop mode keeps polling.
 entry carries `terminal`, `pane`, `status`, `app`, `name` and `sub_agents`, and
 no title, directory or process, so it is joined to `terminal.list` by address.
 Only `{"status":true}` says which pane has focus, and only for the shown tab.
+Any request the app cannot serve answers `{"error":"…"}`, and an `ls` or
+`status` that does fails the poll rather than reading as an empty session.
 
 - **There is no `named` in `ls`.** Mods get one from `spaces()`; a client on the
   socket recognizes an unnamed tab by its name equalling its position, the same
