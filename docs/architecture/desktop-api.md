@@ -321,7 +321,10 @@ worker, a clean exit remaining stopped, install and uninstall invoked from the
 installed image, and repeated uninstall. The fixture path includes spaces,
 an apostrophe and Unicode. Unit tests also verify that closing the job kills its
 child and cancellation releases the process. No reboot or logout is performed;
-the login trigger is inspected through the registered task definition.
+the login trigger is inspected through the registered task definition. Readback
+asserts the current user's SID, interactive token, least privilege, both enabled
+triggers, single-instance policy, exact action, unrestricted battery operation
+and unlimited runtime. Uninstall also preserves an existing `config.env`.
 
 The native job-list process attribute requires Windows 10 or newer. Windows
 ARM64 uses the same typed API bindings; a cross-build does not establish native
