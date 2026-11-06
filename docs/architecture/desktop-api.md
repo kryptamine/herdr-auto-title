@@ -242,6 +242,44 @@ After it changes, returning to `Codex` or `Claude Code` is a manual rename.
 The adapter keeps the raw label and marks defaults separately, so a saved
 manual-name lock still matches after restarting the client.
 
+## Starting at login
+
+The app has no plugin system, so nothing starts Auto Title with it. Instead
+`herdr-auto-title desktop install` has the OS start the desktop mode at login,
+and `desktop uninstall` takes that away. Both live in `internal/autostart`.
+
+| | macOS | Linux |
+|---|---|---|
+| Service | LaunchAgent `io.github.kryptamine.herdr-auto-title` in `~/Library/LaunchAgents` | `herdr-auto-title.service` in `$XDG_CONFIG_HOME/systemd/user` |
+| Binary | `~/Library/Application Support/herdr-auto-title/bin/` | `$XDG_DATA_HOME/herdr-auto-title/` |
+| Log | `~/Library/Logs/herdr-auto-title.log` | the journal |
+
+- **The service runs a copy of its own.** Whatever ran the install, a plugin
+  checkout or a download, may move or go. The copy is written beside its place
+  and renamed onto it, so a running copy keeps its file and an install run
+  from the copy itself does not truncate it.
+- **Install again to upgrade.** It replaces the copy and restarts the service:
+  launchd unloads and loads the agent again, since `bootstrap` refuses a label
+  already loaded, and asks again while the old one is still leaving; systemd
+  is told `restart`, not `start`.
+- **Only a failure is restarted.** `KeepAlive` is `SuccessfulExit: false` and
+  `Restart=on-failure`. A clean exit is a newer instance claiming the session,
+  as `make run-desktop` does, and restarting the old one would take it back.
+- **A closed window or an app update needs nothing.** The process outlives the
+  window and logs failed polls, ever more rarely, until it answers again.
+- **Uninstall leaves `config.env` and the manual names.** It stops the service
+  and removes its definition, the copy and the macOS log. What is already gone
+  is not an error.
+- **The service does not see the login shell's environment.** Settings come
+  from `config.env`, as in TUI; a `CLAUDE_CONFIG_DIR` or `CODEX_HOME` exported
+  in a shell profile reaches neither launchd nor the systemd user manager.
+- **Windows is not supported yet**, and says so.
+
+Measured on macOS 27.2: install starts the agent, five installs in a row leave one
+instance running, `kill -9` is restarted within the throttle, an instance displaced
+by a newer claim stays down, and uninstall leaves the three paths gone. Linux
+is not measured yet, and has to be before this ships.
+
 ## Not settled
 
 - A window that takes over 5 s answers `the window did not answer`. By the
