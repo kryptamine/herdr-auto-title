@@ -14,10 +14,12 @@ import (
 // always fails a command however often it is run.
 const always = 1 << 30
 
-// fakeHost records every command and fails each named in fail that many times.
+// fakeHost records every command, fails each named in fail that many times,
+// and prints what out holds for it.
 type fakeHost struct {
 	runs []string
 	fail map[string]int
+	out  map[string]string
 }
 
 func (f *fakeHost) host(home string, env map[string]string) host {
@@ -25,16 +27,16 @@ func (f *fakeHost) host(home string, env map[string]string) host {
 		home:   home,
 		uid:    501,
 		getenv: func(key string) string { return env[key] },
-		run: func(_ context.Context, name string, args ...string) error {
+		run: func(_ context.Context, name string, args ...string) (string, error) {
 			line := strings.Join(append([]string{name}, args...), " ")
 
 			f.runs = append(f.runs, line)
 			if f.fail[line] > 0 {
 				f.fail[line]--
-				return errors.New(line + " failed")
+				return "", errors.New(line + " failed")
 			}
 
-			return nil
+			return f.out[line], nil
 		},
 		retry: time.Millisecond,
 	}
@@ -430,5 +432,42 @@ func TestSystemdQuotesTheBinary(t *testing.T) {
 
 	if got != want {
 		t.Errorf("got %s, want %s", got, want)
+	}
+}
+
+// launchd keeps a failed agent loaded while it waits out its throttle, so a
+// loaded agent is running only when its state says so.
+func TestLaunchdRunningReadsTheState(t *testing.T) {
+	t.Parallel()
+
+	printCmd := "launchctl print gui/501/" + launchdLabel
+
+	for _, tc := range []struct {
+		name string
+		fake *fakeHost
+		want bool
+	}{
+		{"running", &fakeHost{out: map[string]string{printCmd: "\tstate = running\n"}}, true},
+		{"loaded, waiting", &fakeHost{out: map[string]string{printCmd: "\tstate = not running\n"}}, false},
+		{"not loaded", &fakeHost{fail: map[string]int{printCmd: always}}, false},
+	} {
+		if got := (launchd{tc.fake.host(t.TempDir(), nil)}).running(t.Context()); got != tc.want {
+			t.Errorf("%s: running = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+}
+
+func TestSystemdRunningAsksIsActive(t *testing.T) {
+	t.Parallel()
+
+	isActive := "systemctl --user is-active --quiet " + systemdUnit
+
+	if !(systemd{(&fakeHost{}).host(t.TempDir(), nil)}).running(t.Context()) {
+		t.Error("an active unit reads as not running")
+	}
+
+	inactive := &fakeHost{fail: map[string]int{isActive: always}}
+	if (systemd{inactive.host(t.TempDir(), nil)}).running(t.Context()) {
+		t.Error("an inactive unit reads as running")
 	}
 }
