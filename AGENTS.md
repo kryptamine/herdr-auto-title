@@ -2,7 +2,8 @@
 
 Herdr Auto Title — a Herdr plugin, written in Go, that generates tab titles from
 each tab's current context. Long-running process that polls the Herdr session,
-no LLM and no external service.
+no LLM and no external service; the desktop mode alone asks GitHub once a day
+whether a newer release is out.
 
 ## Repository layout
 
@@ -23,6 +24,7 @@ internal/pi           what a Pi session is about, from its session file
 internal/hermes       native Hermes session titles, from read-only SQLite
 internal/transcript   an append-only session file followed a poll at a time
 internal/git          what a repository has checked out, read from .git
+internal/release      when a newer release is out, for the desktop mode's popup
 internal/instance     one Auto Title per session, and the restart handoff
 internal/autostart    the desktop mode started at login, by launchd or systemd
 scripts/              the Python probes, and the install step

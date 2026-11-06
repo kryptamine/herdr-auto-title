@@ -56,11 +56,20 @@ not supported yet.
 
 **With the mod:** ask the app's agent to add the mod in this repository's
 [`mod/`](mod/) folder, or copy `mod/mods/auto-title` into
-`~/.config/herdr-app/mods/` yourself. A strip appears under the terminals; press
+`~/.config/herdr-app/mods/` and merge [`mod/keys.json`](mod/keys.json) into
+`~/.config/herdr-app/keys.json` yourself. `cmd-alt-t` opens a popup; press
 `Install`. In a tab of its own it downloads the binary of the release the mod
 belongs to, checks it against `SHA256SUMS` and has it install itself. The same
-strip starts, updates and uninstalls it; once all is well, `×` hides it until
-something needs you again.
+popup starts and updates it. Once a day the service asks GitHub whether a
+newer release is out, and opens the popup by itself once for each one. To
+remove Auto Title, have the service's copy uninstall itself:
+
+```sh
+# macOS
+~/Library/Application\ Support/herdr-auto-title/bin/herdr-auto-title desktop uninstall
+# Linux
+"${XDG_DATA_HOME:-$HOME/.local/share}/herdr-auto-title/herdr-auto-title" desktop uninstall
+```
 
 **By hand:** with a release binary, or one built with `make build`:
 
