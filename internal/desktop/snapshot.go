@@ -140,6 +140,7 @@ func (c *Client) build(
 	sessions map[string]*herdr.AgentSessionInfo,
 ) (herdr.Snapshot, map[string]herdr.PaneProcessInfoProcess) {
 	c.rememberLabels(spaces)
+	c.rememberFocus(spaces, focusedPane)
 
 	var snapshot herdr.Snapshot
 
@@ -151,6 +152,12 @@ func (c *Client) build(
 		for _, tab := range space.Tabs {
 			if tab.Active {
 				workspace.ActiveTabID = tab.ID
+			}
+
+			if focused, known := c.focused[tab.ID]; known {
+				snapshot.Layouts = append(snapshot.Layouts, herdr.LayoutInfo{
+					TabID: tab.ID, FocusedPaneID: focused,
+				})
 			}
 
 			snapshot.Tabs = append(snapshot.Tabs, herdr.TabInfo{
@@ -194,6 +201,33 @@ func (c *Client) rememberLabels(spaces []space) {
 	}
 
 	c.initialLabels = initialLabels
+}
+
+// rememberFocus keeps the pane each tab last had focused, since the app names
+// only the shown tab's; a tab not shown would otherwise be named after another
+// pane until it is shown again. Closed tabs and closed panes are forgotten.
+func (c *Client) rememberFocus(spaces []space, focusedPane string) {
+	focused := make(map[string]string)
+
+	for _, space := range spaces {
+		for _, tab := range space.Tabs {
+			holds := func(pane string) bool {
+				return slices.ContainsFunc(
+					tab.Terminals,
+					func(e paneEntry) bool { return e.Pane == pane },
+				)
+			}
+
+			switch last := c.focused[tab.ID]; {
+			case focusedPane != "" && holds(focusedPane):
+				focused[tab.ID] = focusedPane
+			case last != "" && holds(last):
+				focused[tab.ID] = last
+			}
+		}
+	}
+
+	c.focused = focused
 }
 
 func foregroundOf(t terminal) herdr.PaneProcessInfoProcess {

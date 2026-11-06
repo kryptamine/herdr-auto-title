@@ -55,7 +55,9 @@ worth optimizing, which is why the desktop mode keeps polling.
 `{"ls":true}` gives spaces, their tabs and each tab's terminals. A terminal
 entry carries `terminal`, `pane`, `status`, `app`, `name` and `sub_agents`, and
 no title, directory or process, so it is joined to `terminal.list` by address.
-Only `{"status":true}` says which pane has focus, and only for the shown tab.
+Only `{"status":true}` says which pane has focus, and only for the shown tab,
+so the client keeps each tab's last focused pane and hands it on as the tab's
+layout, the way TUI's snapshot carries it; a tab never shown has none.
 Any request the app cannot serve answers `{"error":"…"}`, and an `ls` or
 `status` that does fails the poll rather than reading as an empty session.
 

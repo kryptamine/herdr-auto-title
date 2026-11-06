@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -448,6 +449,42 @@ func TestAPaneTheCoreDoesNotListYetIsLeftOut(t *testing.T) {
 
 	if got := snapshot.Tabs[1]; got.Label != "Codex" || !got.Unnamed {
 		t.Errorf("launcher's tab = %+v, want its raw label marked unnamed", got)
+	}
+}
+
+// The app names only the shown tab's focus, so a split tab in the background
+// must keep its own focused pane, or it is renamed each time it is left.
+func TestABackgroundTabKeepsItsFocusedPane(t *testing.T) {
+	t.Parallel()
+
+	split := tab{ID: "split", Name: "1", Terminals: []paneEntry{
+		{Terminal: "t1", Pane: "left"}, {Terminal: "t2", Pane: "right"},
+	}}
+	other := tab{ID: "other", Name: "2", Terminals: []paneEntry{{Terminal: "t3", Pane: "solo"}}}
+	terminals := []terminal{{Address: "t1"}, {Address: "t2"}, {Address: "t3"}}
+
+	client := &Client{}
+	focus := func(world world, pane string) []herdr.LayoutInfo {
+		snapshot, _ := client.build(world.local(terminals), pane, nil)
+		return snapshot.Layouts
+	}
+
+	both := world{Spaces: []space{{ID: "s", Tabs: []tab{split, other}}}}
+	focus(both, "right")
+
+	layouts := focus(both, "solo")
+	if !slices.Contains(layouts, herdr.LayoutInfo{TabID: "split", FocusedPaneID: "right"}) {
+		t.Errorf("layouts = %+v, want split's focus kept on right", layouts)
+	}
+
+	split.Terminals = split.Terminals[:1]
+	if layouts := focus(
+		world{Spaces: []space{{ID: "s", Tabs: []tab{split}}}},
+		"",
+	); len(
+		layouts,
+	) != 0 {
+		t.Errorf("layouts = %+v, want a closed pane's focus and a closed tab forgotten", layouts)
 	}
 }
 
