@@ -36,6 +36,8 @@ type Client struct {
 	// initialLabels holds the first label until it changes; an empty value
 	// means a launcher's name must never be inferred again for that tab.
 	initialLabels map[string]string
+	// focused is the pane each tab last had focused.
+	focused map[string]string
 
 	sessions *sessionFinder
 }
