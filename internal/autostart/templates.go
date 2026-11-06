@@ -15,6 +15,7 @@ var templateFiles embed.FS
 var templates = template.Must(template.New("").Funcs(template.FuncMap{
 	"xml":   xmlText,
 	"quote": systemdQuote,
+	"ps":    powershellQuote,
 }).ParseFS(templateFiles, "templates/*"))
 
 // launchdAgent is what templates/launchd.plist is filled in with.

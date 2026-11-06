@@ -42,6 +42,19 @@ tab appearing later, deduplication, rename failures, a poll that fails outright.
 If a change can be expressed as "given this session, expect this title", it
 belongs here and nowhere else.
 
+Windows desktop autostart also has an explicit real Task Scheduler test:
+
+```sh
+go test -race -tags autostart_integration ./internal/autostart -run '^TestSchedulerLifecycle$' -v
+```
+
+It creates a uniquely named task under the current user and runs a harmless
+copy of the test binary, without contacting Herdr. It checks replacement,
+failure restart, clean exit, process ownership and self-uninstall, then removes
+the task. It needs permission to manage that user's scheduled tasks. The normal
+gate covers the native job's ownership and cancellation without registering a
+task. Actual logout/reboot and native Windows ARM64 remain separate checks.
+
 That stub lives in `internal/herdr/herdrtest` rather than in `internal/herdr`,
 so the package the plugin ships exports nothing only a test reads. Its `Snapshot`
 encodes the session and decodes it back, which keeps the snapshot's wire tags
