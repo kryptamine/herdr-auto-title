@@ -1,10 +1,11 @@
 // Package desktop answers the Herdr client interface from the desktop app and
 // herdr-core, so the rest of Auto Title names their tabs as it names Herdr
-// TUI's. What each socket reports is in docs/architecture/desktop-api.md.
+// TUI's, and offers newer releases: docs/architecture/desktop-api.md.
 package desktop
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -153,8 +154,13 @@ func (c *Client) RenameTab(ctx context.Context, tabID, label string) error {
 	return appError("tab.rename", reply.Error)
 }
 
-// appError is the app's error reply as an error. An `ls` or `status` that
-// failed must fail the poll: read as an empty session, it drops every lock.
+// errRefused is the app's answer that it will not do what was asked, as
+// opposed to no answer at all.
+var errRefused = errors.New("the desktop app refused")
+
+// appError is the app's error reply as an error: a slow window is unanswered,
+// anything else a refusal. An `ls` or `status` that failed must fail the poll:
+// read as an empty session, it drops every lock.
 func appError(request, message string) error {
 	switch message {
 	case "":
@@ -162,7 +168,7 @@ func appError(request, message string) error {
 	case noAnswer:
 		return fmt.Errorf("%w: %s: %s", herdr.ErrUnanswered, request, message)
 	default:
-		return fmt.Errorf("%s: %s", request, message)
+		return fmt.Errorf("%w: %s: %s", errRefused, request, message)
 	}
 }
 
