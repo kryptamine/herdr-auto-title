@@ -1,0 +1,11 @@
+[Unit]
+Description=Herdr Auto Title for the Herdr desktop app
+
+[Service]
+ExecStart={{quote .Binary}} desktop
+# A clean exit is a newer instance claiming the session: not restarted.
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
