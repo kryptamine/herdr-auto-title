@@ -43,7 +43,7 @@ func TestTitleDoesNotExecuteUntrustedSchemaFunction(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got := hermes.Title(context.Background(), []string{home}, sessionID, "")
+	got := hermes.Title(context.Background(), []string{home}, sessionID, "", false)
 	if calls.Load() != 0 || got != "" {
 		t.Fatalf("untrusted schema executed: calls=%d title=%q", calls.Load(), got)
 	}
