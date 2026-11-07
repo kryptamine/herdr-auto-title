@@ -220,6 +220,7 @@ func (d *Deterministic) ResolvePanes(tab state.TabState) []Decision {
 // nameUnder assembles what the chain found into a title, dropping what the
 // workspace row above it says and then what any nearer row does. Only a tab
 // title bounds its directory: a pane's is often what tells it from its tab.
+// Hiding reaches pane labels too, since it says the directory names nothing.
 func (d *Deterministic) nameUnder(
 	found collected,
 	workspace string,
@@ -230,7 +231,7 @@ func (d *Deterministic) nameUnder(
 
 	// A hidden directory is dropped as if a row above showed it, so a title
 	// with nothing else to say keeps it.
-	if d.hideDirectory && bounded {
+	if d.hideDirectory && found.directory {
 		rows = append(rows, Parts{Context: found.parts.Context})
 	}
 

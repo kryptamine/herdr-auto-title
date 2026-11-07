@@ -140,7 +140,7 @@ not read.
 | `HERDR_AUTO_TITLE_POLL_MS`      | `500`                                    | How often the session is read, in milliseconds                     |
 | `HERDR_AUTO_TITLE_MAX_LENGTH`   | `50`                                     | Longest title, in columns                                          |
 | `HERDR_AUTO_TITLE_BRANCH_MAX`   | `12`                                     | Longest branch in a title, in columns; `0` hides branches          |
-| `HERDR_AUTO_TITLE_DIRECTORY_MAX` | none                                   | Longest directory in a tab title, in columns; `0` hides it where something else names the tab. Pane labels keep theirs |
+| `HERDR_AUTO_TITLE_DIRECTORY_MAX` | none                                   | Longest directory in a tab title, in columns; `0` hides it, from pane labels too, wherever something else names them |
 | `HERDR_AUTO_TITLE_POSITION`     | `true`                                   | Put the tab's position in front of its title                       |
 | `HERDR_AUTO_TITLE_MANUAL_FILE`  | `manual-names.json`, found the same way  | Where names you set by hand are kept; empty keeps them in memory   |
 | `HERDR_AUTO_TITLE_TRANSCRIPT`   | `true`                                   | Read an agent's own session files: what it is doing, and where     |

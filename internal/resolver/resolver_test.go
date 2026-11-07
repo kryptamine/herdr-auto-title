@@ -409,19 +409,36 @@ func TestABoundNarrowerThanACharacterKeepsIt(t *testing.T) {
 	}
 }
 
-func TestAPaneKeepsTheDirectoryItsTabHides(t *testing.T) {
+func TestAPaneKeepsTheDirectoryItsTabBounds(t *testing.T) {
 	t.Parallel()
 
-	// A pane's own directory is what tells it from its tab, so neither the
-	// bound nor hiding reaches pane labels.
+	// A pane's own directory is what tells it from its tab, so the bound does
+	// not reach pane labels.
 	tab := tabOf([]*state.PaneState{
 		{ID: "wE:p1", Dir: dashboard, Focused: true, TerminalTitle: "Fix OAuth"},
 		{ID: "wE:p2", Dir: api, Processes: []state.Process{{Name: "nvim"}}},
 	})
 
-	for _, chain := range []*Deterministic{directoryChain(1, false), directoryChain(0, true)} {
-		if got := chain.ResolvePanes(tab)[1].Name; !strings.HasPrefix(got, "api") {
-			t.Errorf("pane = %q, want its directory whole", got)
+	if got := directoryChain(1, false).ResolvePanes(tab)[1].Name; !strings.HasPrefix(got, "api") {
+		t.Errorf("pane = %q, want its directory whole", got)
+	}
+}
+
+func TestAPaneHidesTheDirectoryItsTabHides(t *testing.T) {
+	t.Parallel()
+
+	// Hiding says the directory names nothing, a session worktree's folder
+	// above all, so the pane its tab is not named after drops it as well.
+	tab := tabOf([]*state.PaneState{
+		{ID: "wE:p1", Dir: dashboard, Focused: true, TerminalTitle: "Fix OAuth"},
+		{ID: "wE:p2", Dir: api, TerminalTitle: "Token refresh"},
+		{ID: "wE:p3", Dir: api},
+	})
+
+	panes := directoryChain(0, true).ResolvePanes(tab)
+	for i, want := range []string{"Fix OAuth", "Token refresh", "api"} {
+		if got := panes[i].Name; got != want {
+			t.Errorf("pane %d = %q, want %q", i+1, got, want)
 		}
 	}
 }
