@@ -253,6 +253,10 @@ are only the facts that would otherwise mislead the code in silence.
   for the other. Codex's hook reports only the id, though Codex hands it the
   path, and only at a session's first prompt: after `/new` or `/resume` the
   reported session lags the terminal title until the user types.
+- **oh-my-pi is `agent: "omp"`, not `pi`, and its spinner survives
+  stripping.** It titles the terminal `π <state> <name>`, the state a spinner
+  frame redrawn every 80 ms while it works; Herdr strips only a leading
+  spinner, so that title read as it is renames the tab on every frame.
 - **A plugin the server starts inherits the server's environment**, not the
   shell of whoever installed it, which is why `HERDR_AUTO_TITLE_*` settings
   arrive through `config.env` (see

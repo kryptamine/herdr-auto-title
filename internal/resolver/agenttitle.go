@@ -26,6 +26,8 @@ func agentTitle(pane *state.PaneState, title string) (string, bool) {
 		return withoutGrokFrame(pane, title)
 	case openCodeAgent:
 		return withoutOpenCodeFrame(title)
+	case ompAgent:
+		return withoutOmpFrame(pane, title)
 	}
 
 	return title, true

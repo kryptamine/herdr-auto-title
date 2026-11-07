@@ -187,6 +187,16 @@ which is Pi's working directory; a title Pi did not frame — one an extension s
 — is read as it is, and so is any other agent's title that happens to start the
 same way.
 
+oh-my-pi, which Herdr reports as `omp`, frames its title differently:
+`π <state> <name>`, the name being the session's or, until it has one, the
+directory's. The state is `>` idle, `!` waiting on the user, and while omp
+works a spinner frame redrawn every 80 ms — braille by default, a pulsing moon
+`○◔◑◕●` or `- \ | /` by setting. Read as it is, that title is a new one on
+every frame and renames the tab as often. `withoutOmpFrame`
+(`internal/resolver/omp.go`) takes the glyph and the one state grapheme off, and
+`π: <name>`, the frame with the state turned off; a name that is the pane's
+directory declines like Pi's. The format is omp's `buildTerminalTitleWithState`.
+
 ### The session transcript
 
 Hermes uses this same source for its native `sessions.title` in read-only

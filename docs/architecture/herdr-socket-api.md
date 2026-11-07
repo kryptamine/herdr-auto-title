@@ -329,6 +329,10 @@ reads, so this section describes Herdr rather than those types.
   through `terminal_title_stripped` instead. This is why most agent context
   reaches a title one rung below the agent source — see
   [title resolution](./title-resolution.md).
+- **oh-my-pi is `agent: "omp"`, not `pi`**, recognized by its process name
+  with no integration installed. Its working title, `π ⠋ <name>`, keeps the
+  spinner in `terminal_title_stripped`: Herdr strips a leading spinner only, and
+  this one follows the `π`. Measured on Herdr 0.9.5.
 - **`PaneInfo.agent_session` says which conversation the pane's agent holds**,
   and it is null until an agent's integration reports one.
   `herdr integration install <agent>` installs the hook that does — Herdr ships
