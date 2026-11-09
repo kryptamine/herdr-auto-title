@@ -51,8 +51,8 @@ herdr plugin action invoke herdr.auto-title.restart
 ## Herdr desktop app
 
 The [desktop app](https://herdr.dev/) has no plugins, so Auto Title runs there
-as a service of its own, started at every login on macOS and Linux. Windows is
-not supported yet.
+as a service of its own, started at every login on macOS, Linux and Windows.
+The mod installs it on macOS and Linux; on Windows, install it by hand.
 
 **With the mod:** ask the app's agent to add the mod in this repository's
 [`mod/`](mod/) folder, or copy `mod/mods/auto-title` into
@@ -78,9 +78,15 @@ remove Auto Title, have the service's copy uninstall itself:
 ./herdr-auto-title desktop uninstall   # stop it and remove it
 ```
 
+On Windows the binary is `herdr-auto-title.exe`, and the service is a Task
+Scheduler task; its copy is
+`%LOCALAPPDATA%\herdr-auto-title\bin\herdr-auto-title.exe`, which
+`desktop uninstall` removes too.
+
 Installing again is the update. The service runs its own copy of the binary, so
 the one you ran can be deleted. Its log is `~/Library/Logs/herdr-auto-title.log`
-on macOS and `journalctl --user -u herdr-auto-title` on Linux.
+on macOS and `journalctl --user -u herdr-auto-title` on Linux. On Windows it
+keeps no log; run `herdr-auto-title.exe desktop` in a terminal to see one.
 
 What differs from Herdr TUI:
 
