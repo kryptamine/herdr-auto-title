@@ -434,6 +434,35 @@ place that knows how a service is set up.
 
 ## Windows transport probe
 
+### Gallery mod on Windows
+
+Measured on Windows on 2026-11-09 with herdr-app 0.1.14, hc 0.1.19 and
+Windows PowerShell 5.1.26100.9444:
+
+- A mod's `exec("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass",
+  "-File", script, ...args])` preserves spaces, Unicode, apostrophes, `$`, `&`
+  and `;` as literal arguments. A harmless script returned code 7, its exact
+  UTF-8 stdout and separate stderr. No interpolated command string is needed.
+- `run("terminal.open", {argv, name})` returns `null`, with no terminal ID.
+  The same arguments reached a script in a new tab; `HC_TERMINAL_ID` identified
+  that tab and `hc kill` closed it without touching the original terminal.
+- The mod uses native PowerShell for copy lookup, temporary folders and status,
+  and `Invoke-WebRequest` plus .NET SHA256 for installation. It needs neither
+  Git Bash nor Go. The copy path follows `internal/autostart/scheduler.go`.
+- Windows can terminate a whole terminal without running PowerShell's `finally`.
+  An open popup therefore falls back to its existing ten-minute timeout and
+  cleanup. Closing the popup too can leave a temporary folder after a forced
+  kill; normal success and failure delete downloaded files in `finally`.
+
+The live popup reached "Not installed" with an `Install 0.21.0` button and no
+app errors. Local HTTP fixtures exercised successful installation, missing
+releases, checksum mismatches, failed `desktop install`, and ARM64/AMD64 asset
+selection under emulated environment variables, using a stub executable that
+only recorded its arguments. No real login service was installed in this probe.
+Native ARM64 execution remains for the existing Windows ARM64 CI runner.
+
+### Socket transport
+
 Measured on Windows on 2026-11-05 with herdr-app 0.1.13 and hc 0.1.18.
 Windows uses the same client and poll loop, with platform-specific endpoint
 discovery, transport and process enumeration. No additional dependency is needed.

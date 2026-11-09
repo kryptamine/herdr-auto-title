@@ -11,15 +11,20 @@ login on.
 ## Before you add it
 
 The popup is only the installer. The work is done by the `herdr-auto-title`
-binary, which `desktop install` has launchd (macOS) or the systemd user manager
-(Linux) start at login. The mod **reaches the network** (GitHub, for the
-release it belongs to) and **runs programs**: its `install.sh`, in a tab of
+binary, which `desktop install` has launchd (macOS), the systemd user manager
+(Linux) or Task Scheduler (Windows) start at login. The mod **reaches the
+network** (GitHub, for the release it belongs to) and **runs programs**: on
+Unix, its `install.sh`, in a tab of
 its own, which runs `uname`, `curl`, `awk`, `shasum` or `sha256sum` and `chmod`,
 then the downloaded binary, only after its checksum matched; and `mktemp`,
 `cat`, `rm`, `test` and the installed copy, which it asks `desktop status`. It
 writes no file itself; the binary writes its own copy and service definition.
 
-Windows is not supported yet: the popup says so and offers no button.
+On Windows, `windows.ps1` locates the copy and manages the temporary status
+folder; `install.ps1` downloads with `Invoke-WebRequest`, verifies with
+.NET SHA256 and runs the checked binary. Both use Windows PowerShell 5.1,
+with no Git Bash or Go dependency. Paths are separate `-File` arguments,
+never interpolated PowerShell code.
 
 The mod has no place in any layout, so it changes none: it opens over the
 window and goes with `Esc` or a click elsewhere. Nothing opens it the first
@@ -74,15 +79,17 @@ Top to bottom:
   one the service found: `desktop status` reports it as `latest`, and the
   service opens this popup once when it finds one.
 - **Install / Update / Reinstall** opens a tab named "Auto Title install" that runs the
-  mod's `install.sh`: it finds the asset for this machine
-  (`herdr-auto-title-<macos|linux>-<amd64|arm64>`), downloads it with a progress
+  mod's `install.sh` (Windows: `install.ps1`): it finds the asset for this machine
+  (`herdr-auto-title-<macos|linux|windows>-<amd64|arm64>`, with `.exe` on Windows), downloads it with a progress
   bar and `SHA256SUMS` from `releases/download/v<VERSION>/` into a `mktemp -d`
   folder, compares the checksums and runs `<binary> desktop install`. It writes
   `0`, or `1` and why, to `status` in that folder; the popup reads it every
   second, for up to ten minutes, and removes the folder after. On a failure the
   tab says why and waits for Enter; either way the script then deletes the
   download and closes its tab.
-  Closing the tab or Ctrl+C writes "The install was stopped." at once.
+  On Unix, closing the tab or Ctrl+C writes "The install was stopped." at once.
+  On Windows, killing the whole terminal can bypass PowerShell cleanup; the
+  popup then reports its ten-minute timeout and removes its temporary folder.
 - **Start** runs `<copy> desktop install`: the copy installs itself again, which
   starts its service, with no download and its own version kept.
 - **A newer copy is never downgraded.** `Update` shows only for an older one.
@@ -101,7 +108,10 @@ Top to bottom:
   table of where each OS keeps the copy, then `installed`, `older`, `install`,
   `newest` and `start`) and `install.sh` (the download, the
   checksum and `desktop install`, run as `sh <appHome>/mods/auto-title/install.sh
-  <version> <dir>`). No layout, no art.
+  <version> <dir>`). Windows uses `powershell.exe -NoProfile -ExecutionPolicy
+  Bypass -File <appHome>/mods/auto-title/install.ps1 <version> <dir>`, with
+  `windows.ps1` for copy lookup, temporary folders, status reads and cleanup.
+  No layout, no art.
 - `keys.json` beside `mods/`: `{ "global": { "cmd-alt-t": "mod.open:auto-title" } }`.
 - `herdr`: `exec`, `run` (`terminal.open`), `appHome`, `home`, `theme`.
   `os`: `platform`. `gpui-base`: `h_flex`, `v_flex`. The wait between status
@@ -109,7 +119,8 @@ Top to bottom:
 - The copy lives where `desktop install` puts it:
   `~/Library/Application Support/herdr-auto-title/bin/herdr-auto-title` on
   macOS, `${XDG_DATA_HOME:-~/.local/share}/herdr-auto-title/herdr-auto-title`
-  on Linux.
+  on Linux, and `%LOCALAPPDATA%\herdr-auto-title\bin\herdr-auto-title.exe`
+  on Windows (falling back to `~/AppData/Local` if that variable is not absolute).
 
 ## Watch out
 
@@ -128,6 +139,9 @@ Top to bottom:
 - **The popup can close mid-install**, on `Esc` or a click elsewhere, and its
   copy goes with it. So `install.sh` deletes its own download, and the popup
   reads the copy afresh whenever it opens again.
+- **Windows chooses the native CPU**, using `PROCESSOR_ARCHITEW6432` before
+  `PROCESSOR_ARCHITECTURE`, so an emulated shell still downloads ARM64 on ARM64.
+  The installer removes its download before waiting for Enter after a failure.
 - **Downloads go to `mktemp -d`, never under `mods/`**: a file saved there
   reloads every copy of the mod.
 - **`service.js` names `install.sh` by its path under `mods/auto-title/`**: a

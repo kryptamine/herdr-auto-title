@@ -18,9 +18,9 @@ const NAME = "herdr-auto-title";
 const POLL_MS = 1000;
 const INSTALL_TIMEOUT_MS = 10 * 60 * 1000;
 
-// INSTALL is the script that puts a release in place, run in a tab of its
-// own. The path is the mod's folder, which a renamed copy renames too.
-const INSTALL = `${appHome()}/mods/auto-title/install.sh`;
+// A renamed mod must change this path to its scripts too.
+const MOD = `${appHome()}/mods/auto-title`;
+const POWERSHELL = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File"];
 
 // COPIES says where `desktop install` keeps its copy on each OS, as
 // internal/autostart does. An OS missing here is not supported yet.
@@ -32,6 +32,7 @@ const COPIES = {
 
     return `${data}/${NAME}/${NAME}`;
   },
+  windows: async () => (await windows("copy")).trim(),
 };
 
 const os = { darwin: "macos", win32: "windows" }[platform()] ?? platform();
@@ -41,6 +42,11 @@ export const supported = where !== undefined;
 
 // unsupported is what the popup says on an OS with no copy to ask.
 export const unsupported = `Not available on ${{ windows: "Windows" }[os] ?? os} yet.`;
+
+/** @param {string} operation @param {string} [path] @returns {Promise<string>} */
+function windows(operation, path = "") {
+  return output("powershell.exe", [...POWERSHELL, `${MOD}/windows.ps1`, operation, path]);
+}
 
 /** copy is the installed copy's path; the strip asks it of no OS it does not support.
  *  @returns {Promise<string>} */
@@ -71,7 +77,9 @@ async function output(program, args, step = program) {
  *  @returns {Promise<Copy | null>} */
 export async function installed() {
   const path = await copy();
-  const { code } = await exec("test", ["-x", path]);
+  const { code } = os === "windows"
+    ? await exec("powershell.exe", [...POWERSHELL, `${MOD}/windows.ps1`, "exists", path])
+    : await exec("test", ["-x", path]);
 
   if (code !== 0) {
     return null;
@@ -125,14 +133,17 @@ export function newest(copy) {
   return copy?.latest && older(VERSION, copy.latest) ? copy.latest : VERSION;
 }
 
-/** install has INSTALL put a release in place from a new tab, and waits for
+/** install puts a release in place from a new tab, and waits for
  *  the status it writes. @param {string} version @param {Step} step @param {Sleep} sleep */
 export async function install(version, step, sleep) {
-  const dir = (await output("mktemp", ["-d"])).trim();
+  const dir = (await (os === "windows" ? windows("temp") : output("mktemp", ["-d"]))).trim();
 
   try {
     step(`Installing ${version} in a new tab…`);
-    run("terminal.open", { argv: ["sh", INSTALL, version, dir], name: "Auto Title install" });
+    const argv = os === "windows"
+      ? ["powershell.exe", ...POWERSHELL, `${MOD}/install.ps1`, version, dir]
+      : ["sh", `${MOD}/install.sh`, version, dir];
+    run("terminal.open", { argv, name: "Auto Title install" });
 
     const [code, reason] = await status(dir, sleep);
 
@@ -140,15 +151,21 @@ export async function install(version, step, sleep) {
       throw new Error(reason ?? "The install failed.");
     }
   } finally {
-    await exec("rm", ["-rf", dir]);
+    if (os === "windows") {
+      await windows("clean", dir);
+    } else {
+      await exec("rm", ["-rf", dir]);
+    }
   }
 }
 
-/** status is what INSTALL wrote to dir, once it has.
+/** status is what the installer wrote to dir, once it has.
  *  @param {string} dir @param {Sleep} sleep @returns {Promise<string[]>} */
 async function status(dir, sleep) {
   for (let waited = 0; waited < INSTALL_TIMEOUT_MS; waited += POLL_MS) {
-    const { code, stdout } = await exec("cat", [`${dir}/status`]);
+    const { code, stdout } = os === "windows"
+      ? await exec("powershell.exe", [...POWERSHELL, `${MOD}/windows.ps1`, "status", dir])
+      : await exec("cat", [`${dir}/status`]);
 
     if (code === 0 && stdout.trim()) {
       return stdout.trim().split("\n");

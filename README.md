@@ -54,7 +54,7 @@ herdr plugin action invoke herdr.auto-title.restart
 
 The [desktop app](https://herdr.dev/) has no plugins, so Auto Title runs there
 as a service of its own, started at every login on macOS, Linux and Windows.
-The mod installs it on macOS and Linux; on Windows, install it by hand.
+The mod installs it on all three platforms; Windows needs no Git Bash or Go.
 
 **With the mod:** ask the app's agent to add the mod in this repository's
 [`mod/`](mod/) folder, or copy `mod/mods/auto-title` into
