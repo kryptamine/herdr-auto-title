@@ -1,9 +1,11 @@
 package resolver
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
+	"github.com/kryptamine/herdr-auto-title/internal/herdr/herdrtest"
 	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
 
@@ -47,6 +49,23 @@ func TestAnUnnamedOmpSessionDeclinesItsTitle(t *testing.T) {
 			Name; got != "dashboard › omp" {
 			t.Errorf("%q: name = %q, want %q", title, got, "dashboard › omp")
 		}
+	}
+}
+
+// In the home directory the context is empty, so only the title's own check
+// keeps the directory omp frames from becoming the activity.
+func TestAnUnnamedOmpSessionAtHomeDeclinesItsTitle(t *testing.T) {
+	t.Parallel()
+
+	home := herdrtest.Dir()
+	pane := ompPane("π > " + filepath.Base(home))
+	pane.Dir = home
+
+	chain := Default(
+		Options{MaxLength: DefaultMaxLength, BranchMax: DefaultBranchMaxLength, Home: home},
+	)
+	if got := chain.Resolve(tabWithPane(pane)).Name; got != "omp" {
+		t.Errorf("name = %q, want %q", got, "omp")
 	}
 }
 
