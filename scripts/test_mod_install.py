@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import functools
 import http.server
 import os
@@ -14,12 +15,43 @@ import sys
 import tempfile
 import threading
 import unittest
+from typing import Literal
 
 from dist import NAME, ROOT
 from release_fixture import WINDOWS, QuietHandler, git_shim, publish, without_go
 
 VERSION = "0.21.0"
 MOD = ROOT / "mod" / "mods" / "auto-title"
+
+
+@dataclasses.dataclass(frozen=True)
+class Case:
+    """How one install is set up, then what the installer must have done."""
+
+    release: Literal["published", "missing", "tampered"] = "published"
+    stub_fails: bool = False
+    broken_script: bool = False
+    architecture: str | None = None
+    folder: str = "paths ' & spaces \u00e9"
+
+    succeeds: bool = True
+    runs: bool = True
+    downloads: bool = True
+    reason: str = ""
+
+
+SUCCESS = Case()
+SCENARIOS = {
+    "success": SUCCESS,
+    "missing": Case(release="missing", succeeds=False, runs=False, reason="download"),
+    "checksum": Case(release="tampered", succeeds=False, runs=False, reason="does not match SHA256SUMS"),
+    "install failure": Case(stub_fails=True, succeeds=False, reason="desktop install failed"),
+}
+# Windows 11 on Arm runs no batch file under a fake SystemRoot, so the
+# PowerShell that cannot run the installer is one given a script that cannot parse.
+BROKEN_POWERSHELL = Case(
+    broken_script=True, succeeds=False, runs=False, downloads=False, reason="PowerShell could not run the installer"
+)
 
 
 class GalleryInstall(unittest.TestCase):
@@ -81,48 +113,37 @@ class GalleryInstall(unittest.TestCase):
         else:
             cls.routes = {"sh": os.environ["PATH"]}
 
-    def run_case(
-        self,
-        route: str,
-        *,
-        published: bool = True,
-        tamper: bool = False,
-        fails: bool = False,
-        reject: bool = False,
-        architecture: str | None = None,
-        punctuation: bool = False,
-    ) -> None:
+    def run_case(self, route: str, case: Case) -> None:
         with tempfile.TemporaryDirectory(dir=self.work) as scratch:
-            folder = pathlib.Path(scratch) / ("A&B" if punctuation else "paths ' & spaces \u00e9")
+            folder = pathlib.Path(scratch) / case.folder
             installer = folder / "mods" / "auto-title"
             installer.mkdir(parents=True)
             for name in ("install.cmd", "install.sh", "install.ps1"):
                 shutil.copyfile(MOD / name, installer / name)
-            if reject:
-                # Windows 11 on Arm runs no batch file under a fake SystemRoot, so fail in PowerShell.
+            if case.broken_script:
                 (installer / "install.ps1").write_text("param(\n", encoding="utf-8")
             data = folder / "data" / "auto-title-install-test"
             data.mkdir(parents=True)
             marker = folder / "called"
             system_name = {"win32": "windows", "darwin": "macos"}.get(sys.platform, "linux")
-            asset_name = f"{NAME}-{system_name}-{architecture or self.arch}" + (".exe" if WINDOWS else "")
+            asset_name = f"{NAME}-{system_name}-{case.architecture or self.arch}" + (".exe" if WINDOWS else "")
             asset = folder / asset_name
             shutil.copyfile(self.stub, asset)
             shutil.rmtree(self.releases)
             self.releases.mkdir()
             self.requests.clear()
-            if published:
-                publish(self.releases, f"download/v{VERSION}", asset, "0" * 40, tamper)
+            if case.release != "missing":
+                publish(self.releases, f"download/v{VERSION}", asset, "0" * 40, case.release == "tampered")
             env = dict(
                 os.environ,
                 HERDR_AUTO_TITLE_RELEASES=f"http://127.0.0.1:{self.server.server_address[1]}",
                 MOD_CALLED=str(marker),
-                MOD_FAIL="1" if fails else "0",
+                MOD_FAIL="1" if case.stub_fails else "0",
                 PATH=self.routes[route],
             )
             env.pop("HC_TERMINAL_ID", None)
-            if architecture:
-                env.update(PROCESSOR_ARCHITECTURE="x86", PROCESSOR_ARCHITEW6432=architecture.upper())
+            if case.architecture:
+                env.update(PROCESSOR_ARCHITECTURE="x86", PROCESSOR_ARCHITEW6432=case.architecture.upper())
             command = [os.environ["COMSPEC"], "/d", "/c", "install.cmd"] if WINDOWS else ["sh", "install.sh"]
             result = subprocess.run(
                 [*command, VERSION, "../../data/auto-title-install-test" if WINDOWS else str(data)],
@@ -136,51 +157,38 @@ class GalleryInstall(unittest.TestCase):
             status_file = data / "status"
             self.assertTrue(status_file.exists(), output)
             status = status_file.read_text(encoding="utf-8")
-            success = published and not tamper and not fails and not reject
-            self.assertEqual(result.returncode == 0, success, output)
-            self.assertEqual(status.splitlines()[0], "0" if success else "1", output)
+            self.assertEqual(result.returncode == 0, case.succeeds, output)
+            self.assertEqual(status.splitlines()[0], "0" if case.succeeds else "1", output)
+            self.assertIn(case.reason, status)
             if WINDOWS:
                 expected_route = "PowerShell" if route == "PowerShell" else "Git Bash"
                 self.assertIn(f"using {expected_route}".lower(), output.lower())
                 if expected_route == "Git Bash":
                     self.assertNotIn("using PowerShell", output)
-            should_run = published and not tamper and not reject
-            self.assertEqual(marker.exists(), should_run, output)
-            if should_run:
+            self.assertEqual(marker.exists(), case.runs, output)
+            if case.runs:
                 self.assertEqual(marker.read_text(), f"{self.arch}\n{asset_name}\ndesktop install\n")
-            if reject:
-                self.assertIn("PowerShell could not run the installer", status)
-                self.assertEqual(self.requests, [])
-            else:
+            if case.downloads:
                 self.assertIn(f"/download/v{VERSION}/{asset_name}", self.requests)
-            if tamper:
-                self.assertIn("does not match SHA256SUMS", status)
-            if not published:
-                self.assertIn("download", status)
-            if fails:
-                self.assertIn("desktop install failed", status)
+            else:
+                self.assertEqual(self.requests, [])
             self.assertEqual(sorted(p.name for p in data.iterdir()), ["status"], output)
 
     def test_release_and_failures_on_every_route(self) -> None:
         for route in self.routes:
-            for scenario in ("success", "missing", "checksum", "install failure"):
+            for scenario, case in SCENARIOS.items():
                 with self.subTest(route=route, scenario=scenario):
-                    self.run_case(
-                        route,
-                        published=scenario != "missing",
-                        tamper=scenario == "checksum",
-                        fails=scenario == "install failure",
-                    )
+                    self.run_case(route, case)
 
     @unittest.skipUnless(WINDOWS, "CMD metacharacters without whitespace")
     def test_parent_path_with_unquoted_metacharacters(self) -> None:
         for route in self.routes:
             with self.subTest(route=route):
-                self.run_case(route, punctuation=True)
+                self.run_case(route, dataclasses.replace(SUCCESS, folder="A&B"))
 
     @unittest.skipUnless(WINDOWS, "Windows fallback startup")
     def test_fallback_startup_failure_reports_status(self) -> None:
-        self.run_case("PowerShell", reject=True)
+        self.run_case("PowerShell", BROKEN_POWERSHELL)
 
     @unittest.skipUnless(WINDOWS, "Windows native architecture from an emulated shell")
     def test_powershell_prefers_native_architecture(self) -> None:
@@ -188,7 +196,7 @@ class GalleryInstall(unittest.TestCase):
             with self.subTest(architecture=arch):
                 if self.arch == "arm64" and arch != "arm64":
                     self.skipTest("Windows 11 on Arm resets PROCESSOR_ARCHITECTURE for a native child")
-                self.run_case("PowerShell", architecture=arch)
+                self.run_case("PowerShell", dataclasses.replace(SUCCESS, architecture=arch))
 
 
 if __name__ == "__main__":
