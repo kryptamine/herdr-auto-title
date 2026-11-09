@@ -7,23 +7,27 @@ version=$1
 dir=$2
 if command -v cygpath >/dev/null 2>&1; then dir=$(cygpath -m "$dir"); fi
 
-close() {
-	# The popup that would remove $2 may have closed, so drop the download here.
+# report code [reason] writes the status the popup waits for. The download goes
+# first: the popup may have closed, and one still open removes $dir on status.
+report() {
 	rm -f "$dir/${asset:-none}" "$dir/SHA256SUMS"
+	printf '%s\n' "$@" >"$dir/status"
+}
+
+close() {
 	hc kill "${HC_TERMINAL_ID:-}" >/dev/null 2>&1
 	exit "$1"
 }
 
 fail() {
-	rm -f "$dir/${asset:-none}" "$dir/SHA256SUMS"
-	printf '1\n%s\n' "$1" >"$dir/status"
+	report 1 "$1"
 	printf '\n%s\nPress Enter to close.' "$1"
 	read -r _
 	close 1
 }
 
 # A closed tab or Ctrl+C still answers the mod, which would otherwise wait.
-trap 'rm -f "$dir/${asset:-none}" "$dir/SHA256SUMS"; printf "1\nThe install was stopped.\n" >"$dir/status"; exit 1' HUP INT TERM
+trap 'report 1 "The install was stopped."; exit 1' HUP INT TERM
 
 system=$(uname -s)
 suffix=
@@ -76,6 +80,5 @@ if ! "$dir/$asset" desktop install; then
 	fail "desktop install failed."
 fi
 
-rm -f "$dir/$asset" "$dir/SHA256SUMS"
-printf '0\n' >"$dir/status"
+report 0
 close 0
