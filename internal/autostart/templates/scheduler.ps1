@@ -44,7 +44,14 @@ if ($operation -eq 'stop' -or $operation -eq 'uninstall') {
             $cleanup = @"
 `$ErrorActionPreference = 'Stop'
 Wait-Process -Id $parentPID -Timeout 30 -ErrorAction SilentlyContinue
-Remove-Item -LiteralPath $quoted -Force
+# The exited image stays locked briefly; measured about 200 ms on ARM64.
+`$deadline = [DateTime]::UtcNow.AddSeconds(30)
+while (Test-Path -LiteralPath $quoted) {
+    try { Remove-Item -LiteralPath $quoted -Force } catch {
+        if ([DateTime]::UtcNow -ge `$deadline) { throw }
+        Start-Sleep -Milliseconds 100
+    }
+}
 `$dir = Split-Path -LiteralPath $quoted
 if ([IO.Directory]::GetFileSystemEntries(`$dir).Length -eq 0) { [IO.Directory]::Delete(`$dir) }
 "@
