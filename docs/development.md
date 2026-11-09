@@ -222,7 +222,9 @@ its own, but `go mod tidy` does when an updated module asks for a newer Go. In
 `tools/go.mod` that is the linter moving and is fine. In `go.mod` it is the
 floor Herdr installs on, and the Go 1.24 job catches it only while
 `GOTOOLCHAIN` is `local` there, which `actions/setup-go` sets from v6 on;
-otherwise Go fetches the newer toolchain and the job passes.
+otherwise Go fetches the newer toolchain and the job passes. A module whose
+newer releases ask for more is held back in `renovate.json` with
+`allowedVersions`, to be lifted when the floor is.
 
 **The Python tools are pinned in `uv.lock`.** `pyproject.toml` names ruff and
 mypy, and Renovate updates the lock with them. As with the linter, a new

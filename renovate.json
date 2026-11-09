@@ -17,6 +17,18 @@
       "commitMessageTopic": "golangci-lint"
     },
     {
+      "description": "Newer releases ask for Go 1.26, and go.mod holds the Go 1.24 floor a source install builds on. Lift these with that floor.",
+      "matchFileNames": ["go.mod"],
+      "matchPackageNames": ["golang.org/x/sys"],
+      "allowedVersions": "<0.42.0"
+    },
+    {
+      "description": "Newer releases ask for Go 1.26, through modernc.org/libc; see the rule above.",
+      "matchFileNames": ["go.mod"],
+      "matchPackageNames": ["modernc.org/sqlite"],
+      "allowedVersions": "<1.47.0"
+    },
+    {
       "description": "Everything arrives together, minors in one pull request and majors in another.",
       "matchUpdateTypes": ["major", "minor", "patch", "digest"],
       "groupName": "dependencies"
