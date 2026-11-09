@@ -21,8 +21,8 @@ func withoutOmpFrame(pane *state.PaneState, title string) (string, bool) {
 	switch head {
 	case piGlyph + ":": // the frame with the state turned off
 	case piGlyph:
-		state, rest, _ := strings.Cut(name, " ")
-		if uniseg.GraphemeClusterCount(state) > 1 {
+		mark, rest, _ := strings.Cut(name, " ")
+		if uniseg.GraphemeClusterCount(mark) > 1 {
 			return title, true
 		}
 
