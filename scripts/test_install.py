@@ -95,7 +95,9 @@ def plugin_copy(into: pathlib.Path, version: str) -> tuple[pathlib.Path, str]:
 
     def git(*args: str) -> str:
         identity = ["-c", "user.name=test", "-c", "user.email=test@localhost", "-c", "commit.gpgsign=false"]
-        result = subprocess.run(["git", *identity, *args], cwd=root, capture_output=True, text=True, check=True)
+        # A commit starts detached maintenance, which can still be writing .git when the copy is removed.
+        quiet = ["-c", "maintenance.auto=false"]
+        result = subprocess.run(["git", *identity, *quiet, *args], cwd=root, capture_output=True, text=True, check=True)
         return result.stdout.strip()
 
     git("init", "-q")
