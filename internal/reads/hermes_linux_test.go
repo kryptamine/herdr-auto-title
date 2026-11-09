@@ -64,10 +64,22 @@ func TestHermesProcessHomeOverridesSearch(t *testing.T) {
 	reader := newReader(
 		reads.Options{HermesHomes: []string{filepath.Join(home, ".hermes")}, ReadSessions: true},
 	)
-	reader.Poll(client, []herdr.PaneInfo{info}, nil).Fill(context.Background(), pane)
+	// A lookup has a 100 ms budget, which a loaded runner under -race can miss
+	// once; the case protects which home is read, not how fast.
+	deadline := time.Now().Add(5 * time.Second)
 
-	if pane.AgentTopic != "Process profile title" {
-		t.Fatalf("topic = %q, want process HERMES_HOME", pane.AgentTopic)
+	for {
+		reader.Poll(client, []herdr.PaneInfo{info}, nil).Fill(context.Background(), pane)
+
+		if pane.AgentTopic == "Process profile title" {
+			return
+		}
+
+		if time.Now().After(deadline) {
+			t.Fatalf("topic = %q, want process HERMES_HOME", pane.AgentTopic)
+		}
+
+		time.Sleep(10 * time.Millisecond)
 	}
 }
 
