@@ -11,9 +11,6 @@ $result = 1
 $reason = 'The install was stopped.'
 
 try {
-    if ($Version -notmatch '^[0-9]{1,6}\.[0-9]{1,6}\.[0-9]{1,6}$') {
-        throw 'The release version is invalid.'
-    }
     $arch = $env:PROCESSOR_ARCHITEW6432
     if (-not $arch) { $arch = $env:PROCESSOR_ARCHITECTURE }
     switch ($arch) {
