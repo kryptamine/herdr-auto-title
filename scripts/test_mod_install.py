@@ -34,7 +34,6 @@ class GalleryInstall(unittest.TestCase):
     releases: pathlib.Path
     requests: list[str]
     routes: dict[str, str]
-    rejected_powershell: pathlib.Path
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -46,7 +45,6 @@ class GalleryInstall(unittest.TestCase):
         source = cls.work / "stub.go"
         source.write_text(
             'package main\nimport ("os"; "path/filepath"; "runtime"; "strings")\nfunc main() {\n'
-            'if os.Getenv("MOD_REJECT") == "1" { os.Exit(42) }\n'
             'f, err := os.OpenFile(os.Getenv("MOD_CALLED"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600); '
             "if err != nil { panic(err) }; defer f.Close()\n"
             "exe, err := os.Executable(); if err != nil { panic(err) }\n"
@@ -80,10 +78,6 @@ class GalleryInstall(unittest.TestCase):
             native_path = os.pathsep.join([system + r"\System32", system])
             cls.routes = {"Git Bash": without_go(cls.work), "PowerShell": native_path}
             cls.routes["Git shim"] = os.pathsep.join([str(git_shim(cls.work)), native_path])
-            cls.rejected_powershell = cls.work / "rejected shell"
-            exe = cls.rejected_powershell / "System32/WindowsPowerShell/v1.0/powershell.exe"
-            exe.parent.mkdir(parents=True)
-            shutil.copyfile(cls.stub, exe)
         else:
             cls.routes = {"sh": os.environ["PATH"]}
 
@@ -104,6 +98,9 @@ class GalleryInstall(unittest.TestCase):
             installer.mkdir(parents=True)
             for name in ("install.cmd", "install.sh", "install.ps1"):
                 shutil.copyfile(MOD / name, installer / name)
+            if reject:
+                # Windows 11 on Arm runs no batch file under a fake SystemRoot, so fail in PowerShell.
+                (installer / "install.ps1").write_text("param(\n", encoding="utf-8")
             data = folder / "data" / "auto-title-install-test"
             data.mkdir(parents=True)
             marker = folder / "called"
@@ -121,14 +118,11 @@ class GalleryInstall(unittest.TestCase):
                 HERDR_AUTO_TITLE_RELEASES=f"http://127.0.0.1:{self.server.server_address[1]}",
                 MOD_CALLED=str(marker),
                 MOD_FAIL="1" if fails else "0",
-                MOD_REJECT="1" if reject else "0",
                 PATH=self.routes[route],
             )
             env.pop("HC_TERMINAL_ID", None)
             if architecture:
                 env.update(PROCESSOR_ARCHITECTURE="x86", PROCESSOR_ARCHITEW6432=architecture.upper())
-            if reject:
-                env["SystemRoot"] = str(self.rejected_powershell)
             command = [os.environ["COMSPEC"], "/d", "/c", "install.cmd"] if WINDOWS else ["sh", "install.sh"]
             result = subprocess.run(
                 [*command, VERSION, "../../data/auto-title-install-test" if WINDOWS else str(data)],
@@ -192,6 +186,8 @@ class GalleryInstall(unittest.TestCase):
     def test_powershell_prefers_native_architecture(self) -> None:
         for arch in ("amd64", "arm64"):
             with self.subTest(architecture=arch):
+                if self.arch == "arm64" and arch != "arm64":
+                    self.skipTest("Windows 11 on Arm resets PROCESSOR_ARCHITECTURE for a native child")
                 self.run_case("PowerShell", architecture=arch)
 
 
