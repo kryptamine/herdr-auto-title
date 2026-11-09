@@ -53,11 +53,11 @@ try {
     $reason = $_.Exception.Message
 } finally {
     # A whole terminal killed by Windows cannot run finally; the popup times out.
-    $text = if ($result -eq 0) { "0`n" } else { "1`n$reason`n" }
-    if (Test-Path -LiteralPath $Directory) { [IO.File]::WriteAllText($status, $text) }
     foreach ($file in @($binary, $sums)) {
         if ($file -and (Test-Path -LiteralPath $file)) { Remove-Item -LiteralPath $file -Force }
     }
+    $text = if ($result -eq 0) { "0`n" } else { "1`n$reason`n" }
+    if (Test-Path -LiteralPath $Directory) { [IO.File]::WriteAllText($status, $text) }
 }
 
 if ($result -ne 0) {

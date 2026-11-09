@@ -138,11 +138,13 @@ desktop app teaches goes in
 make check-mod   # herdr-app check: loads the mod once, renders it, reports the error
 ```
 
-`python scripts/test_install.py` also exercises the gallery installers against
-local HTTP releases and a stub binary, never a real login service. On Windows,
-it covers PowerShell 5.1 without Bash on PATH, literal paths, status and cleanup,
-checksum/download/install failures, and native CPU selection from an emulated
-shell. Native ARM64 execution is covered by the Windows ARM64 CI runner.
+`python scripts/test_mod_install.py` exercises the gallery installers against
+local HTTP releases and a stub binary, never a real login service. CI runs it
+on Linux, macOS and Windows, each on x64 and ARM64. Windows tests cover Git
+Bash priority, Git shims, PowerShell 5.1 without Bash, fallback startup failure,
+literal paths, status and cleanup, checksum/download/install failures, and
+native CPU selection from an emulated shell. A Bash failure must not retry in
+PowerShell. `scripts/test_install.py` separately tests the TUI plugin installer.
 
 It needs the desktop app installed. The mod is plain JavaScript annotated with
 JSDoc, which an editor checks against the types below; keep every function

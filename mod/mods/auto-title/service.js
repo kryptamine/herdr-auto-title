@@ -3,6 +3,8 @@
 // says what state it is in (`desktop status`); this only asks it.
 
 import { platform } from "os";
+import { randomUUID } from "crypto";
+import { exists, mkdir, readFile, readdir, unlink, rmdir } from "fs/promises";
 import { appHome, exec, home, run } from "herdr";
 
 /** @typedef {{ version: string, running: boolean, latest?: string }} Copy
@@ -20,7 +22,6 @@ const INSTALL_TIMEOUT_MS = 10 * 60 * 1000;
 
 // A renamed mod must change this path to its scripts too.
 const MOD = `${appHome()}/mods/auto-title`;
-const POWERSHELL = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File"];
 
 // COPIES says where `desktop install` keeps its copy on each OS, as
 // internal/autostart does. An OS missing here is not supported yet.
@@ -32,7 +33,14 @@ const COPIES = {
 
     return `${data}/${NAME}/${NAME}`;
   },
-  windows: async () => (await windows("copy")).trim(),
+  windows: async () => (await output("powershell.exe", ["-NoProfile", "-Command",
+    "[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false); " +
+    "$root = $env:LOCALAPPDATA; " +
+    "if (-not $root -or $root.Replace('\\', '/') -notmatch '^(?:[a-z]:/|//[^/]+/[^/]+)') { " +
+    "$root = Join-Path ([Environment]::GetFolderPath('UserProfile')) 'AppData/Local' }; " +
+    "$copy = Join-Path $root 'herdr-auto-title/bin/herdr-auto-title.exe'; " +
+    "if (Test-Path -LiteralPath $copy -PathType Leaf) { [Console]::Write($copy) }",
+  ])).trim(),
 };
 
 const os = { darwin: "macos", win32: "windows" }[platform()] ?? platform();
@@ -43,13 +51,8 @@ export const supported = where !== undefined;
 // unsupported is what the popup says on an OS with no copy to ask.
 export const unsupported = `Not available on ${{ windows: "Windows" }[os] ?? os} yet.`;
 
-/** @param {string} operation @param {string} [path] @returns {Promise<string>} */
-function windows(operation, path = "") {
-  return output("powershell.exe", [...POWERSHELL, `${MOD}/windows.ps1`, operation, path]);
-}
-
 /** copy is the installed copy's path; the strip asks it of no OS it does not support.
- *  @returns {Promise<string>} */
+ *  Windows returns an empty path when no copy exists. @returns {Promise<string>} */
 function copy() {
   if (!where) {
     throw new Error(unsupported);
@@ -77,12 +80,18 @@ async function output(program, args, step = program) {
  *  @returns {Promise<Copy | null>} */
 export async function installed() {
   const path = await copy();
-  const { code } = os === "windows"
-    ? await exec("powershell.exe", [...POWERSHELL, `${MOD}/windows.ps1`, "exists", path])
-    : await exec("test", ["-x", path]);
 
-  if (code !== 0) {
+  if (!path) {
     return null;
+  }
+
+  // Native file reads cannot reach an XDG directory outside the user's home.
+  if (os !== "windows") {
+    const { code } = await exec("test", ["-x", path]);
+
+    if (code !== 0) {
+      return null;
+    }
   }
 
   return parseCopy(await output(path, ["desktop", "status"], "desktop status"));
@@ -136,14 +145,24 @@ export function newest(copy) {
 /** install puts a release in place from a new tab, and waits for
  *  the status it writes. @param {string} version @param {Step} step @param {Sleep} sleep */
 export async function install(version, step, sleep) {
-  const dir = (await (os === "windows" ? windows("temp") : output("mktemp", ["-d"]))).trim();
+  if (!/^[0-9]{1,6}\.[0-9]{1,6}\.[0-9]{1,6}$/.test(version)) {
+    throw new Error("The release version is invalid.");
+  }
+
+  const folder = `data/auto-title-install-${randomUUID()}`;
+  const dir = `${appHome()}/${folder}`;
+
+  await mkdir(dir, { recursive: true });
 
   try {
     step(`Installing ${version} in a new tab…`);
+
+    // CMD receives only a version and a generated relative path, never a user path.
     const argv = os === "windows"
-      ? ["powershell.exe", ...POWERSHELL, `${MOD}/install.ps1`, version, dir]
+      ? ["cmd.exe", "/d", "/c", "install.cmd", version, `../../${folder}`]
       : ["sh", `${MOD}/install.sh`, version, dir];
-    run("terminal.open", { argv, name: "Auto Title install" });
+
+    run("terminal.open", { argv, folder: MOD, name: "Auto Title install" });
 
     const [code, reason] = await status(dir, sleep);
 
@@ -151,11 +170,11 @@ export async function install(version, step, sleep) {
       throw new Error(reason ?? "The install failed.");
     }
   } finally {
-    if (os === "windows") {
-      await windows("clean", dir);
-    } else {
-      await exec("rm", ["-rf", dir]);
+    for (const file of await readdir(dir)) {
+      await unlink(`${dir}/${file}`);
     }
+
+    await rmdir(dir);
   }
 }
 
@@ -163,12 +182,12 @@ export async function install(version, step, sleep) {
  *  @param {string} dir @param {Sleep} sleep @returns {Promise<string[]>} */
 async function status(dir, sleep) {
   for (let waited = 0; waited < INSTALL_TIMEOUT_MS; waited += POLL_MS) {
-    const { code, stdout } = os === "windows"
-      ? await exec("powershell.exe", [...POWERSHELL, `${MOD}/windows.ps1`, "status", dir])
-      : await exec("cat", [`${dir}/status`]);
+    if (await exists(`${dir}/status`)) {
+      const text = (await readFile(`${dir}/status`, "utf8")).trim();
 
-    if (code === 0 && stdout.trim()) {
-      return stdout.trim().split("\n");
+      if (text) {
+        return text.split(/\r?\n/);
+      }
     }
 
     await sleep(POLL_MS);
@@ -180,5 +199,11 @@ async function status(dir, sleep) {
 /** start has the copy install itself again, which starts its service with no
  *  download: the copy keeps its own version. */
 export async function start() {
-  await output(await copy(), ["desktop", "install"], "desktop install");
+  const path = await copy();
+
+  if (!path) {
+    throw new Error("The installed copy is missing.");
+  }
+
+  await output(path, ["desktop", "install"], "desktop install");
 }

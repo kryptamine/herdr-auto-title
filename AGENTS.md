@@ -118,9 +118,10 @@ code, so a newer call inside a function passes. Read a new stdlib call for it.
 POSIX `sh` owns installation; CMD locates Git Bash or builds with Go directly.
 `scripts/test_install.py` exercises the manifest's command on each platform
 ([installation](docs/architecture/installation.md) says why).
-The gallery mod uses `mod/mods/auto-title/install.sh` on Unix and native
-Windows PowerShell 5.1 in `install.ps1` and `windows.ps1` on Windows, where
-Git Bash is not required. `scripts/test_install.py` exercises both installers;
+The gallery mod uses `mod/mods/auto-title/install.sh` on Unix. On Windows,
+`install.cmd` prefers Git Bash and falls back to Windows PowerShell 5.1
+(`install.ps1`) only when Bash is unavailable. `scripts/test_mod_install.py`
+exercises these routes on all six release platforms;
 `make lint-scripts` holds the shell installer to shellcheck too.
 
 ## Comment rule (mandatory)
