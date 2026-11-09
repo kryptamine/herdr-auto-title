@@ -78,6 +78,10 @@ remove Auto Title, have the service's copy uninstall itself:
 ./herdr-auto-title desktop uninstall   # stop it and remove it
 ```
 
+On Windows the popup prefers Git Bash and uses Windows PowerShell 5.1 when
+Git Bash is unavailable. If policy blocks PowerShell scripts, install Git for
+Windows or use a release binary directly. No Go installation is needed.
+
 On Windows the binary is `herdr-auto-title.exe`, and the service is a Task
 Scheduler task; its copy is
 `%LOCALAPPDATA%\herdr-auto-title\bin\herdr-auto-title.exe`, which

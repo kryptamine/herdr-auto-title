@@ -381,9 +381,10 @@ place that knows how a service is set up.
   the service found ([updates](#updates)). A binary runs only after its
   checksum matched `SHA256SUMS`, as in [installation](./installation.md).
 - **The install runs in a terminal tab, not through `exec`**, which gives up
-  after 30 s, too soon for a slow download. `run("terminal.open")` returns
+  after 30 s by default, too soon for a slow download. `run("terminal.open")` returns
   nothing to follow, so `install.sh`, beside the mod, writes its result to a
-  status file in its `mktemp -d` folder, which the popup reads every second.
+  status file in a unique folder under `appHome()/data`, which the popup reads
+  every second using `fs/promises`.
   Under `mods/`, a saved file would reload the mod mid-install.
 - **`terminal.open` leaves a login shell in the tab** once its `argv` exits:
   measured on herdr-app 0.1.13, it runs `zsh -lic '"$@"; exec "$0" -li'` with
@@ -418,7 +419,8 @@ place that knows how a service is set up.
   the window, and the frame after it shows the overlay.
 - **The popup can close mid-install**, and its copy and wait loop with it.
   `install.sh` therefore deletes its own download, and the popup reads the
-  copy afresh when it opens again.
+  copy afresh when it opens again. A closed popup leaves its small status
+  directory behind; the installer still removes downloaded files.
 - `herdr-app check` writes `gpui-kit.d.ts` and `jsconfig.json` into the mod's
   folder; `.gitignore` keeps them out. `window()` is null there, so the
   platform comes from `os`.
@@ -446,9 +448,19 @@ Windows PowerShell 5.1.26100.9444:
 - `run("terminal.open", {argv, name})` returns `null`, with no terminal ID.
   The same arguments reached a script in a new tab; `HC_TERMINAL_ID` identified
   that tab and `hc kill` closed it without touching the original terminal.
-- The mod uses native PowerShell for copy lookup, temporary folders and status,
-  and `Invoke-WebRequest` plus .NET SHA256 for installation. It needs neither
-  Git Bash nor Go. The copy path follows `internal/autostart/scheduler.go`.
+- `install.cmd` locates Git Bash beside Git or via `git --exec-path`, validates
+  its Windows runtime, and runs the shared `install.sh`. Only an unavailable
+  Bash selects `install.ps1`, using `Invoke-WebRequest` and .NET SHA256;
+  an install failure never retries through another route. Neither needs Go.
+- A fixed PowerShell `-Command` reads `LOCALAPPDATA`; paths are never inserted
+  into that command. The command also checks whether the copy exists, including outside
+  the user home. Native `fs/promises` handles staging and status. The copy path follows `internal/autostart/scheduler.go`.
+- Execution-policy restrictions can still block the fallback's `-File` entry.
+  CMD reports that startup failure to the popup and keeps the terminal error
+  visible. It does not change machine or user policy.
+- CMD receives a validated version and a generated relative staging path;
+  its working directory is the mod folder. This keeps `&` in a user profile
+  path out of CMD's argument parser, even when that path has no spaces.
 - Windows can terminate a whole terminal without running PowerShell's `finally`.
   An open popup therefore falls back to its existing ten-minute timeout and
   cleanup. Closing the popup too can leave a temporary folder after a forced
@@ -459,7 +471,12 @@ app errors. Local HTTP fixtures exercised successful installation, missing
 releases, checksum mismatches, failed `desktop install`, and ARM64/AMD64 asset
 selection under emulated environment variables, using a stub executable that
 only recorded its arguments. No real login service was installed in this probe.
-Native ARM64 execution remains for the existing Windows ARM64 CI runner.
+The installer CI matrix runs the same fixtures on Linux, macOS and Windows,
+each on x64 and ARM64; Windows exercises both Bash and PowerShell routes.
+The current `service.js` was also exercised in the live app with a harmless
+CMD stub: status lookup, terminal launch, native status polling and directory
+cleanup completed without changing the original terminal or installing a
+service. The app reported no errors afterward.
 
 ### Socket transport
 

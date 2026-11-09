@@ -14,17 +14,20 @@ The popup is only the installer. The work is done by the `herdr-auto-title`
 binary, which `desktop install` has launchd (macOS), the systemd user manager
 (Linux) or Task Scheduler (Windows) start at login. The mod **reaches the
 network** (GitHub, for the release it belongs to) and **runs programs**: on
-Unix, its `install.sh`, in a tab of
-its own, which runs `uname`, `curl`, `awk`, `shasum` or `sha256sum` and `chmod`,
-then the downloaded binary, only after its checksum matched; and `mktemp`,
-`cat`, `rm`, `test` and the installed copy, which it asks `desktop status`. It
-writes no file itself; the binary writes its own copy and service definition.
+Unix, its `install.sh` in a tab of its own, which runs `uname`, `curl`,
+`awk`, `shasum` or `sha256sum` and `chmod`, then the downloaded binary only
+after its checksum matched. The popup uses `fs/promises` for temporary files
+under `appHome()/data` and asks the installed copy for `desktop status`.
+The binary writes its own copy and service definition.
 
-On Windows, `windows.ps1` locates the copy and manages the temporary status
-folder; `install.ps1` downloads with `Invoke-WebRequest`, verifies with
-.NET SHA256 and runs the checked binary. Both use Windows PowerShell 5.1,
-with no Git Bash or Go dependency. Paths are separate `-File` arguments,
-never interpolated PowerShell code.
+On Windows, `install.cmd` prefers Git Bash, including Git installed through a
+shim. Without a usable Git Bash it runs `install.ps1` with Windows PowerShell
+5.1: `Invoke-WebRequest` downloads and .NET SHA256 checks the binary. A Bash
+install failure does not trigger the fallback. Neither route needs Go.
+A fixed PowerShell `-Command` reads `LOCALAPPDATA` and checks for the installed copy.
+Policy can block the fallback's `.ps1`; CMD reports this instead of leaving
+the popup waiting. Install Git for Windows or use a release binary directly
+if your policy prevents it. No machine or user execution policy is changed.
 
 The mod has no place in any layout, so it changes none: it opens over the
 window and goes with `Esc` or a click elsewhere. Nothing opens it the first
@@ -79,14 +82,14 @@ Top to bottom:
   one the service found: `desktop status` reports it as `latest`, and the
   service opens this popup once when it finds one.
 - **Install / Update / Reinstall** opens a tab named "Auto Title install" that runs the
-  mod's `install.sh` (Windows: `install.ps1`): it finds the asset for this machine
+  mod's `install.sh` (Windows: `install.cmd`): it finds the asset for this machine
   (`herdr-auto-title-<macos|linux|windows>-<amd64|arm64>`, with `.exe` on Windows), downloads it with a progress
-  bar and `SHA256SUMS` from `releases/download/v<VERSION>/` into a `mktemp -d`
-  folder, compares the checksums and runs `<binary> desktop install`. It writes
+  bar and `SHA256SUMS` from `releases/download/v<VERSION>/` into a unique
+  folder under `appHome()/data`, compares the checksums and runs `<binary> desktop install`. It writes
   `0`, or `1` and why, to `status` in that folder; the popup reads it every
   second, for up to ten minutes, and removes the folder after. On a failure the
-  tab says why and waits for Enter; either way the script then deletes the
-  download and closes its tab.
+  script deletes the download before publishing status, then the tab says
+  why and waits for Enter. The script closes its own tab when it exits.
   On Unix, closing the tab or Ctrl+C writes "The install was stopped." at once.
   On Windows, killing the whole terminal can bypass PowerShell cleanup; the
   popup then reports its ten-minute timeout and removes its temporary folder.
@@ -108,12 +111,13 @@ Top to bottom:
   table of where each OS keeps the copy, then `installed`, `older`, `install`,
   `newest` and `start`) and `install.sh` (the download, the
   checksum and `desktop install`, run as `sh <appHome>/mods/auto-title/install.sh
-  <version> <dir>`). Windows uses `powershell.exe -NoProfile -ExecutionPolicy
-  Bypass -File <appHome>/mods/auto-title/install.ps1 <version> <dir>`, with
-  `windows.ps1` for copy lookup, temporary folders, status reads and cleanup.
+  <version> <dir>`). Windows uses `cmd.exe /d /c install.cmd <version> <dir>` with the mod
+  folder as its working directory. CMD selects Git Bash or the PowerShell
+  fallback, and forwards the installer exit code.
   No layout, no art.
 - `keys.json` beside `mods/`: `{ "global": { "cmd-alt-t": "mod.open:auto-title" } }`.
 - `herdr`: `exec`, `run` (`terminal.open`), `appHome`, `home`, `theme`.
+  `fs/promises`: staging and status files. `crypto`: `randomUUID`.
   `os`: `platform`. `gpui-base`: `h_flex`, `v_flex`. The wait between status
   reads is `cx.sleep`.
 - The copy lives where `desktop install` puts it:
@@ -124,7 +128,7 @@ Top to bottom:
 
 ## Watch out
 
-- **`exec` stops at 30s**, and a download can take longer, so the install runs
+- **`exec` defaults to 30s**, and a download can take longer, so the install runs
   in a terminal, where nothing stops it, rather than through `exec`.
 - **`run` returns nothing**, so the popup cannot follow the tab it opened; the
   status file is how the script reports back.
@@ -138,11 +142,12 @@ Top to bottom:
   layout of the person's own. The popup needs none.
 - **The popup can close mid-install**, on `Esc` or a click elsewhere, and its
   copy goes with it. So `install.sh` deletes its own download, and the popup
-  reads the copy afresh whenever it opens again.
+  reads the copy afresh whenever it opens again. Its small status directory
+  remains when the popup cannot finish cleanup.
 - **Windows chooses the native CPU**, using `PROCESSOR_ARCHITEW6432` before
   `PROCESSOR_ARCHITECTURE`, so an emulated shell still downloads ARM64 on ARM64.
   The installer removes its download before waiting for Enter after a failure.
-- **Downloads go to `mktemp -d`, never under `mods/`**: a file saved there
+- **Downloads go under `appHome()/data`, never under `mods/`**: a file saved there
   reloads every copy of the mod.
 - **`service.js` names `install.sh` by its path under `mods/auto-title/`**: a
   copy added under another name has to rename that path too.
