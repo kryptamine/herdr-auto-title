@@ -20,19 +20,26 @@ const NAME = "herdr-auto-title";
 const POLL_MS = 1000;
 const INSTALL_TIMEOUT_MS = 10 * 60 * 1000;
 
+// RELEASE is the only spelling a version may take on its way into a download URL.
+const RELEASE = /^[0-9]{1,6}\.[0-9]{1,6}\.[0-9]{1,6}$/;
+
 // A renamed mod must change this path to its scripts too.
 const MOD = `${appHome()}/mods/auto-title`;
 
-// COPIES says where `desktop install` keeps its copy on each OS, as
-// internal/autostart does. An OS missing here is not supported yet.
+// COPIES finds the copy `desktop install` keeps on each OS, as internal/autostart
+// places it, or "" when there is none. An OS missing here is not supported yet.
+// Native file reads cannot reach an XDG directory outside the user's home.
 /** @type {Record<string, () => Promise<string>>} */
 const COPIES = {
-  macos: () => Promise.resolve(`${home()}/Library/Application Support/${NAME}/bin/${NAME}`),
-  linux: async () => {
-    const data = await output("sh", ["-c", 'printf %s "${XDG_DATA_HOME:-$HOME/.local/share}"']);
+  macos: async () => {
+    const path = `${home()}/Library/Application Support/${NAME}/bin/${NAME}`;
+    const { code } = await exec("test", ["-x", path]);
 
-    return `${data}/${NAME}/${NAME}`;
+    return code === 0 ? path : "";
   },
+  linux: () => output("sh", ["-c",
+    `copy="\${XDG_DATA_HOME:-$HOME/.local/share}/${NAME}/${NAME}"; if [ -x "$copy" ]; then printf %s "$copy"; fi`,
+  ]),
   windows: async () => (await output("powershell.exe", ["-NoProfile", "-Command",
     "[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false); " +
     "$root = $env:LOCALAPPDATA; " +
@@ -49,10 +56,10 @@ const where = COPIES[os];
 export const supported = where !== undefined;
 
 // unsupported is what the popup says on an OS with no copy to ask.
-export const unsupported = `Not available on ${{ windows: "Windows" }[os] ?? os} yet.`;
+export const unsupported = `Not available on ${os} yet.`;
 
-/** copy is the installed copy's path; the strip asks it of no OS it does not support.
- *  Windows returns an empty path when no copy exists. @returns {Promise<string>} */
+/** copy is the installed copy's path, or "" when there is none; the popup asks
+ *  it of no OS it does not support. @returns {Promise<string>} */
 function copy() {
   if (!where) {
     throw new Error(unsupported);
@@ -85,15 +92,6 @@ export async function installed() {
     return null;
   }
 
-  // Native file reads cannot reach an XDG directory outside the user's home.
-  if (os !== "windows") {
-    const { code } = await exec("test", ["-x", path]);
-
-    if (code !== 0) {
-      return null;
-    }
-  }
-
   return parseCopy(await output(path, ["desktop", "status"], "desktop status"));
 }
 
@@ -118,22 +116,19 @@ function parseCopy(json) {
   throw new Error(`desktop status: not a status: ${json.trim()}`);
 }
 
-/** older is whether version a comes before version b, part by part.
+/** older is whether version a comes before version b, part by part, as the
+ *  binary orders them: a spelling that is not a version is never older or newer.
  *  @param {string} a @param {string} b @returns {boolean} */
 export function older(a, b) {
-  const x = a.split(".").map(Number);
-  const y = b.split(".").map(Number);
-
-  for (let i = 0; i < Math.max(x.length, y.length); i++) {
-    const p = x[i] ?? 0;
-    const q = y[i] ?? 0;
-
-    if (p !== q) {
-      return p < q;
-    }
+  if (!RELEASE.test(a) || !RELEASE.test(b)) {
+    return false;
   }
 
-  return false;
+  const x = a.split(".").map(Number);
+  const y = b.split(".").map(Number);
+  const i = x.findIndex((p, j) => p !== y[j]);
+
+  return i >= 0 && x[i] < y[i];
 }
 
 /** newest is the release to install: this mod's, or a newer one the service
@@ -145,7 +140,7 @@ export function newest(copy) {
 /** install puts a release in place from a new tab, and waits for
  *  the status it writes. @param {string} version @param {Step} step @param {Sleep} sleep */
 export async function install(version, step, sleep) {
-  if (!/^[0-9]{1,6}\.[0-9]{1,6}\.[0-9]{1,6}$/.test(version)) {
+  if (!RELEASE.test(version)) {
     throw new Error("The release version is invalid.");
   }
 
