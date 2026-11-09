@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
-"""Run this platform's install script against releases served locally.
-
-Each case installs a copy of the plugin and checks what ended up in its root.
-The binary served is the one scripts/dist.py builds, so the two agree on names.
-The gallery mod's install.sh is run against the same releases, with a stub for
-the binary, so that no case starts a service on the machine running it.
-"""
+"""Test plugin and gallery installers against local releases, with stub services."""
 
 from __future__ import annotations
 
@@ -30,7 +24,8 @@ from dist import NAME, ROOT
 
 WINDOWS = sys.platform == "win32"
 BINARY = NAME + (".exe" if WINDOWS else "")
-MOD_INSTALL = ROOT / "mod" / "mods" / "auto-title" / "install.sh"
+MOD = ROOT / "mod" / "mods" / "auto-title"
+POWERSHELL = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File"]
 
 
 class QuietHandler(http.server.SimpleHTTPRequestHandler):
@@ -181,6 +176,45 @@ def reported(root: pathlib.Path) -> str:
     return subprocess.run([str(binary), "--version"], capture_output=True, text=True).stdout.strip()
 
 
+def check_mod_windows(work: pathlib.Path) -> None:
+    """Check literal paths, copy lookup and the guard on temporary-folder removal."""
+    helper = [*POWERSHELL, str(MOD / "windows.ps1")]
+
+    def ask(operation: str, path: str = "", **environment: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [*helper, operation, path],
+            env=dict(os.environ, **environment),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            timeout=15,
+        )
+
+    local = work / "local ' & $ \u00e9"
+    located = ask("copy", LOCALAPPDATA=str(local))
+    assert located.returncode == 0, located.stderr
+    assert pathlib.Path(located.stdout) == local / NAME / "bin" / BINARY
+    fallback = ask("copy", LOCALAPPDATA="relative")
+    assert pathlib.Path(fallback.stdout) == pathlib.Path.home() / "AppData" / "Local" / NAME / "bin" / BINARY
+    created = ask("temp")
+    assert created.returncode == 0, created.stderr
+    folder = pathlib.Path(created.stdout)
+    assert folder.is_dir()
+    try:
+        assert ask("status", str(folder)).returncode == 1
+        status = folder / "status"
+        status.write_text("1\nFailure with \u00e9\n", encoding="utf-8")
+        assert ask("status", str(folder)).stdout == "1\nFailure with \u00e9\n"
+        assert ask("exists", str(status)).returncode == 0
+        assert ask("exists", str(folder)).returncode == 1
+        assert ask("clean", str(work)).returncode != 0
+        assert work.is_dir()
+    finally:
+        removed = ask("clean", str(folder))
+        assert removed.returncode == 0, removed.stderr
+    assert not folder.exists()
+
+
 def main() -> None:
     version = manifest_version()
     work = pathlib.Path(tempfile.mkdtemp(prefix=NAME + "-test-"))
@@ -253,38 +287,72 @@ def main() -> None:
     case("binary of another version, no Go", no_go, False, "not 0.0.1", checkout="0.0.1")
     case("binary that does not run, no Go", no_go, False, "does not run", serve=garbage)
 
+    mod_stub = work / "mod-stub.exe"
+    if WINDOWS:
+        source = work / "mod-stub.go"
+        source.write_text(
+            'package main\nimport ("os"; "strings")\nfunc main() {\n'
+            'if err := os.WriteFile(os.Getenv("MOD_CALLED"), []byte(strings.Join(os.Args[1:], " ")), 0600); '
+            'err != nil { panic(err) }; if os.Getenv("MOD_FAIL") == "1" { os.Exit(1) }\n}\n'
+        )
+        subprocess.run(["go", "build", "-o", str(mod_stub), str(source)], check=True)
+
     def mod_case(title: str, needle: str, called: bool, **release: Any) -> None:
-        """Run the gallery mod's install.sh against one release of a stub binary."""
+        """Run the gallery installer against a stub; never register a real service."""
         print(f"--- mod: {title}", file=sys.stderr)
         shutil.rmtree(releases)
         releases.mkdir()
         with tempfile.TemporaryDirectory(dir=work) as scratch:
-            folder = pathlib.Path(scratch)
+            folder = pathlib.Path(scratch) / "mod with spaces ' & Unicode \u00e9"
+            folder.mkdir()
             marker = folder / "called"
-            stub = folder / "stub" / asset.name
+            architecture = release.get("architecture")
+            asset_name = f"{NAME}-windows-{architecture}.exe" if architecture else asset.name
+            stub = folder / "stub" / asset_name
             stub.parent.mkdir()
-            stub.write_text(f'#!/bin/sh\nprintf %s "$*" > "{marker}"\n')
+            if WINDOWS:
+                shutil.copyfile(mod_stub, stub)
+            else:
+                stub.write_text(f'#!/bin/sh\nprintf %s "$*" > "{marker}"\n')
             if release.get("published", True):
                 publish(releases, f"download/v{version}", stub, "0" * 40, release.get("tamper", False))
-            env = dict(os.environ, HERDR_AUTO_TITLE_RELEASES=base)
+            env = dict(os.environ, HERDR_AUTO_TITLE_RELEASES=base, MOD_CALLED=str(marker))
+            system = os.environ.get("SYSTEMROOT", r"C:\Windows")
+            if WINDOWS:
+                env["PATH"] = os.pathsep.join([system + r"\System32", system])
+                if architecture:
+                    env["PROCESSOR_ARCHITECTURE"] = "x86"
+                    env["PROCESSOR_ARCHITEW6432"] = architecture.upper()
+            if release.get("fails"):
+                env["MOD_FAIL"] = "1"
             # Inside Herdr the script would close the terminal running the test.
             env.pop("HC_TERMINAL_ID", None)
-            subprocess.run(
-                ["sh", str(MOD_INSTALL), version, str(folder)],
+            command = [*POWERSHELL, str(MOD / "install.ps1")] if WINDOWS else ["sh", str(MOD / "install.sh")]
+            if WINDOWS:
+                command[0] = system + r"\System32\WindowsPowerShell\v1.0\powershell.exe"
+            result = subprocess.run(
+                [*command, version, str(folder)],
                 env=env,
                 stdin=subprocess.DEVNULL,
                 capture_output=True,
                 check=False,
+                timeout=60,
             )
-            status = (folder / "status").read_text() if (folder / "status").exists() else ""
+            status = (folder / "status").read_text(encoding="utf-8") if (folder / "status").exists() else ""
             ran = marker.exists() and marker.read_text() == "desktop install"
             if needle not in status or ran != called:
-                failures.append(f"mod: {title}: status {status!r}, desktop install run: {ran}")
+                failures.append(f"mod: {title}: status {status!r}, desktop install run: {ran}, {result.stderr!r}")
+            if WINDOWS and ((folder / asset_name).exists() or (folder / "SHA256SUMS").exists()):
+                failures.append(f"mod: {title}: download left behind")
 
-    if not WINDOWS:
-        mod_case("this release", "0", True)
-        mod_case("checksum mismatch", "does not match SHA256SUMS", False, tamper=True)
-        mod_case("release not out", f"The download of {version} failed.", False, published=False)
+    mod_case("this release", "0", True)
+    mod_case("checksum mismatch", "does not match SHA256SUMS", False, tamper=True)
+    mod_case("release not out", f"The download of {version} failed.", False, published=False)
+    if WINDOWS:
+        check_mod_windows(work)
+        mod_case("desktop install fails", "desktop install failed", True, fails=True)
+        mod_case("native ARM64 selected from emulation", "0", True, architecture="arm64")
+        mod_case("native AMD64 selected from emulation", "0", True, architecture="amd64")
 
     if WINDOWS:
         system = os.environ.get("SYSTEMROOT", r"C:\Windows")

@@ -138,6 +138,12 @@ desktop app teaches goes in
 make check-mod   # herdr-app check: loads the mod once, renders it, reports the error
 ```
 
+`python scripts/test_install.py` also exercises the gallery installers against
+local HTTP releases and a stub binary, never a real login service. On Windows,
+it covers PowerShell 5.1 without Bash on PATH, literal paths, status and cleanup,
+checksum/download/install failures, and native CPU selection from an emulated
+shell. Native ARM64 execution is covered by the Windows ARM64 CI runner.
+
 It needs the desktop app installed. The mod is plain JavaScript annotated with
 JSDoc, which an editor checks against the types below; keep every function
 typed, braces on every `if`, and a blank line between steps, as `wsl` spaces

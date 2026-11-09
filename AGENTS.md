@@ -118,9 +118,10 @@ code, so a newer call inside a function passes. Read a new stdlib call for it.
 POSIX `sh` owns installation; CMD locates Git Bash or builds with Go directly.
 `scripts/test_install.py` exercises the manifest's command on each platform
 ([installation](docs/architecture/installation.md) says why).
-The gallery mod's `mod/mods/auto-title/install.sh` is the same step for the
-desktop app, and POSIX `sh` for the same reason; `make lint-scripts` holds it
-to shellcheck too.
+The gallery mod uses `mod/mods/auto-title/install.sh` on Unix and native
+Windows PowerShell 5.1 in `install.ps1` and `windows.ps1` on Windows, where
+Git Bash is not required. `scripts/test_install.py` exercises both installers;
+`make lint-scripts` holds the shell installer to shellcheck too.
 
 ## Comment rule (mandatory)
 
@@ -297,6 +298,9 @@ are only the facts that would otherwise mislead the code in silence.
 - Windows Desktop uses a Unix socket for the app and a named pipe for core.
   The measured scope and remaining gaps are in
   [desktop-api.md](docs/architecture/desktop-api.md#windows-transport-probe).
+- Windows mod scripts take literal `-File` arguments. `terminal.open` returns
+  no ID; the script closes its own `HC_TERMINAL_ID`. See the measured
+  [gallery protocol](docs/architecture/desktop-api.md#gallery-mod-on-windows).
 
 - Work from the issue the change belongs to; [CONTRIBUTING.md](CONTRIBUTING.md)
   says when one is needed. If an issue turns out to rest on something false
