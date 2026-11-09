@@ -16,7 +16,7 @@ import threading
 import unittest
 
 from dist import NAME, ROOT
-from test_install import WINDOWS, QuietHandler, git_shim, publish, without_go
+from release_fixture import WINDOWS, QuietHandler, git_shim, publish, without_go
 
 VERSION = "0.21.0"
 MOD = ROOT / "mod" / "mods" / "auto-title"
