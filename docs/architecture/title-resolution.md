@@ -193,8 +193,8 @@ directory's. The state is `>` idle, `!` waiting on the user, and while omp
 works a spinner frame redrawn every 80 ms — braille by default, a pulsing moon
 `○◔◑◕●` or `- \ | /` by setting. Read as it is, that title is a new one on
 every frame and renames the tab as often. `withoutOmpFrame`
-(`internal/resolver/omp.go`) takes the glyph and the one state grapheme off, and
-`π: <name>`, the frame with the state turned off; a name that is the pane's
+(`internal/resolver/omp.go`) takes the glyph and the one state grapheme off, or the
+`π:` of a frame with the state turned off; a name that is the pane's
 directory declines like Pi's. The format is omp's `buildTerminalTitleWithState`.
 
 ### The session transcript
