@@ -701,6 +701,34 @@ Exactly, and no more than that — the rule below makes the same trade. A worktr
 whose directory spells its branch differently (`xl-knp-3` against `xl-knp.3`)
 keeps both, because nothing here can tell a near-miss from two real facts.
 
+## Session-only mode
+
+`HERDR_AUTO_TITLE_SESSION_ONLY=true` names a tab or pane only from the name its
+agent session holds, and leaves the label alone until one exists:
+
+| Agent           | Name used                                                 |
+| --------------- | --------------------------------------------------------- |
+| Claude Code     | its custom or generated title                             |
+| Codex           | its index name                                            |
+| Pi              | its session name                                          |
+| Hermes          | its native title, when `title_source` is `llm` or `user`  |
+| Antigravity CLI | its annotation title                                      |
+| Grok Build      | its summary's `generated_title`                           |
+
+Opening-prompt fallbacks are skipped, and nothing else stands in: no terminal
+title, process or directory. A missing name, or one that sanitizes to a generic
+fallback, keeps the existing label, including after the agent exits or `/new`.
+Only Hermes says where its title came from (`derived` is its provisional
+opening-prompt title, and is skipped), so another agent's stored name may still
+be prompt text.
+
+The position, pane ID, icon and status decorations still apply to a usable
+name. Workspace topics keep their own resolver but share the session reads, so
+they skip the same fallbacks. With `HERDR_AUTO_TITLE_TRANSCRIPT=false` there is
+nothing left to read, so Auto Title warns and renames nothing. How the mode
+treats existing names at startup is in
+[manual rename protection](manual-rename-protection.md#session-only-startup-and-persisted-names).
+
 ## The workspace topic
 
 The sidebar row under a workspace's name shows its `topic` token, which is what

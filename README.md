@@ -161,40 +161,38 @@ not read.
 
 On Windows Herdr reports only the shell or a recognised agent per pane, so this setting and the built-in herdr-mirror check may not detect a label-owning program there.
 
-Set `HERDR_AUTO_TITLE_SESSION_ONLY=true` to name tabs and panes from session
-names only. Hermes requires `title_source=llm` or `user`; Claude uses a custom
-or generated title, Pi its session name, and Codex its index name. Opening-prompt
-fallbacks are skipped. Antigravity uses its annotation title and Grok Build its
-summary's `generated_title`. These other agents do not expose Hermes's provenance
-check, so a stored name may still contain prompt text. Missing or generic names
-keep the existing label, including after exit or `/new`; terminal titles,
-processes and directories do not substitute. Position, pane ID, icon and status
-settings still apply to usable names. Existing user names are protected even on
-the first poll, and those locks are ordinary ones: turning the mode off again
-does not release them, but clearing the name does. The labels Auto Title set
-are saved in both modes, after the first poll and after any poll that renamed
-something, so a restart or mode switch can update them, provided the
-name-state file is writable. That file therefore also holds generated names,
-which can come from what an agent session is about. An empty
-`HERDR_AUTO_TITLE_MANUAL_FILE` keeps ownership in memory only. The default
-remains normal naming, and it never locks a name on its first poll.
-`HERDR_AUTO_TITLE_TRANSCRIPT=false` leaves session-only mode with no names to
-read, so Auto Title warns and renames nothing. Workspace topics retain their own resolver, but share session
-reads and therefore also skip these opening-prompt fallbacks.
+`HERDR_AUTO_TITLE_TRANSCRIPT=false` also stops Hermes reads and drops the
+branch from a tab whose agent works in a git worktree: the transcript is what
+names that worktree.
 
-Hermes session titles use the native `sessions.title` in `state.db`, not chat
-messages or a new LLM call. They need a Herdr integration reporting the Hermes
-session ID. Linux first uses the foreground process's `HERMES_HOME` when readable;
-otherwise Auto Title searches the plugin's `HERMES_HOME`, the configured extra
-homes, and `~/.hermes`, including their `profiles/*` homes. A session ID found in
-multiple homes is ambiguous and falls back rather than choosing another profile.
-Use absolute paths, not `~`, in configuration. Details and limits are in
+### Session-only mode
+
+`HERDR_AUTO_TITLE_SESSION_ONLY=true` names tabs and panes only from the name
+their agent session holds: Claude Code's title, Codex's index name, Pi's
+session name, Hermes's native title, Antigravity's annotation, Grok Build's
+generated title.
+
+- Until a usable name exists, the label stays as it is. No terminal title,
+  process, directory or opening prompt stands in, even after `/new` or exit.
+- Names already set by hand are protected from the first poll. Turning the mode
+  off keeps them locked; clear a name to hand it back.
+- Only Hermes says where its title came from, so another agent's stored name
+  may still be prompt text.
+- Auto Title records the labels it set in `HERDR_AUTO_TITLE_MANUAL_FILE`, so a
+  restart does not mistake them for yours. That file therefore holds generated
+  names too; left empty, nothing survives a restart.
+
+Details are in [title resolution](docs/architecture/title-resolution.md#session-only-mode).
+
+### Hermes
+
+Hermes titles are read from `sessions.title` in its `state.db`, read-only: no
+chat messages, no LLM call. They need a Herdr integration that reports the
+Hermes session ID. Auto Title looks in the foreground process's `HERMES_HOME`
+on Linux, then in the plugin's `HERMES_HOME`, `HERDR_AUTO_TITLE_HERMES_HOMES`
+and `~/.hermes`, each with its `profiles/*`. Paths must be absolute. A session
+found in two homes names nothing. Details are in
 [Hermes session titles](docs/architecture/hermes-session-titles.md).
-
-Turning `HERDR_AUTO_TITLE_TRANSCRIPT` off also disables Hermes database reads.
-It also drops the branch from a tab whose
-agent is working in a git worktree, because the transcript is what says which
-worktree that is.
 
 ## Restarting
 
