@@ -12,8 +12,10 @@
 
 https://github.com/user-attachments/assets/46fa98e7-416f-4cca-b024-82bc641cd0d2
 
-A [Herdr](https://herdr.dev) plugin that names your tabs and panes based on
-their context.
+A [Herdr](https://herdr.dev) plugin that names your tabs and panes from what
+they are doing: the Git branch, the running process, or the topic of a Claude
+Code, Codex, Pi, Grok, Hermes or Antigravity session. No LLM, no external
+service, and a tab you rename yourself stays yours.
 
 ## Install
 
