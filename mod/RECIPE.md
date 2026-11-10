@@ -31,8 +31,9 @@ if your policy prevents it. No machine or user execution policy is changed.
 
 The mod has no place in any layout, so it changes none: it opens over the
 window and goes with `Esc` or a click elsewhere. Nothing opens it the first
-time: its `keys.json` binds `cmd-alt-t`, so merge that into yours, or run
-`herdr-app do mod.open --name auto-title`. Once installed, the service opens it
+time: its `keys.json` binds `cmd-alt-t`, so merge that into yours. An agent
+adding the mod opens it once afterwards with `herdr-app do mod.open --name
+auto-title`, so the person sees `Install`. Once installed, the service opens it
 by itself when a newer release is out.
 
 There is no button to remove it: run `<copy> desktop uninstall`, with the copy's
