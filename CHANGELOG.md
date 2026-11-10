@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.22.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.21.0...v0.22.0) (2026-11-10)
+
+
+### Features
+
+* **desktop:** add a gallery mod that installs the desktop mode ([211d8ad](https://github.com/kryptamine/herdr-auto-title/commit/211d8ad976ed1a90fe2bf36f6b7dba842fbb35ef))
+* **desktop:** offer newer releases in the mod's popup ([45e38de](https://github.com/kryptamine/herdr-auto-title/commit/45e38de016093bc7cadf2da886e47151b47e59b2))
+* **desktop:** support the gallery mod on Windows ([69c6c31](https://github.com/kryptamine/herdr-auto-title/commit/69c6c31f95b5d1f99734e7f52c4d68953fe7f930))
+
+
+### Bug Fixes
+
+* **desktop:** prefer git bash with a powershell fallback ([1f04bae](https://github.com/kryptamine/herdr-auto-title/commit/1f04baea4ff3ed3fd7e104d7bef0fdb1a615edd5))
+
+
+### Refactoring
+
+* **desktop:** find the copy and order versions one way on every os ([ede628c](https://github.com/kryptamine/herdr-auto-title/commit/ede628c920bf2eafc973c00ce425d93900100fb8))
+* **desktop:** report the install status from one place ([5b49b0d](https://github.com/kryptamine/herdr-auto-title/commit/5b49b0da5dadb9e15a7c79e2bfb688383e249bd0))
+
 ## [0.21.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.20.0...v0.21.0) (2026-11-09)
 
 
