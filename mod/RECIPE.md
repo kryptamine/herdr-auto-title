@@ -1,10 +1,12 @@
 # Auto Title
 
-A popup, opened with `cmd-alt-t`, that says whether
-[Herdr Auto Title](https://github.com/kryptamine/herdr-auto-title) names your
-desktop tabs, and installs or updates it with one button. Installed,
-every tab is titled from what it is doing (`3 · dashboard › build`) from every
-login on.
+Names your desktop tabs from what each one is doing: the topic of a Claude
+Code, Codex, Pi, Grok, Hermes or Antigravity session, the file open in your
+editor, the running build or the Git branch. No LLM, nothing about your tabs
+leaves the machine, and a tab you rename yourself keeps your name. The popup,
+opened with `cmd-alt-t`, installs [Herdr Auto
+Title](https://github.com/kryptamine/herdr-auto-title) with one button and
+offers each update.
 
 ![Auto Title](preview.png)
 
