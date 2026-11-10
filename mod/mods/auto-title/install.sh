@@ -12,6 +12,9 @@ if command -v cygpath >/dev/null 2>&1; then dir=$(cygpath -m "$dir"); fi
 report() {
 	rm -f "$dir/${asset:-none}" "$dir/SHA256SUMS"
 	printf '%s\n' "$@" >"$dir/status"
+	# hc kill on our own tab sends a HUP, which must not overwrite this status.
+	reported=$1
+	trap 'exit "$reported"' HUP INT TERM
 }
 
 close() {
