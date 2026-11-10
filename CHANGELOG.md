@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.1](https://github.com/kryptamine/herdr-auto-title/compare/v0.22.0...v0.22.1) (2026-11-10)
+
+
+### Bug Fixes
+
+* **desktop:** keep the install status when the tab closes itself ([a2a8df9](https://github.com/kryptamine/herdr-auto-title/commit/a2a8df9ef5804241bfe00c8df326de33eb0360b0))
+
 ## [0.22.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.21.0...v0.22.0) (2026-11-10)
 
 
