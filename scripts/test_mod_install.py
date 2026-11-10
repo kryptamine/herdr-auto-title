@@ -111,7 +111,12 @@ class GalleryInstall(unittest.TestCase):
             cls.routes = {"Git Bash": without_go(cls.work), "PowerShell": native_path}
             cls.routes["Git shim"] = os.pathsep.join([str(git_shim(cls.work)), native_path])
         else:
-            cls.routes = {"sh": os.environ["PATH"]}
+            # Herdr's hc kill on the script's own tab hangs it up, as this stub does.
+            hc = cls.work / "hc-stub"
+            hc.mkdir()
+            (hc / "hc").write_text('#!/bin/sh\n[ "$1" = kill ] && kill -HUP "$PPID"\nexit 0\n')
+            (hc / "hc").chmod(0o755)
+            cls.routes = {"sh": os.pathsep.join([str(hc), os.environ["PATH"]])}
 
     def run_case(self, route: str, case: Case) -> None:
         with tempfile.TemporaryDirectory(dir=self.work) as scratch:
@@ -141,7 +146,10 @@ class GalleryInstall(unittest.TestCase):
                 MOD_FAIL="1" if case.stub_fails else "0",
                 PATH=self.routes[route],
             )
-            env.pop("HC_TERMINAL_ID", None)
+            if WINDOWS:
+                env.pop("HC_TERMINAL_ID", None)
+            else:
+                env["HC_TERMINAL_ID"] = "test"
             if case.architecture:
                 env.update(PROCESSOR_ARCHITECTURE="x86", PROCESSOR_ARCHITEW6432=case.architecture.upper())
             command = [os.environ["COMSPEC"], "/d", "/c", "install.cmd"] if WINDOWS else ["sh", "install.sh"]

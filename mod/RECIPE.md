@@ -90,7 +90,9 @@ Top to bottom:
   second, for up to ten minutes, and removes the folder after. On a failure the
   script deletes the download before publishing status, then the tab says
   why and waits for Enter. The script closes its own tab when it exits.
-  On Unix, closing the tab or Ctrl+C writes "The install was stopped." at once.
+  On Unix, closing the tab or Ctrl+C writes "The install was stopped." at once,
+  until a status is written; after that a signal only ends the script, since
+  the script's own `hc kill` hangs it up too.
   On Windows, killing the whole terminal can bypass PowerShell cleanup; the
   popup then reports its ten-minute timeout and removes its temporary folder.
 - **Start** runs `<copy> desktop install`: the copy installs itself again, which
