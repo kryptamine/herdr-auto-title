@@ -163,7 +163,31 @@ type entry struct {
 		Type    string `json:"type"`
 		CWD     string `json:"cwd"`
 		Message string `json:"message"`
+		Item    struct {
+			Type    string `json:"type"`
+			Content []struct {
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"item"`
 	} `json:"payload"`
+}
+
+// opening is the prompt a user_message event carries, or since Codex 0.149
+// the one an item_completed event's UserMessage item does; "" for any other.
+func (e entry) opening() string {
+	switch {
+	case e.Payload.Type == "user_message":
+		return e.Payload.Message
+	case e.Payload.Type == "item_completed" && e.Payload.Item.Type == "UserMessage":
+		texts := make([]string, 0, len(e.Payload.Item.Content))
+		for _, part := range e.Payload.Item.Content {
+			texts = append(texts, part.Text)
+		}
+
+		return strings.Join(texts, "\n")
+	}
+
+	return ""
 }
 
 // absorb updates the topic from one rollout line. The header says where the
@@ -182,8 +206,8 @@ func (s *rollout) absorb(line string) {
 			s.topic.Dir = read.Payload.CWD
 		}
 	case "event_msg":
-		if s.topic.Opening == "" && read.Payload.Type == "user_message" {
-			s.topic.Opening = transcript.FirstLine(read.Payload.Message)
+		if s.topic.Opening == "" {
+			s.topic.Opening = transcript.FirstLine(read.opening())
 		}
 	}
 }
