@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.2](https://github.com/kryptamine/herdr-auto-title/compare/v0.22.1...v0.22.2) (2026-11-11)
+
+
+### Bug Fixes
+
+* **codex:** name a session from its UserMessage item ([35769ee](https://github.com/kryptamine/herdr-auto-title/commit/35769ee6a70ffca989bd9c40e1ed4723cd71f700)), closes [#221](https://github.com/kryptamine/herdr-auto-title/issues/221)
+
 ## [0.22.1](https://github.com/kryptamine/herdr-auto-title/compare/v0.22.0...v0.22.1) (2026-11-10)
 
 
