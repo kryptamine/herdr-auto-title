@@ -106,6 +106,21 @@ func prompt(text string) string {
 		) + `}}`
 }
 
+// item is a prompt as Codex 0.149 and later write it, one text part per entry.
+func item(texts ...string) string {
+	parts := make([]string, 0, len(texts))
+	for _, text := range texts {
+		parts = append(parts, `{"type":"text","text":`+strconv.Quote(text)+`,"text_elements":[]}`)
+	}
+
+	return `{"timestamp":"2026-10-19T09:17:20.001Z","type":"event_msg","payload":{"type":"item_completed",` +
+		`"thread_id":"` + session + `","item":{"type":"UserMessage","id":"m1","content":[` +
+		strings.Join(
+			parts,
+			",",
+		) + `]}}}`
+}
+
 func echoed(text string) string {
 	return `{"timestamp":"2026-10-19T09:17:20.001Z","type":"response_item","payload":{"type":"message","role":"user",` +
 		`"content":[{"type":"input_text","text":` + strconv.Quote(
@@ -137,6 +152,39 @@ func TestTheFirstPromptNamesAnUnnamedSession(t *testing.T) {
 
 	if got.Dir != started {
 		t.Errorf("dir = %q, want %q", got.Dir, started)
+	}
+}
+
+func TestAUserMessageItemNamesAnUnnamedSession(t *testing.T) {
+	t.Parallel()
+
+	// Codex 0.149 stopped writing user_message events, leaving every
+	// unnamed session on its directory.
+	h := newHome(t)
+	h.rollout(
+		meta(started),
+		echoed("<environment_context>"),
+		item("why can't codex", "trigger the plugin"),
+		item("then the docs"),
+	)
+
+	if got := NewReader(h.dir).Topic(session).Text(); got != "why can't codex" {
+		t.Errorf("text = %q, want the first line of the first item", got)
+	}
+}
+
+func TestAnItemOfAnotherTypeIsNotAPrompt(t *testing.T) {
+	t.Parallel()
+
+	h := newHome(t)
+	h.rollout(
+		meta(started),
+		strings.Replace(item("ran the tests"), "UserMessage", "AgentMessage", 1),
+		item("rework the poll loop"),
+	)
+
+	if got := NewReader(h.dir).Topic(session).Text(); got != "rework the poll loop" {
+		t.Errorf("text = %q, want only the user's prompt", got)
 	}
 }
 

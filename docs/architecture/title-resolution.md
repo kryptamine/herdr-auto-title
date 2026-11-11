@@ -230,9 +230,12 @@ Two things can name a session:
 - the session index, `session_index.jsonl`, one line per name with the last for
   an id winning. Codex writes the title it generates from the first prompt
   there, and `/rename` too; one file holds every session's names.
-- failing that, the first `user_message` event in the rollout, which is what
-  Codex's resume picker shows for an unnamed session. Only its first line is
-  kept; what Codex injects arrives as `response_item` lines and is not read.
+- failing that, the first prompt in the rollout, which is what Codex's resume
+  picker shows for an unnamed session. Up to Codex 0.146 it is a `user_message`
+  event; from 0.149 on, an `item_completed` event holding a `UserMessage` item,
+  its `text` parts joined. Both are read, so older rollouts still name their
+  sessions. Only the first line is kept; what Codex injects arrives as
+  `response_item` lines and is not read.
 
 The rollout's `session_meta` line says where the session started and each
 `turn_context` line where it went on, and the last of them is where its branch
