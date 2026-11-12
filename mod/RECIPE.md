@@ -121,7 +121,8 @@ Top to bottom:
   fallback, and forwards the installer exit code.
   No layout, no art.
 - `keys.json` beside `mods/`: `{ "global": { "cmd-alt-t": "mod.open:auto-title" } }`.
-- `herdr`: `exec`, `run` (`terminal.open`), `appHome`, `home`, `theme`.
+- `herdr`: `exec`, `run` (`terminal.open`, `space.select`, `space.new`),
+  `spaces`, `appHome`, `home`, `theme`.
   `fs/promises`: staging and status files. `crypto`: `randomUUID`.
   `os`: `platform`. `gpui-base`: `h_flex`, `v_flex`. The wait between status
   reads is `cx.sleep`.
@@ -140,6 +141,9 @@ Top to bottom:
 - **`terminal.open` leaves a shell behind**: it runs `argv` as `zsh -lic '"$@";
   exec "$0" -li'`, so the tab outlives the script. The script closes it with
   `hc kill "$HC_TERMINAL_ID"`, the address herdr-core gives every terminal.
+- **`terminal.open` opens on the shown space's machine**, a remote one
+  included, where the script is not. The popup selects a space of this
+  computer first, or makes one with `space.new {machine: ""}`.
 - **`fetch` reads text only**, so the binary is downloaded with `curl`.
 - **`window()` is null under `herdr-app check`**; the platform comes from `os`.
 - **A popup is not a block.** Herdr 0.1.13 docked no `"place": "bottom"` mod

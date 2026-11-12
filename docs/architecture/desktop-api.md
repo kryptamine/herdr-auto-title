@@ -390,6 +390,11 @@ place that knows how a service is set up.
   measured on herdr-app 0.1.13, it runs `zsh -lic '"$@"; exec "$0" -li'` with
   `keep` set. Every terminal has its address in `HC_TERMINAL_ID`, so
   `install.sh` ends with `hc kill` on it, which closes the tab.
+- **The install tab opens on this computer.** `terminal.open` starts its tab
+  on the machine of the space shown, so with a saved SSH machine's space in
+  front, measured on herdr-app 0.1.15, the tab ran there, where `install.sh`
+  is not, and the popup waited out its ten minutes. The popup shows a space of
+  this computer first, or makes one with `space.new {machine: ""}`.
 - **It knows only the copy's path** from `internal/autostart`. Everything else
   it asks the copy: `desktop status` for its version and whether it runs,
   `desktop install` to start it. A change to that path changes the mod too.
