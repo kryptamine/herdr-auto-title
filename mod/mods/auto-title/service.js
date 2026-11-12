@@ -5,7 +5,7 @@
 import { platform } from "os";
 import { randomUUID } from "crypto";
 import { exists, mkdir, readFile, readdir, unlink, rmdir } from "fs/promises";
-import { appHome, exec, home, run } from "herdr";
+import { appHome, exec, home, run, spaces } from "herdr";
 
 /** @typedef {{ version: string, running: boolean, latest?: string }} Copy
  *  latest: a newer release the service found since this mod's */
@@ -157,6 +157,7 @@ export async function install(version, step, sleep) {
       ? ["cmd.exe", "/d", "/c", "install.cmd", version, `../../${folder}`]
       : ["sh", `${MOD}/install.sh`, version, dir];
 
+    showHere();
     run("terminal.open", { argv, folder: MOD, name: "Auto Title install" });
 
     const [code, reason] = await status(dir, sleep);
@@ -170,6 +171,25 @@ export async function install(version, step, sleep) {
     }
 
     await rmdir(dir);
+  }
+}
+
+/** showHere shows a space on this computer. terminal.open starts its tab on the
+ *  shown space's machine, and the installer is only on this one. */
+function showHere() {
+  const all = spaces();
+  const shown = all.find((s) => s.active);
+
+  if (!shown || shown.machine === null) {
+    return;
+  }
+
+  const here = all.find((s) => s.machine === null);
+
+  if (here) {
+    run("space.select", { id: here.id });
+  } else {
+    run("space.new", { machine: "" });
   }
 }
 
