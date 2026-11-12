@@ -205,7 +205,7 @@ are only the facts that would otherwise mislead the code in silence.
 - **On Linux `pane.process_info` lists zombies**, with a `pid` and a `name` and
   no `argv` or `cwd`, so an idle pane would be named after a process that has
   exited; the state package drops them. On macOS Herdr leaves them out.
-- Auto Title uses six methods and no others: `session.snapshot`,
+- In TUI, Auto Title uses six methods and no others: `session.snapshot`,
   `pane.process_info`, `tab.rename`, `pane.rename`,
   `workspace.report_metadata` unless `HERDR_AUTO_TITLE_WORKSPACES=false`, and,
   from the restart action alone, `notification.show`.
@@ -285,10 +285,16 @@ are only the facts that would otherwise mislead the code in silence.
   Herdr reads an action's output to EOF, so a child holding the pipes keeps
   the action "running" and one of the thirty-two plugin command slots with it.
   The restart starts the new instance on the null device, detached.
-- **A pane on a saved SSH machine is not in the local snapshot.** That machine
-  runs its own Herdr server, and the Auto Title installed there names its tabs
-  from its own filesystem, transcripts included. Nothing marks a pane remote
+- **In TUI, a pane on a saved SSH machine is not in the local snapshot.** That
+  machine runs its own Herdr server, and the Auto Title installed there names
+  its tabs from its own filesystem, transcripts included. Nothing marks a pane remote
   because no remote pane ever reaches the local socket.
+- **Desktop `ls` and core `terminal.list` include connected machines.** Match
+  complete machine-qualified ids; never send their PIDs or directories to
+  local session or Git readers. `hc ls --json` is only a reduced CLI view.
+  Optional remote enrichment uses `machine.exec` with argv and base64 stdin,
+  never a shell; [desktop-api.md](docs/architecture/desktop-api.md#connected-machines)
+  records the Linux Codex ownership and fallback boundaries.
 - **One action id per manifest, whatever the platforms.** Herdr rejects a
   duplicate id even when the two entries' `platforms` do not overlap, so
   there is no Windows twin naming the `.exe`; Herdr 0.9.0 on Windows appends

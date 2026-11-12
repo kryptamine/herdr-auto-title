@@ -21,8 +21,7 @@ type world struct {
 type space struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
-	// Machine is null for this computer. Any other's transcripts and checkouts
-	// are out of reach from here, so its tabs are left alone.
+	// Machine is null here; every other machine has its own filesystem and PID space.
 	Machine *string `json:"machine"`
 	Tabs    []tab   `json:"tabs"`
 }
@@ -33,7 +32,7 @@ type tab struct {
 	Active    bool        `json:"active"`
 	Terminals []paneEntry `json:"terminals"`
 	// panes are those of Terminals that the core also lists.
-	panes []localPane
+	panes []terminalPane
 }
 
 // paneEntry is a pane as `ls` lists it, whose status is the app's own word:
@@ -64,8 +63,8 @@ type terminal struct {
 	Foreground herdr.PaneProcessInfoProcess `json:"foreground"`
 }
 
-// localPane is a pane on this computer and what the core knows of it.
-type localPane struct {
+// terminalPane is a pane and what its machine's core knows of it.
+type terminalPane struct {
 	entry    paneEntry
 	terminal terminal
 }
@@ -90,27 +89,28 @@ var statusRank = []string{
 	herdr.AgentStatusBlocked,
 }
 
-// local is this computer's spaces, each tab's panes joined to their terminals. A
+// join is the app's spaces, each tab's panes joined to their terminals. A
 // pane the core does not list yet has nothing to say, so another may name its tab.
-func (w world) local(terminals []terminal) []space {
+func (w world) join(terminals []terminal) []space {
 	byAddress := make(map[string]terminal, len(terminals))
 	for _, t := range terminals {
 		byAddress[t.Address] = t
 	}
 
-	var spaces []space
+	spaces := make([]space, 0, len(w.Spaces))
 
 	for _, space := range w.Spaces {
-		if space.Machine != nil {
-			continue
-		}
-
 		for i := range space.Tabs {
 			tab := &space.Tabs[i]
+			tab.panes = nil
 
 			for _, entry := range tab.Terminals {
+				if !space.holdsTerminal(entry.Terminal) {
+					continue
+				}
+
 				if t, listed := byAddress[entry.Terminal]; listed {
-					tab.panes = append(tab.panes, localPane{entry: entry, terminal: t})
+					tab.panes = append(tab.panes, terminalPane{entry: entry, terminal: t})
 				}
 			}
 		}
@@ -121,10 +121,22 @@ func (w world) local(terminals []terminal) []space {
 	return spaces
 }
 
-func panesIn(spaces []space) []localPane {
-	var panes []localPane
+func (s space) holdsTerminal(address string) bool {
+	if s.Machine != nil {
+		return strings.HasPrefix(address, *s.Machine+"/")
+	}
+
+	return !strings.Contains(address, "/")
+}
+
+func localPanesIn(spaces []space) []terminalPane {
+	var panes []terminalPane
 
 	for _, space := range spaces {
+		if space.Machine != nil {
+			continue
+		}
+
 		for _, tab := range space.Tabs {
 			panes = append(panes, tab.panes...)
 		}
@@ -145,9 +157,15 @@ func (c *Client) build(
 	var snapshot herdr.Snapshot
 
 	foregrounds := make(map[string]herdr.PaneProcessInfoProcess)
+	c.machines = make(map[string]string)
 
 	for _, space := range spaces {
 		workspace := herdr.WorkspaceInfo{WorkspaceID: space.ID, Label: space.Name}
+
+		machine := ""
+		if space.Machine != nil {
+			machine = *space.Machine
+		}
 
 		for _, tab := range space.Tabs {
 			if tab.Active {
@@ -168,11 +186,13 @@ func (c *Client) build(
 				AgentStatus: statusOf(tab),
 			})
 
-			for _, local := range tab.panes {
-				pane := paneFrom(tab.ID, local, focusedPane)
-				pane.AgentSession = sessions[local.entry.Pane]
+			for _, joined := range tab.panes {
+				pane := paneFrom(tab.ID, joined, focusedPane)
+				pane.AgentSession = sessions[joined.entry.Pane]
 				snapshot.Panes = append(snapshot.Panes, pane)
-				foregrounds[local.entry.Pane] = foregroundOf(local.terminal)
+
+				foregrounds[joined.entry.Pane] = foregroundOf(joined.terminal)
+				c.machines[joined.entry.Pane] = machine
 			}
 		}
 
@@ -250,7 +270,7 @@ func launcherNamed(tab tab) bool {
 	return slices.ContainsFunc(tab.Terminals, func(e paneEntry) bool { return e.App != "" }) ||
 		slices.ContainsFunc(
 			tab.panes,
-			func(p localPane) bool { return startsProgram(p.terminal.Argv) },
+			func(p terminalPane) bool { return startsProgram(p.terminal.Argv) },
 		)
 }
 
@@ -274,7 +294,7 @@ func statusOf(tab tab) string {
 	return status
 }
 
-func paneFrom(tabID string, local localPane, focusedPane string) herdr.PaneInfo {
+func paneFrom(tabID string, local terminalPane, focusedPane string) herdr.PaneInfo {
 	entry, t := local.entry, local.terminal
 
 	agent := entry.App

@@ -141,3 +141,5 @@ jobs:
       - run: python scripts/test_install.py
       - name: Gallery installers (including both Windows routes)
         run: python scripts/test_mod_install.py
+      - name: Remote metadata helper
+        run: python -m unittest internal.reads.test_remote

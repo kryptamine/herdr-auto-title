@@ -9,9 +9,9 @@ generated: { by: claude-code/opus-5, at: 2026-08-25T12:46:22+03:00 }
 
 # Herdr Socket API
 
-Everything Auto Title knows about a session arrives over one local socket: a
-Unix socket, or on Windows a named pipe. The originating specification is wrong
-on several protocol details, so every fact below was verified against a live
+In TUI, everything Auto Title knows about a session arrives over one local
+socket: a Unix socket, or on Windows a named pipe. The originating specification
+is wrong on several protocol details, so every fact below was verified against a live
 **Herdr 0.8.2, protocol 20** install with `scripts/probe.py` or a direct socket
 request, and the Windows facts against **0.8.2-preview, protocol 22**. **Probe
 before assuming anything not listed here**, and record what a probe teaches you
@@ -125,7 +125,7 @@ throwaway plugin (link, invoke, unlink):
   `<config>/sessions/<name>/herdr.sock` for a named one. Anything kept per
   session is therefore keyed by the socket path.
 
-## Saved SSH machines
+## Saved SSH machines in TUI
 
 Measured on Herdr 0.9.1, protocol 22, with a macOS client and a Linux machine
 saved through `herdr machine add`, both running Auto Title:
@@ -152,6 +152,33 @@ saved through `herdr machine add`, both running Auto Title:
 So a saved machine needs no handling in the plugin: a pane on one is local to
 the only Auto Title that sees it. A machine without Auto Title installed keeps
 whatever labels it has; the local instance cannot see it to name it.
+
+## Connected machines in the desktop app
+
+This is a different transport from the TUI's saved SSH machines. Measured on
+herdr-app 0.1.15 and hc 0.1.20, with a macOS window and two connected Linux
+cores:
+
+- The app's `ls` includes remote spaces, tabs and panes with machine-qualified
+  ids. The local core's `terminal.list` includes their complete terminal
+  metadata, including `title`, `cwd` and `foreground`, at qualified addresses.
+  `hc ls --json` is a reduced CLI view and omits those facts.
+- `machine.exec` routes `argv`, base64 `input` and a timeout in seconds using
+  `on`. A nonzero exit, a timeout and truncation are results, not RPC errors;
+  `stdout` and `stderr` are base64, and `code` may be null. The desktop reader
+  sends no shell line and accepts only complete successful stdout.
+- Two batches, covering four and five panes, took 204 ms and 240 ms. Each found
+  two native Codex names from a unique rollout held by the foreground process
+  on Linux, including terminals with no OSC title. No local PID or filesystem
+  path can stand in for a remote one.
+- `tab.rename` accepts the app's qualified remote tab id. A tab without a
+  joined terminal retains its name and its manual-name lock until reconnecting.
+  In disposable remote tabs, a manual name survived an OSC title change, and
+  clearing it resumed automatic naming on both machines.
+
+The routes, deadline and fallback boundaries are in
+[desktop-api.md](desktop-api.md#connected-machines). A Linux desktop window
+and local macOS or Windows Codex native-name lookup were not measured here.
 
 ## The methods Auto Title uses
 

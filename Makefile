@@ -42,7 +42,8 @@ lint-scripts: ## shellcheck, ruff, mypy and a Python 3.9 import of scripts/
 	@uv run --locked ruff format --check
 	@uv run --locked ruff check
 	@uv run --locked mypy
-	@PYTHONPATH=scripts uv run --no-project --python 3.9 python -B -c "$(foreach s,$(wildcard scripts/*.py),import $(basename $(notdir $(s)));)"
+	@uv run --locked mypy --explicit-package-bases --platform linux internal/reads/remote.py internal/reads/test_remote.py
+	@PYTHONPATH=scripts uv run --no-project --python 3.9 python -B -c "$(foreach s,$(wildcard scripts/*.py),import $(basename $(notdir $(s)));) import internal.reads.remote"
 
 .PHONY: test
 test: ## Tests with the race detector
