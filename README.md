@@ -97,6 +97,11 @@ keeps no log; run `herdr-auto-title.exe desktop` in a terminal to see one.
 What differs from Herdr TUI:
 
 - Only tabs are named: the desktop app has no pane labels or workspace topics.
+- Connected machines' tabs are named too, using their remote terminal metadata.
+  Python 3 on a remote machine adds Git branches and native Codex thread names
+  on Linux when its foreground process holds one rollout. Without a usable
+  helper or an unambiguous session, terminal titles, processes and directories
+  still name its tabs. No remote Auto Title installation is needed.
 - The service does not see your shell's environment, so settings go in
   [`config.env`](#configuration), never in a shell profile.
 - `HERDR_AUTO_TITLE_ICONS` needs a Nerd Font as the app's `ui_font` in its

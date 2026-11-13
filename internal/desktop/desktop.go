@@ -34,6 +34,7 @@ type Client struct {
 	mu sync.Mutex
 	// foregrounds is what each pane was running at the last snapshot.
 	foregrounds map[string]herdr.PaneProcessInfoProcess
+	machines    map[string]string
 	// initialLabels holds the first label until it changes; an empty value
 	// means a launcher's name must never be inferred again for that tab.
 	initialLabels map[string]string
@@ -101,11 +102,11 @@ func (c *Client) Snapshot(ctx context.Context) (herdr.Snapshot, error) {
 		return herdr.Snapshot{}, err
 	}
 
-	local := world.local(terminals)
-	sessions := c.sessions.read(ctx, panesIn(local))
+	spaces := world.join(terminals)
+	sessions := c.sessions.read(ctx, localPanesIn(spaces))
 
 	c.mu.Lock()
-	snapshot, foregrounds := c.build(local, status.FocusedPane, sessions)
+	snapshot, foregrounds := c.build(spaces, status.FocusedPane, sessions)
 	c.foregrounds = foregrounds
 	c.mu.Unlock()
 
@@ -131,6 +132,13 @@ func (c *Client) PaneProcesses(
 	}
 
 	return []herdr.PaneProcessInfoProcess{process}, nil
+}
+
+func (c *Client) PaneMachine(paneID string) string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	return c.machines[paneID]
 }
 
 func (c *Client) RenameTab(ctx context.Context, tabID, label string) error {

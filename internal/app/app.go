@@ -434,6 +434,10 @@ func (a *App) nameTab(
 	poll *reads.Poll,
 	tab state.TabState,
 ) {
+	if tab.Context == nil {
+		return
+	}
+
 	if pass.TabLocked(tab.ID) || !a.readAll(ctx, poll, tab) || pass.TabOwned(tab) {
 		return
 	}

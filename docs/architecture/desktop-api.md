@@ -15,8 +15,9 @@ it. Every fact below was measured against a live **herdr-app 0.1.9** and **hc
 socket request, unless it says otherwise. On **herdr-app 0.1.13** and **hc
 0.1.18** the fields the code reads, renames, the `+` menu, Claude Code's session
 and closing a space were measured again; what changed is said where it applies.
-Linux remains unmeasured. The Windows checks below do not establish full
-Windows support.
+The connected-machine probe below used **herdr-app 0.1.15** and **hc 0.1.20**
+on macOS, with two Linux cores. A Linux desktop window remains unmeasured.
+The Windows checks below do not establish full Windows support.
 
 Desktop support is tracked in
 [#188](https://github.com/kryptamine/herdr-auto-title/issues/188).
@@ -154,9 +155,9 @@ terminal's `pid` and walking its descendants.
 | Codex | **none** | **Not told apart** | a rollout appears at the first prompt |
 | Pi | **none**: only the session folder of its directory | **Not told apart** | a file appears at the first prompt |
 
-- **Codex shares one daemon.** The first Codex's child, `app-server-daemon`, held
-  the rollouts of both terminals, and the second Codex had no child and held
-  none. So an open rollout says nothing about which terminal owns it, and after
+- **The macOS Codex probe shared one daemon.** The first Codex's child,
+  `app-server-daemon`, held the rollouts of both terminals, and the second Codex
+  had no child and held none. So an open rollout says nothing about which terminal owns it, and after
   `/new` the old one stays open too. The terminal title carries the topic.
 - **`/new` in Codex opens a dialog** asking where the conversation should run, so
   text sent straight after it is taken by the dialog.
@@ -167,9 +168,68 @@ terminal's `pid` and walking its descendants.
 - **Which held session is current** was judged by newest: by the time-ordered id
   for Grok Build and by the file under `conversations/` for Antigravity, whose
   ids are random. Returning to an older session was not measured.
-- **Open files** are read with `lsof` on macOS and `/proc/<pid>/fd` on Linux,
-  the latter unmeasured on a live agent. Windows uses native process handle
-  snapshots; the probe and limits are recorded below.
+- **Open files** are read with `lsof` on macOS and `/proc/<pid>/fd` on Linux.
+  The connected-machine probe below measured directly held Codex rollouts on
+  Linux; the other Linux agent routes remain unmeasured. Windows uses native
+  process handle snapshots; the probe and limits are recorded below.
+
+### Connected machines
+
+The desktop adapter includes every machine in the app's `ls`, joining panes
+to `terminal.list` by their complete address. On hc 0.1.20, that socket method
+already reports remote terminals' titles, cwd and foreground processes;
+`hc ls --json` is still the reduced CLI view. No `terminal.get` is needed.
+
+Machine prefixes are part of every remote space, tab, pane and terminal id.
+`box/t1` cannot match local `t1` or another machine's `other/t1`. A remote PID
+never enters the local session finder, and a remote directory or session
+reference never reaches a local transcript or Git reader. Renames use the
+qualified tab id through the app's existing `tab.rename` command.
+
+The core's `machine.exec` optionally enriches remote panes with a Python 3
+standard-library helper. Each machine gets one batch per poll, sent as
+`argv: ["python3", "-c", ...]` with base64 stdin, never a shell line. The
+helper is embedded in the binary; nothing is installed remotely. A batch has
+a one-second client deadline: a remote round trip exceeded 500 ms even with
+session reads disabled. The server timeout is no longer than the client's
+remaining deadline, and `ExecMachine` caps any caller at one second. Nonzero
+or missing exit codes, `timed_out`, truncated output and invalid JSON discard
+the result. An unavailable helper falls back to that remote terminal's OSC title, process
+or directory; the next poll tries again without retaining stale metadata.
+
+- **Git is read from `.git`, without running Git.** Linked worktrees, a rebase's
+  branch, detached HEAD and `refs/remotes/origin/HEAD` are supported. Repository
+  identities include the machine, so identical paths on two hosts differ.
+  `HERDR_AUTO_TITLE_BRANCH_MAX=0` disables these reads.
+- **Codex's native name needs a directly owned rollout on Linux.** Only the
+  foreground process's own `/proc/<pid>/fd` is read. Exactly one rollout must
+  be held, and an `app-server*` process is excluded. Multiple rollouts, a shared
+  daemon or a shell foreground give no native name; cwd and modification time
+  never choose one. The held path identifies its Codex home, including a custom
+  home. Its latest `session_index.jsonl` entry supplies `thread_name`; when no
+  entry names that session, `state_*.sqlite` supplies `threads.name` or
+  `threads.title` through SQLite `mode=ro`. The index scan covers its last
+  8 MiB; a name outside that window uses the same database fallback.
+  No rollout prompt is read.
+  `HERDR_AUTO_TITLE_TRANSCRIPT=false` disables this lookup. In session-only
+  mode there is no remote opening-prompt fallback.
+- **An unavailable tab stays in the snapshot.** This retains its manual-name
+  lock across a disconnect and restart. With no joined pane it is not renamed;
+  clearing a manual name resumes automatic naming after reconnection.
+
+The live batch probe covered four panes on one Linux machine and five on
+another. Both returned matching pane ids, two native Codex names each, and
+their checked-out branches, with no timeout or truncation. The batches took
+204 ms and 240 ms respectively; a later five-pane Git-only batch took 537 ms.
+Native names were available on terminals with empty OSC titles. These
+measurements establish the remote Linux route, not native-name lookup on a
+local macOS or Windows desktop.
+
+With the desktop process in a dedicated foreground tab, both machines' Codex
+terminals with empty OSC titles showed their full native name after focusing
+the agent pane. Disposable Python terminals changed their OSC title from
+`Alpha remote probe` to `Beta remote probe`; a manual name stayed until cleared,
+then the new automatic title returned. The probe tabs were closed afterwards.
 
 ### What reading them costs
 
@@ -210,7 +270,7 @@ reopens.
 ## The desktop mode
 
 `herdr-auto-title desktop` is the same poll loop behind `internal/desktop`, which
-implements `herdr.Client`. Four things differ from TUI mode:
+implements `herdr.Client`. These things differ from TUI mode:
 
 - **Panes and workspace tokens are off**, because they have no equivalent. The
   client does not implement `herdr.PaneRenamer` or `herdr.TopicReporter`, and
@@ -220,12 +280,16 @@ implements `herdr.Client`. Four things differ from TUI mode:
 - **`Server()` is empty**, so a window restart is not a successor and the process
   stays. It logs failed polls until the window returns.
 - **A pane the core does not list yet is left out.** `ls` and `terminal.list` are
-  separate reads. Its siblings still name the tab, and a tab with no other pane
-  gets the fallback name for that poll.
+  separate reads. Its siblings still name the tab; a tab with no joined pane
+  keeps its existing label until a pane returns.
+- **Connected machines are included**, using their own terminal metadata and
+  optional remote reads as described above. TUI's local socket never reports
+  its saved SSH machines, which run Auto Title themselves.
 
-An agent's session arrives as it does in TUI, in `agent_session`, so the readers
-are the same. The terminal title still outranks them: a Claude Code or Grok Build
-tab reads the transcript only when its title says nothing, as after `/clear`, and
+For local panes an agent's session arrives as it does in TUI, in
+`agent_session`, so the readers are the same. The terminal title still outranks
+them: a Claude Code or Grok Build tab reads the transcript only when its title
+says nothing, as after `/clear`, and
 an Antigravity tab, whose title is empty, always does.
 
 `HERDR_AUTO_TITLE_ICONS` needs a Nerd Font in the app too, and its own setting:

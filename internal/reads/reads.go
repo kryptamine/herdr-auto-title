@@ -86,20 +86,24 @@ func (r *Reader) Poll(client herdr.Client, panes []herdr.PaneInfo, drew map[stri
 	r.codexTopics.Retain(held)
 
 	return &Poll{
-		reader:    r,
-		client:    client,
-		checkouts: make(map[string]git.Checkout),
-		filled:    make(map[*state.PaneState]bool),
+		reader:      r,
+		client:      client,
+		checkouts:   make(map[string]git.Checkout),
+		filled:      make(map[*state.PaneState]bool),
+		panes:       panes,
+		remoteReads: make(map[string]map[string]remoteReply),
 	}
 }
 
 // Poll is one poll's reads. It is a thing of its own so that what it memoizes
 // cannot outlast the poll that filled it.
 type Poll struct {
-	reader    *Reader
-	client    herdr.Client
-	checkouts map[string]git.Checkout
-	filled    map[*state.PaneState]bool
+	reader      *Reader
+	client      herdr.Client
+	checkouts   map[string]git.Checkout
+	filled      map[*state.PaneState]bool
+	panes       []herdr.PaneInfo
+	remoteReads map[string]map[string]remoteReply
 }
 
 // Fill supplies what the snapshot could not say about a pane, once per poll
@@ -125,6 +129,10 @@ func (p *Poll) Fill(ctx context.Context, pane *state.PaneState) bool {
 
 	pane.Processes = state.ProcessesFrom(processes)
 	pane.Dir = dir
+
+	if p.fillRemote(ctx, pane, processes) {
+		return read
+	}
 
 	// The agent's session is read before the checkout because it can say where
 	// the agent is working, and that is where the branch is read from.

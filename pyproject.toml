@@ -19,7 +19,7 @@ required-version = "==0.13.6"
 # Syntax and annotations only: the Python macOS ships runs the scripts.
 target-version = "py39"
 line-length = 120
-include = ["scripts/*.py"]
+include = ["scripts/*.py", "internal/reads/*.py"]
 
 [tool.ruff.lint]
 select = [
