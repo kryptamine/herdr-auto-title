@@ -14,7 +14,7 @@ import { appHome, exec, home, run, spaces } from "herdr";
 
 // VERSION is the release this mod installs. release-please keeps it equal to
 // herdr-plugin.toml, and a Go test holds the two together.
-export const VERSION = "0.22.2"; // x-release-please-version
+export const VERSION = "0.22.3"; // x-release-please-version
 
 const NAME = "herdr-auto-title";
 const POLL_MS = 1000;
