@@ -202,8 +202,8 @@ the state is `✦` idle and `⠂` or `⠐` while it works. Herdr strips the lead
 braille spinner and leaves `✦`, so `terminal_title_stripped` moves between
 `✦ 🐋 <title>` and `🐋 <title>` as the agent starts and stops, and an untitled
 session reads `✦ 🐋` or `🐋`. `withoutDshFrame` (`internal/resolver/dsh.go`)
-takes the `🐋` and any one-grapheme state before it off, and declines the frame
-alone.
+takes the `🐋` and the `✦` or braille state before it off, and declines the
+frame alone; any other glyph before the `🐋` is the title's own.
 
 ### The session transcript
 

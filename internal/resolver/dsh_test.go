@@ -11,7 +11,7 @@ func dshPane(title string) *state.PaneState {
 	return &state.PaneState{
 		Dir:           dashboard,
 		TerminalTitle: title,
-		Agent:         "dsh-tui",
+		Agent:         dshAgent,
 		AgentStatus:   herdr.AgentStatusWorking,
 	}
 }
@@ -52,10 +52,12 @@ func TestAnUntitledDshSessionDeclinesItsTitle(t *testing.T) {
 	}
 }
 
+// Only DeepSeek Harness's own frame comes off: a title that merely starts with
+// its idle state, its mark or another glyph before the mark keeps every word.
 func TestATitleDshDidNotFrameIsReadAsItIs(t *testing.T) {
 	t.Parallel()
 
-	for _, title := range []string{"Deploying staging", "✦ release notes", "🐋-watcher"} {
+	for _, title := range []string{"Deploying staging", "✦ release notes", "🐋-watcher", "A 🐋 sighting"} {
 		if got, want := defaultChain().Resolve(tabWithPane(dshPane(title))).
 			Name, "dashboard › dsh-tui › "+title; got != want {
 			t.Errorf("name = %q, want %q", got, want)
@@ -63,6 +65,7 @@ func TestATitleDshDidNotFrameIsReadAsItIs(t *testing.T) {
 	}
 }
 
+// The frame is read off a dsh-tui pane alone; another agent's title is its own.
 func TestAnotherAgentsDshTitleIsReadAsItIs(t *testing.T) {
 	t.Parallel()
 
