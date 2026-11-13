@@ -375,6 +375,15 @@ reads, so this section describes Herdr rather than those types.
   Pi. The same pane carried `title: null`, `display_agent: null` and, in
   `terminal_title_stripped`, Pi's own title unchanged: `π - <dir>` for an
   unnamed session, `π - <name> - <dir>` once `/name` has named it.
+- **Herdr drops `agent_session` for custom agents.** Caveman Code, a Pi fork,
+  reports `agent: "caveman-code"` with `source: "caveman-code"` and titles its
+  terminal `cave - <dir>` unnamed and `cave - <name> - <dir>` once named.
+  `herdr pane report-agent-session` for a `caveman-code` pane returned exit 0
+  for both `--agent-session-path` and `--agent-session-id` while `pane.get`
+  kept `agent_session: null`. Its Herdr extension writes
+  `~/.cave/agent/ovis/<pid>.json` (`{"pid", "sessionFile"}`) on `session_start`
+  for the foreground process and removes it on `session_shutdown`. Measured on
+  Herdr 0.9.5 with `@juliusbrussee/caveman-code` 0.65.2.
 - **Codex's `agent_session` is an id.** The hook Herdr 0.9.5 installs for it
   (integration version 10) runs on `SessionStart` and reports `agent: "codex"`
   with the session id alone, dropping the `transcript_path` Codex hands it, so

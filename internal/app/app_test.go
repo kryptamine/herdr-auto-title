@@ -1829,6 +1829,42 @@ func TestATabIsNamedFromAPiSessionsFirstPrompt(t *testing.T) {
 	}
 }
 
+func TestATabIsNamedFromACavemanSessionsFirstPrompt(t *testing.T) {
+	t.Parallel()
+
+	path := readstest.PiSession(
+		t,
+		readstest.PiStartedIn(dashboard),
+		readstest.PiPrompt("rework the poll loop"),
+	)
+
+	cfg := transcriptConfig()
+	cfg.Home = testHome(t)
+	readstest.CavemanSidecar(t, cfg.Home, 4242, path)
+
+	client := herdrtest.New(
+		[]herdr.TabInfo{{TabID: "wE:t1", Label: "1"}},
+		[]herdr.PaneInfo{{
+			PaneID: "wE:p1", TabID: "wE:t1", CWD: dashboard, Focused: true,
+			TerminalTitleStripped: "cave - dashboard",
+			Agent:                 "caveman-code",
+			AgentStatus:           "working",
+		}},
+	)
+	client.SetProcesses(
+		"wE:p1",
+		herdr.PaneProcessInfoProcess{PID: 4242, Name: "caveman-code", CWD: dashboard},
+	)
+
+	h := startConfigured(t, client, cfg)
+	h.poll()
+
+	got := h.client.Renames()[0].Label
+	if want := "dashboard › caveman-code › rework the poll loop"; got != want {
+		t.Errorf("rename = %q, want %q", got, want)
+	}
+}
+
 func TestATabIsNamedFromACodexSessionsName(t *testing.T) {
 	t.Parallel()
 
