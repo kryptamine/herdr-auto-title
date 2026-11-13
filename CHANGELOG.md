@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.22.3](https://github.com/kryptamine/herdr-auto-title/compare/v0.22.2...v0.22.3) (2026-11-13)
+
+
+### Bug Fixes
+
+* **mod:** open the install tab on this computer ([3638212](https://github.com/kryptamine/herdr-auto-title/commit/36382125353207e109df32f326f6b17731bf06df))
+* **resolver:** read dsh-tui's title without its state frame ([02fac57](https://github.com/kryptamine/herdr-auto-title/commit/02fac5756814075de92d0afe8bf564810e955c4f))
+
+
+### Refactoring
+
+* **resolver:** take only dsh-tui's own state off its title ([f8c8218](https://github.com/kryptamine/herdr-auto-title/commit/f8c82188d8950361c04e3693e0e52bfb7d353f66))
+
 ## [0.22.2](https://github.com/kryptamine/herdr-auto-title/compare/v0.22.1...v0.22.2) (2026-11-11)
 
 
