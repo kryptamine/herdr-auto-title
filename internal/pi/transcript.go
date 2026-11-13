@@ -12,9 +12,12 @@ import (
 	"github.com/kryptamine/herdr-auto-title/internal/transcript"
 )
 
-// Agent is the label Herdr gives Pi, and the only agent whose session file this
-// package knows how to read.
-const Agent = "pi"
+// Agent and CavemanAgent are the labels Herdr gives Pi and Caveman Code, a Pi
+// fork that writes the same session files.
+const (
+	Agent        = "pi"
+	CavemanAgent = "caveman-code"
+)
 
 // Reader reads session files, remembering how far it has read each one. A
 // session file only grows, so a poll reads the bytes appended since the last

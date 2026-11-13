@@ -121,3 +121,57 @@ func TestAPiTitleIsDeclinedWhenThePanesDirectoryIsUnknown(t *testing.T) {
 		t.Errorf("reason = %q, name = %q, want the title declined", got.Reason, got.Name)
 	}
 }
+
+func cavemanPane(title string) *state.PaneState {
+	return &state.PaneState{
+		Dir:           dashboard,
+		TerminalTitle: title,
+		Agent:         "caveman-code",
+		AgentStatus:   herdr.AgentStatusWorking,
+	}
+}
+
+func TestAnUnnamedCavemanSessionTitlesOnlyItsDirectory(t *testing.T) {
+	t.Parallel()
+
+	got := defaultChain().Resolve(tabWithPane(cavemanPane("cave - dashboard")))
+
+	if want := "dashboard › caveman-code"; got.Name != want {
+		t.Errorf("name = %q, want %q", got.Name, want)
+	}
+
+	if got.Reason == "terminal_title" {
+		t.Errorf("reason = %q, want the title declined", got.Reason)
+	}
+}
+
+func TestANamedCavemanSessionIsTitledByItsName(t *testing.T) {
+	t.Parallel()
+
+	got := defaultChain().Resolve(tabWithPane(cavemanPane("cave - Rework the poll loop - dashboard")))
+
+	if want := "dashboard › caveman-code › Rework the poll loop"; got.Name != want {
+		t.Errorf("name = %q, want %q", got.Name, want)
+	}
+
+	if got.Reason != "terminal_title" {
+		t.Errorf("reason = %q, want terminal_title", got.Reason)
+	}
+}
+
+func TestAnUnnamedCavemanSessionFallsThroughToItsTranscript(t *testing.T) {
+	t.Parallel()
+
+	pane := cavemanPane("cave - dashboard")
+	pane.AgentTopic = "rework the poll loop"
+
+	got := defaultChain().Resolve(tabWithPane(pane))
+
+	if want := "dashboard › caveman-code › rework the poll loop"; got.Name != want {
+		t.Errorf("name = %q, want %q", got.Name, want)
+	}
+
+	if got.Reason != "transcript" {
+		t.Errorf("reason = %q, want transcript", got.Reason)
+	}
+}

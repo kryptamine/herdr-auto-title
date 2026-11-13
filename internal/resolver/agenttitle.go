@@ -13,7 +13,9 @@ import (
 func agentTitle(pane *state.PaneState, title string) (string, bool) {
 	switch pane.Agent {
 	case pi.Agent:
-		return withoutPiFrame(pane, title)
+		return withoutPiFrame(pane, title, piGlyph)
+	case pi.CavemanAgent:
+		return withoutPiFrame(pane, title, cavemanPrefix)
 	case codex.Agent:
 		// The title cuts the name at 48 characters; a session that was read
 		// holds it whole.
