@@ -266,6 +266,11 @@ are only the facts that would otherwise mislead the code in silence.
   stripping.** It titles the terminal `π <state> <name>`, the state a spinner
   frame redrawn every 80 ms while it works; Herdr strips only a leading
   spinner, so that title read as it is renames the tab on every frame.
+- **DeepSeek Harness is `agent: "dsh-tui"`, and Herdr strips only half its
+  title frame.** It titles the terminal `✦ 🐋 <title>` idle and `⠂ 🐋 <title>` /
+  `⠐ 🐋 <title>` while working; Herdr strips the leading braille spinner and
+  keeps `✦`, so `terminal_title_stripped` moves between `✦ 🐋 <title>` and
+  `🐋 <title>`, and an untitled session reads `✦ 🐋` or `🐋`.
 - **A plugin the server starts inherits the server's environment**, not the
   shell of whoever installed it, which is why `HERDR_AUTO_TITLE_*` settings
   arrive through `config.env` (see
