@@ -197,6 +197,14 @@ every frame and renames the tab as often. `withoutOmpFrame`
 `π:` of a frame with the state turned off; a name that is the pane's
 directory declines like Pi's. The format is omp's `buildTerminalTitleWithState`.
 
+DeepSeek Harness (`dsh-tui`) titles its terminal `<state> 🐋 <title>`, where
+the state is `✦` idle and `⠂` or `⠐` while it works. Herdr strips the leading
+braille spinner and leaves `✦`, so `terminal_title_stripped` moves between
+`✦ 🐋 <title>` and `🐋 <title>` as the agent starts and stops, and an untitled
+session reads `✦ 🐋` or `🐋`. `withoutDshFrame` (`internal/resolver/dsh.go`)
+takes the `🐋` and any one-grapheme state before it off, and declines the frame
+alone.
+
 ### The session transcript
 
 Hermes uses this same source for its native `sessions.title` in read-only

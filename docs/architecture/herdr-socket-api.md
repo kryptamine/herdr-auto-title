@@ -333,6 +333,14 @@ reads, so this section describes Herdr rather than those types.
   with no integration installed. Its working title, `π ⠋ <name>`, keeps the
   spinner in `terminal_title_stripped`: Herdr strips a leading spinner only, and
   this one follows the `π`. Measured on Herdr 0.9.5.
+- **DeepSeek Harness's TUI reports `agent: "dsh-tui"`**, both over OSC 7501 and
+  through `herdr pane report-agent <pane> --source custom:dsh-tui --agent
+  dsh-tui`, with `agent_session: null`. It titles the terminal `✦ 🐋 <title>`
+  idle and `⠂ 🐋 <title>` / `⠐ 🐋 <title>` while working, alternating every
+  960 ms (`ChatTitle.js`); Herdr strips the leading braille spinner and keeps
+  `✦`, so `terminal_title_stripped` reads `✦ 🐋 <title>` idle and `🐋 <title>`
+  working, or `✦ 🐋` and `🐋` before a session has a title. Measured on Herdr
+  0.9.5 with `@deepseek-harness-tui/dsh-tui` 0.20.0.
 - **`PaneInfo.agent_session` says which conversation the pane's agent holds**,
   and it is null until an agent's integration reports one.
   `herdr integration install <agent>` installs the hook that does — Herdr ships

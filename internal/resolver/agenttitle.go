@@ -28,6 +28,8 @@ func agentTitle(pane *state.PaneState, title string) (string, bool) {
 		return withoutOpenCodeFrame(title)
 	case ompAgent:
 		return withoutOmpFrame(pane, title)
+	case dshAgent:
+		return withoutDshFrame(title)
 	}
 
 	return title, true
