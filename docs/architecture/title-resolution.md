@@ -185,7 +185,8 @@ falls through to [the transcript](#the-session-transcript), and a named one is
 titled by its name alone. The directory is matched against the pane's own,
 which is Pi's working directory; a title Pi did not frame — one an extension set
 — is read as it is, and so is any other agent's title that happens to start the
-same way.
+same way. Caveman Code (`caveman-code`), a Pi fork, uses the same grammar with
+`cave` in place of `π`, and `withoutPiFrame` reads it the same way.
 
 oh-my-pi, which Herdr reports as `omp`, frames its title differently:
 `π <state> <name>`, the name being the session's or, until it has one, the
@@ -319,8 +320,11 @@ opened as it is. Pi derives no title of its own, so two lines can name a session
 
 The header line says where the session was started, which is where its branch
 is read from. Pi documents its format (`docs/session-format.md` in its package),
-so unlike Claude Code's it is not expected to change without notice. A session
-first seen long after it started is read at both ends — the head for where it
+so unlike Claude Code's it is not expected to change without notice. Caveman
+Code writes the same format, and because Herdr drops `agent_session` for custom
+agents, its session file is read from the `~/.cave/agent/ovis/<pid>.json`
+sidecar its extension writes for the pane's foreground process (`pi.CavemanSession`).
+A session first seen long after it started is read at both ends — the head for where it
 started and its first prompt, the tail for the name it was last given — and
 from wherever it grows after that; the Claude reader reads the tail alone,
 because a title Claude Code has given a session is repeated there. Both follow
@@ -714,6 +718,7 @@ agent session holds, and leaves the label alone until one exists:
 | Claude Code     | its custom or generated title                             |
 | Codex           | its index name                                            |
 | Pi              | its session name                                          |
+| Caveman Code    | its session name                                          |
 | Hermes          | its native title, when `title_source` is `llm` or `user`  |
 | Antigravity CLI | its annotation title                                      |
 | Grok Build      | its summary's `generated_title`                           |

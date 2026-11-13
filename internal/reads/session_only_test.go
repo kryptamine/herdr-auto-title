@@ -2,8 +2,10 @@ package reads_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/kryptamine/herdr-auto-title/internal/reads/readstest"
+	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
 
 func TestSessionOnlyClaudeRequiresName(t *testing.T) {
@@ -81,6 +83,37 @@ func TestSessionOnlyPiRequiresName(t *testing.T) {
 			opts.SessionOnly = true
 			pane := piPaneAt("wE:p2", path, t.TempDir())
 			readOne(opts, pane)
+
+			if pane.AgentTopic != tc.want {
+				t.Fatalf("topic = %q, want %q", pane.AgentTopic, tc.want)
+			}
+		})
+	}
+}
+
+func TestSessionOnlyCavemanRequiresName(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct{ name, line, want string }{
+		{"opening", "", ""},
+		{"named", `{"type":"session_info","name":"Chosen name"}`, "Chosen name"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			dir := t.TempDir()
+			path := readstest.PiSession(
+				t,
+				readstest.PiStartedIn(dir),
+				readstest.PiPrompt("raw opening prompt"),
+				tc.line,
+			)
+			opts := transcriptOptions()
+			opts.Home = t.TempDir()
+			opts.SessionOnly = true
+			readstest.CavemanSidecar(t, opts.Home, cavemanPID, path)
+
+			pane := state.PaneFrom(cavemanInfoAt("wE:p2", dir), "", time.Time{})
+			readCavemanOne(opts, pane)
 
 			if pane.AgentTopic != tc.want {
 				t.Fatalf("topic = %q, want %q", pane.AgentTopic, tc.want)

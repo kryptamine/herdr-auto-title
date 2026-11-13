@@ -27,7 +27,8 @@ type Options struct {
 	HermesHomes []string
 	// ClaudeDirs are the Claude Code configuration homes transcripts are found in.
 	ClaudeDirs []string
-	// Home is the user's home directory, where Antigravity CLI keeps its state.
+	// Home is the user's home directory, where Antigravity CLI and Caveman
+	// Code keep their state.
 	Home string
 	// CodexHome is the Codex home rollouts and the session index are found in.
 	CodexHome string
@@ -42,12 +43,14 @@ type Options struct {
 // Reader outlives a poll because what it remembers does: what each pane was
 // last seen running, and how far each agent's transcript has been read.
 type Reader struct {
+	home              string
 	hermesHomes       []string
 	processes         *processCache
 	claudeTopics      *claude.Reader
 	antigravityTitles *antigravity.Reader
 	grokTitles        *grok.Reader
 	piTopics          *pi.Reader
+	cavemanSessions   map[string]string
 	codexTopics       *codex.Reader
 	log               *slog.Logger
 	readBranches      bool
@@ -57,12 +60,14 @@ type Reader struct {
 
 func New(opts Options, log *slog.Logger) *Reader {
 	return &Reader{
+		home:              opts.Home,
 		hermesHomes:       opts.HermesHomes,
 		processes:         newProcessCache(),
 		claudeTopics:      claude.NewReader(opts.ClaudeDirs...),
 		antigravityTitles: antigravity.NewReader(opts.Home),
 		grokTitles:        grok.NewReader(opts.GrokHome),
 		piTopics:          pi.NewReader(),
+		cavemanSessions:   make(map[string]string),
 		codexTopics:       codex.NewReader(opts.CodexHome),
 		log:               log,
 		readBranches:      opts.BranchMax > 0,
@@ -79,7 +84,7 @@ func (r *Reader) Poll(client herdr.Client, panes []herdr.PaneInfo, drew map[stri
 
 	// Each reader keeps only the references it knows, so all are handed every
 	// session the snapshot holds without being told which is whose.
-	held := sessionsIn(panes)
+	held := r.heldSessions(panes)
 	r.claudeTopics.Retain(held)
 	r.grokTitles.Retain(held)
 	r.piTopics.Retain(held)
@@ -213,6 +218,10 @@ func (r *Reader) topic(
 		return sessionTopic{}
 	}
 
+	if pane.Agent == pi.CavemanAgent {
+		return r.cavemanTopic(pane, processes)
+	}
+
 	if pane.AgentSession == nil {
 		return sessionTopic{}
 	}
@@ -288,6 +297,33 @@ func (r *Reader) hermesTopic(
 	}
 }
 
+// cavemanTopic reports what a Caveman Code pane's session file says it is
+// about: from AgentSession when Herdr reports one, else from the sidecar its
+// extension writes for the foreground process.
+func (r *Reader) cavemanTopic(
+	pane *state.PaneState,
+	processes []herdr.PaneProcessInfoProcess,
+) sessionTopic {
+	if pane.AgentSession != nil && pane.AgentSession.Agent == pi.CavemanAgent {
+		if path, ok := pane.AgentSession.Path(); ok {
+			return r.namedTopic(r.piTopics.Topic(path))
+		}
+
+		return sessionTopic{}
+	}
+
+	if last := len(processes) - 1; last >= 0 {
+		if path := pi.CavemanSession(r.home, processes[last].PID); path != "" {
+			r.cavemanSessions[pane.ID] = path
+			return r.namedTopic(r.piTopics.Topic(path))
+		}
+	}
+
+	delete(r.cavemanSessions, pane.ID)
+
+	return sessionTopic{}
+}
+
 // spent reports that the poll is past its deadline. The reads it guards go to
 // the filesystem, which takes no context, so the only way to bound them is not
 // to start them.
@@ -295,13 +331,24 @@ func spent(ctx context.Context) bool {
 	return ctx.Err() != nil
 }
 
-func sessionsIn(panes []herdr.PaneInfo) []string {
+func (r *Reader) heldSessions(panes []herdr.PaneInfo) []string {
 	sessions := make([]string, 0, len(panes))
+	caveman := make(map[string]string, len(r.cavemanSessions))
+
 	for _, pane := range panes {
 		if pane.AgentSession != nil {
 			sessions = append(sessions, pane.AgentSession.Value)
 		}
+
+		if pane.Agent == pi.CavemanAgent {
+			if path := r.cavemanSessions[pane.PaneID]; path != "" {
+				caveman[pane.PaneID] = path
+				sessions = append(sessions, path)
+			}
+		}
 	}
+
+	r.cavemanSessions = caveman
 
 	return sessions
 }
