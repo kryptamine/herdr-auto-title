@@ -807,6 +807,14 @@ does a pane label: under its tab, a pane's own directory is often the very thing
 that tells it apart, `api › nvim` beside a tab in `dashboard`, and the tab row
 above already drops a directory the two share.
 
+Hiding is different: `0` reaches pane labels too. It says the directory names
+nothing worth reading, and the case it is set for most is a split of agents in
+their own git worktrees, `.claude/worktrees/s1107-165441` beside
+`.claude/worktrees/s1107-164218`. Kept on the pane the tab is not named after,
+the folder leads the one row that says what that agent is doing, and it moves
+to the other pane whenever focus does. A pane with nothing but its directory
+still keeps it, by the same guard as a tab.
+
 ## A pane is named for what tells it from its tab
 
 Pane naming is on unless it is turned off ([configuration](./configuration.md)).
