@@ -185,21 +185,24 @@ func TestSnapshotJoinsTheAppToTheCore(t *testing.T) {
 		t.Errorf("p2 = %+v", got)
 	}
 
-	if len(snapshot.Workspaces) != 1 || snapshot.Workspaces[0].ActiveTabID != "tb2" {
+	if len(snapshot.Workspaces) != 2 || snapshot.Workspaces[0].ActiveTabID != "tb2" {
 		t.Errorf("workspaces = %+v", snapshot.Workspaces)
 	}
 }
 
-// A remote machine's files are out of reach, so its tabs must stay untouched.
-func TestSnapshotLeavesOtherMachinesOut(t *testing.T) {
+// An unavailable remote tab stays in the snapshot so its manual lock is retained.
+func TestSnapshotKeepsUnavailableRemoteTabs(t *testing.T) {
 	t.Parallel()
 
 	client, _ := fakeClient(t)
 
-	for _, tab := range readSnapshot(t, client).Tabs {
-		if tab.TabID == "box/tb9" {
-			t.Errorf("a remote tab was listed: %+v", tab)
-		}
+	snapshot := readSnapshot(t, client)
+	if len(snapshot.Tabs) != 4 || snapshot.Tabs[3].TabID != "box/tb9" {
+		t.Errorf("tabs = %+v, want the unavailable remote tab retained", snapshot.Tabs)
+	}
+
+	if len(snapshot.Panes) != 4 {
+		t.Errorf("panes = %+v, want no guessed remote pane", snapshot.Panes)
 	}
 }
 
@@ -277,8 +280,8 @@ func TestRevisionIgnoresSpinnerFrames(t *testing.T) {
 	t.Parallel()
 
 	entry := paneEntry{Terminal: "t", Pane: "p", Status: "working"}
-	first := paneFrom("tb", localPane{entry, terminal{Title: "⠋ name"}}, "")
-	second := paneFrom("tb", localPane{entry, terminal{Title: "⠙ name"}}, "")
+	first := paneFrom("tb", terminalPane{entry, terminal{Title: "⠋ name"}}, "")
+	second := paneFrom("tb", terminalPane{entry, terminal{Title: "⠙ name"}}, "")
 
 	if first.Revision != second.Revision {
 		t.Error("a spinner frame moved the revision")
@@ -287,7 +290,7 @@ func TestRevisionIgnoresSpinnerFrames(t *testing.T) {
 	entry.Status = "done"
 	if third := paneFrom(
 		"tb",
-		localPane{entry, terminal{Title: "⠙ name"}},
+		terminalPane{entry, terminal{Title: "⠙ name"}},
 		"",
 	); third.Revision == second.Revision {
 		t.Error("a new status did not move the revision")
@@ -482,7 +485,7 @@ func TestAPaneTheCoreDoesNotListYetIsLeftOut(t *testing.T) {
 	}}}}
 
 	client := &Client{}
-	snapshot, foregrounds := client.build(world.local([]terminal{{Address: "t1"}}), "", nil)
+	snapshot, foregrounds := client.build(world.join([]terminal{{Address: "t1"}}), "", nil)
 
 	if len(snapshot.Panes) != 1 || snapshot.Panes[0].PaneID != "listed" {
 		t.Errorf("panes = %+v, want only the listed one", snapshot.Panes)
@@ -510,7 +513,7 @@ func TestABackgroundTabKeepsItsFocusedPane(t *testing.T) {
 
 	client := &Client{}
 	focus := func(world world, pane string) []herdr.LayoutInfo {
-		snapshot, _ := client.build(world.local(terminals), pane, nil)
+		snapshot, _ := client.build(world.join(terminals), pane, nil)
 		return snapshot.Layouts
 	}
 
@@ -563,7 +566,7 @@ func TestPanesOfOtherMachinesAreNotLocal(t *testing.T) {
 		{ID: "t", Terminals: []paneEntry{{Terminal: "t1", Pane: "p"}}},
 	}}}}
 
-	if got := panesIn(world.local([]terminal{{Address: "t1"}})); len(got) != 0 {
+	if got := localPanesIn(world.join([]terminal{{Address: "t1"}})); len(got) != 0 {
 		t.Errorf("panes = %+v", got)
 	}
 }

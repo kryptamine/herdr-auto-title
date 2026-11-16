@@ -73,6 +73,10 @@ type PaneInfo struct {
 	// Tokens are what pane.report_metadata attached, one flat map whichever
 	// source reported each. Herdr omits the field while there are none.
 	Tokens map[string]string `json:"tokens"`
+
+	// Machine is the connected machine the desktop app runs the pane on, empty
+	// for this computer. Herdr's socket never reports one, so it is not decoded.
+	Machine string `json:"-"`
 }
 
 // The reference kinds Herdr answers with, decided per agent: Claude Code's
