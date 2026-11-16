@@ -7,18 +7,20 @@ import (
 	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
 
-// piGlyph and piJoin are how Pi frames the one title it sets: `π - <dir>`
-// unnamed, `π - <name> - <dir>` once named.
+// piGlyph, cavemanPrefix and piJoin are how Pi and Caveman Code frame the
+// title each sets: `<prefix> - <dir>` unnamed, `<prefix> - <name> - <dir>`
+// once named.
 const (
-	piGlyph = "π"
-	piJoin  = " - "
+	piGlyph       = "π"
+	cavemanPrefix = "cave"
+	piJoin        = " - "
 )
 
-// withoutPiFrame reports what a Pi pane's title says beyond the program and
-// its directory, and false while it says nothing else. A title Pi did not
-// frame passes through as it is.
-func withoutPiFrame(pane *state.PaneState, title string) (string, bool) {
-	rest, framed := strings.CutPrefix(strings.TrimSpace(title), piGlyph+piJoin)
+// withoutPiFrame reports what a Pi or Caveman Code pane's title says beyond
+// the program and its directory, and false while it says nothing else. A title
+// the agent did not frame passes through as it is.
+func withoutPiFrame(pane *state.PaneState, title, prefix string) (string, bool) {
+	rest, framed := strings.CutPrefix(strings.TrimSpace(title), prefix+piJoin)
 	if !framed {
 		return title, true
 	}

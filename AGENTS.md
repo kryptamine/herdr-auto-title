@@ -262,6 +262,11 @@ are only the facts that would otherwise mislead the code in silence.
   for the other. Codex's hook reports only the id, though Codex hands it the
   path, and only at a session's first prompt: after `/new` or `/resume` the
   reported session lags the terminal title until the user types.
+- **Herdr drops `agent_session` for custom agents.** Caveman Code
+  (`agent: "caveman-code"`) is a Pi fork whose Herdr extension reports the
+  agent and writes `~/.cave/agent/ovis/<pid>.json` with `sessionFile`; a
+  `pane.report_agent_session` call for a custom agent succeeds and leaves
+  `agent_session` null.
 - **oh-my-pi is `agent: "omp"`, not `pi`, and its spinner survives
   stripping.** It titles the terminal `π <state> <name>`, the state a spinner
   frame redrawn every 80 ms while it works; Herdr strips only a leading

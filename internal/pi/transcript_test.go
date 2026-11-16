@@ -347,3 +347,53 @@ func TestRetainKeepsOnlyTheSessionsStillHeld(t *testing.T) {
 		t.Error("a session a pane still holds must be kept")
 	}
 }
+
+func writeSidecar(t *testing.T, home string, pid int, content string) {
+	t.Helper()
+
+	dir := filepath.Join(home, ".cave", "agent", "ovis")
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+
+	path := filepath.Join(dir, strconv.Itoa(pid)+".json")
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCavemanSessionReadsTheProcessesSidecar(t *testing.T) {
+	t.Parallel()
+
+	home := t.TempDir()
+	f := newSessionFile(t)
+	writeSidecar(t, home, 4242, `{"pid":4242,"sessionFile":`+strconv.Quote(f.path)+`}`)
+
+	if got := CavemanSession(home, 4242); got != f.path {
+		t.Errorf("session = %q, want %q", got, f.path)
+	}
+}
+
+func TestCavemanSessionRefusesAnUnusableSidecar(t *testing.T) {
+	t.Parallel()
+
+	home := t.TempDir()
+	f := newSessionFile(t)
+
+	writeSidecar(t, home, 100, `{"pid":999,"sessionFile":`+strconv.Quote(f.path)+`}`)
+	writeSidecar(t, home, 101, `{"pid":101,"sessionFile":"relative/session.jsonl"}`)
+	writeSidecar(t, home, 102, `{"pid":102,"sessionFile":`+strconv.Quote(f.path+"/../x.jsonl")+`}`)
+
+	for name, got := range map[string]string{
+		"mismatched pid": CavemanSession(home, 100),
+		"relative path":  CavemanSession(home, 101),
+		"unclean path":   CavemanSession(home, 102),
+		"missing file":   CavemanSession(home, 103),
+		"empty home":     CavemanSession("", 4242),
+		"zero pid":       CavemanSession(home, 0),
+	} {
+		if got != "" {
+			t.Errorf("%s: session = %q, want empty", name, got)
+		}
+	}
+}

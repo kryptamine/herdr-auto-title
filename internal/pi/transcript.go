@@ -5,16 +5,21 @@ package pi
 
 import (
 	"encoding/json"
+	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/kryptamine/herdr-auto-title/internal/transcript"
 )
 
-// Agent is the label Herdr gives Pi, and the only agent whose session file this
-// package knows how to read.
-const Agent = "pi"
+// Agent and CavemanAgent are the labels Herdr gives Pi and Caveman Code, a Pi
+// fork that writes the same session files.
+const (
+	Agent        = "pi"
+	CavemanAgent = "caveman-code"
+)
 
 // Reader reads session files, remembering how far it has read each one. A
 // session file only grows, so a poll reads the bytes appended since the last
@@ -33,6 +38,37 @@ type session struct {
 
 func NewReader() *Reader {
 	return &Reader{sessions: make(map[string]*session)}
+}
+
+// CavemanSession reports the session file a Caveman Code process of pid
+// recorded in its sidecar under home, or "" when none can be read.
+func CavemanSession(home string, pid int) string {
+	if home == "" || pid <= 0 {
+		return ""
+	}
+
+	path := filepath.Join(home, ".cave", "agent", "ovis", strconv.Itoa(pid)+".json")
+
+	//nolint:gosec // the root is the user's home and the name is a number
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+
+	var sidecar struct {
+		PID         int    `json:"pid"`
+		SessionFile string `json:"sessionFile"`
+	}
+	if json.Unmarshal(raw, &sidecar) != nil || sidecar.PID != pid {
+		return ""
+	}
+
+	if !filepath.IsAbs(sidecar.SessionFile) ||
+		filepath.Clean(sidecar.SessionFile) != sidecar.SessionFile {
+		return ""
+	}
+
+	return sidecar.SessionFile
 }
 
 // Topic reports what the session in the file at path is about, and the zero

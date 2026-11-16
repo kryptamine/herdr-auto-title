@@ -130,6 +130,17 @@ func PiPrompt(text string) string {
 	) + `}}`
 }
 
+// CavemanSidecar lays down the file Caveman Code's Herdr extension writes for
+// one process under a home directory.
+func CavemanSidecar(t *testing.T, home string, pid int, sessionFile string) {
+	t.Helper()
+
+	path := filepath.Join(home, ".cave", "agent", "ovis", strconv.Itoa(pid)+".json")
+
+	mkdir(t, filepath.Dir(path))
+	write(t, path, `{"pid":`+strconv.Itoa(pid)+`,"sessionFile":`+strconv.Quote(sessionFile)+`}`)
+}
+
 // CodexRollout lays down one Codex session's rollout under a Codex home, filed
 // under a day the way Codex files it.
 func CodexRollout(t *testing.T, home, sessionID string, lines ...string) {
