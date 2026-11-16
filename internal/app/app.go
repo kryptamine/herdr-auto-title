@@ -434,7 +434,10 @@ func (a *App) nameTab(
 	poll *reads.Poll,
 	tab state.TabState,
 ) {
-	if pass.TabLocked(tab.ID) || !a.readAll(ctx, poll, tab) || pass.TabOwned(tab) {
+	// A tab with no pane says nothing, and naming it would replace a label it
+	// will want back, as a disconnected machine's tab in the desktop app does.
+	if tab.Context == nil || pass.TabLocked(tab.ID) || !a.readAll(ctx, poll, tab) ||
+		pass.TabOwned(tab) {
 		return
 	}
 

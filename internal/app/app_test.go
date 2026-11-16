@@ -1863,3 +1863,16 @@ func TestATabIsNamedFromACodexSessionsName(t *testing.T) {
 		t.Errorf("rename = %q, want %q", got, want)
 	}
 }
+
+// A tab with no pane has nothing to be named after, and the desktop app keeps a
+// disconnected machine's tabs that way until it reconnects.
+func TestATabWithNoPaneKeepsItsLabel(t *testing.T) {
+	t.Parallel()
+
+	h := start(t, []herdr.TabInfo{{TabID: "wE:t1", Label: "Deploy"}}, nil)
+	h.poll()
+
+	if renames := h.client.Renames(); len(renames) != 0 {
+		t.Errorf("issued %v, want no rename", renames)
+	}
+}
