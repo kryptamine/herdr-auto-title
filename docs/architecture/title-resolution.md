@@ -693,6 +693,13 @@ is how Windows spells one. The title oh-my-posh sets by default,
 `pwsh in dashboard`, is refused as a shell prompt is: it names the shell and
 the directory the context already names.
 
+A directory is read in the syntax it is spelled in, not this computer's: one
+spelled from `/` is a Unix path on any client. The desktop app reports a
+connected machine's directories as that machine has them, and Windows'
+`filepath` reads `/srv/app` as relative, so a Windows client named every Linux
+tab `Shell`. A Windows path on a Unix client is not handled; no connected
+Windows machine has been measured.
+
 ## A worktree does not say its branch twice
 
 `git worktree add ../feat-oauth feat-oauth` makes a directory and a branch of

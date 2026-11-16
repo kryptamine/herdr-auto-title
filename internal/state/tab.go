@@ -3,6 +3,7 @@
 package state
 
 import (
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -99,7 +100,7 @@ func snapshotDir(info herdr.PaneInfo) string {
 	return cleanDir(info.CWD)
 }
 
-// cleanDir is a reported directory as filepath.Clean spells it, the trailing
+// cleanDir is a reported directory cleaned in its own syntax, the trailing
 // separator Windows adds gone. "" stays "": a pane without a directory is real,
 // and Clean would spell it ".".
 func cleanDir(dir string) string {
@@ -107,7 +108,56 @@ func cleanDir(dir string) string {
 		return ""
 	}
 
+	if unixDir(dir) {
+		return path.Clean(dir)
+	}
+
 	return filepath.Clean(dir)
+}
+
+// DirBase is the last element of the pane's directory, read in the syntax the
+// directory is spelled in.
+func (p *PaneState) DirBase() string {
+	if unixDir(p.Dir) {
+		return path.Base(p.Dir)
+	}
+
+	return filepath.Base(p.Dir)
+}
+
+// DirName is the last element of the pane's directory when it names something:
+// "" for a root, a relative path or no directory at all.
+func (p *PaneState) DirName() string {
+	if p.Dir == "" {
+		return ""
+	}
+
+	clean := cleanDir(p.Dir)
+	if unixDir(clean) {
+		return nameOf(path.Base(clean), "/")
+	}
+
+	if !filepath.IsAbs(clean) {
+		return ""
+	}
+
+	return nameOf(filepath.Base(clean), string(filepath.Separator))
+}
+
+// nameOf is base unless it names nothing: a root is its own base.
+func nameOf(base, root string) string {
+	switch base {
+	case ".", "..", root:
+		return ""
+	}
+
+	return base
+}
+
+// unixDir reports a directory spelled from "/". A connected machine's reaches
+// a Windows client too, where filepath would read it as relative.
+func unixDir(dir string) bool {
+	return strings.HasPrefix(dir, "/")
 }
 
 // PaneFrom builds pane context from a snapshot entry and when a poll last saw

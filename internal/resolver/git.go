@@ -69,7 +69,7 @@ func (g Git) Resolve(pane *state.PaneState) (Parts, bool) {
 
 	// A worktree named after its branch says it once. Only the whole name can
 	// match the directory: cut down to maxLength, it no longer does.
-	if strings.EqualFold(checkout.Branch, filepath.Base(pane.Dir)) {
+	if strings.EqualFold(checkout.Branch, pane.DirBase()) {
 		return Parts{}, false
 	}
 
