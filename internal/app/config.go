@@ -193,13 +193,7 @@ func loadConfig() (Config, []string) {
 	cfg.DirectoryMax, cfg.HideDirectory = directoryFromEnv(&warnings)
 	cfg.ShowPosition = fromEnv(&warnings, EnvPosition, cfg.ShowPosition, boolean)
 	loadSessionOptions(&cfg, &warnings)
-	cfg.ShowAgentName = fromEnv(&warnings, EnvAgentName, cfg.ShowAgentName, boolean)
-	cfg.RenamePanes = fromEnv(&warnings, EnvPanes, cfg.RenamePanes, boolean)
-	cfg.PreferAgentPane = fromEnv(&warnings, EnvPreferAgent, cfg.PreferAgentPane, boolean)
-	cfg.ShowPaneID = fromEnv(&warnings, EnvPaneID, cfg.ShowPaneID, boolean)
-	cfg.ShowAgentHandle = fromEnv(&warnings, EnvAgentHandle, cfg.ShowAgentHandle, boolean)
-	cfg.ShowIcons = fromEnv(&warnings, EnvIcons, cfg.ShowIcons, boolean)
-	cfg.ShowAgentStatus = fromEnv(&warnings, EnvAgentStatus, cfg.ShowAgentStatus, boolean)
+	loadLabelOptions(&cfg, &warnings)
 	cfg.ReportWorkspaces = fromEnv(&warnings, EnvWorkspaces, cfg.ReportWorkspaces, boolean)
 	cfg.WorkspaceMaxLength = fromEnv(
 		&warnings,
@@ -219,6 +213,16 @@ func loadConfig() (Config, []string) {
 	}
 
 	return cfg, warnings
+}
+
+func loadLabelOptions(cfg *Config, warnings *[]string) {
+	cfg.ShowAgentName = fromEnv(warnings, EnvAgentName, cfg.ShowAgentName, boolean)
+	cfg.RenamePanes = fromEnv(warnings, EnvPanes, cfg.RenamePanes, boolean)
+	cfg.PreferAgentPane = fromEnv(warnings, EnvPreferAgent, cfg.PreferAgentPane, boolean)
+	cfg.ShowPaneID = fromEnv(warnings, EnvPaneID, cfg.ShowPaneID, boolean)
+	cfg.ShowAgentHandle = fromEnv(warnings, EnvAgentHandle, cfg.ShowAgentHandle, boolean)
+	cfg.ShowIcons = fromEnv(warnings, EnvIcons, cfg.ShowIcons, boolean)
+	cfg.ShowAgentStatus = fromEnv(warnings, EnvAgentStatus, cfg.ShowAgentStatus, boolean)
 }
 
 func loadSessionOptions(cfg *Config, warnings *[]string) {
