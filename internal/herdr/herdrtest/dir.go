@@ -6,8 +6,8 @@ import (
 )
 
 // Dir is an absolute directory as Herdr reports one on the platform the tests
-// run on. A fixture spelled `/Users/dev/work` is relative on Windows, where
-// filepath.IsAbs wants a drive, and a relative directory names no tab.
+// run on: under a drive on Windows, so that fixtures exercise filepath there
+// rather than the Unix syntax a connected machine's directory arrives in.
 func Dir(elems ...string) string {
 	return filepath.Join(append([]string{Root(), "Users", "dev"}, elems...)...)
 }

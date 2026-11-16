@@ -1,7 +1,6 @@
 package resolver
 
 import (
-	"path/filepath"
 	"strings"
 
 	"github.com/kryptamine/herdr-auto-title/internal/state"
@@ -29,7 +28,7 @@ func withoutPiFrame(pane *state.PaneState, title string) (string, bool) {
 		return "", false
 	}
 
-	dir := filepath.Base(pane.Dir)
+	dir := pane.DirBase()
 	if rest == dir {
 		return "", false
 	}

@@ -59,6 +59,10 @@ func TestResolveFromCWD(t *testing.T) {
 		{"home directory falls back", home, GenericFallback, "generic_fallback"},
 		{"filesystem root falls back", herdrtest.Root(), GenericFallback, "generic_fallback"},
 		{"relative path falls back", "work/dashboard", GenericFallback, "generic_fallback"},
+		// A connected machine's directory arrives in its own syntax, whatever
+		// this computer's is: a Windows client must still read /srv/app.
+		{"a Unix path names the tab on any client", "/srv/app/", "app", "cwd"},
+		{"a Unix root falls back on any client", "/", GenericFallback, "generic_fallback"},
 		{"empty path falls back", "", GenericFallback, "generic_fallback"},
 	}
 

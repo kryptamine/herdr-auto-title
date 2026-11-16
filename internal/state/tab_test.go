@@ -331,6 +331,21 @@ func TestAPaneDirectoryIsCleanedAsItArrives(t *testing.T) {
 	}
 }
 
+// A connected machine's directory reaches a Windows client spelled the Unix
+// way, and filepath there would turn /srv/app into \srv\app.
+func TestAUnixDirectoryIsReadInItsOwnSyntax(t *testing.T) {
+	t.Parallel()
+
+	pane := PaneFrom(herdr.PaneInfo{PaneID: "box/p1", CWD: "/srv/app/"}, "", time.Time{})
+	if pane.Dir != "/srv/app" {
+		t.Errorf("dir = %q, want /srv/app", pane.Dir)
+	}
+
+	if base, name := pane.DirBase(), pane.DirName(); base != "app" || name != "app" {
+		t.Errorf("base = %q, name = %q, want app for both", base, name)
+	}
+}
+
 func TestPaneDirKeepsTheSnapshotsGuessWhenItLearnsNone(t *testing.T) {
 	t.Parallel()
 
