@@ -102,8 +102,10 @@ func sessionClient(
 	})
 	core := serve(t, func(map[string]any) string { return terminalsOf(t, *current.Load()) })
 
-	return &Client{app: app.path, core: core.path, sessions: sessions},
-		func(next ...agentPane) { current.Store(&next) }
+	client := newClient(app.path, core.path, false)
+	client.sessions = sessions
+
+	return client, func(next ...agentPane) { current.Store(&next) }
 }
 
 func processTree(tree map[int][]int) func(context.Context) (map[int][]int, error) {

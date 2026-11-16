@@ -85,7 +85,7 @@ func desktopCommand(ctx context.Context, args []string) error {
 func runDesktop(ctx context.Context) error {
 	cfg, log := app.Configure()
 
-	client, err := desktop.New(cfg.ClaudeDirs)
+	client, err := desktop.New(cfg.ClaudeDirs, cfg.CoreLayout)
 	if err != nil {
 		return err
 	}

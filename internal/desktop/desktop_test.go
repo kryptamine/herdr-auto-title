@@ -140,7 +140,10 @@ func fakeClientAnswering(t *testing.T, ls, status string) (*Client, *fakeSocket)
 	})
 	core := serve(t, func(map[string]any) string { return fakeTerminals })
 
-	return &Client{app: app.path, core: core.path, sessions: newSessionFinder(nil)}, app
+	client := newClient(app.path, core.path, false)
+	client.sessions = newSessionFinder(nil)
+
+	return client, app
 }
 
 func readSnapshot(t *testing.T, client *Client) herdr.Snapshot {
@@ -326,7 +329,7 @@ func TestRenameErrorsKeepTheirMeaning(t *testing.T) {
 		answer, _ := reply.Load().(string)
 		return answer
 	})
-	client := &Client{app: app.path}
+	client := newClient(app.path, "", false)
 
 	reply.Store(`{"error":"no tab \"tb1\""}`)
 
@@ -404,7 +407,7 @@ func TestABrokenAnswerIsUnanswered(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			client := &Client{app: listen(t, handle)}
+			client := newClient(listen(t, handle), "", false)
 
 			if err := client.RenameTab(
 				t.Context(),
@@ -424,7 +427,7 @@ func TestABrokenAnswerIsUnanswered(t *testing.T) {
 func TestClosedWindowIsNotUnanswered(t *testing.T) {
 	t.Parallel()
 
-	client := &Client{app: filepath.Join(t.TempDir(), "gone.sock")}
+	client := newClient(filepath.Join(t.TempDir(), "gone.sock"), "", false)
 
 	err := client.RenameTab(t.Context(), "tb1", "x")
 	if err == nil || errors.Is(err, herdr.ErrUnanswered) {
