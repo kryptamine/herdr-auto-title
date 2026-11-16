@@ -126,15 +126,27 @@ func (p *Poll) Fill(ctx context.Context, pane *state.PaneState) bool {
 	pane.Processes = state.ProcessesFrom(processes)
 	pane.Dir = dir
 
-	// The agent's session is read before the checkout because it can say where
-	// the agent is working, and that is where the branch is read from.
-	topic := p.reader.topic(ctx, pane, dir, processes)
-	pane.AgentTopic = topic.text
-	pane.Git = p.checkout(ctx, dir)
-	pane.AgentGit = p.checkout(ctx, topic.dir)
-	pane.AgentDir = topic.dir
+	if pane.Machine == "" {
+		p.fillLocal(ctx, pane, processes)
+	}
 
 	return read
+}
+
+// fillLocal reads what this computer's files say about a pane on it: its
+// agent's session and the checkouts it works in.
+func (p *Poll) fillLocal(
+	ctx context.Context,
+	pane *state.PaneState,
+	processes []herdr.PaneProcessInfoProcess,
+) {
+	// The agent's session is read before the checkout because it can say where
+	// the agent is working, and that is where the branch is read from.
+	topic := p.reader.topic(ctx, pane, pane.Dir, processes)
+	pane.AgentTopic = topic.text
+	pane.Git = p.checkout(ctx, pane.Dir)
+	pane.AgentGit = p.checkout(ctx, topic.dir)
+	pane.AgentDir = topic.dir
 }
 
 // processesOf reports what a pane is running, or false when Herdr gave no

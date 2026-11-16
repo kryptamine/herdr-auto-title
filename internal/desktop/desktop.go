@@ -101,11 +101,11 @@ func (c *Client) Snapshot(ctx context.Context) (herdr.Snapshot, error) {
 		return herdr.Snapshot{}, err
 	}
 
-	local := world.local(terminals)
-	sessions := c.sessions.read(ctx, panesIn(local))
+	spaces := world.join(terminals)
+	sessions := c.sessions.read(ctx, localPanesIn(spaces))
 
 	c.mu.Lock()
-	snapshot, foregrounds := c.build(local, status.FocusedPane, sessions)
+	snapshot, foregrounds := c.build(spaces, status.FocusedPane, sessions)
 	c.foregrounds = foregrounds
 	c.mu.Unlock()
 

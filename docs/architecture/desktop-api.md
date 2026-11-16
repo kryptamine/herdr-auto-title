@@ -15,8 +15,9 @@ it. Every fact below was measured against a live **herdr-app 0.1.9** and **hc
 socket request, unless it says otherwise. On **herdr-app 0.1.13** and **hc
 0.1.18** the fields the code reads, renames, the `+` menu, Claude Code's session
 and closing a space were measured again; what changed is said where it applies.
-Linux remains unmeasured. The Windows checks below do not establish full
-Windows support.
+The connected-machine probe below used **herdr-app 0.1.15** and **hc 0.1.20**
+on macOS, with two Linux cores. A Linux desktop window remains unmeasured.
+The Windows checks below do not establish full Windows support.
 
 Desktop support is tracked in
 [#188](https://github.com/kryptamine/herdr-auto-title/issues/188).
@@ -171,6 +172,24 @@ terminal's `pid` and walking its descendants.
   the latter unmeasured on a live agent. Windows uses native process handle
   snapshots; the probe and limits are recorded below.
 
+### Connected machines
+
+The desktop adapter includes every machine in the app's `ls`, joining panes
+to `terminal.list` by their complete address. On hc 0.1.20, that socket method
+already reports remote terminals' titles, cwd and foreground processes;
+`hc ls --json` is still the reduced CLI view. No `terminal.get` is needed.
+
+Machine prefixes are part of every remote space, tab, pane and terminal id.
+`box/t1` cannot match local `t1` or another machine's `other/t1`. A remote PID
+never enters the local session finder, and a remote directory or session
+reference never reaches a local transcript or Git reader, so a remote tab is
+named from its terminal title, foreground process and directory alone. Renames
+use the qualified tab id through the app's existing `tab.rename` command.
+
+- **An unavailable tab stays in the snapshot.** This retains its manual-name
+  lock across a disconnect and restart. With no joined pane it is not renamed;
+  clearing a manual name resumes automatic naming after reconnection.
+
 ### What reading them costs
 
 `ps -axo pid=,ppid=` takes about 33 ms with 860 processes, and `lsof -p` about
@@ -210,7 +229,7 @@ reopens.
 ## The desktop mode
 
 `herdr-auto-title desktop` is the same poll loop behind `internal/desktop`, which
-implements `herdr.Client`. Four things differ from TUI mode:
+implements `herdr.Client`. These things differ from TUI mode:
 
 - **Panes and workspace tokens are off**, because they have no equivalent. The
   client does not implement `herdr.PaneRenamer` or `herdr.TopicReporter`, and
@@ -220,12 +239,16 @@ implements `herdr.Client`. Four things differ from TUI mode:
 - **`Server()` is empty**, so a window restart is not a successor and the process
   stays. It logs failed polls until the window returns.
 - **A pane the core does not list yet is left out.** `ls` and `terminal.list` are
-  separate reads. Its siblings still name the tab, and a tab with no other pane
-  gets the fallback name for that poll.
+  separate reads. Its siblings still name the tab; a tab with no joined pane
+  keeps its existing label until a pane returns.
+- **Connected machines are included**, from their own terminal metadata, as
+  described above. TUI's local socket never reports its saved SSH machines,
+  which run Auto Title themselves.
 
-An agent's session arrives as it does in TUI, in `agent_session`, so the readers
-are the same. The terminal title still outranks them: a Claude Code or Grok Build
-tab reads the transcript only when its title says nothing, as after `/clear`, and
+For local panes an agent's session arrives as it does in TUI, in
+`agent_session`, so the readers are the same. The terminal title still outranks
+them: a Claude Code or Grok Build tab reads the transcript only when its title
+says nothing, as after `/clear`, and
 an Antigravity tab, whose title is empty, always does.
 
 `HERDR_AUTO_TITLE_ICONS` needs a Nerd Font in the app too, and its own setting:

@@ -15,6 +15,9 @@ import (
 // PaneState is one pane's context as Herdr reported it when it was last read.
 type PaneState struct {
 	ID string
+	// Machine is the connected machine the pane runs on, empty for this
+	// computer. Another machine's directories and sessions are not read here.
+	Machine string
 	// CurrentName is the label the pane carries, empty while nobody has named
 	// it. Herdr falls back to the agent's name for display and stores nothing.
 	CurrentName string
@@ -113,6 +116,7 @@ func cleanDir(dir string) string {
 func PaneFrom(info herdr.PaneInfo, handle string, changedAt time.Time) *PaneState {
 	return &PaneState{
 		ID:               info.PaneID,
+		Machine:          info.Machine,
 		CurrentName:      info.Label,
 		Dir:              snapshotDir(info),
 		TerminalTitle:    info.TerminalTitleStripped,

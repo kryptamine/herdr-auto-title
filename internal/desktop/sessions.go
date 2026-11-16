@@ -82,7 +82,7 @@ func newSessionFinder(claudeDirs []string) *sessionFinder {
 // not given. A poll shares one read of the process table, made only if needed.
 func (f *sessionFinder) read(
 	ctx context.Context,
-	panes []localPane,
+	panes []terminalPane,
 ) map[string]*herdr.AgentSessionInfo {
 	table := sync.OnceValues(func() (map[int][]int, error) { return f.processes(ctx) })
 	reads := make(map[string]sessionRead)
@@ -103,7 +103,7 @@ func (f *sessionFinder) read(
 
 func (f *sessionFinder) readPane(
 	ctx context.Context,
-	pane localPane,
+	pane terminalPane,
 	table func() (map[int][]int, error),
 ) sessionRead {
 	key := sessionKey{

@@ -136,7 +136,7 @@ func TestLauncherTabIsTitledBeforeItsAgentReports(t *testing.T) {
 						Terminals: []paneEntry{{Terminal: "t1", Pane: "p1", App: app}},
 					},
 				}}}}
-				local := world.local([]terminal{{Address: "t1", Argv: tc.argv}})
+				local := world.join([]terminal{{Address: "t1", Argv: tc.argv}})
 				snapshot, _ := adapter.build(local, "", nil)
 				pass := owner.Pass(client, snapshot)
 				pass.Tab(
