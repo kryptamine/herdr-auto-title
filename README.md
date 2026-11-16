@@ -94,6 +94,13 @@ the one you ran can be deleted. Its log is `~/Library/Logs/herdr-auto-title.log`
 on macOS and `journalctl --user -u herdr-auto-title` on Linux. On Windows it
 keeps no log; run `herdr-auto-title.exe desktop` in a terminal to see one.
 
+**On a machine with no window:** when the app connects to herdr-core on
+another machine over SSH, the agents and their sessions run on that machine.
+Install Auto Title there with `desktop install`, and set
+`HERDR_AUTO_TITLE_CORE_LAYOUT=true` and `HERDR_AUTO_TITLE_PREFER_AGENT=true` in
+its `config.env`. It then reads and renames tabs in the core's own layout
+document, so they are named from those sessions, and the app shows the names.
+
 What differs from Herdr TUI:
 
 - Only tabs are named: the desktop app has no pane labels or workspace topics.
@@ -207,6 +214,7 @@ not read.
 | `HERDR_AUTO_TITLE_AGENT_NAME`   | `false`                                  | Put the agent's name in front of what it is doing                  |
 | `HERDR_AUTO_TITLE_PANES`        | `true`                                   | Name panes as well as tabs                                         |
 | `HERDR_AUTO_TITLE_PREFER_AGENT` | `false`                                  | Name a tab after its agent pane even while another pane is focused |
+| `HERDR_AUTO_TITLE_CORE_LAYOUT`  | `false`                                  | Desktop mode: read and rename tabs in herdr-core's layout document, on a machine with no app window |
 | `HERDR_AUTO_TITLE_PANE_ID`      | `false`                                  | Put the pane's Herdr ID in front of its label, as `[w1:p2] api`    |
 | `HERDR_AUTO_TITLE_AGENT_HANDLE` | `false`                                  | Put the name `herdr agent rename` gave the pane's agent in front of its label, as `driver › api` |
 | `HERDR_AUTO_TITLE_ICONS`        | `false`                                  | Put a Nerd Font 3.0+ icon for what a pane runs in front of labels  |

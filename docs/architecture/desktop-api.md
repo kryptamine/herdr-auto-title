@@ -267,6 +267,41 @@ its existence says nothing about a window. The core keeps answering, terminals
 keep running, and a rename made before the quit is still there when the window
 reopens.
 
+## A core with no window
+
+The app can arrange a core on another machine, which it reaches over SSH
+(`herdr-core connect`). There the agents and their session files are local,
+but no `herdr-app.sock` exists: the window is on the other computer. With
+`HERDR_AUTO_TITLE_CORE_LAYOUT=true` the desktop client reads and renames tabs
+in the core's own `herdr-app` document instead. Measured on hc 0.1.21 on Linux,
+with the document an app had written:
+
+- `doc.get {"name":"herdr-app"}` answers `{"value":…,"version":N}`. The value
+  holds `spaces`, each with `id`, `name`, `folder` and `tabs`; a tab has `id`,
+  `name` and a `root` tree of `row`, `column` and `block` nodes, where a block's
+  `content.terminal` is a terminal address and its `id` the pane id `ls` gives.
+- An unnamed tab's `name` is `""`, so the client reports its position, as `ls`
+  does.
+- `doc.set {"name","value","version"}` writes the whole value. One made against
+  an older version is refused with JSON-RPC error `-32000` and
+  `data.kind: "conflict"`; the client reads the document again and retries,
+  at most three times. A rename changes only the tab's `name` and keeps every
+  other key and number as written.
+- The core socket answers JSON-RPC lines without `hello`, as `terminal.list`
+  already relied on. `terminal.list` carries `status` (`app`, `state`) and
+  `labels`, so a pane's status is the app's word: `done` while its `turn` is
+  past `herdr.seen`, as the app's `ls` reports it.
+- The document holds no focus, so no pane reads as focused and no tab as
+  active; `HERDR_AUTO_TITLE_PREFER_AGENT=true` names a tab after its agent
+  regardless.
+- A block whose terminal carries a machine prefix (`box/t9`) is left out of
+  its tab: the document's spaces name no machine, so its PIDs and paths would
+  otherwise reach the local readers.
+- The claim is the core's socket, since there is no app socket to name it.
+
+Whether a connected window shows a rename written to the document while it is
+open was not measured; the next time it reads the document it does.
+
 ## The desktop mode
 
 `herdr-auto-title desktop` is the same poll loop behind `internal/desktop`, which

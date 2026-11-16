@@ -56,7 +56,10 @@ func connectedRemoteClient(t *testing.T) *Client {
 	}})
 	core := serve(t, func(map[string]any) string { return reply })
 
-	return &Client{app: app.path, core: core.path, sessions: newSessionFinder(nil)}
+	client := newClient(app.path, core.path, false)
+	client.sessions = newSessionFinder(nil)
+
+	return client
 }
 
 func TestSnapshotIncludesConnectedRemoteMachines(t *testing.T) {
@@ -112,7 +115,8 @@ func TestARemoteAgentNeverUsesTheLocalSessionFinder(t *testing.T) {
 		"terminals": []terminal{{Address: "box/t", PID: 100}},
 	}})
 	core := serve(t, func(map[string]any) string { return reply })
-	client := &Client{app: app.path, core: core.path, sessions: newSessionFinder(nil)}
+	client := newClient(app.path, core.path, false)
+	client.sessions = newSessionFinder(nil)
 	client.sessions.processes = func(_ context.Context) (map[int][]int, error) {
 		t.Error("a remote PID reached the local process table")
 		return map[int][]int{}, nil

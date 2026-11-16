@@ -29,34 +29,19 @@ func (c *Client) ExecMachine(
 		return nil, context.DeadlineExceeded
 	}
 
-	request := map[string]any{
-		"jsonrpc": "2.0", "id": 1, "method": "machine.exec",
-		"params": map[string]any{
-			"on": machine, "argv": argv, "input": input, "timeout": timeout,
-		},
+	params := map[string]any{"on": machine, "argv": argv, "input": input, "timeout": timeout}
+
+	var result struct {
+		Stdout    []byte `json:"stdout"`
+		Code      *int   `json:"code"`
+		TimedOut  bool   `json:"timed_out"`
+		Truncated bool   `json:"truncated"`
 	}
 
-	var reply struct {
-		Result struct {
-			Stdout    []byte `json:"stdout"`
-			Code      *int   `json:"code"`
-			TimedOut  bool   `json:"timed_out"`
-			Truncated bool   `json:"truncated"`
-		} `json:"result"`
-		Error *struct {
-			Message string `json:"message"`
-		} `json:"error"`
-	}
-
-	if err := ask(ctx, c.core, request, &reply); err != nil {
+	if err := rpc(ctx, c.core, "machine.exec", params, &result); err != nil {
 		return nil, err
 	}
 
-	if reply.Error != nil {
-		return nil, fmt.Errorf("machine.exec: %s", reply.Error.Message)
-	}
-
-	result := reply.Result
 	if result.Code == nil || *result.Code != 0 || result.TimedOut || result.Truncated {
 		return nil, fmt.Errorf("machine.exec on %s did not complete", machine)
 	}

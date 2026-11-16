@@ -34,6 +34,7 @@ const (
 	EnvIcons        = "HERDR_AUTO_TITLE_ICONS"
 	EnvAgentStatus  = "HERDR_AUTO_TITLE_AGENT_STATUS"
 	EnvSessionOnly  = "HERDR_AUTO_TITLE_SESSION_ONLY"
+	EnvCoreLayout   = "HERDR_AUTO_TITLE_CORE_LAYOUT"
 
 	EnvForeignProcesses = "HERDR_AUTO_TITLE_FOREIGN_PROCESSES"
 
@@ -102,6 +103,9 @@ type Config struct {
 	// goto panel lists a pane by. It costs a read per pane rather than per
 	// tab — see docs/architecture/poll-loop.md.
 	RenamePanes bool
+	// CoreLayout has the desktop mode read and rename tabs in herdr-core's
+	// layout document, on a machine whose core an app elsewhere arranges.
+	CoreLayout bool
 	// PreferAgentPane names a tab after its agent pane even when another pane
 	// is focused, so opening an editor beside the agent leaves the title alone.
 	PreferAgentPane bool
@@ -194,6 +198,7 @@ func loadConfig() (Config, []string) {
 	cfg.ShowPosition = fromEnv(&warnings, EnvPosition, cfg.ShowPosition, boolean)
 	loadSessionOptions(&cfg, &warnings)
 	loadLabelOptions(&cfg, &warnings)
+	cfg.CoreLayout = fromEnv(&warnings, EnvCoreLayout, cfg.CoreLayout, boolean)
 	cfg.ReportWorkspaces = fromEnv(&warnings, EnvWorkspaces, cfg.ReportWorkspaces, boolean)
 	cfg.WorkspaceMaxLength = fromEnv(
 		&warnings,

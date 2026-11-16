@@ -61,6 +61,9 @@ type terminal struct {
 	// Foreground is null for the first moments of a terminal, which decodes as
 	// no process at all.
 	Foreground herdr.PaneProcessInfoProcess `json:"foreground"`
+	// Status and Labels stand in for `ls` when the layout comes from the core.
+	Status *coreStatus       `json:"status"`
+	Labels map[string]string `json:"labels"`
 }
 
 // terminalPane is a pane and what its machine's core knows of it.
@@ -92,10 +95,7 @@ var statusRank = []string{
 // join is the app's spaces, each tab's panes joined to their terminals. A
 // pane the core does not list yet has nothing to say, so another may name its tab.
 func (w world) join(terminals []terminal) []space {
-	byAddress := make(map[string]terminal, len(terminals))
-	for _, t := range terminals {
-		byAddress[t.Address] = t
-	}
+	byAddress := terminalsByAddress(terminals)
 
 	for _, space := range w.Spaces {
 		for i := range space.Tabs {
@@ -340,4 +340,13 @@ func withoutSpinner(title string) string {
 // and the star Claude Code puts in front of its title.
 func isCircleSpinner(r rune) bool {
 	return (r >= '◐' && r <= '◓') || (r >= '◴' && r <= '◷') || r == '✳'
+}
+
+func terminalsByAddress(terminals []terminal) map[string]terminal {
+	byAddress := make(map[string]terminal, len(terminals))
+	for _, t := range terminals {
+		byAddress[t.Address] = t
+	}
+
+	return byAddress
 }

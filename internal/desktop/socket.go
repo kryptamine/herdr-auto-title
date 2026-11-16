@@ -36,3 +36,45 @@ func ask(ctx context.Context, path string, request, reply any) error {
 
 	return nil
 }
+
+// coreError is the core refusing a request, as opposed to not answering it.
+// kind is the refusal's data.kind, such as "conflict" for a stale write.
+type coreError struct {
+	method, message, kind string
+}
+
+func (e *coreError) Error() string { return e.method + ": " + e.message }
+
+// rpc asks the core one JSON-RPC question on a connection of its own. A reply
+// with no result leaves result as it was.
+func rpc(ctx context.Context, path, method string, params, result any) error {
+	request := map[string]any{"jsonrpc": "2.0", "id": 1, "method": method, "params": params}
+
+	var reply struct {
+		Result json.RawMessage `json:"result"`
+		Error  *struct {
+			Message string `json:"message"`
+			Data    struct {
+				Kind string `json:"kind"`
+			} `json:"data"`
+		} `json:"error"`
+	}
+
+	if err := ask(ctx, path, request, &reply); err != nil {
+		return err
+	}
+
+	if reply.Error != nil {
+		return &coreError{method: method, message: reply.Error.Message, kind: reply.Error.Data.Kind}
+	}
+
+	if result == nil || len(reply.Result) == 0 {
+		return nil
+	}
+
+	if err := json.Unmarshal(reply.Result, result); err != nil {
+		return fmt.Errorf("%w: decode %s: %w", herdr.ErrUnanswered, method, err)
+	}
+
+	return nil
+}
