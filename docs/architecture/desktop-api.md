@@ -182,13 +182,54 @@ already reports remote terminals' titles, cwd and foreground processes;
 Machine prefixes are part of every remote space, tab, pane and terminal id.
 `box/t1` cannot match local `t1` or another machine's `other/t1`. A remote PID
 never enters the local session finder, and a remote directory or session
-reference never reaches a local transcript or Git reader, so a remote tab is
-named from its terminal title, foreground process and directory alone. Renames
-use the qualified tab id through the app's existing `tab.rename` command.
+reference never reaches a local transcript or Git reader. Renames use the
+qualified tab id through the app's existing `tab.rename` command.
 
+A remote pane's branch and Codex session are read by the same Go readers as a
+local pane's, over `files.Machine`, a filesystem made of what the machine last
+answered. Its questions go through the core's `machine.exec` as one batch per
+machine: `argv: ["python3", "-c", <helper>]` with the questions as base64
+stdin, never a shell line. The helper is embedded in the binary and knows no
+file format. It answers stats, bounded reads, globs and the targets of a
+directory's symbolic links, so a parsing fix lands once for both routes.
+
+- **A question nobody has asked yet is `ErrUnfetched`,** which is not a missing
+  file. It goes into the next poll's batch, so a read walks over a few polls;
+  a checkout and a worktree each took four batches. Until a pane's read
+  has seen every file it asked for, it keeps its last whole read; a pane with
+  none is reported unread and its tab waits, so it is named once, not twice.
+- **Answers are reused for `refresh`, 5 s,** like a local session read. At a
+  refresh everything read since the last one is asked again in one batch.
+  A transcript read over 64 KiB is not asked again; a batch carries at most
+  4 MiB of them, below the 8 MiB at which `machine.exec` truncates its stdout.
+- **A failed batch keeps the last answers for `keep`, 30 s,** and the
+  machine is asked again at the next refresh, not every poll. A machine that
+  never answered, one with no Python 3.9 or newer for instance, reads as empty,
+  so its tabs are named from their terminal metadata alone.
+- **One deadline bounds a batch:** one second, set where the batch is sent, and
+  passed to the core as the helper's timeout. Nonzero or missing exit codes,
+  `timed_out`, truncated output and invalid JSON fail the batch.
+- **Git is read from `.git` by `internal/git`.** Repository identities include
+  the machine, so identical paths on two hosts differ.
+  `HERDR_AUTO_TITLE_BRANCH_MAX=0` disables these reads.
+- **Codex's session needs a directly owned rollout on Linux.** Only the
+  foreground process's own `/proc/<pid>/fd` is read. Exactly one rollout must
+  be held, and an `app-server*` process is excluded: a shared daemon holds
+  every terminal's rollouts, as above. The held path names its Codex home,
+  custom ones included, and `internal/codex` reads it there as it does
+  locally: name, opening prompt and `Shows` check alike.
+  `HERDR_AUTO_TITLE_TRANSCRIPT=false` disables this lookup.
 - **An unavailable tab stays in the snapshot.** This retains its manual-name
   lock across a disconnect and restart. With no joined pane it is not renamed;
   clearing a manual name resumes automatic naming after reconnection.
+
+Measured against a Linux machine on hc 0.1.20: an empty `machine.exec` took
+about 90 ms, 1 MB of stdout about 220 ms, 4 MB about 580 ms, and 16 MB came
+back truncated at 8 MiB. Three panes, a checkout, a worktree and a directory
+outside any repository, took four batches of 140 to 220 ms to read whole,
+then one batch of under 700 bytes each way per refresh. With batches failing
+for six seconds, every pane kept its branch; the first batch after that
+succeeded. The Codex route was not measured live with this reader.
 
 ### What reading them costs
 
@@ -241,9 +282,9 @@ implements `herdr.Client`. These things differ from TUI mode:
 - **A pane the core does not list yet is left out.** `ls` and `terminal.list` are
   separate reads. Its siblings still name the tab; a tab with no joined pane
   keeps its existing label until a pane returns.
-- **Connected machines are included**, from their own terminal metadata, as
-  described above. TUI's local socket never reports its saved SSH machines,
-  which run Auto Title themselves.
+- **Connected machines are included**, using their own terminal metadata and
+  optional remote reads as described above. TUI's local socket never reports
+  its saved SSH machines, which run Auto Title themselves.
 
 For local panes an agent's session arrives as it does in TUI, in
 `agent_session`, so the readers are the same. The terminal title still outranks

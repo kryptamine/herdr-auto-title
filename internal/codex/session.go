@@ -5,6 +5,7 @@ package codex
 
 import (
 	"encoding/json"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -133,6 +134,50 @@ func layoutIn(fsys files.FS) transcript.Layout {
 		// A rollout is named after its date, so the newest sorts last.
 		Pick: func(matches []string) string { return matches[len(matches)-1] },
 	}
+}
+
+// rolloutName is a rollout's file name, which carries its session's id.
+var rolloutName = regexp.MustCompile(
+	`^rollout-.*([0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}).*\.jsonl$`,
+)
+
+// HeldSession reports the session a process alone holds, given its argv and
+// the paths it holds open, and the Codex home that session is filed under.
+// See docs/architecture/desktop-api.md for why a daemon or two rollouts say none.
+func HeldSession(fsys files.FS, argv, open []string) (sessionID, home string, held bool) {
+	for _, argument := range argv {
+		if strings.HasPrefix(argument, "app-server") {
+			return "", "", false
+		}
+	}
+
+	path := ""
+
+	for _, candidate := range open {
+		if !rolloutName.MatchString(fsys.Base(candidate)) || candidate == path {
+			continue
+		}
+
+		if path != "" {
+			return "", "", false
+		}
+
+		path = candidate
+	}
+
+	if path == "" {
+		return "", "", false
+	}
+
+	// A rollout lies at <home>/sessions/<year>/<month>/<day>/<file>.
+	sessions := fsys.Dir(fsys.Dir(fsys.Dir(fsys.Dir(path))))
+	if fsys.Base(sessions) != "sessions" {
+		return "", "", false
+	}
+
+	match := rolloutName.FindStringSubmatch(fsys.Base(path))
+
+	return match[1], fsys.Dir(sessions), true
 }
 
 // names is the session index, the one file every session's name is appended

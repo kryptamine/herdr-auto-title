@@ -163,12 +163,17 @@ cores:
   ids. The local core's `terminal.list` includes their complete terminal
   metadata, including `title`, `cwd` and `foreground`, at qualified addresses.
   `hc ls --json` is a reduced CLI view and omits those facts.
+- `machine.exec` routes `argv`, base64 `input` and a timeout in seconds using
+  `on`. A nonzero exit, a timeout and truncation are results, not RPC errors;
+  `stdout` and `stderr` are base64, and `code` may be null. stdout is cut at
+  8 MiB, which a 16 MB write came back `truncated` at. An empty call took about
+  90 ms, 1 MB of stdout about 220 ms.
 - `tab.rename` accepts the app's qualified remote tab id. A tab without a
   joined terminal retains its name and its manual-name lock until reconnecting.
   In disposable remote tabs, a manual name survived an OSC title change, and
   clearing it resumed automatic naming on both machines.
 
-How the adapter joins and isolates them is in
+How the adapter joins them and reads their files is in
 [desktop-api.md](desktop-api.md#connected-machines). A Linux desktop window
 was not measured here.
 
