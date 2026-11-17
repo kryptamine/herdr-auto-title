@@ -10,6 +10,7 @@ import (
 	"github.com/kryptamine/herdr-auto-title/internal/antigravity"
 	"github.com/kryptamine/herdr-auto-title/internal/claude"
 	"github.com/kryptamine/herdr-auto-title/internal/codex"
+	"github.com/kryptamine/herdr-auto-title/internal/files"
 	"github.com/kryptamine/herdr-auto-title/internal/git"
 	"github.com/kryptamine/herdr-auto-title/internal/grok"
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
@@ -63,7 +64,7 @@ func New(opts Options, log *slog.Logger) *Reader {
 		antigravityTitles: antigravity.NewReader(opts.Home),
 		grokTitles:        grok.NewReader(opts.GrokHome),
 		piTopics:          pi.NewReader(),
-		codexTopics:       codex.NewReader(opts.CodexHome),
+		codexTopics:       codex.NewReader(files.Local, opts.CodexHome),
 		log:               log,
 		readBranches:      opts.BranchMax > 0,
 		readSessions:      opts.ReadSessions,
@@ -200,7 +201,7 @@ func (p *Poll) checkout(ctx context.Context, dir string) git.Checkout {
 		return checkout
 	}
 
-	checkout := git.Read(dir)
+	checkout := git.Read(files.Local, dir)
 	p.checkouts[dir] = checkout
 
 	return checkout

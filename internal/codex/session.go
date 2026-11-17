@@ -5,11 +5,11 @@ package codex
 
 import (
 	"encoding/json"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/kryptamine/herdr-auto-title/internal/files"
 	"github.com/kryptamine/herdr-auto-title/internal/transcript"
 )
 
@@ -21,6 +21,8 @@ const Agent = "codex"
 // one. Both kinds only grow, so a poll reads the bytes appended since the last.
 type Reader struct {
 	mu       sync.Mutex
+	fsys     files.FS
+	layout   transcript.Layout
 	roots    []string
 	names    names
 	title    titleConfig
@@ -35,21 +37,23 @@ type rollout struct {
 	topic    transcript.Topic
 }
 
-// NewReader builds a reader over home, the directory Codex keeps its sessions
-// in. An empty home is a reader that answers nothing.
-func NewReader(home string) *Reader {
+// NewReader builds a reader over home in fsys, the directory Codex keeps its
+// sessions in. An empty home is a reader that answers nothing.
+func NewReader(fsys files.FS, home string) *Reader {
 	var roots []string
 	if home != "" {
 		roots = []string{home}
 	}
 
 	return &Reader{
-		roots: roots,
+		fsys:   fsys,
+		layout: layoutIn(fsys),
+		roots:  roots,
 		names: names{
-			path:     filepath.Join(home, "session_index.jsonl"),
-			follower: transcript.Follower{CatchUp: transcript.Whole},
+			path:     fsys.Join(home, "session_index.jsonl"),
+			follower: transcript.Follower{CatchUp: transcript.Whole, FS: fsys},
 		},
-		title:    titleConfig{path: filepath.Join(home, "config.toml")},
+		title:    titleConfig{fsys: fsys, path: fsys.Join(home, "config.toml")},
 		sessions: make(map[string]*rollout),
 		now:      time.Now,
 	}
@@ -71,14 +75,17 @@ func (r *Reader) Topic(sessionID string) transcript.Topic {
 	held, known := r.sessions[sessionID]
 	if !known {
 		// Codex records where a session started and how it opened up front.
-		held = &rollout{follower: transcript.Follower{CatchUp: transcript.HeadAndTail}}
+		held = &rollout{
+			search:   transcript.Search{FS: r.fsys},
+			follower: transcript.Follower{CatchUp: transcript.HeadAndTail, FS: r.fsys},
+		}
 		r.sessions[sessionID] = held
 	}
 
 	// A rollout that went missing is looked for again, and what was read of
 	// it still names the session better than nothing does until it is found.
 	// A newer rollout the search turns up is read from its start.
-	if layout.Find(&held.search, r.roots, sessionID, "", r.now()) &&
+	if r.layout.Find(&held.search, r.roots, sessionID, "", r.now()) &&
 		!held.follower.Follow(
 			held.search.Path,
 			func() { held.topic = transcript.Topic{} },
@@ -115,15 +122,17 @@ func (r *Reader) Retain(sessionIDs []string) {
 	r.sessions = transcript.Retain(r.sessions, sessionIDs)
 }
 
-// layout is where Codex files a rollout: under the day the session started,
+// layoutIn is where Codex files a rollout: under the day the session started,
 // never its directory. A reverted session goes on in a newer file whose name
 // adds a rollout id after the session's, which is why the layout picks.
-var layout = transcript.Layout{
-	Anywhere: func(root, sessionID string) string {
-		return filepath.Join(root, "sessions", "*", "*", "*", "rollout-*-"+sessionID+"*.jsonl")
-	},
-	// A rollout is named after its date, so the newest sorts last.
-	Pick: func(matches []string) string { return matches[len(matches)-1] },
+func layoutIn(fsys files.FS) transcript.Layout {
+	return transcript.Layout{
+		Anywhere: func(root, sessionID string) string {
+			return fsys.Join(root, "sessions", "*", "*", "*", "rollout-*-"+sessionID+"*.jsonl")
+		},
+		// A rollout is named after its date, so the newest sorts last.
+		Pick: func(matches []string) string { return matches[len(matches)-1] },
+	}
 }
 
 // names is the session index, the one file every session's name is appended

@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kryptamine/herdr-auto-title/internal/files"
 	"github.com/kryptamine/herdr-auto-title/internal/transcript"
 )
 
@@ -144,7 +145,7 @@ func TestTheFirstPromptNamesAnUnnamedSession(t *testing.T) {
 		prompt("then the docs"),
 	)
 
-	got := NewReader(h.dir).Topic(session)
+	got := NewReader(files.Local, h.dir).Topic(session)
 
 	if got.Text() != "rework the poll loop" {
 		t.Errorf("text = %q, want the first line of the first prompt", got.Text())
@@ -168,7 +169,7 @@ func TestAUserMessageItemNamesAnUnnamedSession(t *testing.T) {
 		item("then the docs"),
 	)
 
-	if got := NewReader(h.dir).Topic(session).Text(); got != "why can't codex" {
+	if got := NewReader(files.Local, h.dir).Topic(session).Text(); got != "why can't codex" {
 		t.Errorf("text = %q, want the first line of the first item", got)
 	}
 }
@@ -183,7 +184,7 @@ func TestAnItemOfAnotherTypeIsNotAPrompt(t *testing.T) {
 		item("rework the poll loop"),
 	)
 
-	if got := NewReader(h.dir).Topic(session).Text(); got != "rework the poll loop" {
+	if got := NewReader(files.Local, h.dir).Topic(session).Text(); got != "rework the poll loop" {
 		t.Errorf("text = %q, want only the user's prompt", got)
 	}
 }
@@ -195,7 +196,7 @@ func TestTheIndexNameOutranksTheOpening(t *testing.T) {
 	h.rollout(meta(started), prompt("rework the poll loop"))
 	h.index(named(session, "Rework poll loop"), named(other, "Fix login form"))
 
-	if got := NewReader(h.dir).Topic(session).Text(); got != "Rework poll loop" {
+	if got := NewReader(files.Local, h.dir).Topic(session).Text(); got != "Rework poll loop" {
 		t.Errorf("text = %q, want this session's name", got)
 	}
 }
@@ -208,7 +209,7 @@ func TestTheLastNameInTheIndexWins(t *testing.T) {
 	h.rollout(meta(started), prompt("rework the poll loop"))
 	h.index(named(session, "Rework poll loop"))
 
-	r := NewReader(h.dir)
+	r := NewReader(files.Local, h.dir)
 	r.Topic(session)
 
 	h.appendTo(filepath.Join(h.dir, "session_index.jsonl"), named(session, "Poll loop rewrite"))
@@ -226,7 +227,7 @@ func TestANameRemovedFromTheIndexHandsBackTheOpening(t *testing.T) {
 	h.rollout(meta(started), prompt("rework the poll loop"))
 	h.index(named(other, "Fix login form"), named(session, "Rework poll loop"))
 
-	r := NewReader(h.dir)
+	r := NewReader(files.Local, h.dir)
 	r.Topic(session)
 
 	h.index(named(other, "Fix login form"))
@@ -242,7 +243,7 @@ func TestAPromptAppendedLaterOpensASessionThatHadNone(t *testing.T) {
 	h := newHome(t)
 	path := h.rollout(meta(started))
 
-	r := NewReader(h.dir)
+	r := NewReader(files.Local, h.dir)
 	if got := r.Topic(session).Text(); got != "" {
 		t.Fatalf("text = %q before any prompt", got)
 	}
@@ -260,7 +261,11 @@ func TestATurnInAnotherDirectoryMovesTheSession(t *testing.T) {
 	h := newHome(t)
 	h.rollout(meta(started), turn("/work/dashboard/.worktrees/oauth"))
 
-	if got := NewReader(h.dir).Topic(session).Dir; got != "/work/dashboard/.worktrees/oauth" {
+	if got := NewReader(
+		files.Local,
+		h.dir,
+	).Topic(session).
+		Dir; got != "/work/dashboard/.worktrees/oauth" {
 		t.Errorf("dir = %q, want the latest turn's", got)
 	}
 }
@@ -271,7 +276,7 @@ func TestARolloutWrittenAfterTheSessionWasNamedIsFound(t *testing.T) {
 	// Herdr can report a session before Codex has filed its rollout.
 	h := newHome(t)
 	now := time.Date(2026, 10, 19, 9, 0, 0, 0, time.UTC)
-	r := NewReader(h.dir)
+	r := NewReader(files.Local, h.dir)
 	r.now = func() time.Time { return now }
 
 	if got := r.Topic(session).Text(); got != "" {
@@ -304,7 +309,7 @@ func TestARevertedSessionIsReadFromItsNewestRollout(t *testing.T) {
 		meta("/work/reverted"),
 	)
 
-	if got := NewReader(h.dir).Topic(session).Dir; got != "/work/reverted" {
+	if got := NewReader(files.Local, h.dir).Topic(session).Dir; got != "/work/reverted" {
 		t.Errorf("dir = %q, want the reverted rollout's", got)
 	}
 }
@@ -316,7 +321,7 @@ func TestARolloutWrittenAfterTheFirstReadIsSwitchedTo(t *testing.T) {
 	// cannot be kept for the pane's life as Claude's is.
 	h := newHome(t)
 	now := time.Date(2026, 10, 20, 8, 0, 0, 0, time.UTC)
-	r := NewReader(h.dir)
+	r := NewReader(files.Local, h.dir)
 	r.now = func() time.Time { return now }
 
 	h.rollout(meta(started), prompt("rework the poll loop"))
@@ -366,7 +371,7 @@ func TestAnIndexPastMaxScanKeepsEveryName(t *testing.T) {
 	lines := append(append(slices.Clone(filler), named(session, "Rework poll loop")), filler...)
 	h.index(lines...)
 
-	r := NewReader(h.dir)
+	r := NewReader(files.Local, h.dir)
 	for range len(joined(lines))/transcript.MaxScan + 1 {
 		r.Topic(session)
 	}
@@ -385,7 +390,7 @@ func TestAnotherSessionsRolloutIsNotRead(t *testing.T) {
 		meta(started), prompt("fix the login form"),
 	)
 
-	if got := NewReader(h.dir).Topic(session); got != (transcript.Topic{}) {
+	if got := NewReader(files.Local, h.dir).Topic(session); got != (transcript.Topic{}) {
 		t.Errorf("topic = %+v, want nothing", got)
 	}
 }
@@ -393,7 +398,7 @@ func TestAnotherSessionsRolloutIsNotRead(t *testing.T) {
 func TestNoHomeAnswersNothing(t *testing.T) {
 	t.Parallel()
 
-	if got := NewReader("").Topic(session); got != (transcript.Topic{}) {
+	if got := NewReader(files.Local, "").Topic(session); got != (transcript.Topic{}) {
 		t.Errorf("topic = %+v, want nothing", got)
 	}
 }
@@ -404,7 +409,7 @@ func TestARetainedSessionKeepsWhatWasRead(t *testing.T) {
 	h := newHome(t)
 	path := h.rollout(meta(started), prompt("rework the poll loop"))
 
-	r := NewReader(h.dir)
+	r := NewReader(files.Local, h.dir)
 	r.Topic(session)
 	r.Retain([]string{session})
 

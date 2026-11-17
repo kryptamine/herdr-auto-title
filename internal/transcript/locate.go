@@ -1,9 +1,10 @@
 package transcript
 
 import (
-	"os"
-	"path/filepath"
+	"errors"
 	"time"
+
+	"github.com/kryptamine/herdr-auto-title/internal/files"
 )
 
 // LocateRetry is how long a session whose file was not found is left alone.
@@ -26,7 +27,9 @@ type Layout struct {
 // Search is one session's file as far as it has been looked for. An empty
 // Path is a session not found yet, and a reader clears it to look again.
 type Search struct {
-	Path       string
+	Path string
+	// FS is where the file is looked for, this computer when nil.
+	FS         files.FS
 	searchedAt time.Time
 }
 
@@ -42,31 +45,50 @@ func (l Layout) Find(s *Search, roots []string, sessionID, dir string, now time.
 		return s.Path != ""
 	}
 
-	s.searchedAt = now
+	fsys := s.FS
+	if fsys == nil {
+		fsys = files.Local
+	}
+
+	// A search a machine has not answered yet is no search, and is made again
+	// once it has rather than LocateRetry later.
+	path, unfetched := l.locate(fsys, roots, sessionID, dir)
+	if !unfetched {
+		s.searchedAt = now
+	}
 
 	// A file that is gone is noticed by the read, not by a search that misses.
-	if path := l.locate(roots, sessionID, dir); path != "" {
+	if path != "" {
 		s.Path = path
 	}
 
 	return s.Path != ""
 }
 
-func (l Layout) locate(roots []string, sessionID, dir string) string {
+func (l Layout) locate(fsys files.FS, roots []string, sessionID, dir string) (string, bool) {
+	unfetched := false
+
 	for _, root := range roots {
 		if dir != "" && l.Filed != nil {
-			if candidate := l.Filed(root, dir, sessionID); regular(candidate) {
-				return candidate
+			candidate := l.Filed(root, dir, sessionID)
+
+			info, err := fsys.Stat(candidate)
+			if err == nil && info.Regular {
+				return candidate, false
 			}
+
+			unfetched = unfetched || errors.Is(err, files.ErrUnfetched)
 		}
 
-		matches, err := filepath.Glob(l.Anywhere(root, sessionID))
+		matches, err := fsys.Glob(l.Anywhere(root, sessionID))
 		if err == nil && len(matches) > 0 {
-			return l.pick(matches)
+			return l.pick(matches), false
 		}
+
+		unfetched = unfetched || errors.Is(err, files.ErrUnfetched)
 	}
 
-	return ""
+	return "", unfetched
 }
 
 func (l Layout) pick(matches []string) string {
@@ -75,10 +97,4 @@ func (l Layout) pick(matches []string) string {
 	}
 
 	return l.Pick(matches)
-}
-
-func regular(path string) bool {
-	info, err := os.Stat(path)
-
-	return err == nil && info.Mode().IsRegular()
 }
