@@ -41,9 +41,11 @@ type Options struct {
 }
 
 // Reader outlives a poll because what it remembers does: what each pane was
-// last seen running, and how far each agent's transcript has been read.
+// last seen running, how far each agent's transcript has been read, and what
+// each connected machine last said of its files.
 type Reader struct {
 	hermesHomes       []string
+	remotes           map[string]*remote
 	processes         *processCache
 	claudeTopics      *claude.Reader
 	antigravityTitles *antigravity.Reader
@@ -59,6 +61,7 @@ type Reader struct {
 func New(opts Options, log *slog.Logger) *Reader {
 	return &Reader{
 		hermesHomes:       opts.HermesHomes,
+		remotes:           make(map[string]*remote),
 		processes:         newProcessCache(),
 		claudeTopics:      claude.NewReader(opts.ClaudeDirs...),
 		antigravityTitles: antigravity.NewReader(opts.Home),
@@ -85,12 +88,14 @@ func (r *Reader) Poll(client herdr.Client, panes []herdr.PaneInfo, drew map[stri
 	r.grokTitles.Retain(held)
 	r.piTopics.Retain(held)
 	r.codexTopics.Retain(held)
+	r.retainRemotes(panes)
 
 	return &Poll{
 		reader:    r,
 		client:    client,
-		checkouts: make(map[string]git.Checkout),
+		checkouts: make(map[checkoutKey]git.Checkout),
 		filled:    make(map[*state.PaneState]bool),
+		fetched:   make(map[string]bool),
 	}
 }
 
@@ -99,9 +104,13 @@ func (r *Reader) Poll(client herdr.Client, panes []herdr.PaneInfo, drew map[stri
 type Poll struct {
 	reader    *Reader
 	client    herdr.Client
-	checkouts map[string]git.Checkout
+	checkouts map[checkoutKey]git.Checkout
 	filled    map[*state.PaneState]bool
+	fetched   map[string]bool
 }
+
+// checkoutKey is a directory on a machine, "" being this computer.
+type checkoutKey struct{ machine, dir string }
 
 // Fill supplies what the snapshot could not say about a pane, once per poll
 // however often it is asked, and reports whether what it runs is known. A pane
@@ -115,39 +124,73 @@ func (p *Poll) Fill(ctx context.Context, pane *state.PaneState) bool {
 		return read
 	}
 
-	// A read that failed with time left is asked again by the next Fill, so a
-	// second reader of the pane in this poll is not left with the snapshot's guess.
 	processes, read := p.reader.processesOf(ctx, p.client, pane.ID)
-	if read || spent(ctx) {
-		p.filled[pane] = read
-	}
-
 	dir := state.PaneDir(processes, pane.Dir)
 
 	pane.Processes = state.ProcessesFrom(processes)
 	pane.Dir = dir
 
 	if pane.Machine == "" {
-		p.fillLocal(ctx, pane, processes)
+		// The agent's session is read before the checkout because it can say
+		// where the agent is working, and that is where the branch is read from.
+		topic := p.reader.topic(ctx, pane, pane.Dir, processes)
+		p.fillFiles(ctx, pane, files.Local, topic)
+	} else {
+		read = p.fillRemote(ctx, pane, processes) && read
+	}
+
+	// A read that failed with time left is asked again by the next Fill, so a
+	// second reader of the pane in this poll is not left with the snapshot's guess.
+	if read || spent(ctx) {
+		p.filled[pane] = read
 	}
 
 	return read
 }
 
-// fillLocal reads what this computer's files say about a pane on it: its
-// agent's session and the checkouts it works in.
-func (p *Poll) fillLocal(
+// fillFiles puts on a pane what its agent's session and its checkouts say.
+func (p *Poll) fillFiles(
+	ctx context.Context,
+	pane *state.PaneState,
+	fsys files.FS,
+	topic sessionTopic,
+) {
+	pane.AgentTopic = topic.text
+	pane.Git = p.checkout(ctx, fsys, pane.Machine, pane.Dir)
+	pane.AgentGit = p.checkout(ctx, fsys, pane.Machine, topic.dir)
+	pane.AgentDir = topic.dir
+}
+
+// fillRemote reads a pane on a connected machine from that machine's files.
+// A read that missed some keeps the pane's last whole one, and with none the
+// pane is not yet read, so its tab is named once rather than twice.
+func (p *Poll) fillRemote(
 	ctx context.Context,
 	pane *state.PaneState,
 	processes []herdr.PaneProcessInfoProcess,
-) {
-	// The agent's session is read before the checkout because it can say where
-	// the agent is working, and that is where the branch is read from.
-	topic := p.reader.topic(ctx, pane, pane.Dir, processes)
-	pane.AgentTopic = topic.text
-	pane.Git = p.checkout(ctx, pane.Dir)
-	pane.AgentGit = p.checkout(ctx, topic.dir)
-	pane.AgentDir = topic.dir
+) bool {
+	machine := p.remoteSource(ctx, pane.Machine)
+	if machine == nil {
+		return true
+	}
+
+	before := machine.files.Misses()
+	p.fillFiles(ctx, pane, machine.files, p.reader.remoteTopic(ctx, machine, pane, processes))
+
+	if machine.files.Misses() == before {
+		machine.panes[pane.ID] = remoteRead{
+			topic: pane.AgentTopic, git: pane.Git, agentGit: pane.AgentGit, agentDir: pane.AgentDir,
+		}
+
+		return true
+	}
+
+	last, known := machine.panes[pane.ID]
+	if known {
+		pane.AgentTopic, pane.Git, pane.AgentGit, pane.AgentDir = last.topic, last.git, last.agentGit, last.agentDir
+	}
+
+	return known
 }
 
 // processesOf reports what a pane is running, or false when Herdr gave no
@@ -190,19 +233,30 @@ func (r *Reader) processesOf(
 // checkout reports what the repository holding dir has checked out, going to
 // the filesystem at most once per directory. A directory holding no repository
 // is remembered too: finding that out costs the same walk as finding one.
-func (p *Poll) checkout(ctx context.Context, dir string) git.Checkout {
+func (p *Poll) checkout(ctx context.Context, fsys files.FS, machine, dir string) git.Checkout {
 	// A read whose answer is thrown away is still a read on every pane twice a
 	// second.
 	if !p.reader.readBranches || spent(ctx) {
 		return git.Checkout{}
 	}
 
-	if checkout, known := p.checkouts[dir]; known {
+	key := checkoutKey{machine: machine, dir: dir}
+	if checkout, known := p.checkouts[key]; known {
 		return checkout
 	}
 
-	checkout := git.Read(files.Local, dir)
-	p.checkouts[dir] = checkout
+	misses := p.misses(machine)
+	checkout := git.Read(fsys, dir)
+	// The same path on two machines is two repositories.
+	if machine != "" && checkout.CommonDir != "" {
+		checkout.CommonDir = machine + "/" + checkout.CommonDir
+	}
+
+	// A walk a machine has not answered whole is walked again by the next pane
+	// in it, so that pane too knows its read is not whole.
+	if p.misses(machine) == misses {
+		p.checkouts[key] = checkout
+	}
 
 	return checkout
 }

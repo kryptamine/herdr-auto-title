@@ -23,6 +23,7 @@ internal/grok         what a Grok Build session is about, from its summary
 internal/pi           what a Pi session is about, from its session file
 internal/hermes       native Hermes session titles, from read-only SQLite
 internal/transcript   an append-only session file followed a poll at a time
+internal/files        this computer's files, or a connected machine's as last fetched
 internal/git          what a repository has checked out, read from .git
 internal/release      when a newer release is out, for the desktop mode's popup
 internal/instance     one Auto Title per session, and the restart handoff
@@ -296,9 +297,11 @@ are only the facts that would otherwise mislead the code in silence.
   remote because no remote pane ever reaches the local socket.
 - **Desktop `ls` and core `terminal.list` include connected machines.** Match
   complete machine-qualified ids; never send their PIDs or directories to
-  local session or Git readers. `hc ls --json` is only a reduced CLI view;
-  [desktop-api.md](docs/architecture/desktop-api.md#connected-machines) has
-  the join.
+  local session or Git readers. `hc ls --json` is only a reduced CLI view.
+  Their files reach the same Go readers through `files.Machine`, asked over
+  `machine.exec` with argv and base64 stdin, never a shell; `ErrUnfetched` is
+  not a missing file. [desktop-api.md](docs/architecture/desktop-api.md#connected-machines)
+  has the join, the refresh and what a failed batch keeps.
 - **One action id per manifest, whatever the platforms.** Herdr rejects a
   duplicate id even when the two entries' `platforms` do not overlap, so
   there is no Windows twin naming the `.exe`; Herdr 0.9.0 on Windows appends

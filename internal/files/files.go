@@ -32,6 +32,7 @@ type FS interface {
 	Glob(pattern string) ([]string, error)
 	Join(elem ...string) string
 	Dir(name string) string
+	Base(name string) string
 	IsAbs(name string) bool
 }
 
@@ -73,4 +74,5 @@ func (local) ReadAt(name string, from int64, limit int) ([]byte, error) {
 func (local) Glob(pattern string) ([]string, error) { return filepath.Glob(pattern) }
 func (local) Join(elem ...string) string            { return filepath.Join(elem...) }
 func (local) Dir(name string) string                { return filepath.Dir(name) }
+func (local) Base(name string) string               { return filepath.Base(name) }
 func (local) IsAbs(name string) bool                { return filepath.IsAbs(name) }
