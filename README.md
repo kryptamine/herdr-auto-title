@@ -98,8 +98,8 @@ keeps no log; run `herdr-auto-title.exe desktop` in a terminal to see one.
 another machine over SSH, the agents and their sessions run on that machine.
 Install Auto Title there with `desktop install`, and set
 `HERDR_AUTO_TITLE_CORE_LAYOUT=true` and `HERDR_AUTO_TITLE_PREFER_AGENT=true` in
-its `config.env`. It then reads and renames tabs in the core's own layout
-document, so they are named from those sessions, and the app shows the names.
+its `config.env`. It then names tabs from those sessions using the core's
+layout document or, for tabs Ovis starts outside the document, terminal labels.
 
 What differs from Herdr TUI:
 
@@ -214,7 +214,7 @@ not read.
 | `HERDR_AUTO_TITLE_AGENT_NAME`   | `false`                                  | Put the agent's name in front of what it is doing                  |
 | `HERDR_AUTO_TITLE_PANES`        | `true`                                   | Name panes as well as tabs                                         |
 | `HERDR_AUTO_TITLE_PREFER_AGENT` | `false`                                  | Name a tab after its agent pane even while another pane is focused |
-| `HERDR_AUTO_TITLE_CORE_LAYOUT`  | `false`                                  | Desktop mode: read and rename tabs in herdr-core's layout document, on a machine with no app window |
+| `HERDR_AUTO_TITLE_CORE_LAYOUT`  | `false`                                  | Desktop mode: read and rename tabs through herdr-core without an app window |
 | `HERDR_AUTO_TITLE_PANE_ID`      | `false`                                  | Put the pane's Herdr ID in front of its label, as `[w1:p2] api`    |
 | `HERDR_AUTO_TITLE_AGENT_HANDLE` | `false`                                  | Put the name `herdr agent rename` gave the pane's agent in front of its label, as `driver › api` |
 | `HERDR_AUTO_TITLE_ICONS`        | `false`                                  | Put a Nerd Font 3.0+ icon for what a pane runs in front of labels  |
