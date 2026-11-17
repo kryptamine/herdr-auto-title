@@ -52,6 +52,7 @@ type appStatus struct {
 // terminal is what the core knows of a pane and `ls` does not.
 type terminal struct {
 	Address string `json:"address"`
+	State   string `json:"state"`
 	PID     int    `json:"pid"`
 	CWD     string `json:"cwd"`
 	Title   string `json:"title"`

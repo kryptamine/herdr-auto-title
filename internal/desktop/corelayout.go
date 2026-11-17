@@ -112,7 +112,7 @@ func (l docLayout) document(ctx context.Context) (document, docRead, error) {
 }
 
 // renameTab writes a document tab's name, read again if another writer got
-// there first.
+// there first; a tab only Ovis's labels place is renamed through them.
 func (l docLayout) renameTab(ctx context.Context, tabID, label string) error {
 	label = strings.TrimSpace(label)
 
@@ -123,10 +123,7 @@ func (l docLayout) renameTab(ctx context.Context, tabID, label string) error {
 		}
 
 		if !d.holds(tabID) {
-			return &herdr.APIError{
-				Code:    herdr.CodeTabNotFound,
-				Message: noTabPrefix + strconv.Quote(tabID),
-			}
+			return l.renameUnplacedTab(ctx, d, tabID, label)
 		}
 
 		value, err := renameIn(got.Value, tabID, label)
@@ -149,13 +146,55 @@ func (l docLayout) renameTab(ctx context.Context, tabID, label string) error {
 	}
 }
 
+func (l docLayout) renameUnplacedTab(ctx context.Context, d document, tabID, label string) error {
+	terminals, err := listTerminals(ctx, l.core)
+	if err != nil {
+		return err
+	}
+
+	for _, s := range d.world(terminals).Spaces {
+		if i := s.tabIndex(tabID); i >= 0 {
+			return l.renameLabelPanes(ctx, s.Tabs[i].Terminals, terminals, label)
+		}
+	}
+
+	return &herdr.APIError{Code: herdr.CodeTabNotFound, Message: noTabPrefix + strconv.Quote(tabID)}
+}
+
+func (l docLayout) renameLabelPanes(
+	ctx context.Context, entries []paneEntry, terminals []terminal, label string,
+) error {
+	byAddress := terminalsByAddress(terminals)
+
+	// The first pane supplies the displayed name, so change it last.
+	for i, entry := range slices.Backward(entries) {
+		labels := map[string]string{ovisTabName: label}
+		if workspace, name := whereNames(byAddress[entry.Terminal]); name != "" {
+			// Keep the workspace part so `where` no longer hides `ovis.tab`.
+			labels["where"] = workspace
+		}
+
+		params := map[string]any{"terminal": entry.Terminal, "labels": labels}
+		if err := rpc(ctx, l.core, "terminal.label", params, nil); err != nil {
+			if i < len(entries)-1 {
+				return fmt.Errorf("%w: %w", herdr.ErrUnanswered, err)
+			}
+
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (d document) holds(tabID string) bool {
 	return slices.ContainsFunc(d.Spaces, func(s docSpace) bool {
 		return slices.ContainsFunc(s.Tabs, func(t docTab) bool { return t.ID == tabID })
 	})
 }
 
-// world is the document as `ls` would answer it.
+// world is the document as `ls` would answer it, with the tabs only Ovis's
+// labels place added after.
 func (d document) world(terminals []terminal) world {
 	byAddress := terminalsByAddress(terminals)
 
@@ -173,6 +212,8 @@ func (d document) world(terminals []terminal) world {
 
 		w.Spaces = append(w.Spaces, listed)
 	}
+
+	addUnplaced(&w, terminals)
 
 	return w
 }

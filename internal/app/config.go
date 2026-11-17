@@ -103,8 +103,7 @@ type Config struct {
 	// goto panel lists a pane by. It costs a read per pane rather than per
 	// tab — see docs/architecture/poll-loop.md.
 	RenamePanes bool
-	// CoreLayout has the desktop mode read and rename tabs in herdr-core's
-	// layout document, on a machine whose core an app elsewhere arranges.
+	// CoreLayout uses herdr-core directly when there is no local app window.
 	CoreLayout bool
 	// PreferAgentPane names a tab after its agent pane even when another pane
 	// is focused, so opening an editor beside the agent leaves the title alone.

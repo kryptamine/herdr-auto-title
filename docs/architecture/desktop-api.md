@@ -272,14 +272,14 @@ reopens.
 The app can arrange a core on another machine, which it reaches over SSH
 (`herdr-core connect`). There the agents and their session files are local,
 but no `herdr-app.sock` exists: the window is on the other computer. With
-`HERDR_AUTO_TITLE_CORE_LAYOUT=true` the desktop client reads and renames tabs
-in the core's own `herdr-app` document instead. Measured on hc 0.1.21 on Linux,
-with the document an app had written:
+`HERDR_AUTO_TITLE_CORE_LAYOUT=true` the desktop client uses the core's
+`herdr-app` document and terminal labels. Measured on hc 0.1.21 on Linux:
 
 - `doc.get {"name":"herdr-app"}` answers `{"value":…,"version":N}`. The value
   holds `spaces`, each with `id`, `name`, `folder` and `tabs`; a tab has `id`,
   `name` and a `root` tree of `row`, `column` and `block` nodes, where a block's
   `content.terminal` is a terminal address and its `id` the pane id `ls` gives.
+  A missing document answers `{"value":null,"version":0}`.
 - An unnamed tab's `name` is `""`, so the client reports its position, as `ls`
   does.
 - `doc.set {"name","value","version"}` writes the whole value. One made against
@@ -291,12 +291,26 @@ with the document an app had written:
   already relied on. `terminal.list` carries `status` (`app`, `state`) and
   `labels`, so a pane's status is the app's word: `done` while its `turn` is
   past `herdr.seen`, as the app's `ls` reports it.
+- A live Ovis terminal can carry `herdr.space` and `herdr.tab` even when the
+  document has its space but no entry for the tab or terminal. Unplaced local
+  terminals join their labeled tab in that space, or a new space with that id.
+  Terminals without `herdr.space`, such as agent helpers, stay out.
+- Ovis names an unplaced tab from its first terminal: the tab part of
+  `where` (`<space> / <tab>`), then `ovis.tab`, then its position. A tab with
+  no document entry is renamed through
+  `terminal.label {"terminal":"t7","labels":{"ovis.tab":"new name"}}` on
+  each terminal, so the name survives a pane closing. The call merges the
+  given keys, returns the updated terminal, and removes keys set to an empty
+  string. A throwaway terminal confirmed that `terminal.list` reads back
+  the changes and that setting `ovis.tab` alone leaves `where` intact.
+  If `where` supplies a tab name, Auto Title keeps only its workspace part
+  so the new name and later Ovis renames both show up on the next poll.
 - The document holds no focus, so no pane reads as focused and no tab as
   active; `HERDR_AUTO_TITLE_PREFER_AGENT=true` names a tab after its agent
   regardless.
 - A block whose terminal carries a machine prefix (`box/t9`) is left out of
-  its tab: the document's spaces name no machine, so its PIDs and paths would
-  otherwise reach the local readers.
+  its tab, as unplaced remote terminals are: the document's spaces name no
+  machine, so its PIDs and paths would otherwise reach the local readers.
 - The claim is the core's socket, since there is no app socket to name it.
 
 Whether a connected window shows a rename written to the document while it is
