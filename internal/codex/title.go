@@ -1,11 +1,11 @@
 package codex
 
 import (
-	"os"
 	"strings"
 	"time"
 	"unicode"
 
+	"github.com/kryptamine/herdr-auto-title/internal/files"
 	"github.com/kryptamine/herdr-auto-title/internal/transcript"
 )
 
@@ -74,32 +74,37 @@ func shows(title string, topic transcript.Topic) bool {
 // titleConfig is what config.toml says of the terminal title, read again only
 // when the file changes.
 type titleConfig struct {
+	fsys   files.FS
 	path   string
 	stamp  time.Time
 	size   int64
 	custom bool
 }
 
+// maxConfigSize bounds what is read of config.toml, which may come from a
+// connected machine; a key past this is missed.
+const maxConfigSize = 1 << 20
+
 // customized reports whether config.toml sets tui.terminal_title, in which case
 // the title says nothing ThreadName can read.
 func (c *titleConfig) customized() bool {
-	info, err := os.Stat(c.path)
+	info, err := c.fsys.Stat(c.path)
 	if err != nil {
-		*c = titleConfig{path: c.path}
+		*c = titleConfig{fsys: c.fsys, path: c.path}
 
 		return false
 	}
 
-	if info.ModTime().Equal(c.stamp) && info.Size() == c.size {
+	if info.ModTime.Equal(c.stamp) && info.Size == c.size {
 		return c.custom
 	}
 
-	content, err := os.ReadFile(c.path)
+	content, err := c.fsys.ReadAt(c.path, 0, maxConfigSize)
 	if err != nil {
 		return c.custom
 	}
 
-	c.stamp, c.size = info.ModTime(), info.Size()
+	c.stamp, c.size = info.ModTime, info.Size
 	c.custom = setsTerminalTitle(string(content))
 
 	return c.custom

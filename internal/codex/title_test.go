@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/kryptamine/herdr-auto-title/internal/files"
 	"github.com/kryptamine/herdr-auto-title/internal/transcript"
 )
 
@@ -72,7 +73,7 @@ func TestAConfiguredTitleKeepsEverySessionRead(t *testing.T) {
 	h.rollout(meta(started), prompt("reply with ok"))
 	h.index(named(session, "Reply with ok"))
 
-	r := NewReader(h.dir)
+	r := NewReader(files.Local, h.dir)
 	topic := r.Topic(session)
 
 	if r.Shows("dashboard", topic) {

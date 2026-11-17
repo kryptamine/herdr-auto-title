@@ -4,10 +4,9 @@
 package git
 
 import (
-	"io"
-	"os"
-	"path/filepath"
 	"strings"
+
+	"github.com/kryptamine/herdr-auto-title/internal/files"
 )
 
 // shortCommitLength is how much of a detached HEAD's hash names it. Seven is
@@ -55,21 +54,21 @@ func (c Checkout) SameRepository(other Checkout) bool {
 	return c.CommonDir == other.CommonDir
 }
 
-// Read reports what the repository holding dir has checked out, and the zero
-// Checkout when there is nothing to report: a directory outside a repository,
-// or one whose .git cannot be read, neither worth a log line twice a second.
-func Read(dir string) Checkout {
-	gitDir, commonDir, found := discover(dir)
+// Read reports what the repository holding dir in fsys has checked out, and the
+// zero Checkout when there is nothing to report: a directory outside a
+// repository, or one whose .git cannot be read, neither worth a log line.
+func Read(fsys files.FS, dir string) Checkout {
+	gitDir, commonDir, found := discover(fsys, dir)
 	if !found {
 		return Checkout{}
 	}
 
-	head, ok := readRef(filepath.Join(gitDir, "HEAD"))
+	head, ok := readRef(fsys, fsys.Join(gitDir, "HEAD"))
 	if !ok {
 		return Checkout{}
 	}
 
-	checkout := Checkout{Default: defaultBranch(commonDir), CommonDir: commonDir}
+	checkout := Checkout{Default: defaultBranch(fsys, commonDir), CommonDir: commonDir}
 
 	switch {
 	case strings.HasPrefix(head, branchPrefix):
@@ -77,7 +76,7 @@ func Read(dir string) Checkout {
 	default:
 		// A rebase detaches HEAD and records the branch it came from, which is
 		// still where the user is working.
-		if branch, rebasing := rebasingBranch(gitDir); rebasing {
+		if branch, rebasing := rebasingBranch(fsys, gitDir); rebasing {
 			checkout.Branch = branch
 			break
 		}
@@ -97,35 +96,35 @@ func Read(dir string) Checkout {
 // discover walks up from dir to the repository holding it, returning the
 // directory holding HEAD and the one holding the shared refs. The two differ in
 // a worktree and in a submodule, where .git is a file pointing elsewhere.
-func discover(dir string) (gitDir, commonDir string, found bool) {
-	if dir == "" || !filepath.IsAbs(dir) {
+func discover(fsys files.FS, dir string) (gitDir, commonDir string, found bool) {
+	if dir == "" || !fsys.IsAbs(dir) {
 		return "", "", false
 	}
 
 	// A path that is gone would otherwise be answered by the first ancestor
 	// holding a repository. A directory that outlived its .git still is.
-	if info, err := os.Stat(dir); err != nil || !info.IsDir() {
+	if info, err := fsys.Stat(dir); err != nil || !info.Dir {
 		return "", "", false
 	}
 
-	for dir = filepath.Clean(dir); ; {
-		candidate := filepath.Join(dir, ".git")
+	for dir = fsys.Join(dir); ; {
+		candidate := fsys.Join(dir, ".git")
 
-		info, err := os.Stat(candidate)
+		info, err := fsys.Stat(candidate)
 		switch {
 		case err != nil:
-		case info.IsDir():
+		case info.Dir:
 			return candidate, candidate, true
 		default:
-			gitDir, ok := linkedGitDir(candidate)
+			gitDir, ok := linkedGitDir(fsys, candidate)
 			if !ok {
 				return "", "", false
 			}
 
-			return gitDir, commonDirOf(gitDir), true
+			return gitDir, commonDirOf(fsys, gitDir), true
 		}
 
-		parent := filepath.Dir(dir)
+		parent := fsys.Dir(dir)
 		if parent == dir {
 			return "", "", false
 		}
@@ -137,8 +136,8 @@ func discover(dir string) (gitDir, commonDir string, found bool) {
 // linkedGitDir follows the `gitdir:` line a worktree or submodule leaves in
 // place of a .git directory. A relative path in it is relative to the directory
 // the file is in.
-func linkedGitDir(gitFile string) (string, bool) {
-	line, ok := readRef(gitFile)
+func linkedGitDir(fsys files.FS, gitFile string) (string, bool) {
+	line, ok := readRef(fsys, gitFile)
 	if !ok {
 		return "", false
 	}
@@ -148,34 +147,34 @@ func linkedGitDir(gitFile string) (string, bool) {
 		return "", false
 	}
 
-	if !filepath.IsAbs(target) {
-		target = filepath.Join(filepath.Dir(gitFile), target)
+	if !fsys.IsAbs(target) {
+		target = fsys.Join(fsys.Dir(gitFile), target)
 	}
 
-	return filepath.Clean(target), true
+	return fsys.Join(target), true
 }
 
 // commonDirOf returns where a linked git directory keeps the refs it shares
 // with the repository it belongs to. A worktree's own directory holds its HEAD
 // but not the remote refs the default branch is read from.
-func commonDirOf(gitDir string) string {
-	common, ok := readRef(filepath.Join(gitDir, "commondir"))
+func commonDirOf(fsys files.FS, gitDir string) string {
+	common, ok := readRef(fsys, fsys.Join(gitDir, "commondir"))
 	if !ok {
 		return gitDir
 	}
 
-	if !filepath.IsAbs(common) {
-		common = filepath.Join(gitDir, common)
+	if !fsys.IsAbs(common) {
+		common = fsys.Join(gitDir, common)
 	}
 
-	return filepath.Clean(common)
+	return fsys.Join(common)
 }
 
 // defaultBranch reads the branch the repository treats as its trunk. It is a
 // symbolic ref, which `git pack-refs` leaves as a file, so there is no packed
 // form to parse. A repository that was never cloned records none.
-func defaultBranch(commonDir string) string {
-	line, ok := readRef(filepath.Join(commonDir, "refs", "remotes", "origin", "HEAD"))
+func defaultBranch(fsys files.FS, commonDir string) string {
+	line, ok := readRef(fsys, fsys.Join(commonDir, "refs", "remotes", "origin", "HEAD"))
 	if !ok || !strings.HasPrefix(line, remoteHeadPrefix) {
 		return ""
 	}
@@ -186,9 +185,9 @@ func defaultBranch(commonDir string) string {
 // rebasingBranch reports the branch a rebase in progress set aside. Both
 // backends record it: the merge backend is the default, the apply backend is
 // what `--apply` and `git am` use.
-func rebasingBranch(gitDir string) (string, bool) {
+func rebasingBranch(fsys files.FS, gitDir string) (string, bool) {
 	for _, state := range []string{"rebase-merge", "rebase-apply"} {
-		line, ok := readRef(filepath.Join(gitDir, state, "head-name"))
+		line, ok := readRef(fsys, fsys.Join(gitDir, state, "head-name"))
 		if !ok || !strings.HasPrefix(line, "refs/heads/") {
 			continue
 		}
@@ -203,15 +202,8 @@ func rebasingBranch(gitDir string) (string, bool) {
 
 // readRef returns the first line of a ref file, or false when there is nothing
 // to read. Reading is bounded: these files hold one line.
-func readRef(path string) (string, bool) {
-	file, err := os.Open(path) //nolint:gosec // path is a .git file this package located itself
-	if err != nil {
-		return "", false
-	}
-	// A read-only file has nothing to report on close.
-	defer func() { _ = file.Close() }()
-
-	content, err := io.ReadAll(io.LimitReader(file, maxRefFileSize))
+func readRef(fsys files.FS, path string) (string, bool) {
+	content, err := fsys.ReadAt(path, 0, maxRefFileSize)
 	if err != nil {
 		return "", false
 	}

@@ -5,9 +5,10 @@ package transcript
 import (
 	"bytes"
 	"encoding/json"
-	"io"
-	"os"
+	"errors"
 	"strings"
+
+	"github.com/kryptamine/herdr-auto-title/internal/files"
 )
 
 // MaxScan bounds one read. A session file only grows, so this bounds the
@@ -35,26 +36,37 @@ const (
 // said: a session that went on in another file is still that session.
 type Follower struct {
 	CatchUp CatchUp
-	path    string
-	offset  int64
+	// FS is where the file is read, this computer when nil.
+	FS     files.FS
+	path   string
+	offset int64
 }
 
 // Follow hands absorb each complete line appended to the file at path since
 // the last call. A file shorter than what was read is a new file, so reset
 // runs first; a file that is gone reports false and is read from the start.
 func (f *Follower) Follow(path string, reset func(), absorb func(line string)) bool {
+	fsys := f.FS
+	if fsys == nil {
+		fsys = files.Local
+	}
+
 	if path != f.path {
 		f.path, f.offset = path, 0
 	}
 
-	info, err := os.Stat(path)
+	info, err := fsys.Stat(path)
+	if errors.Is(err, files.ErrUnfetched) {
+		return true
+	}
+
 	if err != nil {
 		f.offset = 0
 
 		return false
 	}
 
-	size := info.Size()
+	size := info.Size
 	switch {
 	case size == f.offset:
 		return true
@@ -64,17 +76,9 @@ func (f *Follower) Follow(path string, reset func(), absorb func(line string)) b
 		reset()
 	}
 
-	//nolint:gosec // each caller refuses a path it did not build or check itself
-	file, err := os.Open(path)
-	if err != nil {
-		return true
-	}
-	// A read-only file has nothing to report on close.
-	defer func() { _ = file.Close() }()
-
 	// What lies between the head and the tail says nothing.
 	if f.CatchUp == HeadAndTail && f.offset == 0 && size > MaxScan {
-		next, err := readLines(file, 0, false, absorb)
+		next, err := readLines(fsys, path, 0, false, absorb)
 		if err != nil {
 			return true
 		}
@@ -89,7 +93,7 @@ func (f *Follower) Follow(path string, reset func(), absorb func(line string)) b
 		from = size - MaxScan
 	}
 
-	next, err := readLines(file, from, fromTail, absorb)
+	next, err := readLines(fsys, path, from, fromTail, absorb)
 	if err != nil {
 		return true
 	}
@@ -104,12 +108,14 @@ func (f *Follower) Follow(path string, reset func(), absorb func(line string)) b
 // readLines hands absorb the whole lines in the MaxScan bytes from offset, and
 // reports where the read after this one starts. The agent may be writing the
 // last line, so its rest arrives next poll.
-func readLines(file *os.File, from int64, midLine bool, absorb func(string)) (int64, error) {
-	if _, err := file.Seek(from, io.SeekStart); err != nil {
-		return from, err
-	}
-
-	content, err := io.ReadAll(io.LimitReader(file, MaxScan))
+func readLines(
+	fsys files.FS,
+	path string,
+	from int64,
+	midLine bool,
+	absorb func(string),
+) (int64, error) {
+	content, err := fsys.ReadAt(path, from, MaxScan)
 	if err != nil {
 		return from, err
 	}
