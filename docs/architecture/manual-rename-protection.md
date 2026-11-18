@@ -18,7 +18,7 @@ changed between two polls**. The whole design follows from that, and it lives in
 `internal/labels`: the rule in `claims.go`, and in `labels.go` the pass that
 runs it over one poll, sends the renames and records what became of them. The
 poll loop asks it only for a tab or a pane to be named, and keeps two rules of
-its own: a pane is read before it is judged, and a pass is settled only once
+its own: a pane is read before it is named, and a pass is settled only once
 every tab and pane was seen.
 
 ## The rule
@@ -58,6 +58,14 @@ They are told apart by what Herdr calls a tab nobody has named. After the first
 poll, a tab Auto Title has never seen is one that did not exist before, and a new
 tab already carrying something other than its default label was named by whoever
 made it.
+
+That holds only if the first poll saw every tab. A tab whose panes could not be
+read whole is not named, but its label is still judged (`Pass.SeeTab`, and
+`SeePane` for a pane) with no name wanted. Skipped outright, it was first seen
+on a later poll, already named, and locked: **every tab of a connected machine
+was locked at a restart**, because a remote read takes a few polls to fetch the
+files it walks, and a local tab was locked the same way after one failed
+`pane.process_info`.
 
 ### Herdr's default label is a position, not `TabInfo.number`
 

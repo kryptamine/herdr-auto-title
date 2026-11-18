@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"testing"
 
@@ -641,5 +642,24 @@ func TestAPaneLabelMirrorWroteIsNamedOverOnceMirrorExits(t *testing.T) {
 
 	if got := labelsOf(h, "wE:p1"); len(got) != 1 {
 		t.Errorf("mirror pane = %v, want it named once mirror left", got)
+	}
+}
+
+// A restart finds panes carrying the last instance's names, and a first poll
+// that could not read them must not leave the next one taking them for the user's.
+func TestPanesNamedBeforeAStartAreNotClaimedAfterAFailedRead(t *testing.T) {
+	t.Parallel()
+
+	panes := split()
+	panes[1].Label = "old name"
+	h := startPanes(t, oneTab(), panes)
+
+	h.client.SetProcessError(errors.New("busy"))
+	h.poll()
+	h.client.SetProcessError(nil)
+	h.poll()
+
+	if labels := labelsOf(h, "wE:p2"); len(labels) == 0 {
+		t.Error("a pane named before the start was claimed after one failed read")
 	}
 }

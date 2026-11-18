@@ -217,6 +217,27 @@ func TestRemoteNativeNamesUpdateWithoutAnOSCTitle(t *testing.T) {
 	}
 }
 
+// A restart finds remote tabs already carrying the last instance's names, and a
+// read that takes a few polls to fetch must not turn them into the user's.
+func TestRemoteTabsNamedBeforeAStartAreNotClaimed(t *testing.T) {
+	t.Parallel()
+
+	application, client, _, _, _ := remoteLoop(t)
+	client.SetTab(herdr.TabInfo{TabID: "box/0", WorkspaceID: "box/s1", Label: "dashboard › codex"})
+
+	if label := pollUntil(
+		t,
+		application,
+		client,
+		"Remote first",
+	); !strings.Contains(
+		label,
+		"Remote first",
+	) {
+		t.Errorf("a remote tab named before the start was claimed: %q", label)
+	}
+}
+
 func TestRemoteManualNamesSurviveDisconnectAndRestart(t *testing.T) {
 	t.Parallel()
 

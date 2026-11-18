@@ -133,6 +133,21 @@ func (p *Pass) Pane(
 	p.apply(ctx, claims, sightingOfPane(pane, decision.Name), decision, renamer.RenamePane)
 }
 
+// SeeTab judges the label of a tab whose name cannot be chosen yet, so the poll
+// that can choose it does not take the tab for one made since, already named.
+func (p *Pass) SeeTab(tab state.TabState) {
+	if !p.labels.tabs.isLocked(tab.ID) {
+		p.see(p.labels.tabs, sightingOfTab(tab, ""))
+	}
+}
+
+// SeePane is SeeTab for a pane.
+func (p *Pass) SeePane(pane *state.PaneState) {
+	if !p.labels.panes.isLocked(pane.ID) {
+		p.see(p.labels.panes, sightingOfPane(pane, ""))
+	}
+}
+
 // Owned reports whether one of a tab's panes runs a program that writes its
 // own labels. Each pane must have been read.
 func (l *Labels) Owned(tab state.TabState) bool {
@@ -183,11 +198,8 @@ func (p *Pass) apply(
 	log := p.labels.log
 	idKey := kind.noun + "_id"
 
-	switch claims.observe(seen) {
-	case verdictClaimed:
-		log.Info("leaving a "+kind.noun+" the user renamed", idKey, seen.id, "name", seen.current)
+	if p.see(claims, seen) {
 		return
-	case verdictName:
 	}
 
 	if decision.Name == "" || decision.Name == seen.current {
@@ -220,6 +232,24 @@ func (p *Pass) apply(
 		"reason", decision.Reason,
 		"confidence", decision.Confidence,
 	)
+}
+
+// see records what a poll saw of a label, and reports whether the user claims it.
+func (p *Pass) see(claims *claims, seen sighting) bool {
+	if claims.observe(seen) != verdictClaimed {
+		return false
+	}
+
+	idKey := claims.kind.noun + "_id"
+	p.labels.log.Info(
+		"leaving a "+claims.kind.noun+" the user renamed",
+		idKey,
+		seen.id,
+		"name",
+		seen.current,
+	)
+
+	return true
 }
 
 // kind is what differs between the things Auto Title names.
