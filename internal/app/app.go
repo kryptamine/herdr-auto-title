@@ -436,8 +436,16 @@ func (a *App) nameTab(
 ) {
 	// A tab with no pane says nothing, and naming it would replace a label it
 	// will want back, as a disconnected machine's tab in the desktop app does.
-	if tab.Context == nil || pass.TabLocked(tab.ID) || !a.readAll(ctx, poll, tab) ||
-		pass.TabOwned(tab) {
+	if tab.Context == nil || pass.TabLocked(tab.ID) {
+		return
+	}
+
+	if !a.readAll(ctx, poll, tab) {
+		pass.SeeTab(tab)
+		return
+	}
+
+	if pass.TabOwned(tab) {
 		return
 	}
 
@@ -480,7 +488,16 @@ func (a *App) namePanes(
 
 		// Skipped one by one, so a local split of a mirror tab is still named.
 		pane := tab.Panes[i]
-		if pass.PaneLocked(pane.ID) || !poll.Fill(ctx, pane) || pass.PaneOwned(pane) {
+		if pass.PaneLocked(pane.ID) {
+			continue
+		}
+
+		if !poll.Fill(ctx, pane) {
+			pass.SeePane(pane)
+			continue
+		}
+
+		if pass.PaneOwned(pane) {
 			continue
 		}
 
