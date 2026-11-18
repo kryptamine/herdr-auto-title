@@ -330,6 +330,13 @@ reads, so this section describes Herdr rather than those types.
   `Set-Location C:\Windows` moved both `cwd` and the process's `cwd` within one
   prompt. Names carry `.exe`, a process's `cwd` carries a trailing backslash
   (`C:\github\x\`), and `foreground_cwd` was null on every pane.
+- **A Windows pane's directory is never spelled from `/`.** Measured on
+  Herdr 0.9.5 and on hc 0.1.20: Git Bash's `cd /c/Users/…` left `cwd` at the
+  Windows directory the pane had before, `C:\Users\Alexander` in the TUI and
+  the launcher's `C:\WINDOWS\system32` in the core, with `/c/…` only in the
+  terminal title; `Set-Location //localhost/C$/Users` arrived as
+  `\\localhost\C$\Users`. A directory starting with `/` is a connected
+  machine's.
 - **Herdr gives a Windows pane no title of its own.** Its PowerShell
   integration wraps the prompt only to report the directory, and the console's
   title reaches `terminal_title` unchanged, so a pane carries whatever its
