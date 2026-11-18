@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.23.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.22.3...v0.23.0) (2026-11-18)
+
+
+### Features
+
+* **desktop:** name connected remote tabs ([1af236e](https://github.com/kryptamine/herdr-auto-title/commit/1af236e95eb67adc77b3161937ff946c616b709c))
+* **desktop:** read branches and codex sessions on connected machines ([3dd0cf0](https://github.com/kryptamine/herdr-auto-title/commit/3dd0cf0fe66c8a32788146caceae481e3c67e1e8))
+
+
+### Bug Fixes
+
+* **app:** judge a label whose tab could not be read yet ([3937828](https://github.com/kryptamine/herdr-auto-title/commit/393782808346beffb412d135cf45997df4b050f0))
+* **app:** leave a tab with no panes unnamed ([c2c2325](https://github.com/kryptamine/herdr-auto-title/commit/c2c2325ec154358f1f59768ec789609fe9728816))
+* **state:** read a directory in its own path syntax ([c714192](https://github.com/kryptamine/herdr-auto-title/commit/c714192090f9dc068451a5cacf78dd56d32a1c96))
+
+
+### Refactoring
+
+* read session and repository files through files.FS ([49725c3](https://github.com/kryptamine/herdr-auto-title/commit/49725c3681538a6fe5857a2d18ab8da2b550a6c7))
+
 ## [0.22.3](https://github.com/kryptamine/herdr-auto-title/compare/v0.22.2...v0.22.3) (2026-11-13)
 
 
