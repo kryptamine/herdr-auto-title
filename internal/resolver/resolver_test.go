@@ -659,3 +659,19 @@ func TestAPaneWithOnlyAContextStillGetsIt(t *testing.T) {
 		t.Errorf("pane = %q, want the directory it has and nothing else", got)
 	}
 }
+
+func TestAHiddenDirectoryOutlastsTheBranchItsTabShows(t *testing.T) {
+	t.Parallel()
+
+	// A pane whose branch repeats its tab's has only its directory left, and
+	// keeps that rather than the branch the tab row already carries.
+	checkout := git.Checkout{Branch: "feat/oauth", Default: "main"}
+	tab := tabOf([]*state.PaneState{
+		{ID: "wE:p1", Dir: dashboard, Git: checkout, Focused: true, TerminalTitle: "Fix OAuth"},
+		{ID: "wE:p2", Dir: api, Git: checkout},
+	})
+
+	if got, want := directoryChain(0, true).ResolvePanes(tab)[1].Name, "api"; got != want {
+		t.Errorf("pane = %q, want %q", got, want)
+	}
+}

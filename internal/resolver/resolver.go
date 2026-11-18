@@ -198,7 +198,7 @@ func Default(opts Options) *Deterministic {
 // Resolve names a tab in three steps: ask the sources what they see, drop the
 // parts that only repeat something already on screen, and assemble the rest.
 func (d *Deterministic) Resolve(tab state.TabState) Decision {
-	return d.nameUnder(d.collect(tab.Context), tab.WorkspaceName, true)
+	return d.nameUnder(d.collect(tab.Context), tab.WorkspaceName, d.directoryMax)
 }
 
 // ResolvePanes names each pane of a tab by what tells it from that tab. The row
@@ -215,24 +215,21 @@ func (d *Deterministic) ResolvePanes(tab state.TabState) []Decision {
 			found.parts.Handle = Sanitize(pane.Handle, 0)
 		}
 
-		decisions[i] = d.nameUnder(found, tab.WorkspaceName, false, above)
+		decisions[i] = d.nameUnder(found, tab.WorkspaceName, 0, above)
 	}
 
 	return decisions
 }
 
 // nameUnder assembles what the chain found into a title, dropping what the
-// workspace row above it says and then what any nearer row does. Only a tab
-// title bounds its directory: a pane's is often what tells it from its tab.
-// Hiding reaches pane labels too, since it says the directory names nothing.
+// workspace row above it says and then what any nearer row does, and cutting
+// its directory to bound, where 0 leaves it whole.
 func (d *Deterministic) nameUnder(
 	found collected,
 	workspace string,
-	tab bool,
+	bound int,
 	rows ...Parts,
 ) Decision {
-	bounded := tab && found.directory
-
 	// A hidden directory is dropped as if a row above showed it, so a title
 	// with nothing else to say keeps it.
 	if d.hideDirectory && found.directory {
@@ -248,8 +245,8 @@ func (d *Deterministic) nameUnder(
 	// Cut only now: every comparison above matches the whole name, and `Sit`
 	// no longer matches the workspace `SiteLine` it repeats. The cut can make
 	// it equal what the first pass kept, `web` from `web-admin`, so it reruns.
-	if bounded {
-		parts.Context = truncateToGrapheme(parts.Context, d.directoryMax)
+	if found.directory && bound > 0 {
+		parts.Context = truncateToGrapheme(parts.Context, bound)
 		parts = withoutAbove(withoutRepetition(parts), Parts{Context: workspace})
 	}
 
