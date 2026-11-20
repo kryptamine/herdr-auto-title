@@ -151,7 +151,7 @@ terminal's `pid` and walking its descendants.
 |-------|-------|-------------------------------|---------------------|
 | Claude Code | `~/.claude/sessions/<pid>.json` holds `sessionId` | Told apart: one file per pid | `/clear` rewrites the file |
 | Grok Build | its process holds `~/.grok/sessions/<dir>/<id>/events.jsonl` open | Told apart | `/new` holds both; the newest is current |
-| Antigravity | its process holds `~/.gemini/antigravity-cli/brain/<id>/` open | Told apart | `/new` holds both; the newest is current |
+| Antigravity | its process holds `~/.gemini/antigravity-cli/presence/<id>.lock` open; some builds hold only `brain/<id>/` or `conversations/<id>.db` | Told apart | `/new` moves the lock; `brain/` holds both, the newest is current |
 | Codex | **none** | **Not told apart** | a rollout appears at the first prompt |
 | Pi | **none**: only the session folder of its directory | **Not told apart** | a file appears at the first prompt |
 

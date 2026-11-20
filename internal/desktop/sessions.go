@@ -25,9 +25,9 @@ const sessionID = `[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}`
 
 var (
 	grokTranscriptRe = regexp.MustCompile(`/sessions/[^/]+/(` + sessionID + `)/events\.jsonl$`)
-	// Current Antigravity CLI holds a presence lock for the active conversation;
-	// older builds held paths under brain/<id>/ (and active SQLite handles live
-	// under conversations/<id>.db).
+	// Antigravity CLI holds a presence lock for its current conversation alone;
+	// brain/<id>/ stays held after /new, and some builds hold only that or
+	// conversations/<id>.db.
 	antigravityPresenceRe = regexp.MustCompile(
 		`^(.*/antigravity-cli)/presence/(` + sessionID + `)\.lock$`,
 	)
@@ -224,10 +224,9 @@ func (f *sessionFinder) grokSession(ctx context.Context, pids []int) (string, er
 	return newest, nil
 }
 
-// antigravitySession prefers the presence lock Antigravity holds for its
-// current conversation; if none is held (older CLI builds), it takes the held
-// session under brain/ or conversations/ with the newest conversation file:
-// /new leaves the old one held too, and an Antigravity id is random.
+// antigravitySession prefers the held presence lock; failing that, the held
+// brain/ or conversations/ session with the newest conversation file, since
+// /new leaves the old one held too and an Antigravity id is random.
 func (f *sessionFinder) antigravitySession(ctx context.Context, pids []int) (string, error) {
 	open, err := f.openFiles(ctx, pids)
 	if err != nil {
@@ -250,12 +249,13 @@ func (f *sessionFinder) newestAntigravitySession(open []string, pattern *regexp.
 			continue
 		}
 
+		// Only the session pattern has a third group, and only for conversations/.
 		id := match[2]
-		if id == "" && len(match) > 3 {
+		if id == "" {
 			id = match[3]
 		}
 
-		if id == "" || id == newest {
+		if id == newest {
 			continue
 		}
 

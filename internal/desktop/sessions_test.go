@@ -323,6 +323,26 @@ func TestAntigravitySessionFromPresenceLock(t *testing.T) {
 	wantSession(t, onlySession(t, client), "agy", sessionA)
 }
 
+// A build that holds neither a presence lock nor brain/ still names its session
+// through the conversation database's write-ahead log.
+func TestAntigravitySessionFromConversationLog(t *testing.T) {
+	t.Parallel()
+
+	finder := newSessionFinder(nil)
+	finder.processes = processTree(map[int][]int{10: nil})
+	finder.openFiles = filesOpen(map[int][]string{10: {
+		"/home/x/.gemini/antigravity-cli/conversations/" + sessionA + ".db-wal",
+	}})
+
+	client, _ := sessionClient(
+		t,
+		finder,
+		agentPane{id: "p1", app: "antigravity", pid: 10, foreground: 10},
+	)
+
+	wantSession(t, onlySession(t, client), "agy", sessionA)
+}
+
 // Presence lock wins over an older held conversation or brain path.
 func TestAntigravityPresenceLockBeatsOlderConversation(t *testing.T) {
 	t.Parallel()
