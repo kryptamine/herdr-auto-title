@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.23.1](https://github.com/kryptamine/herdr-auto-title/compare/v0.23.0...v0.23.1) (2026-11-20)
+
+
+### Bug Fixes
+
+* **desktop:** address review of the antigravity presence lock ([2566055](https://github.com/kryptamine/herdr-auto-title/commit/256605524868314d6cea977e79eb1761529b1fbe))
+* **desktop:** read Antigravity session ID from presence lock and conversation db ([b118d24](https://github.com/kryptamine/herdr-auto-title/commit/b118d24299b4dbad393c5ba0b37798d438e6e391))
+* **resolver:** hide the directory from pane labels as well ([210dd4d](https://github.com/kryptamine/herdr-auto-title/commit/210dd4d1b0d66d02442e3d8c4047f2750e6e81eb))
+
+
+### Refactoring
+
+* **resolver:** pass the directory bound instead of a tab flag ([c180205](https://github.com/kryptamine/herdr-auto-title/commit/c180205953312e0d38cc86a8044d3f820028ad4d))
+
 ## [0.23.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.22.3...v0.23.0) (2026-11-18)
 
 
