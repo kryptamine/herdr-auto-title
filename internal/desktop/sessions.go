@@ -25,9 +25,14 @@ const sessionID = `[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}`
 
 var (
 	grokTranscriptRe = regexp.MustCompile(`/sessions/[^/]+/(` + sessionID + `)/events\.jsonl$`)
-	// Any path under a brain directory counts: what is held there varies.
-	antigravityBrainRe = regexp.MustCompile(
-		`^(.*/antigravity-cli)/brain/(` + sessionID + `)(?:/|$)`,
+	// Current Antigravity CLI holds a presence lock for the active conversation;
+	// older builds held paths under brain/<id>/ (and active SQLite handles live
+	// under conversations/<id>.db).
+	antigravityPresenceRe = regexp.MustCompile(
+		`^(.*/antigravity-cli)/presence/(` + sessionID + `)\.lock$`,
+	)
+	antigravitySessionRe = regexp.MustCompile(
+		`^(.*/antigravity-cli)/(?:brain/(` + sessionID + `)(?:/|$)|conversations/(` + sessionID + `)\.db(?:-(?:wal|shm))?$)`,
 	)
 )
 
@@ -219,7 +224,9 @@ func (f *sessionFinder) grokSession(ctx context.Context, pids []int) (string, er
 	return newest, nil
 }
 
-// antigravitySession takes the held session with the newest conversation file:
+// antigravitySession prefers the presence lock Antigravity holds for its
+// current conversation; if none is held (older CLI builds), it takes the held
+// session under brain/ or conversations/ with the newest conversation file:
 // /new leaves the old one held too, and an Antigravity id is random.
 func (f *sessionFinder) antigravitySession(ctx context.Context, pids []int) (string, error) {
 	open, err := f.openFiles(ctx, pids)
@@ -227,11 +234,28 @@ func (f *sessionFinder) antigravitySession(ctx context.Context, pids []int) (str
 		return "", err
 	}
 
+	if id := f.newestAntigravitySession(open, antigravityPresenceRe); id != "" {
+		return id, nil
+	}
+
+	return f.newestAntigravitySession(open, antigravitySessionRe), nil
+}
+
+func (f *sessionFinder) newestAntigravitySession(open []string, pattern *regexp.Regexp) string {
 	newest, newestAt := "", time.Time{}
 
 	for _, path := range open {
-		match := antigravityBrainRe.FindStringSubmatch(filepath.ToSlash(path))
-		if match == nil || match[2] == newest {
+		match := pattern.FindStringSubmatch(filepath.ToSlash(path))
+		if match == nil {
+			continue
+		}
+
+		id := match[2]
+		if id == "" && len(match) > 3 {
+			id = match[3]
+		}
+
+		if id == "" || id == newest {
 			continue
 		}
 
@@ -239,15 +263,15 @@ func (f *sessionFinder) antigravitySession(ctx context.Context, pids []int) (str
 		// is the newest there is: every older one has had its prompt.
 		at := f.now()
 		if info, err := os.Stat(
-			filepath.Join(match[1], "conversations", match[2]+".db"),
+			filepath.Join(match[1], "conversations", id+".db"),
 		); err == nil {
 			at = info.ModTime()
 		}
 
 		if newest == "" || at.After(newestAt) {
-			newest, newestAt = match[2], at
+			newest, newestAt = id, at
 		}
 	}
 
-	return newest, nil
+	return newest
 }
