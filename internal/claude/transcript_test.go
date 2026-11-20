@@ -296,6 +296,20 @@ func TestAResumedSessionsCaveatIsNotItsOpening(t *testing.T) {
 	}
 }
 
+func TestANoteFromAnotherSessionIsNotItsOpening(t *testing.T) {
+	t.Parallel()
+
+	p := newProject(t)
+	p.write(
+		human(`<hc from=\"t118 social-login-referrals\">Blocked on a captcha</hc>`),
+		human("cross-check the referral list"),
+	)
+
+	if got := p.reader().Topic(session, started); got.Text() != "cross-check the referral list" {
+		t.Errorf("topic = %+v, want the prompt the user typed", got)
+	}
+}
+
 func TestOnlyTheFirstLineOfAPromptOpensASession(t *testing.T) {
 	t.Parallel()
 

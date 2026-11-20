@@ -209,9 +209,10 @@ var commandPattern = regexp.MustCompile(`<command-name>\s*/?([^<\s]+)\s*</comman
 // records beside the command's name and leaves empty when there was nothing.
 var argsPattern = regexp.MustCompile(`(?s)<command-args>(.*?)</command-args>`)
 
-// markupPattern matches the blocks Claude Code wraps around text the user did
-// not type: a command's expansion, the caveat on a resumed session.
-var markupPattern = regexp.MustCompile(`(?s)<[a-z][a-z-]*>.*?</[a-z][a-z-]*>`)
+// markupPattern matches the blocks wrapped around text the user did not type:
+// a command's expansion, a resumed session's caveat, and a note another session
+// sent through hc (`<hc from="t5v">…</hc>`), which Claude Code records as human.
+var markupPattern = regexp.MustCompile(`(?s)<[a-z][a-z-]*(?:\s[^>]*)?>.*?</[a-z][a-z-]*>`)
 
 // opening reduces a user's first message to what can name a session. Content is
 // either the text itself or the blocks a message was assembled from.
