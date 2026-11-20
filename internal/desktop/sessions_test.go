@@ -304,6 +304,56 @@ func TestAntigravitySessionWithNoConversationBeatsAnOlderOne(t *testing.T) {
 	wantSession(t, onlySession(t, client), "agy", sessionB)
 }
 
+// Current Antigravity CLI holds a presence lock for the active conversation.
+func TestAntigravitySessionFromPresenceLock(t *testing.T) {
+	t.Parallel()
+
+	finder := newSessionFinder(nil)
+	finder.processes = processTree(map[int][]int{10: nil})
+	finder.openFiles = filesOpen(map[int][]string{10: {
+		"/home/x/.gemini/antigravity-cli/presence/" + sessionA + ".lock",
+	}})
+
+	client, _ := sessionClient(
+		t,
+		finder,
+		agentPane{id: "p1", app: "antigravity", pid: 10, foreground: 10},
+	)
+
+	wantSession(t, onlySession(t, client), "agy", sessionA)
+}
+
+// Presence lock wins over an older held conversation or brain path.
+func TestAntigravityPresenceLockBeatsOlderConversation(t *testing.T) {
+	t.Parallel()
+
+	root := filepath.Join(t.TempDir(), "antigravity-cli")
+	conversations := filepath.Join(root, "conversations")
+
+	if err := os.MkdirAll(conversations, 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(filepath.Join(conversations, sessionA+".db"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	finder := newSessionFinder(nil)
+	finder.processes = processTree(map[int][]int{10: nil})
+	finder.openFiles = filesOpen(map[int][]string{10: {
+		filepath.ToSlash(filepath.Join(root, "conversations", sessionA+".db")),
+		filepath.ToSlash(filepath.Join(root, "presence", sessionB+".lock")),
+	}})
+
+	client, _ := sessionClient(
+		t,
+		finder,
+		agentPane{id: "p1", app: "antigravity", pid: 10, foreground: 10},
+	)
+
+	wantSession(t, onlySession(t, client), "agy", sessionB)
+}
+
 // Codex and Pi have no route: their panes keep their title and cost nothing.
 func TestAgentsWithNoRouteReadNothing(t *testing.T) {
 	t.Parallel()
