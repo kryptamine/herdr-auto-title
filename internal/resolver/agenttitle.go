@@ -1,6 +1,8 @@
 package resolver
 
 import (
+	"strings"
+
 	"github.com/kryptamine/herdr-auto-title/internal/codex"
 	"github.com/kryptamine/herdr-auto-title/internal/grok"
 	"github.com/kryptamine/herdr-auto-title/internal/pi"
@@ -33,4 +35,20 @@ func agentTitle(pane *state.PaneState, title string) (string, bool) {
 	}
 
 	return title, true
+}
+
+// namesDir reports whether s is the pane's directory as an agent framed it. On
+// a case-insensitive filesystem Herdr can report another spelling of it.
+func namesDir(pane *state.PaneState, s string) bool {
+	return pane.Dir != "" && strings.EqualFold(s, pane.DirBase())
+}
+
+// cutSuffixFold is strings.CutSuffix without regard to case. It compares in
+// place: a lower-cased copy can differ in length, and the cut is by bytes.
+func cutSuffixFold(s, suffix string) (string, bool) {
+	if len(s) < len(suffix) || !strings.EqualFold(s[len(s)-len(suffix):], suffix) {
+		return s, false
+	}
+
+	return s[:len(s)-len(suffix)], true
 }

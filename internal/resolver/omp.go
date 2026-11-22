@@ -32,7 +32,7 @@ func withoutOmpFrame(pane *state.PaneState, title string) (string, bool) {
 
 	// Until the session has a name of its own, omp frames its directory.
 	name = strings.TrimSpace(name)
-	if name == "" || (pane.Dir != "" && name == pane.DirBase()) {
+	if name == "" || namesDir(pane, name) {
 		return "", false
 	}
 

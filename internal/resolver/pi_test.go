@@ -125,9 +125,8 @@ func TestAPiTitleIsDeclinedWhenThePanesDirectoryIsUnknown(t *testing.T) {
 func TestAPiTitleIsDeclinedWhenTheDirectoryCaseDiffers(t *testing.T) {
 	t.Parallel()
 
-	// A case-insensitive directory can be reported with another spelling
-	// than the one Pi wrote. The frame is the same one, so the transcript
-	// still names the tab.
+	// Herdr reporting the directory in another case must not cost the tab its
+	// transcript title; the label flipped on every poll that it did.
 	pane := piPane("π - dashboard")
 	pane.Dir = "/work/DASHBOARD"
 	pane.AgentTopic = "rework the poll loop"
@@ -139,11 +138,10 @@ func TestAPiTitleIsDeclinedWhenTheDirectoryCaseDiffers(t *testing.T) {
 	}
 }
 
-func TestAPiNameKeepsTheFrameWhenTheDirectoryCaseDiffers(t *testing.T) {
+func TestAPiNameDropsTheDirectoryWhenItsCaseDiffers(t *testing.T) {
 	t.Parallel()
 
-	// The named-session frame has the same directory tail; stripping it
-	// must not depend on the reported spelling.
+	// Otherwise the directory Pi appended stays on the session's name.
 	pane := piPane("π - Rework the poll loop - dashboard")
 	pane.Dir = "/work/DASHBOARD"
 
