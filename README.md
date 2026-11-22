@@ -299,3 +299,6 @@ to leave.
 <a href="https://github.com/ModoloDev"><img src="https://images.weserv.nl/?url=github.com/ModoloDev.png&w=128&h=128&fit=cover&mask=circle&maxage=7d" width="64" alt="Lucas Modolo"></a>
 <a href="https://github.com/freethinkel"><img src="https://images.weserv.nl/?url=github.com/freethinkel.png&w=128&h=128&fit=cover&mask=circle&maxage=7d" width="64" alt="Egor Kolesnikov"></a>
 <a href="https://github.com/markdarling"><img src="https://images.weserv.nl/?url=github.com/markdarling.png&w=128&h=128&fit=cover&mask=circle&maxage=7d" width="64" alt="Mark Darling"></a>
+<a href="https://github.com/fivepeople-art"><img src="https://images.weserv.nl/?url=github.com/fivepeople-art.png&w=128&h=128&fit=cover&mask=circle&maxage=7d" width="64" alt="FAPI"></a>
+<a href="https://github.com/jaycamu"><img src="https://images.weserv.nl/?url=github.com/jaycamu.png&w=128&h=128&fit=cover&mask=circle&maxage=7d" width="64" alt="jaychun"></a>
+<a href="https://github.com/Ziy1-Tan"><img src="https://images.weserv.nl/?url=github.com/Ziy1-Tan.png&w=128&h=128&fit=cover&mask=circle&maxage=7d" width="64" alt="Ziyi Tan"></a>
