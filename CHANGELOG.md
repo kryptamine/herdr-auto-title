@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.24.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.23.1...v0.24.0) (2026-11-22)
+
+
+### Features
+
+* **desktop:** name unplaced core tabs ([2841729](https://github.com/kryptamine/herdr-auto-title/commit/2841729af976e479644c6570c4ca858f9ae660b3))
+* **desktop:** read and rename tabs in the core's layout document ([6b1d6bc](https://github.com/kryptamine/herdr-auto-title/commit/6b1d6bc8fa722ef49c62d215c77b081c6664e7f3))
+
+
+### Bug Fixes
+
+* **resolver:** compare pi's directory frame without case ([1f698ac](https://github.com/kryptamine/herdr-auto-title/commit/1f698ac40a1e82cd7905593de261bd97617b341b))
+* **resolver:** fold case in omp's directory frame too ([c36023f](https://github.com/kryptamine/herdr-auto-title/commit/c36023fbecdb9bde57f2fef05b3d6065bb303aa9))
+
+
+### Refactoring
+
+* **app:** read the label options in a function of their own ([9c12cc2](https://github.com/kryptamine/herdr-auto-title/commit/9c12cc2dba95b052f89883d0e83271c2b7fe2a46))
+
 ## [0.23.1](https://github.com/kryptamine/herdr-auto-title/compare/v0.23.0...v0.23.1) (2026-11-20)
 
 
