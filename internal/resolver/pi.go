@@ -28,19 +28,11 @@ func withoutPiFrame(pane *state.PaneState, title string) (string, bool) {
 		return "", false
 	}
 
-	// A case-insensitive directory can reach Herdr with a different spelling
-	// than the one Pi wrote into its terminal title. The frame is the same
-	// directory either way, so compare it without regard to case.
-	dir := pane.DirBase()
-	if strings.EqualFold(rest, dir) {
+	if namesDir(pane, rest) {
 		return "", false
 	}
 
-	suffix := piJoin + dir
-	if len(rest) >= len(suffix) &&
-		strings.EqualFold(rest[len(rest)-len(suffix):], suffix) {
-		rest = rest[:len(rest)-len(suffix)]
-	}
+	rest, _ = cutSuffixFold(rest, piJoin+pane.DirBase())
 
 	return rest, rest != ""
 }

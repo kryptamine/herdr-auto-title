@@ -79,3 +79,19 @@ func TestATitleOmpDidNotFrameIsReadAsItIs(t *testing.T) {
 		}
 	}
 }
+
+// A case-insensitive directory can reach Herdr spelled otherwise than omp
+// framed it; the frame must still give way to the session's transcript.
+func TestAnOmpFrameIsDeclinedWhenTheDirectoryCaseDiffers(t *testing.T) {
+	t.Parallel()
+
+	pane := ompPane("π > dashboard")
+	pane.Dir = "/work/DASHBOARD"
+	pane.AgentTopic = "rework the poll loop"
+
+	got := defaultChain().Resolve(tabWithPane(pane))
+
+	if got.Reason != "transcript" {
+		t.Errorf("reason = %q, name = %q, want transcript", got.Reason, got.Name)
+	}
+}
