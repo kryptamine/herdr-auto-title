@@ -990,6 +990,66 @@ The glyphs need Nerd Fonts 3.0 or later: the agent's robot is an Octicon that
 2.3 lacks. On Windows only two icons ever show, the agent's and the shell's,
 because `pane.process_info` there lists nothing that runs under the shell.
 
+## Twin titles can be told apart
+
+Every tab is named on its own, so two tabs whose agents chose the same title
+read the same, and the rule above that drops a workspace's directory makes that
+likelier: two Claude Code sessions titled `Fix OAuth redirect`, one in a
+workspace `dashboard` and one in `api`, both read `1 · Fix OAuth redirect`.
+The workspace row tells them apart only where it is on screen beside them.
+
+`HERDR_AUTO_TITLE_DISTINCT=true` compares the tabs a poll can name, across the
+whole session, by the title the chain gives each before any decorator, so the
+position does not hide a twin. Each group of tabs that read the same climbs a
+ladder (`Deterministic.Qualifiers`) and takes the first rung that leaves every
+tab in the group with a title no other tab in the session carries:
+
+1. **The directory, cut to `DIRECTORY_MAX`**, so the activity keeps the width
+   the bound left it: `dash › Fix OAuth redirect` beside `api › Fix OAuth
+   redirect` under a bound of four.
+2. **The whole context**, as the chain found it, before the workspace row or
+   the bound took it away: `dashboard-web › Fix OAuth redirect` where the bound
+   made both read `dashboard`.
+3. **The start of the agent's session id**, the first group of its UUID:
+   `3fa9c1d2 › Fix OAuth redirect`. It takes the context's place rather than
+   adding to it, since the context is what the twins share.
+
+A bound is respected where it can be and given up where it cannot, but
+`DIRECTORY_MAX=0` is never undone: whoever set it asked never to see the
+directory, so under `0` both directory rungs are skipped and twins go straight
+to their sessions. Twins with no session to tell them apart keep their title.
+
+A rung is judged on the finished titles, against every tab rather than the
+group alone: in a workspace `other`, a third tab already reading
+`dashboard › Fix OAuth redirect` keeps the first rung from giving a twin the
+same title, and the group moves on to its sessions. Groups are taken in the
+order of their titles, so which one claims a title first does not depend on
+the order the session lists them.
+
+A tab with no value of its own, a pane in the home directory beside one in a
+project, keeps its title: once its twin says where it is, the two already
+differ. A group no rung tells apart, two shells in one directory, is left as it
+is, because a made-up difference would be worse than none. The branch is not on
+the ladder: twins on different branches already read differently, unless
+`BRANCH_MAX` cut both to the same words, and a dropped trunk is the same trunk.
+
+The qualifier is decided again at every poll, from that poll's tabs alone, so a
+tab whose twin closes reads as it would have without one. That is the cost, and
+why it is off by default: a twin coming or going renames the other tab. Three
+cases look like flapping and are not, or only once:
+
+- **A read that fails** answers with the pane's last one, so a twin read once is
+  still compared; only a tab never read is left out, and it is not named
+  either.
+- **A tab another program starts labelling** stops being a twin, because it is
+  no longer Auto Title's to name, and its twin loses the qualifier.
+- **A tab the user renames** is still compared in the poll that first sees the
+  new label, since that poll is the one that claims it; the next leaves it out,
+  so its twin is renamed once more.
+
+Only tabs are compared; a pane is named against its own tab already, and the
+workspace topic is not a label anyone switches by.
+
 ## The agent status is not a part of the title either
 
 `HERDR_AUTO_TITLE_AGENT_STATUS=true` puts a mark for what a tab's agents are

@@ -221,6 +221,7 @@ not read.
 | `HERDR_AUTO_TITLE_AGENT_HANDLE` | `false`                                  | Put the name `herdr agent rename` gave the pane's agent in front of its label, as `driver › api` |
 | `HERDR_AUTO_TITLE_ICONS`        | `false`                                  | Put a Nerd Font 3.0+ icon for what a pane runs in front of labels  |
 | `HERDR_AUTO_TITLE_AGENT_STATUS` | `false`                                  | Put the tab's agent status in front of its title: `◉` idle, `◐` working, `●` blocked, `✓` done |
+| `HERDR_AUTO_TITLE_DISTINCT`     | `false`                                  | Tell apart tabs whose titles would read the same, by their directory or else their agent session; with `DIRECTORY_MAX=0`, by session only |
 | `HERDR_AUTO_TITLE_WORKSPACES`   | `true`                                   | Report what each workspace's active tab is doing as its `topic`    |
 | `HERDR_AUTO_TITLE_WORKSPACE_MAX_LENGTH` | none: Herdr fits it              | Longest topic, in columns                                          |
 | `HERDR_AUTO_TITLE_CLAUDE_DIRS`  | none                                     | Extra Claude config homes to search, `:`-separated                 |

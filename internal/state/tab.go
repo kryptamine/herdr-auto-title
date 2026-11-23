@@ -269,6 +269,9 @@ type TabState struct {
 	// AgentStatus is the tab's, as Herdr aggregates it over every pane rather
 	// than the context pane's alone.
 	AgentStatus string
+	// Qualifier tells this tab from another whose title would read the same,
+	// and is empty for every other tab.
+	Qualifier string
 }
 
 // TabFrom builds a tab and picks its context pane. With preferAgent a pane

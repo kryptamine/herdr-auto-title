@@ -89,7 +89,12 @@ func newTestAppOn(t *testing.T, cfg Config, instance Instance) *App {
 		panes = chain
 	}
 
-	return newApp(cfg, discardLogger(), chain, panes, topicsFor(cfg), instance)
+	built := chains{titles: chain, panes: panes, topics: topicsFor(cfg)}
+	if cfg.DistinctTitles {
+		built.distinct = chain
+	}
+
+	return newApp(cfg, discardLogger(), built, instance)
 }
 
 // harness drives an App against a stubbed Herdr session one poll at a time, so
@@ -1747,7 +1752,7 @@ func TestResolversKeepAPaneInTheHomeFromNamingATab(t *testing.T) {
 	cfg := testConfig()
 	cfg.Home = testHome(t)
 
-	titles, _, _ := resolvers(cfg)
+	titles := resolvers(cfg).titles
 
 	pane := &state.PaneState{ID: "w1:p1", Dir: cfg.Home, Focused: true}
 	tab := state.TabFrom(

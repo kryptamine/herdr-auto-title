@@ -198,7 +198,18 @@ func Default(opts Options) *Deterministic {
 // Resolve names a tab in three steps: ask the sources what they see, drop the
 // parts that only repeat something already on screen, and assemble the rest.
 func (d *Deterministic) Resolve(tab state.TabState) Decision {
-	return d.nameUnder(d.collect(tab.Context), tab.WorkspaceName, d.directoryMax)
+	found := d.collect(tab.Context)
+	workspace := tab.WorkspaceName
+
+	// A qualifier takes the context's place whole: the workspace row, a hidden
+	// directory or a bound would take away what tells this tab from its twin.
+	if tab.Qualifier != "" {
+		found.parts.Context = tab.Qualifier
+		found.directory = false
+		workspace = ""
+	}
+
+	return d.nameUnder(found, workspace, d.directoryMax)
 }
 
 // ResolvePanes names each pane of a tab by what tells it from that tab. The row

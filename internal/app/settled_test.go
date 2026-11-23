@@ -15,11 +15,10 @@ func startSessionConfigured(t *testing.T, client *herdrtest.Client, cfg Config) 
 	t.Helper()
 
 	instance := &fakeInstance{}
-	titles, panes, topics := resolvers(cfg)
 
 	return &harness{
 		t: t, client: client, instance: instance,
-		app: newApp(cfg, discardLogger(), titles, panes, topics, instance),
+		app: newApp(cfg, discardLogger(), resolvers(cfg), instance),
 	}
 }
 
@@ -28,7 +27,7 @@ func TestSessionOnlyIgnoresTerminalAndAgentPlaceholders(t *testing.T) {
 
 	cfg := testConfig()
 	cfg.SessionOnly = true
-	titles, _, _ := resolvers(cfg)
+	titles := resolvers(cfg).titles
 	pane := &state.PaneState{
 		Agent:         "hermes",
 		AgentTopic:    "Finished context name",
