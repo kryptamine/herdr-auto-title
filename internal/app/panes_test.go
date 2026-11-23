@@ -282,9 +282,8 @@ func appFromConfig(t *testing.T, cfg Config) *App {
 	t.Helper()
 
 	cfg.Home = testHome(t)
-	titles, panes, topics := resolvers(cfg)
 
-	return newApp(cfg, discardLogger(), titles, panes, topics, &fakeInstance{})
+	return newApp(cfg, discardLogger(), resolvers(cfg), &fakeInstance{})
 }
 
 func TestTheSettingsThatShapeATitleShapeAPaneLabel(t *testing.T) {

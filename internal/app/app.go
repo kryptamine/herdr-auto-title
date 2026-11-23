@@ -39,6 +39,9 @@ type App struct {
 	pollEvery time.Duration
 	log       *slog.Logger
 	titles    resolver.TitleResolver
+	// distinct is the undecorated chain that finds tabs whose titles would
+	// read the same, and is nil unless the user turned that on.
+	distinct *resolver.Deterministic
 	// panes names each pane of a tab as well as the tab itself, and is nil
 	// when the user turned that off.
 	panes resolver.PaneResolver
@@ -62,23 +65,25 @@ type App struct {
 	instance Instance
 }
 
+// chains are what titles, pane labels and topics are resolved by. A nil panes
+// leaves every pane's label alone, and a nil distinct looks for no twins.
+type chains struct {
+	titles   resolver.TitleResolver
+	panes    resolver.PaneResolver
+	topics   *resolver.Topics
+	distinct *resolver.Deterministic
+}
+
 // newApp builds the application. The client belongs to Run rather than to the
-// App, so one App can be driven by any connection. A nil panes leaves every
-// pane's label alone.
-func newApp(
-	cfg Config,
-	log *slog.Logger,
-	titles resolver.TitleResolver,
-	panes resolver.PaneResolver,
-	topics *resolver.Topics,
-	instance Instance,
-) *App {
+// App, so one App can be driven by any connection.
+func newApp(cfg Config, log *slog.Logger, chains chains, instance Instance) *App {
 	return &App{
 		pollEvery:   cfg.Poll,
 		log:         log,
-		titles:      titles,
-		panes:       panes,
-		topics:      topics,
+		titles:      chains.titles,
+		distinct:    chains.distinct,
+		panes:       chains.panes,
+		topics:      chains.topics,
 		reported:    newTopicReports(),
 		preferAgent: cfg.PreferAgentPane,
 		sessionOnly: cfg.SessionOnly,
@@ -107,25 +112,14 @@ func newApp(
 // resolvers builds what the configuration asks titles to be resolved by: the
 // shipped chain, icons, the agent status and then its position in front when
 // asked, panes named unless that is turned off with icons and then their IDs in
-// front when asked, and topics reported unless that is turned off.
-func resolvers(
-	cfg Config,
-) (resolver.TitleResolver, resolver.PaneResolver, *resolver.Topics) {
-	chain := resolver.Default(resolver.Options{
-		MaxLength:     cfg.MaxLength,
-		BranchMax:     cfg.BranchMax,
-		DirectoryMax:  cfg.DirectoryMax,
-		HideDirectory: cfg.HideDirectory,
-		HideAgentName: !cfg.ShowAgentName,
-		ShowHandle:    cfg.ShowAgentHandle,
-		Home:          cfg.Home,
-	})
+// front when asked, topics reported unless that is turned off, and twins looked
+// for when asked.
+func resolvers(cfg Config) chains {
+	chain := chainFor(cfg)
 
-	if cfg.SessionOnly {
-		chain = resolver.New(
-			resolver.Options{MaxLength: cfg.MaxLength, HideAgentName: true, Home: cfg.Home},
-			resolver.NewTranscript(),
-		)
+	built := chains{topics: topicsFor(cfg)}
+	if cfg.DistinctTitles {
+		built.distinct = chain
 	}
 
 	var titles resolver.TitleResolver = chain
@@ -141,10 +135,10 @@ func resolvers(
 		titles = resolver.NewNumbered(titles, cfg.MaxLength)
 	}
 
-	topics := topicsFor(cfg)
+	built.titles = titles
 
 	if !cfg.RenamePanes {
-		return titles, nil, topics
+		return built
 	}
 
 	var panes resolver.PaneResolver = chain
@@ -156,7 +150,29 @@ func resolvers(
 		panes = resolver.NewPaneIDs(panes, cfg.MaxLength)
 	}
 
-	return titles, panes, topics
+	built.panes = panes
+
+	return built
+}
+
+// chainFor is the chain titles are resolved by before anything is put in front.
+func chainFor(cfg Config) *resolver.Deterministic {
+	if cfg.SessionOnly {
+		return resolver.New(
+			resolver.Options{MaxLength: cfg.MaxLength, HideAgentName: true, Home: cfg.Home},
+			resolver.NewTranscript(),
+		)
+	}
+
+	return resolver.Default(resolver.Options{
+		MaxLength:     cfg.MaxLength,
+		BranchMax:     cfg.BranchMax,
+		DirectoryMax:  cfg.DirectoryMax,
+		HideDirectory: cfg.HideDirectory,
+		HideAgentName: !cfg.ShowAgentName,
+		ShowHandle:    cfg.ShowAgentHandle,
+		Home:          cfg.Home,
+	})
 }
 
 // topicsFor is what a workspace's topic is read by, or nil when the user turned
@@ -277,6 +293,10 @@ func (a *App) readAndRename(ctx context.Context, client herdr.Client) error {
 	tabs := a.tabsIn(snapshot)
 	poll := a.reads.Poll(client, snapshot.Panes, drew)
 	renamer, renamesPanes := client.(herdr.PaneRenamer)
+
+	if a.distinct != nil {
+		a.qualify(ctx, pass, poll, tabs)
+	}
 
 	for _, tab := range tabs {
 		if ctx.Err() != nil {
@@ -425,6 +445,32 @@ func (a *App) readAll(ctx context.Context, poll *reads.Poll, tab state.TabState)
 	}
 
 	return read
+}
+
+// qualify marks the tabs whose titles would read the same as another's. It
+// compares only the tabs a poll may name, read in full as nameTab reads them.
+func (a *App) qualify(
+	ctx context.Context,
+	pass *labels.Pass,
+	poll *reads.Poll,
+	tabs []state.TabState,
+) {
+	nameable := make([]state.TabState, 0, len(tabs))
+
+	for _, tab := range tabs {
+		if tab.Context == nil || pass.TabLocked(tab.ID) || !a.readAll(ctx, poll, tab) ||
+			a.labels.Owned(tab) {
+			continue
+		}
+
+		poll.Fill(ctx, tab.Context)
+		nameable = append(nameable, tab)
+	}
+
+	qualifiers := a.distinct.Qualifiers(nameable)
+	for i := range tabs {
+		tabs[i].Qualifier = qualifiers[tabs[i].ID]
+	}
 }
 
 // nameTab keeps one tab's label in step with what the tab is doing.

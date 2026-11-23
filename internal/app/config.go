@@ -33,6 +33,7 @@ const (
 	EnvAgentHandle  = "HERDR_AUTO_TITLE_AGENT_HANDLE"
 	EnvIcons        = "HERDR_AUTO_TITLE_ICONS"
 	EnvAgentStatus  = "HERDR_AUTO_TITLE_AGENT_STATUS"
+	EnvDistinct     = "HERDR_AUTO_TITLE_DISTINCT"
 	EnvSessionOnly  = "HERDR_AUTO_TITLE_SESSION_ONLY"
 	EnvCoreLayout   = "HERDR_AUTO_TITLE_CORE_LAYOUT"
 
@@ -122,6 +123,9 @@ type Config struct {
 	// ShowAgentStatus puts a mark for what a tab's agents are doing in front
 	// of its title. Off by default: every change of status is another rename.
 	ShowAgentStatus bool
+	// DistinctTitles qualifies tabs whose titles would otherwise read the
+	// same. Off by default: it renames a tab whenever its twin comes or goes.
+	DistinctTitles bool
 	// ReportWorkspaces reports what each workspace's active tab is doing as its
 	// `topic` token. Herdr draws it only where the user's sidebar rows ask for
 	// `$topic`, and the label is never touched.
@@ -227,6 +231,7 @@ func loadLabelOptions(cfg *Config, warnings *[]string) {
 	cfg.ShowAgentHandle = fromEnv(warnings, EnvAgentHandle, cfg.ShowAgentHandle, boolean)
 	cfg.ShowIcons = fromEnv(warnings, EnvIcons, cfg.ShowIcons, boolean)
 	cfg.ShowAgentStatus = fromEnv(warnings, EnvAgentStatus, cfg.ShowAgentStatus, boolean)
+	cfg.DistinctTitles = fromEnv(warnings, EnvDistinct, cfg.DistinctTitles, boolean)
 }
 
 func loadSessionOptions(cfg *Config, warnings *[]string) {

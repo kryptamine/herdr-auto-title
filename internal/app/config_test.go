@@ -36,7 +36,7 @@ func isolate(t *testing.T) {
 	names := []string{
 		EnvDebug, EnvPoll, EnvMaxLength, EnvBranchMax, EnvDirectoryMax,
 		EnvPosition, EnvManual, EnvTranscript, EnvSessionOnly, EnvAgentName, EnvPanes,
-		EnvPreferAgent, EnvPaneID, EnvAgentHandle, EnvIcons, EnvAgentStatus,
+		EnvPreferAgent, EnvPaneID, EnvAgentHandle, EnvIcons, EnvAgentStatus, EnvDistinct,
 		EnvWorkspaces, EnvWorkspaceMaxLength,
 		// Claude Code's own variable is cleared with ours: it now decides a
 		// Config field, so a developer's real home would otherwise be read.
@@ -142,6 +142,10 @@ func TestLoadConfigDefaults(t *testing.T) {
 		t.Error("pane IDs are shown by default")
 	}
 
+	if cfg.DistinctTitles {
+		t.Error("twin titles are qualified by default")
+	}
+
 	if cfg.ShowAgentHandle {
 		t.Error("agent handles are shown by default")
 	}
@@ -214,6 +218,20 @@ func TestLoadConfigTurnsPaneIDsOn(t *testing.T) {
 
 	if !cfg.ShowPaneID {
 		t.Error("pane IDs are hidden despite being turned on")
+	}
+}
+
+func TestLoadConfigTurnsDistinctTitlesOn(t *testing.T) {
+	isolate(t)
+	t.Setenv(EnvDistinct, "true")
+
+	cfg, warnings := loadConfig()
+	if len(warnings) != 0 {
+		t.Errorf("warnings = %v, want none", warnings)
+	}
+
+	if !cfg.DistinctTitles {
+		t.Error("twin titles are left alike despite being turned on")
 	}
 }
 

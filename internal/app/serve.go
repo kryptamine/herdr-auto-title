@@ -49,8 +49,7 @@ func Serve(ctx context.Context, cfg Config, log *slog.Logger, client herdr.Clien
 		log.Warn("the instance this one replaces is still running", "pid", stayed)
 	}
 
-	titles, panes, topics := resolvers(cfg)
-	newApp(cfg, log, titles, panes, topics, claim).Run(ctx, client)
+	newApp(cfg, log, resolvers(cfg), claim).Run(ctx, client)
 }
 
 // Restart starts a fresh instance in this one's session and says how that went,
