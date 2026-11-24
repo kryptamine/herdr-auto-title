@@ -54,7 +54,7 @@ func New(claudeDirs []string, coreLayout bool) (*Client, error) {
 		return nil, fmt.Errorf("locate the home directory: %w", err)
 	}
 
-	client := newClient(appSocketPath(home), coreSocketPath(home), coreLayout)
+	client := newClient(appSocketPath(home), coreEndpoint(home), coreLayout)
 	client.sessions = newSessionFinder(claudeDirs)
 
 	return client, nil

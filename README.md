@@ -215,6 +215,8 @@ not read.
 | `HERDR_AUTO_TITLE_PANES`        | `true`                                   | Name panes as well as tabs                                         |
 | `HERDR_AUTO_TITLE_PREFER_AGENT` | `false`                                  | Name a tab after its agent pane even while another pane is focused |
 | `HERDR_AUTO_TITLE_CORE_LAYOUT`  | `false`                                  | Desktop mode: read and rename tabs through herdr-core without an app window |
+| `HC_SESSION`                    | `default`                                | Desktop mode: the herdr-core session to use, as `hc` reads it      |
+| `HC_SOCKET`                     | none                                     | Desktop mode: the herdr-core socket to use, ahead of `HC_SESSION`  |
 | `HERDR_AUTO_TITLE_PANE_ID`      | `false`                                  | Put the pane's Herdr ID in front of its label, as `[w1:p2] api`    |
 | `HERDR_AUTO_TITLE_AGENT_HANDLE` | `false`                                  | Put the name `herdr agent rename` gave the pane's agent in front of its label, as `driver › api` |
 | `HERDR_AUTO_TITLE_ICONS`        | `false`                                  | Put a Nerd Font 3.0+ icon for what a pane runs in front of labels  |

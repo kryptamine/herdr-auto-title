@@ -5,9 +5,25 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
 )
+
+// coreEndpoint is the core hc reaches from the same environment: HC_SOCKET
+// names its socket outright, else HC_SESSION names its session.
+func coreEndpoint(home string) string {
+	if socket := os.Getenv("HC_SOCKET"); socket != "" {
+		return socket
+	}
+
+	session := os.Getenv("HC_SESSION")
+	if session == "" {
+		session = "default"
+	}
+
+	return coreSocketPath(home, session)
+}
 
 // ask sends one JSON line on a connection of its own and decodes the line that
 // answers it. A failure after sending may still take effect, as on Herdr's.
