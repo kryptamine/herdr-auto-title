@@ -17,9 +17,9 @@ import (
 
 func TestCorePipeUsesTheSanitizedAccount(t *testing.T) {
 	t.Setenv("USERNAME", "A.d-min_42")
-	t.Setenv("HC_TERMINAL_SOCKET", `\\.\pipe\another-session.sock`)
 
-	if got := coreSocketPath("ignored"); got != `\\.\pipe\herdr-core-Admin42-default.sock` {
+	want := `\\.\pipe\herdr-core-Admin42-devbox.sock`
+	if got := coreSocketPath("ignored", "devbox"); got != want {
 		t.Fatalf("core endpoint = %q", got)
 	}
 }

@@ -29,16 +29,23 @@ Desktop support is tracked in
 | App | `~/.config/herdr-app/herdr-app.sock` (`$HERDR_APP_HOME`) | one JSON line each way | spaces, tabs, panes, focus, commands |
 | Core | see below | JSON-RPC 2.0, one message per line | terminals: title, status, foreground process |
 
-The core's socket on macOS and Linux is the first of these, following
-herdr-core's `docs/security.md` for the `default` session; only the last was
-measured, on macOS. On Windows it is a named pipe, below.
+The core is chosen the way `hc` chooses it: `HC_SOCKET` is the socket's full
+path, and otherwise `HC_SESSION` names the session, `default` when unset. A
+service inherits neither from a terminal, so `config.env` is where they are set.
+Measured with hc 0.1.22 on Linux: a core started under `HC_SESSION=probe`
+listened on `$XDG_RUNTIME_DIR/herdr-core/probe.sock`, and `HC_SOCKET` alone
+reached a core whose session was not `default`.
+
+On macOS and Linux the session's socket is the first of these, following
+herdr-core's `docs/security.md`; the runtime-directory path was measured on
+Linux, the last on macOS. On Windows it is a named pipe, below.
 
 | When | Path |
 |------|------|
-| `XDG_RUNTIME_DIR` is set | `$XDG_RUNTIME_DIR/herdr-core/default.sock` |
-| `/run/user/<uid>` exists | `/run/user/<uid>/herdr-core/default.sock` |
-| `XDG_STATE_HOME` is set | `$XDG_STATE_HOME/herdr-core/default/default.sock` |
-| otherwise | `~/.local/state/herdr-core/default/default.sock` |
+| `XDG_RUNTIME_DIR` is set | `$XDG_RUNTIME_DIR/herdr-core/<session>.sock` |
+| `/run/user/<uid>` exists | `/run/user/<uid>/herdr-core/<session>.sock` |
+| `XDG_STATE_HOME` is set | `$XDG_STATE_HOME/herdr-core/<session>/<session>.sock` |
+| otherwise | `~/.local/state/herdr-core/<session>/<session>.sock` |
  The app socket is not
 a documented API; the core's is, by OpenRPC (`hc schema`).
 
@@ -608,7 +615,7 @@ discovery, transport and process enumeration. No additional dependency is needed
 - The core answers newline-delimited JSON-RPC over a Windows named pipe. The
   current terminal supplied `HC_TERMINAL_SOCKET` as
   `\\.\pipe\herdr-core-Admin-default.sock`; opening that path directly and
-  requesting `terminal.list` worked. Discovery uses the default session and
+  requesting `terminal.list` worked. Discovery uses the session and
   `USERNAME` stripped to ASCII letters and digits, matching
   [hc 0.1.18](https://github.com/herdrdev/herdr-core/blob/v0.1.18/crates/herdr-core/src/platform/windows.rs).
   The live client worked without using `HC_TERMINAL_SOCKET`.
