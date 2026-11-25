@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.24.0...v0.25.0) (2026-11-25)
+
+
+### Features
+
+* **desktop:** reach herdr-core under the session hc would use ([62c3666](https://github.com/kryptamine/herdr-auto-title/commit/62c366610f2de77f1de7a84be705e707ea8571ff)), closes [#246](https://github.com/kryptamine/herdr-auto-title/issues/246)
+
 ## [0.24.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.23.1...v0.24.0) (2026-11-22)
 
 
