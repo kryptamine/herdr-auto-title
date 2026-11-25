@@ -32,6 +32,8 @@ Desktop support is tracked in
 The core is chosen the way `hc` chooses it: `HC_SOCKET` is the socket's full
 path, and otherwise `HC_SESSION` names the session, `default` when unset. A
 service inherits neither from a terminal, so `config.env` is where they are set.
+With the app window open, the core must be the app's own: under another session
+none of the app's tabs is found, so no tab is named, and nothing warns.
 Measured with hc 0.1.22 on Linux: a core started under `HC_SESSION=probe`
 listened on `$XDG_RUNTIME_DIR/herdr-core/probe.sock`, and `HC_SOCKET` alone
 reached a core whose session was not `default`.
