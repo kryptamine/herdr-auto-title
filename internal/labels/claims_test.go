@@ -278,6 +278,65 @@ func TestRetainDropsTabsTheSessionNoLongerHolds(t *testing.T) {
 	}
 }
 
+func TestAMachineBackInViewKeepsItsTabsUnlocked(t *testing.T) {
+	t.Parallel()
+
+	// A relaunched desktop app lists a connected machine again only once it has
+	// reconnected, and its tabs cannot be read for a few polls more. Their
+	// labels are still Auto Title's: locking them froze every one at once.
+	l := settledLabels(t)
+	remote := sighting{id: "devbox/tb1", current: "1", desired: "dashboard", byDefault: "1"}
+	l.tabs.observe(remote)
+	l.tabs.applied(remote.id, "dashboard")
+
+	l.tabs.retain(map[string]string{"tb2": "2"})
+	l.settle()
+
+	back := sighting{id: remote.id, current: "dashboard", byDefault: "1"}
+	if l.tabs.observe(back) == verdictClaimed {
+		t.Error("a tab wearing the label Auto Title set was locked when its machine came back")
+	}
+}
+
+func TestATabClosedOnAListedMachineIsForgotten(t *testing.T) {
+	t.Parallel()
+
+	// Only a machine missing as a whole is out of view. A tab gone while the
+	// rest of its machine is listed has closed, and an id reused later is new.
+	l := settledLabels(t)
+	remote := sighting{id: "devbox/tb1", current: "1", desired: "dashboard", byDefault: "1"}
+	l.tabs.observe(remote)
+	l.tabs.applied(remote.id, "dashboard")
+
+	l.tabs.retain(map[string]string{"devbox/tb2": "2"})
+	l.settle()
+
+	reused := sighting{id: remote.id, current: "dashboard", byDefault: "1"}
+	if l.tabs.observe(reused) != verdictClaimed {
+		t.Error("a new tab on a closed tab's id was taken for the closed one")
+	}
+}
+
+func TestAClaimedTabRenamedToAnOldAutoTitleLabelStaysTheUsers(t *testing.T) {
+	t.Parallel()
+
+	// Once the user has claimed a tab, the label Auto Title set before that is
+	// just another name the user may choose for it.
+	l := settledLabels(t)
+	l.tabs.observe(tabSighting("1"))
+	l.tabs.applied("wE:t1", "dashboard")
+	l.tabs.observe(tabSighting("Important work"))
+
+	l.tabs.retain(map[string]string{"wE:t1": "dashboard"})
+
+	if l.tabs.observe(
+		sighting{id: "wE:t1", current: "dashboard", desired: "api", byDefault: "1"},
+	) !=
+		verdictClaimed {
+		t.Error("a claimed tab renamed to Auto Title's earlier label was handed back")
+	}
+}
+
 func TestAnUnreadableStoreIsNotFatal(t *testing.T) {
 	t.Parallel()
 

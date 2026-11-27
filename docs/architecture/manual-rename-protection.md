@@ -150,6 +150,23 @@ told apart from a label alone. A tab the user had already claimed is not
 marked: a locked tab is skipped before anything asks what its panes run, and
 stays locked for as long as it keeps the label it was locked with.
 
+### A connected machine back in view
+
+When the desktop app relaunches, after an update for instance, its first
+answers can leave out a connected machine until that machine reconnects, and
+the machine's tabs cannot be read for a few polls after that. A poll that does
+not list a tab forgets it, so each one came back as a stranger wearing a name,
+was judged with no name wanted, and was locked. Measured, one relaunch locked
+every connected machine's tab within ten milliseconds, each on the label Auto
+Title had set.
+
+So the label Auto Title last set on a tab or pane (`claims.written`) outlives
+what a poll forgets, and **a thing wearing it again is Auto Title's**, like one
+wearing *Desired*. It is forgotten only when the thing is gone while the rest of
+its machine is still listed, since that is a close rather than a machine out of
+view, and when the user claims it, so a label Auto Title set before the claim
+reads afterwards as one more name the user chose.
+
 ## Locks outlive the process, guarded by the label
 
 Herdr can restart a plugin mid-session, and losing every manual name to that is
