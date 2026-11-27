@@ -109,11 +109,9 @@ func newApp(cfg Config, log *slog.Logger, chains chains, instance Instance) *App
 	}
 }
 
-// resolvers builds what the configuration asks titles to be resolved by: the
-// shipped chain, icons, the agent status and then its position in front when
-// asked, panes named unless that is turned off with icons and then their IDs in
-// front when asked, topics reported unless that is turned off, and twins looked
-// for when asked.
+// resolvers builds the chains the configuration asks for: titles with what is
+// put in front of them, pane labels and topics unless turned off, and the bare
+// chain twins are looked for by when asked.
 func resolvers(cfg Config) chains {
 	chain := chainFor(cfg)
 
