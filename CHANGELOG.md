@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.1](https://github.com/kryptamine/herdr-auto-title/compare/v0.25.0...v0.25.1) (2026-11-27)
+
+
+### Bug Fixes
+
+* **labels:** keep own labels while a connected machine is out of view ([8ac5da7](https://github.com/kryptamine/herdr-auto-title/commit/8ac5da74cc48f52a70df7a6bba166f64145386ac))
+
 ## [0.25.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.24.0...v0.25.0) (2026-11-25)
 
 
