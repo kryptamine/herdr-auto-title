@@ -5,6 +5,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // claims is what is remembered about one kind of thing Herdr labels. Herdr
@@ -25,6 +26,9 @@ type claims struct {
 	// persisted is the label a reloaded thing last carried from Auto Title. It
 	// only shows a label is ours, never that one is the user's: Herdr reuses ids.
 	persisted map[string]string
+	// written is the label Auto Title last set on each thing. Unlike seen it
+	// outlives a connected machine dropping out of view as a whole.
+	written map[string]string
 }
 
 // seenLabels is what is known of one thing's label: the one it carried when
@@ -44,6 +48,7 @@ func newClaims(l *Labels, kind kind) *claims {
 		departed:  make(map[string]struct{}),
 		owned:     make(map[string]struct{}),
 		persisted: make(map[string]string),
+		written:   make(map[string]string),
 	}
 }
 
@@ -135,6 +140,7 @@ func (c *claims) applied(id, label string) {
 	seen.current = label
 
 	c.seen[id] = seen
+	c.written[id] = label
 	c.labels.unsaved = true
 }
 
@@ -203,8 +209,28 @@ func (c *claims) retain(live map[string]string) {
 		}
 	}
 
+	c.forgetClosed(live)
+
 	if changed {
 		l.saveLocked()
+	}
+}
+
+// forgetClosed drops what Auto Title set on things gone while the rest of their
+// machine is listed. A machine missing as a whole is out of view, not closed.
+func (c *claims) forgetClosed(live map[string]string) {
+	listed := make(map[string]struct{})
+	for id := range live {
+		listed[machineOf(id)] = struct{}{}
+	}
+
+	for id := range c.written {
+		_, alive := live[id]
+		_, machineListed := listed[machineOf(id)]
+
+		if !alive && machineListed {
+			delete(c.written, id)
+		}
 	}
 }
 
@@ -253,6 +279,7 @@ func (c *claims) claimedOnChange(s sighting, previous seenLabels, known, ours bo
 
 func (c *claims) claim(s sighting) verdict {
 	c.locked[s.id] = s.current
+	delete(c.written, s.id)
 
 	c.labels.saveLocked()
 
@@ -260,10 +287,23 @@ func (c *claims) claim(s sighting) verdict {
 }
 
 // ours reports whether Auto Title put this label there: it is the name wanted
-// now, or that of a rename whose call got no answer, which Herdr applied late.
+// now, the last one it set, or that of a rename Herdr applied late.
 func (c *claims) ours(s sighting) bool {
 	_, sent := c.seen[s.id].sent[s.current]
-	return sent || s.current == s.desired
+	written, set := c.written[s.id]
+
+	return sent || s.current == s.desired || (set && s.current == written)
+}
+
+// machineOf names the connected machine an id belongs to, "" for this computer:
+// only a connected machine's ids carry its name and a slash.
+func machineOf(id string) string {
+	machine, _, remote := strings.Cut(id, "/")
+	if !remote {
+		return ""
+	}
+
+	return machine
 }
 
 // persistedNames is every unclaimed label Auto Title may rename: those a poll
