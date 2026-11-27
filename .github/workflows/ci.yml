@@ -99,6 +99,7 @@ jobs:
         # linter because the formatters are configured in .golangci.yml too.
         run: go tool -modfile=tools/go.mod golangci-lint fmt --diff ./...
       - run: make lint
+      - run: make check-ci
       - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
       # The runner ships shellcheck for the shared installer.
       - run: make lint-scripts
