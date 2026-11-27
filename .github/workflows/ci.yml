@@ -143,3 +143,18 @@ jobs:
         run: python scripts/test_mod_install.py
       - name: Connected machine file helper
         run: python -m unittest internal.files.test_machine
+
+  gate:
+    name: CI passed
+    needs: [check, dist, dist-run, install, lint, macos, windows]
+    # GitHub counts a skipped required check as passing, and a job is skipped
+    # when one it needs fails, so this one must run whatever they report.
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      # Only success passes: a cancelled or skipped job did not prove anything.
+      - env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          echo "$NEEDS" | jq -e 'length > 0 and all(.[]; .result == "success")' > /dev/null
