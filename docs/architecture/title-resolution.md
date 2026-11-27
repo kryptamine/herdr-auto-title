@@ -1026,6 +1026,11 @@ same title, and the group moves on to its sessions. Groups are taken in the
 order of their titles, so which one claims a title first does not depend on
 the order the session lists them.
 
+A tab `HERDR_AUTO_TITLE_SESSION_ONLY` leaves alone, one whose session has no
+title yet, is no twin either. Every such tab reads as the generic fallback, and
+a qualifier would put a directory or a session id where that setting shows
+only a session's own title.
+
 A tab with no value of its own, a pane in the home directory beside one in a
 project, keeps its title: once its twin says where it is, the two already
 differ. A group no rung tells apart, two shells in one directory, is left as it

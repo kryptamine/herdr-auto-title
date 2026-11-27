@@ -206,3 +206,61 @@ func TestAFailedReadKeepsTheTwinsAsTheyWere(t *testing.T) {
 		t.Errorf("renames = %q, want only %q", got, want)
 	}
 }
+
+func TestSessionOnlyTwinsWithNoSessionTitleAreLeftAlone(t *testing.T) {
+	t.Parallel()
+
+	// With no session title yet, SESSION_ONLY leaves a tab alone; a twin of
+	// another such tab is no reason to name it after its directory.
+	cfg := testConfig()
+	cfg.SessionOnly, cfg.DistinctTitles = true, true
+
+	client := herdrtest.New(
+		[]herdr.TabInfo{
+			{TabID: "w1:t1", WorkspaceID: "w1", Label: "1"},
+			{TabID: "w2:t1", WorkspaceID: "w2", Label: "1"},
+		},
+		[]herdr.PaneInfo{
+			{
+				PaneID: "w1:p1", TabID: "w1:t1", Focused: true, CWD: dashboard,
+				AgentSession: &herdr.AgentSessionInfo{
+					Agent: "claude", Kind: herdr.SessionRefID,
+					Value: "3fa9c1d2-0000-4000-8000-000000000001",
+				},
+			},
+			{
+				PaneID: "w2:p1", TabID: "w2:t1", Focused: true, CWD: api,
+				AgentSession: &herdr.AgentSessionInfo{
+					Agent: "claude", Kind: herdr.SessionRefID,
+					Value: "77aa1100-0000-4000-8000-000000000002",
+				},
+			},
+		},
+	)
+
+	h := startSessionConfigured(t, client, cfg)
+	h.poll()
+
+	if got := tabLabels(h); len(got) != 0 {
+		t.Errorf("renames = %q, want none", got)
+	}
+}
+
+func TestATabWhoseFirstReadFailedIsNoTwin(t *testing.T) {
+	t.Parallel()
+
+	// A tab that could not be read may run a program that writes its label,
+	// so it must not make the other tab read as its twin.
+	cfg := testConfig()
+	cfg.DistinctTitles = true
+
+	client := twinSession()
+	client.FailNextProcessRead(errors.New("herdr is busy"))
+
+	h := startConfigured(t, client, cfg)
+	h.poll()
+
+	if got := lastLabel(h, "w2:t1"); got != "Fix OAuth redirect" {
+		t.Errorf("label = %q, want %q", got, "Fix OAuth redirect")
+	}
+}
