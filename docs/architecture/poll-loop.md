@@ -134,22 +134,30 @@ changes name at most once per poll however fast its pane is churning, so
    `Reader.Poll` opens the poll's reads, marking what was read of the panes
    step 2 returned as stale and forgetting panes and agent sessions that are
    gone.
-5. Per tab (`nameTab`): skip it if locked, if any of its panes could not be
-   read (`readAll`, `Poll.Fill`), or if any runs a program that owns its labels
-   (`Pass.TabOwned`, which remembers that it did). Otherwise resolve a title from the pane the
+5. Across every tab (`qualify`), only when `HERDR_AUTO_TITLE_DISTINCT` is on:
+   read every tab step 6 may rename, before any is renamed, and find the ones
+   whose titles would read the same
+   ([title resolution](./title-resolution.md)). A tab step 6 would skip is no
+   twin, and `nameable` is the one test both steps ask.
+6. Per tab (`nameTab`): skip it if locked, if any of its panes could not be
+   read (`readAll`, `Poll.Fill`), if any runs a program that owns its labels
+   (`Pass.TabOwned`, which remembers that it did), or, with
+   `HERDR_AUTO_TITLE_SESSION_ONLY`, if it has no session title to show. That
+   last test reads the tab without a qualifier, since step 5's qualifier takes
+   the place of what it looks for. Otherwise resolve a title from the pane the
    tab is named after, check whether the label moved under us and rename when
    the result differs from the label the tab already carries (`Pass.Tab`).
-6. Per tab again (`namePanes`), and only when pane naming is on: read the tab's
+7. Per tab again (`namePanes`), and only when pane naming is on: read the tab's
    own pane even if the tab is locked, and every pane nobody has claimed; name
    all of them at once against the tab (`ResolvePanes`); then `Pass.Pane`
-   checks each name against the pane's own label, exactly as step 5 does for
+   checks each name against the pane's own label, exactly as step 6 does for
    the tab, skipping a pane that could not be read or that such a program
    owns (`Pass.PaneOwned`).
-7. Per workspace (`reportTopics`), unless topics are turned off: skip an active
-   tab step 5 would, otherwise report the topic of the pane it is named after
+8. Per workspace (`reportTopics`), unless topics are turned off: skip an active
+   tab step 6 would, otherwise report the topic of the pane it is named after
    when it changed or is due for a refresh —
    [the workspace topic](#the-workspace-topic). `Poll.Fill` answers a pane once
-   per poll, so asking step 5's question again re-reads only a failed pane.
+   per poll, so asking step 6's question again re-reads only a failed pane.
 
 **Without pane naming, only the panes of a tab nobody has claimed are read**,
 and those of each workspace's active tab when topics are on.
@@ -184,7 +192,7 @@ where every tab already carries the right name, and whose panes are sitting
 still, issues nothing beyond the snapshot itself.
 
 **Naming panes reads the claimed tabs too.** With `HERDR_AUTO_TITLE_PANES` on,
-step 6 reads every pane nobody has claimed, in every tab, and the pane each tab
+step 7 reads every pane nobody has claimed, in every tab, and the pane each tab
 is named after even when the user has claimed the tab, because its panes are
 still named against it. The reads a poll has already spent are not
 spent again — `Poll.Fill` reads a pane once however often it is asked, the git
