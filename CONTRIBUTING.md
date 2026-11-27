@@ -72,7 +72,8 @@ in [docs/architecture](docs/architecture/).
 
 - `make check` green locally. CI then runs `go vet`, `go build` and
   `go test -race` on Go 1.24 and stable, the formatters and `golangci-lint`
-  once, `make lint-scripts`, and a build and test run on macOS and on Windows.
+  once, `make lint-scripts`, and a build and test run on macOS and on Windows,
+  and one job, `CI passed`, succeeds only when every other CI job did.
 - A PR needs the approval of a code owner, listed in
   [.github/CODEOWNERS](.github/CODEOWNERS), to merge. Reviews from anyone else
   are welcome and read, but they do not unblock the merge on their own.

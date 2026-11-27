@@ -143,6 +143,7 @@ make check      # fmt + vet + lint + test   ← the gate before any commit
 make lint       # golangci-lint, pinned in tools/go.mod, for both platforms
 make fmt-scripts # ruff format and ruff check --fix for scripts/
 make lint-scripts # shellcheck, ruff, mypy, a Python 3.9 import, needs uv
+make check-ci   # the CI passed job needs every other CI job
 make test       # go test -race ./...
 make run        # build and run in the current Herdr session, DEBUG logging
 make dev        # the same, restarting on every source change
