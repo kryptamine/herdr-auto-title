@@ -30,8 +30,11 @@ make check       # fmt + vet + lint + test, run this before every commit
 The same four run in CI on every push and pull request
 (`.github/workflows/ci.yml`), plus the Go version floor the manifest promises,
 which a laptop on the newest toolchain does not cover, and the suite on macOS
-and Windows. The fixtures take their directories from `herdrtest.Dir`, which
-roots them on whichever filesystem the tests run on: spelled as `/Users/dev/...`
+and Windows. One job, `CI passed`, fails unless every other job succeeded, and
+it is the one check the branch ruleset is meant to require: a new job goes in
+its `needs`, and `make check-ci` fails when one is left out. The fixtures take
+their directories from `herdrtest.Dir`, which roots them on whichever
+filesystem the tests run on: spelled as `/Users/dev/...`
 they were relative on Windows, and every tab fell back to `Shell`. On Windows
 the client tests speak to a named pipe server of their own, so the transport
 the plugin ships there is what the suite exercises, and `go test -race` needs a
