@@ -447,8 +447,8 @@ func (a *App) readAll(ctx context.Context, poll *reads.Poll, tab state.TabState)
 	return read
 }
 
-// qualify marks the tabs whose titles would read the same as another's. It
-// compares only the tabs a poll may name, read in full as nameTab reads them.
+// qualify marks the tabs whose titles would read the same as another's,
+// among the tabs this poll may rename.
 func (a *App) qualify(
 	ctx context.Context,
 	pass *labels.Pass,
@@ -458,19 +458,48 @@ func (a *App) qualify(
 	nameable := make([]state.TabState, 0, len(tabs))
 
 	for _, tab := range tabs {
-		if tab.Context == nil || pass.TabLocked(tab.ID) || !a.readAll(ctx, poll, tab) ||
-			a.labels.Owned(tab) {
-			continue
+		if a.nameable(ctx, pass, poll, tab) {
+			nameable = append(nameable, tab)
 		}
-
-		poll.Fill(ctx, tab.Context)
-		nameable = append(nameable, tab)
 	}
 
 	qualifiers := a.distinct.Qualifiers(nameable)
 	for i := range tabs {
 		tabs[i].Qualifier = qualifiers[tabs[i].ID]
 	}
+}
+
+// nameable reports whether this poll may rename a tab, and may be asked twice.
+// It reads the tab without its qualifier, which would hide the generic fallback
+// that SESSION_ONLY leaves alone.
+func (a *App) nameable(
+	ctx context.Context,
+	pass *labels.Pass,
+	poll *reads.Poll,
+	tab state.TabState,
+) bool {
+	// A tab with no pane says nothing, and naming it would replace a label it
+	// will want back, as a disconnected machine's tab in the desktop app does.
+	if tab.Context == nil || pass.TabLocked(tab.ID) {
+		return false
+	}
+
+	if !a.readAll(ctx, poll, tab) {
+		pass.SeeTab(tab)
+		return false
+	}
+
+	if pass.TabOwned(tab) {
+		return false
+	}
+
+	if !a.sessionOnly {
+		return true
+	}
+
+	tab.Qualifier = ""
+
+	return a.titles.Resolve(tab).Reason != resolver.ReasonGenericFallback
 }
 
 // nameTab keeps one tab's label in step with what the tab is doing.
@@ -480,31 +509,9 @@ func (a *App) nameTab(
 	poll *reads.Poll,
 	tab state.TabState,
 ) {
-	// A tab with no pane says nothing, and naming it would replace a label it
-	// will want back, as a disconnected machine's tab in the desktop app does.
-	if tab.Context == nil || pass.TabLocked(tab.ID) {
-		return
+	if a.nameable(ctx, pass, poll, tab) {
+		pass.Tab(ctx, tab, a.titles.Resolve(tab))
 	}
-
-	if !a.readAll(ctx, poll, tab) {
-		pass.SeeTab(tab)
-		return
-	}
-
-	if pass.TabOwned(tab) {
-		return
-	}
-
-	// Read here rather than during assembly: the reads are what a poll
-	// spends, and only a tab that will be renamed is worth them.
-	poll.Fill(ctx, tab.Context)
-
-	decision := a.titles.Resolve(tab)
-	if a.sessionOnly && decision.Reason == resolver.ReasonGenericFallback {
-		return
-	}
-
-	pass.Tab(ctx, tab, decision)
 }
 
 // namePanes labels every pane of a tab, which is what Herdr's goto panel lists
