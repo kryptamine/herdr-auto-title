@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.26.0](https://github.com/kryptamine/herdr-auto-title/compare/v0.25.1...v0.26.0) (2026-11-28)
+
+
+### Features
+
+* **app:** tell apart tabs whose titles would read the same ([540e14b](https://github.com/kryptamine/herdr-auto-title/commit/540e14b377f68e95759e0133cbf607653b7321e6))
+
+
+### Bug Fixes
+
+* **app:** judge twins by the test that decides a rename ([cfd2390](https://github.com/kryptamine/herdr-auto-title/commit/cfd2390424575aeef1e44e9194e42cebd63b0969))
+
 ## [0.25.1](https://github.com/kryptamine/herdr-auto-title/compare/v0.25.0...v0.25.1) (2026-11-27)
 
 
